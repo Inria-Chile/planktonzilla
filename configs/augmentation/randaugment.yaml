@@ -1,6 +1,9 @@
+# @package _global_
+
+defaults:
+  - default.yaml
+
 augmentation:
-  _target_: torchvision.transforms.v2.Compose
-  transforms:
-    - _target_: torchvision.transforms.v2.RandAugment
-      num_ops: 4
-      magnitude: 9
+  _target_: torchvision.transforms.v2.RandAugment
+  num_ops: 4
+  magnitude: 9

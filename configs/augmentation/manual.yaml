@@ -1,3 +1,31 @@
+# @package _global_
+
 augmentation:
   _target_: torchvision.transforms.v2.Compose
-  transforms: []
+  transforms:
+    - _target_: torchvision.transforms.v2.RandomHorizontalFlip
+      p: 0.5
+    - _target_: torchvision.transforms.v2.RandomVerticalFlip
+      p: 0.5
+    - _target_: torchvision.transforms.v2.GaussianBlur
+      kernel_size:
+        - 1
+        - 5
+      sigma:
+        - 0.5
+        - 2
+    - _target_: torchvision.transforms.v2.RandomRotation
+      degrees:
+        - 0
+        - 180
+    - _target_: torchvision.transforms.v2.RandomAffine
+      degrees:
+        - 30
+        - 90
+      translate:
+        - 0.1
+        - 0.3
+      scale:
+        - 0.5
+        - 0.9
+      p: 0.5
