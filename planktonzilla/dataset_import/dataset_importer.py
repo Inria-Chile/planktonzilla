@@ -2,20 +2,20 @@
 (c) Inria
 """
 
-import re
 import os
+import re
 import shutil
 import stat
 from dataclasses import dataclass
 from multiprocessing import cpu_count
 from pathlib import Path
 from shutil import copy2, copytree, move, rmtree
-from tempfile import NamedTemporaryFile
 from typing import ClassVar, Dict, Final, Optional, Union
 from zipfile import ZipFile
 
 import aiohttp
 import numpy as np
+import plotext as plt
 from datasets import (
     Dataset,
     DatasetDict,
@@ -28,12 +28,10 @@ from humanize import naturalsize
 from PIL import Image
 from rich import print as rich_print
 from rich.markdown import Markdown
-from tabulate import tabulate
 from tqdm import tqdm
 
-import plotext as plt
-
 import planktonzilla.dataset_import.public_data as public_data
+from planktonzilla.dataset import compute_mean_and_std_dev
 from planktonzilla.utils.logger import get_pylogger
 
 logger = get_pylogger(__name__)
@@ -51,6 +49,9 @@ DATACARD_TEMPLATE = """
 - **Original dataset license:** <{{ license | default("[More Information Needed]", true)}}>.
 
 ## Details
+
+- **`train` split means (RGB):** {{ dataset_means | default("[More Information Needed]", true) }}
+- **`train` split standard deviations (RGB):** {{ dataset_stds | default("[More Information Needed]", true) }}
 
 {{ report_markdown | default("[More Information Needed]", true) }}
 
@@ -76,12 +77,13 @@ def is_dir_empty(dir: Path) -> bool:
         return False
     return True
 
+
 def strip_ansi_codes(text):
     """
     Removes ANSI escape sequences from a string.
     """
-    reaesc = re.compile(r'\x1b[^m]*m')
-    return reaesc.sub('', text)
+    reaesc = re.compile(r"\x1b[^m]*m")
+    return reaesc.sub("", text)
 
 
 def report_dataset_content(huggingface_dataset: Dataset | DatasetDict) -> str:
@@ -89,24 +91,21 @@ def report_dataset_content(huggingface_dataset: Dataset | DatasetDict) -> str:
         class_idxs, class_counts = np.unique(dataset["label"], return_counts=True)
 
         content = []
-        for class_idx, class_count in zip(class_idxs, class_counts):
+        for class_idx in class_idxs:
             class_name = dataset.features["label"].int2str(int(class_idx))
             content += [f"{class_idx}: {class_name}"]
 
-        plt.simple_bar(content, class_counts, title=f"{split_name} split labels histogram", width=83)
+        plt.simple_bar(content, class_counts.astype(int), title=f"Label histogram for {split_name} split ", width=83)
         plt.show()
 
         return strip_ansi_codes(plt.build())
 
-        # with NamedTemporaryFile(suffix=".txt") as temp_file:
-        #     plt.save_fig(temp_file.name)
-        #     with open(temp_file.name) as f:
-        #         lines = f.readlines()
-        #         return "\n".join(lines)
-
     if isinstance(huggingface_dataset, DatasetDict):
         split_reports = []
-        split_reports = [f"**Split: {split}**\n ```{report_split(huggingface_dataset[split], split)}```\n" for split in huggingface_dataset]
+        split_reports = [
+            f"**Samples per class for split `{split}`**\n ```{report_split(huggingface_dataset[split], split)}```\n"
+            for split in huggingface_dataset
+        ]
         return "\n".join(split_reports)
     else:
         return report_split(huggingface_dataset) + "\n"
@@ -175,7 +174,7 @@ class DatasetImporter:
     check_image_file_integrity: Optional[bool] = False
 
     # if we have manually downloaded the files add the archives here
-    manual_download_local_file_names: str|list[str] = None
+    manual_download_local_file_names: str | list[str] = None
 
     cleanup_after_processing: Optional[bool] = False
 
@@ -262,6 +261,10 @@ class DatasetImporter:
             self.hf_dataset = load_dataset(self.hf_org_name + "/" + self.hf_dataset_name)
 
         card.data["report_markdown"] = report_dataset_content(self.hf_dataset)
+
+        means, stds = compute_mean_and_std_dev(self.hf_dataset["train"])
+        card.data["dataset_means"] = "[" + ", ".join([str(item) for item in means]) + "]"
+        card.data["dataset_stds"] = "[" + ", ".join([str(item) for item in stds]) + "]"
 
         new_card = DatasetCard.from_template(card.data, template_str=DATACARD_TEMPLATE)
         new_card.push_to_hub(self.hf_org_name + "/" + self.hf_dataset_name)
@@ -376,7 +379,6 @@ class LenslessDatasetImporter(DatasetImporter):
 
 
 class ZooLakeDatasetImporter(DatasetImporter):
-
     SPLIT_NAMES: ClassVar[Dict[str, str]] = {
         "train_split": "train_filenames.txt",
         "val_split": "val_filenames.txt",
@@ -424,7 +426,6 @@ class ZooLakeDatasetImporter(DatasetImporter):
 
 
 class ZooScanNetDatasetImporter(DatasetImporter):
-
     def _prepare_imagefolder(self):
         for plankton_class_dir in tqdm(
             (Path(self.extracted_dirs) / "ZooScanNet" / "imgs").glob("*"),
@@ -436,7 +437,6 @@ class ZooScanNetDatasetImporter(DatasetImporter):
 
 
 class WHOIPlanktonDatasetImporter(DatasetImporter):
-
     def _prepare_imagefolder(self):
         for release_folder in tqdm(
             self.extracted_dirs,
@@ -462,7 +462,6 @@ class WHOIPlanktonDatasetImporter(DatasetImporter):
 
 
 class JEDISystemsOceansCPICSDatasetImporter(DatasetImporter):
-
     def _prepare_imagefolder(self) -> None:
         for zip_file in tqdm(
             sorted((Path(self.extracted_dirs) / "CPICS_Validated").glob("*.zip")),
@@ -504,13 +503,12 @@ class JEDISystemsOceansCPICSDatasetImporter(DatasetImporter):
                             class_folder / img_file,
                             self.imagefolder_dir / class_folder.name,
                         )
-                    except OSError:  # noqa: PERF203
+                    except OSError:
                         logger.debug(f"File {class_folder / img_file} already in {self.imagefolder_dir / class_folder.name}.")
             rmtree(release_dir, ignore_errors=True)
 
 
 class UVP6NetDatasetImporter(DatasetImporter):
-
     def _prepare_imagefolder(self):
         for plankton_class_dir in tqdm(
             (Path(self.extracted_dirs) / "imgs").glob("*"),
@@ -522,7 +520,6 @@ class UVP6NetDatasetImporter(DatasetImporter):
 
 
 class ZooCAMNetDatasetImporter(DatasetImporter):
-
     def _prepare_imagefolder(self):
         for plankton_class_dir in tqdm(
             (Path(self.extracted_dirs) / "ZooCamNet" / "imgs").glob("*"),
@@ -545,7 +542,6 @@ class FlowCAMNetDatasetImporter(DatasetImporter):
 
 
 class ISIISNetDatasetImporter(DatasetImporter):
-
     def _prepare_imagefolder(self):
         for plankton_class_dir in tqdm(
             (Path(self.extracted_dirs) / "ISIISNet" / "imgs").glob("*"),

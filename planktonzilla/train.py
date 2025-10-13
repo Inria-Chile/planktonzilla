@@ -39,7 +39,6 @@ import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
 
 import os
-from dataclasses import dataclass
 from functools import partial
 
 import hydra
@@ -51,7 +50,6 @@ from omegaconf import DictConfig, MissingMandatoryValue, OmegaConf
 from rich import print as rich_print
 from rich.markdown import Markdown
 from transformers import AutoImageProcessor, AutoModelForImageClassification, Trainer, TrainingArguments, set_seed
-from transformers.loss.loss_utils import fixed_cross_entropy
 
 from planktonzilla.dataset import DatasetWrapper
 from planktonzilla.utils.hydra import (
@@ -77,6 +75,7 @@ def compute_metrics(eval_pred):
     )
     acc = load("accuracy").compute(predictions=np.concatenate(predictions), references=np.concatenate(eval_pred.label_ids))
     return {**res, **acc}
+
 
 @task_wrapper
 def train(cfg: DictConfig) -> tuple[dict, dict]:

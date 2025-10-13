@@ -117,7 +117,7 @@ class MaximumMarginLoss(nn.Module):
     """Maximum Margin loss.
 
     *Source:* Kang, H., Vu, T., & Yoo, C. D. (2021). *Learning imbalanced datasets with maximum
-    margin loss*. 2021 IEEE International Conference on Image Processing (ICIP), 1269–1273. IEEE.
+    margin loss*. 2021 IEEE International Conference on Image Processing (ICIP), 1269-1273. IEEE.
     <https://arxiv.org/abs/2206.05380>
 
     *Note:* Code adapted from <https://github.com/ihaeyong/Maximum-Margin-LDAM>.

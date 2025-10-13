@@ -23,7 +23,7 @@ from planktonzilla.train import train
 
 from .shared import dataset_names, model_names, skip_in_github_ci
 
-losses=["asymmetric",  "balanced_meta_softmax",  "focal", "ldam", "max_margin", "ral"]
+losses = ["asymmetric", "balanced_meta_softmax", "focal", "ldam", "max_margin", "ral"]
 
 
 @skip_in_github_ci
@@ -61,7 +61,7 @@ def test_training(hydra_conf_path: Path, model_name: str, dataset_name: str):
 @pytest.mark.parametrize("dataset_name", dataset_names)
 @pytest.mark.parametrize("model_name", model_names)
 @pytest.mark.parametrize("custom_loss", losses)
-def test_training_custom_losses(hydra_conf_path: Path, model_name: str, dataset_name: str, custom_loss:str):
+def test_training_custom_losses(hydra_conf_path: Path, model_name: str, dataset_name: str, custom_loss: str):
     with TemporaryDirectory() as tmp_dir:
         with initialize(config_path=hydra_conf_path, job_name="test_training"):
             cfg: DictConfig = compose(

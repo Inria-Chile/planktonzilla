@@ -7,7 +7,7 @@ model_names = ["resnet18"]
 
 # datasets in configs/dataset
 dataset_names = [
-    "lensless" #, "whoi-plankton"
+    "lensless"  # , "whoi-plankton"
 ]
 
 

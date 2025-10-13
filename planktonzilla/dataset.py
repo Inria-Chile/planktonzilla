@@ -7,7 +7,7 @@ from functools import partial
 from typing import Callable
 
 import numpy as np
-from datasets import load_dataset
+from datasets import Dataset, load_dataset
 from transformers import AutoImageProcessor
 
 from planktonzilla.utils.logger import get_pylogger
@@ -34,6 +34,34 @@ def augment_and_transform_batch(examples, transform, augmentation, image_process
     result["label"] = annotations
 
     return result
+
+
+def compute_mean_and_std_dev(huggingface_dataset: Dataset):
+    sum_pixels = np.zeros(3)  # For R, G, B channels
+    sum_squared_pixels = np.zeros(3)
+    num_pixels = 0
+    for item in huggingface_dataset:
+        # Access the image (assuming it's a PIL Image object)
+        image = item["image"]
+
+        # Convert image to NumPy array and normalize to [0, 1] if needed
+        image_array = np.array(image).astype(np.float32) / 255.0
+
+        # Reshape the image to (height * width, channels) to easily work with pixels
+        reshaped_image = image_array.reshape(-1, 3)
+
+        # Accumulate sums
+        sum_pixels += np.sum(reshaped_image, axis=0)
+        sum_squared_pixels += np.sum(reshaped_image**2, axis=0)
+
+        # Update total number of pixels
+        num_pixels += reshaped_image.shape[0]
+
+        # 3. Calculate mean and standard deviation
+        mean = sum_pixels / num_pixels
+        std_dev = np.sqrt((sum_squared_pixels / num_pixels) - (mean**2))
+
+        return mean, std_dev
 
 
 @dataclass
