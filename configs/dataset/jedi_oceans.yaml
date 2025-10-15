@@ -10,8 +10,8 @@ transform:
     # the actual sizes are set at training time depending on the model
     - _target_: torchvision.transforms.v2.Resize
       size:
-        - 128
-        - 128
+        - ${img_size}
+        - ${img_size}
       antialias: true
     - _target_: torchvision.transforms.v2.Normalize
       mean: [0.958, 0.959, 0.959]

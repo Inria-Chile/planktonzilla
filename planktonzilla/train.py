@@ -97,12 +97,6 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
     # set proper matmul precision
     # hydra.utils.instantiate(cfg.torch_matmul_precision)
 
-    # wiring image_size to transformation
-    cfg.dataset.transform["transforms"][1]["size"] = [
-        cfg.img_size,
-        cfg.img_size,
-    ]
-
     log.info(f"Instantiating wrapper for dataset «{cfg.dataset.name}».")
     dataset_wrapper: DatasetWrapper = hydra.utils.instantiate(cfg.dataset)
 
@@ -175,10 +169,6 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
             cfg.custom_loss["cls_num_list"] = "dummy_value"
             loss_instance = hydra.utils.instantiate(cfg.custom_loss, cls_num_list=dataset_wrapper.cls_num_list, _convert_="all")
         custom_loss = partial(loss_instance.forward)
-
-    # eval_compute_metrics_fn = partial(
-    #    compute_metrics, image_processor=image_processor, id2label=dataset_wrapper.id2label, threshold=0.0
-    # )
 
     log.info("Instantiating trainer.")
     trainer: Trainer = Trainer(

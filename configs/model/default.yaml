@@ -6,13 +6,5 @@ model:
     - ????
   ignore_mismatched_sizes: true
 
-# image_processor:
-#   _target_: transformers.AutoImageProcessor.from_pretrained
-#   _args_:
-#     - ????
-#   do_resize: true
-#   do_normalize: false
-#   use_fast: true
-
 img_size: ???
 freeze_backbone: false
