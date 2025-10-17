@@ -50,6 +50,7 @@ def test_training(hydra_conf_path: Path, model_name: str, dataset_name: str):
 
             cfg.tracking.use_wandb = False
             cfg.tracking.use_mlflow = False
+            cfg.tracking.use_trackio = False
             cfg.model_push_to_hub = False
 
             metric_dict, _ = train(cfg)
@@ -82,6 +83,7 @@ def test_training_custom_losses(hydra_conf_path: Path, model_name: str, dataset_
 
             cfg.tracking.use_wandb = False
             cfg.tracking.use_mlflow = False
+            cfg.tracking.use_trackio = False
             cfg.model_push_to_hub = False
 
             metric_dict, _ = train(cfg)
