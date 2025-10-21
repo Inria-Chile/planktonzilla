@@ -1,14 +1,26 @@
-# 🦠 Planktonzilla
+<div align="center">
+<img src="docs/images/planktonzilla-logo.gif" width="29%" alt="planktonzilla logo"/>
 
-[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
-[![Poetry](https://img.shields.io/badge/dependency--manager-poetry-blue.svg)](https://python-poetry.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Transformers](https://img.shields.io/badge/🤗-Transformers-orange.svg)](https://huggingface.co/transformers/)
-[![Hydra](https://img.shields.io/badge/config-Hydra-blue.svg)](https://hydra.cc/)
+# `planktonzilla`
 
-> A deep learning framework for plankton identification developed by [Inria Chile](https://oceania.inria.cl/)
+Deep learning framework, datasets, and models for plankton identification.
+
+**Part of [Inria Challenge OcéanIA](https://oceania.inria.cl/).**
+
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.*-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/get-started/locally/)
+![transformers](https://img.shields.io/badge/HuggingFace_transformers-1.0-FF9D00?logo=huggingface&logoColor=white&label=transformers&link=https%3A%2F%2Fgithub.com%2Fhuggingface%2F)
+![timm](https://img.shields.io/badge/HuggingFace_datasets-1.0-FF9D00?logo=huggingface&logoColor=white&label=datasets&link=https%3A%2F%2Fgithub.com%2Fhuggingface%2Fpytorch-image-models)
+![huggingface_hub](https://img.shields.io/badge/HuggingFace_Hub-0.23-FF9D00?logo=huggingface&logoColor=white&label=hub&link=https%3A%2F%2Fhuggingface.co%2Fdocs%2Fhuggingface_hub)
+[![Hydra](https://img.shields.io/badge/Hydra-1.3-89b8cd?logo=hexo&logoColor=white)](https://hydra.cc/)
+![Poetry](https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json)
+![Discord](https://img.shields.io/discord/956298015335927839?logo=Discord&logoColor=white&color=%235865F2&link=https%3A%2F%2Fdiscord.gg%2FkksV2htk)
+</div>
 
 Planktonzilla provides a comprehensive toolkit for importing datasets, training computer vision models, and evaluating performance on various plankton image classification tasks. Built on top of Hugging Face Transformers and Hydra for configuration management, it offers specialized tools for handling imbalanced plankton datasets and state-of-the-art loss functions.
+
+- OcéanIA project website: <https://oceania.inria.cl>.
+- OcéanIA Hugging Face organization (datasets, trained models and demos): <https://huggingface.co/project-oceania>.
 
 ## ✨ Features
 
