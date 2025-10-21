@@ -4,6 +4,7 @@
 _target_: hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmLauncher
 
 submitit_folder: ${hydra.sweep.dir}/submitit/%j
+
 timeout_min: 10 # 1440=24 hours, set to more if required
 cpus_per_task: 96
 gpus_per_node: null # Leave null
@@ -11,7 +12,7 @@ gpus_per_node: null # Leave null
 # If using ddp, this needs to be greater than or equal to the number of GPUs in each node
 tasks_per_node: 1
 # mem_gb: 64
-nodes: 1
+nodes: 2
 name: ${hydra.job.name}
 comment: null
 exclude: null # Leave null
@@ -33,10 +34,10 @@ qos: qos_gpu_h100-t4 # values: qos_gpu_h100-t3 | qos_gpu_h100-t4 | qos_gpu_h100-
 # Charge resources used by this job to specified account. The account is an arbitrary string. 
 # The account name may be changed after job submission using the scontrol command.
 account: tec@h100  # your_account_here
-gres: "gpu:2" # The number of GPUs you require
+gres: "gpu:4" # The number of GPUs you require
 constraint: h100
 setup:
-    - echo "=== Running job on Jean Zay H100 (1 GPU) ==="
+    - echo "=== Running job on Jean Zay H100 (8 GPU) ==="
     # # on se place dans le repertoire de soumission
     # - cd ${SLURM_SUBMIT_DIR}
     - module purge
@@ -44,4 +45,4 @@ setup:
     # activation of offline for wandb and hf hub
     - export WANDB_MODE=offline
     - export HF_HUB_OFFLINE=1
-    - torchrun --nproc_per_node=2 /lustre/fswork/projects/rech/tec/uod68bo/am/planktonzilla/train_node.py
+    - torchrun --nproc_per_node=4 --nnodes=2 train.py model=timm-evagiant-m30m-336 freeze_backbone=false dataset=zooscannet augmentation=randaugment training_arguments.learning_rate=0.0001 model_push_to_hub=false training_arguments.per_device_train_batch_size=16 training_arguments.per_device_eval_batch_size=16 training_arguments.gradient_accumulation_steps=32
