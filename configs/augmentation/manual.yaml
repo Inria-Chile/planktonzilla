@@ -31,4 +31,3 @@ augmentation:
       scale:
         - 0.5
         - 0.9
-      p: 0.5

@@ -165,14 +165,12 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
     # Loss function
     custom_loss = None
     if cfg.custom_loss:
-        # We are going to use a custom loss.
-        log.info(f"Instantiating custom loss function «{cfg.custom_loss}».")
+        cfg_loss = cfg.custom_loss.get("custom_loss", cfg.custom_loss)
+        log.info(f"Instantiating custom loss function «{cfg_loss._target_}».")
         try:
-            if not cfg.custom_loss.get("cls_num_list"):
-                loss_instance = hydra.utils.instantiate(cfg.custom_loss, _convert_="all")
-        except MissingMandatoryValue:
-            cfg.custom_loss["cls_num_list"] = "dummy_value"
-            loss_instance = hydra.utils.instantiate(cfg.custom_loss, cls_num_list=dataset_wrapper.cls_num_list, _convert_="all")
+            loss_instance = hydra.utils.instantiate(cfg_loss, _convert_="all")
+        except Exception:
+            loss_instance = hydra.utils.instantiate(cfg_loss, cls_num_list=dataset_wrapper.cls_num_list, _convert_="all")
         custom_loss = partial(loss_instance.forward)
     else:
         log.info("Using default loss function.")

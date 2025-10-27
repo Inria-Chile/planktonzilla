@@ -6,6 +6,6 @@ defaults:
 
 custom_loss:
   _target_: planktonzilla.loss.FocalLoss
-  alpha: 0.25
+  alpha: null
   gamma: 3
   size_average: true

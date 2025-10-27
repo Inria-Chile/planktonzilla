@@ -6,6 +6,7 @@ defaults:
 
 custom_loss:
   _target_: planktonzilla.loss.AsymmetricLoss
-  alpha: 0.25
-  gamma: 3
-  size_average: true
+  gamma_pos: 0
+  gamma_neg: 4
+  eps: 0.1
+  reduction: mean
