@@ -17,6 +17,10 @@ class AbstractHFLoss(nn.Module):
         super().__init__()
 
     def forward(self, output: ImageClassifierOutputWithNoAttention, target, **kwargs):
+        """Compute the loss for a model output and target.
+
+        Subclasses must implement this method and return a scalar loss tensor.
+        """
         raise NotImplementedError("Not implemented!")
 
 
@@ -43,6 +47,10 @@ class FocalLoss(AbstractHFLoss):
             self.alpha = alpha
 
     def forward(self, output: ImageClassifierOutputWithNoAttention, target, **kwargs):
+        """Compute focal loss given model `output` and `target` labels.
+
+        Returns a scalar loss (mean or sum depending on `size_average`).
+        """
         logits = output.logits
 
         if logits.dim() > 2:
@@ -97,6 +105,10 @@ class LDAMLoss(AbstractHFLoss):
         self.m_list = m_list
 
     def forward(self, output: ImageClassifierOutputWithNoAttention, target, **kwargs):
+        """Compute LDAM loss using class margin adjustments.
+
+        Applies label-distribution-aware margins before computing cross-entropy.
+        """
         logits = output.logits
 
         device = logits.device
@@ -140,6 +152,11 @@ class MaximumMarginLoss(nn.Module):
         self.ldam = ldam
 
     def weight(self, freq_bias, target, args):
+        """Compute per-class weights from frequency bias and `args.beta`.
+
+        Returns a tensor with a weight per class to rebalance losses.
+        """
+
         index = torch.zeros_like(freq_bias, dtype=torch.uint8)
         index.scatter_(1, target.data.view(-1, 1), 1)
         index_float = index.type(torch.FloatTensor)
@@ -157,6 +174,12 @@ class MaximumMarginLoss(nn.Module):
         return per_cls_weights
 
     def obj_margins(self, rm_obj_dists, labels, index_float, max_m):
+        """Estimate object margins between positive and negative distances.
+
+        Used internally to compute per-example margin adjustments for the
+        maximum-margin objective.
+        """
+
         obj_neg_labels = 1.0 - index_float
         obj_neg_dists = rm_obj_dists * obj_neg_labels
 
@@ -178,6 +201,11 @@ class MaximumMarginLoss(nn.Module):
         return batch_m.data
 
     def forward(self, output: ImageClassifierOutputWithNoAttention, target, **kwargs):
+        """Compute maximum-margin loss.
+
+        Applies per-class/object margins and returns cross-entropy over
+        adjusted logits.
+        """
         x = output.logits
         self.m_list = self.m_list.to(target.device)
         index = torch.zeros_like(x, dtype=torch.uint8).to(target.device)
@@ -222,6 +250,11 @@ class AsymmetricLoss(AbstractHFLoss):
         self.reduction = reduction
 
     def forward(self, output: ImageClassifierOutputWithNoAttention, target, **kwargs):
+        """Compute Asymmetric loss for (optionally) multi-label inputs.
+
+        Implements label smoothing and asymmetric weighting for positive and
+        negative classes before returning the reduced loss.
+        """
         inputs = output.logits
         num_classes = inputs.size()[-1]
         log_preds = self.logsoftmax(inputs)
@@ -285,6 +318,10 @@ class RobustAsymmetricLoss(AbstractHFLoss):
         self.lamb = 1.5
 
     def forward(self, output: ImageClassifierOutputWithNoAttention, target, **kwargs):
+        """Compute Robust Asymmetric Loss (RAL).
+
+        Variant of Asymmetric loss with additional robustness terms.
+        """
         inputs = output.logits
         num_classes = inputs.size()[-1]
         log_preds = self.logsoftmax(inputs)
@@ -337,6 +374,10 @@ class BalancedMetaSoftmaxLoss(AbstractHFLoss):
         self.cls_num_list = torch.tensor(cls_num_list).float()
 
     def forward(self, output: ImageClassifierOutputWithNoAttention, target, **kwargs):
+        """Compute Balanced Meta-Softmax loss.
+
+        Adjusts logits by log class priors before computing cross-entropy.
+        """
         logits = output.logits
         adjusted_logits = logits + self.cls_num_list.log().to(logits.device)
         loss = F.cross_entropy(adjusted_logits, target)
