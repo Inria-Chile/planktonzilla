@@ -220,3 +220,4 @@ poetry.lock
 
 # data folder shoould not be versioned
 data/
+.github/copilot-instructions.md
