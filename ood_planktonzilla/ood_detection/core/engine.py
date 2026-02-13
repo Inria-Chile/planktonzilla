@@ -230,15 +230,16 @@ class EngineOOD:
         for method_name, method in self.methods.items():
             self.logger.start_timer(f"predicting_{method_name}")
             try:
-                scores_ood, labels_ood = apply_ood_method(
-                    self.ood_dataloader, method, self.device, method_name
-                )
-                self.detector.update(scores_ood, labels_ood)
-                
-                scores_id, labels_id = apply_ood_method(
-                    self.id_dataloader, method, self.device, method_name
-                )
-                self.detector.update(scores_id, labels_id)
+                if self.ood_dataloader is not None:
+                    scores_ood, labels_ood = apply_ood_method(
+                        self.ood_dataloader, method, self.device, method_name
+                    )
+                    self.detector.update(scores_ood, labels_ood)
+                if self.id_dataloader is not None:
+                    scores_id, labels_id = apply_ood_method(
+                        self.id_dataloader, method, self.device, method_name
+                    )
+                    self.detector.update(scores_id, labels_id)
             except Exception as e:
                 self.logger.error(f"Error predicting with {method_name}: {e}")
                 import traceback
