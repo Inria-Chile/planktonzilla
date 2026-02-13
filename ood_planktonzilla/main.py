@@ -93,6 +93,7 @@ def main():
     seed = experiment_cfg.get("seed", 42)
     set_seed(seed)
     logger.info(f"Random seed set to: {seed}")
+    experiment_name = experiment_cfg["name"]
 
     save_fitted_params = experiment_cfg.get("save_fitted_params", None)
     load_fitted_params = experiment_cfg.get("load_fitted_params", None)
@@ -113,6 +114,7 @@ def main():
         fit_cfg = dataset_cfg["fit"]
         ds_fit = load_dataset_from_config(
             source=fit_cfg["source"],
+            shards = fit_cfg.get("shards",None),
             split=fit_cfg.get("split", "train"),
             classes=fit_cfg.get("classes"),
             samples_per_class=fit_cfg.get("samples_per_class"),
@@ -122,24 +124,28 @@ def main():
     
     if args.predict:
         id_cfg = dataset_cfg["id"]
-        ds_id = load_dataset_from_config(
-            source=id_cfg["source"],
-            split=id_cfg.get("split", "test"),
-            classes=id_cfg.get("classes"),
-            samples_per_class=id_cfg.get("samples_per_class"),
-            logger=logger
-        )
-        logger.info(f"ID dataset loaded: {len(ds_id)} samples")
+        if id_cfg["source"] is not None:
+            ds_id = load_dataset_from_config(
+                source=id_cfg["source"],
+                shards = id_cfg.get("shards",None),
+                split=id_cfg.get("split", "test"),
+                classes=id_cfg.get("classes"),
+                samples_per_class=id_cfg.get("samples_per_class"),
+                logger=logger
+            )
+            logger.info(f"ID dataset loaded: {len(ds_id)} samples")
 
         ood_cfg = dataset_cfg["ood"]
-        ds_ood = load_dataset_from_config(
-            source=ood_cfg["source"],
-            split=ood_cfg.get("split", "train"),
-            classes=ood_cfg.get("classes"),
-            samples_per_class=ood_cfg.get("samples_per_class"),
-            logger=logger
-        )
-        logger.info(f"OOD dataset loaded: {len(ds_ood)} samples")
+        if ood_cfg["source"] is not None:
+            ds_ood = load_dataset_from_config(
+                source=ood_cfg["source"],
+                shards = ood_cfg.get("shards",None),
+                split=ood_cfg.get("split", "train"),
+                classes=ood_cfg.get("classes"),
+                samples_per_class=ood_cfg.get("samples_per_class"),
+                logger=logger
+            )
+            logger.info(f"OOD dataset loaded: {len(ds_ood)} samples")
 
     # --- Engine setup ---
     #TODO: cambiar backbone por classifier (va a ser un clasificador entrenado con el número de clases ya definido)
@@ -161,6 +167,7 @@ def main():
         backbone=backbone,
         n_id_classes=num_labels,
         device=device,
+        experiment_name=experiment_name,
         save_results=save_results,
         save_fitted_params=save_fitted_params,
         load_fitted_params=load_fitted_params,

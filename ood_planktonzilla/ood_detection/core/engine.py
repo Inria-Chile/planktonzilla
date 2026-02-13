@@ -40,22 +40,23 @@ class EngineOOD:
     def __init__(self, backbone: str, n_id_classes: int, 
                  save_results: Optional[bool] = False,
                  device: str = "cpu",
+                 experiment_name:str="",
                  save_fitted_params: Optional[str] = None,
                  load_fitted_params: Optional[str] = None,
                  logger=None):
         self.logger = logger
         self.t = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-
+        self.experiment_name=experiment_name
         self.save_results = save_results
         self.save_fitted_params = os.path.join("methods_params",save_fitted_params) if save_fitted_params else None
         self.load_fitted_params = os.path.join("methods_params",load_fitted_params) if load_fitted_params else None
 
         # Create results directory if saving
         os.makedirs("ood_results", exist_ok=True)
-        os.makedirs(f"ood_results/{self.t}")
+        os.makedirs(f"ood_results/{experiment_name}_{self.t}")
         if self.save_fitted_params:
             os.makedirs(self.save_fitted_params, exist_ok=True)
-        self.results_path = f"ood_results/{self.t}"
+        self.results_path = f"ood_results/{experiment_name}_{self.t}"
         
         # Set device
         try:
