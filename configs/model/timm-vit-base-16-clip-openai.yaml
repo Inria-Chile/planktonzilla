@@ -5,7 +5,7 @@ defaults:
 
 model:
   _args_:
-    - timm/eva_giant_patch14_224.clip_ft_in1k
+    - timm/vit_base_patch16_clip_224.openai
 
 img_size: 224
-freeze_backbone: true
+freeze_backbone: false

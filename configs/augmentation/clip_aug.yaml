@@ -6,12 +6,6 @@ defaults:
 augmentation:
   _target_: torchvision.transforms.v2.Compose
   transforms:
-    - _target_: torchvision.transforms.v2.RandomResizedCrop
-      size: 224       
-      scale:
-        - 0.4
-        - 1.0
-
     - _target_: torchvision.transforms.v2.RandomApply
       p: 0.8
       transforms:

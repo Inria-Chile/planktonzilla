@@ -13,22 +13,6 @@ from io import BytesIO
 from PIL import Image
 from tqdm import tqdm 
 
-
-def expand_label_name(label_str, taxonomy_levels):
-    tokens = label_str.lower().split()
-    expanded = []
-    last_known = None
-
-    for i, level in enumerate(taxonomy_levels):
-        if i < len(tokens):
-            expanded.append(tokens[i])
-            last_known = tokens[i]
-        else:
-            expanded.append(f"unknown_{last_known}_{level.lower()}")
-
-    return " ".join(expanded)
-
-
 def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
     """
     Exporta un DatasetDict a shards .tar para entrenamiento tipo CLIP/WebDataset,
@@ -36,15 +20,6 @@ def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
     """
     os.makedirs(output_dir, exist_ok=True)
 
-    taxonomy_levels = [
-        "Kingdom",
-        "Phylum",
-        "Class",
-        "Order",
-        "Family",
-        "Genus",
-        "Species",
-    ]
 
     for split_name, dataset in dataset_dict.items():
         split_dir = os.path.join(output_dir, split_name)
@@ -54,11 +29,6 @@ def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
         n_shards = (total_samples + shard_size - 1) // shard_size
         
         taxo_classes = dataset.features["label"].names
-
-        taxo_classes = [
-            expand_label_name(name, taxonomy_levels)
-            for name in taxo_classes
-        ]
 
         for shard_idx in range(n_shards):
             start = shard_idx * shard_size
@@ -70,9 +40,7 @@ def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
             with tarfile.open(shard_path, "w") as tar:
                 # Iterar sobre los índices absolutos del dataset
                 for i_abs in tqdm(shard_indices, desc=f"{split_name} shard {shard_idx}"):
-
                     example = dataset[i_abs]
-
                     i = i_abs - start # Índice relativo dentro del shard
 
                     # --- 1. Imagen (key: image_{i}.jpg) ---
@@ -106,11 +74,9 @@ def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
 
 def main():
     dataset = load_from_disk("/lustre/fsn1/projects/rech/tec/uod68bo/data/planktonzilla_only_plankton2")
-    del dataset["test"]
-
-    export_to_tar_shards(dataset, output_dir="/lustre/fsn1/projects/rech/tec/uod68bo/data/shards_2")
+    # del dataset["test"]
+    export_to_tar_shards(dataset, output_dir="/lustre/fsn1/projects/rech/tec/uod68bo/data/shards")
     
     print("DONE")
-
 if __name__ == "__main__":
     main()
