@@ -218,6 +218,8 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
         cfg_loss = cfg.custom_loss.get("custom_loss", cfg.custom_loss)
         log.info(f"Instantiating custom loss function «{cfg_loss._target_}».")
         try:
+            # frec = np.unique(dataset_wrapper.training_dataset["label"], return_counts=True)[1]
+            # loss_instance = hydra.utils.instantiate(cfg_loss, weight=1/frec, _convert_="all")
             loss_instance = hydra.utils.instantiate(cfg_loss, _convert_="all")
         except Exception:
             loss_instance = hydra.utils.instantiate(cfg_loss, cls_num_list=dataset_wrapper.cls_num_list, _convert_="all")

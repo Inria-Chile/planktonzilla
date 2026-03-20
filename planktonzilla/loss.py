@@ -11,7 +11,7 @@ from transformers.modeling_outputs import ImageClassifierOutputWithNoAttention
 
 
 class AbstractHFLoss(nn.Module):
-    """Abstract loss function for Hugging Face transformers Trainer."""
+    """Abstract loss function for Hugging Face transformers Trainer. a"""
 
     def __init__(self):
         super().__init__()
@@ -382,3 +382,11 @@ class BalancedMetaSoftmaxLoss(AbstractHFLoss):
         adjusted_logits = logits + self.cls_num_list.log().to(logits.device)
         loss = F.cross_entropy(adjusted_logits, target)
         return loss
+
+class CrossEntropyLossHF(AbstractHFLoss):
+    def __init__(self, weight=None):
+        super().__init__()
+        self.weight = weight
+
+    def forward(self, output, target, **kwargs):
+        return F.cross_entropy(output.logits, target, weight=self.weight)
