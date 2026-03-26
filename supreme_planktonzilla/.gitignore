@@ -1,0 +1,9 @@
+**/__pycache__
+**.err
+**.out
+**.log
+data/**
+notebooks/**
+models/**
+**.png
+results/**

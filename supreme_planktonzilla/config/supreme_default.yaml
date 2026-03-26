@@ -1,0 +1,57 @@
+# Configuración por defecto para el método SUPREME
+# Cada parámetro puede sobreescribirse creando un nuevo archivo YAML con los
+# valores deseados y pasándolo con --config al ejecutar main.py.
+
+# --- CLIP ---
+clip:
+  model: "hf-hub:project-oceania/CLIP-ViT-B-16.openai-pt.planktonzilla-pt"
+  embed_dim: 512        # Dimensión de salida del codificador (imagen y texto)
+  n_lm: 512             # Dimensión de embedding de tokens del codificador de texto
+  tau: 0.01             # Temperatura CLIP
+
+# --- Entrenamiento ---
+train:
+  shots: 16             # k imágenes por clase en el conjunto de soporte
+  epochs: 50
+  batch_size: 32
+  lr: 0.002
+  lr_bias: 0.002       # TUNNED
+  momentum: 0.9
+  trials: 1             # Número de ejecuciones con semillas distintas
+  context_length: 16    # L: número de tokens de contexto aprendibles (BPG)
+  alpha: 0.005          # Peso para l_inter + l_intra
+  beta: 0.1             # Peso para l_bias
+
+# --- Misceláneos ---
+misc:
+  seed: 42
+  num_workers: 4
+  device: "cuda"
+
+# --- Datasets ---
+datasets:
+  id_train:
+    source: "project-oceania/planktonzilla_only_plankton"
+    split: "train"
+    samples_per_class: null   # Solo 10 muestras por clase para que cargue rápido
+    # idx_file: "path/to/indices.json"  # opcional: si se especifica, se usan estos índices en lugar del muestreo aleatorio
+
+  id_val:
+    source: "project-oceania/planktonzilla_only_plankton"
+    split: "validation"
+    samples_per_class: null
+
+  id_test:
+    source: "project-oceania/planktonzilla_only_plankton"
+    split: "test"
+    samples_per_class: null
+
+  ood_test:
+    source: "project-oceania/planktonzilla_ood"
+    split: "train"
+    samples_per_class: null
+
+# --- Evaluación ---
+evaluation:
+  score: "gmp"          # Función de puntuación: gmp | mmp | mcm_txt | mcm_img
+  mean_img_prototypes: true #Se promedian o no los img  prototipes para armar  el prototipo.
