@@ -39,6 +39,10 @@ peft = "^0.18.1"
 plotext = "^5.3.2"
 trackio ="^0.18.0"
 open-clip-torch = "^3.3.0"
+huggingface-hub = "^1.9.0"
+orjson = "^3.11.8"
+omegaconf = "^2.3.0"
+polars = {extras = ["rtcompat"], version = "^1.39.3"}
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^7.2.0"
