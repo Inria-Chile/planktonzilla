@@ -13,7 +13,7 @@ Deep learning framework, datasets, and models for plankton identification.
 ![timm](https://img.shields.io/badge/HuggingFace_datasets-1.0-FF9D00?logo=huggingface&logoColor=white&label=datasets&link=https%3A%2F%2Fgithub.com%2Fhuggingface%2Fpytorch-image-models)
 ![huggingface_hub](https://img.shields.io/badge/HuggingFace_Hub-0.23-FF9D00?logo=huggingface&logoColor=white&label=hub&link=https%3A%2F%2Fhuggingface.co%2Fdocs%2Fhuggingface_hub)
 [![Hydra](https://img.shields.io/badge/Hydra-1.3-89b8cd?logo=hexo&logoColor=white)](https://hydra.cc/)
-![Poetry](https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 
 </div>
 
@@ -87,8 +87,8 @@ Everything below is for contributors and researchers who want to train new model
 
 ### Prerequisites
 
-- Python 3.11-3.14
-- [Poetry](https://python-poetry.org/docs/#installation) for dependency management
+- Python 3.11-3.13
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) for dependency management
 - CUDA-compatible GPU (recommended for training)
 
 ### Installation
@@ -98,41 +98,42 @@ Everything below is for contributors and researchers who want to train new model
 git clone https://github.com/Inria-Chile/planktonzilla.git
 cd planktonzilla
 
-# Install dependencies
-poetry install
+# Install runtime dependencies (creates .venv/ automatically)
+uv sync
 
 # Install with development dependencies
-poetry install --with dev
-
-# Activate the virtual environment
-poetry shell
+uv sync --group dev
 ```
+
+`uv run <command>` runs any project script inside the project venv without needing
+to activate it manually. If you prefer an activated shell, run
+`source .venv/bin/activate`.
 
 ### Import a dataset
 
 ```bash
 # Import ISIISNET dataset
-poetry run pz_import_dataset dataset_import=isiisnet
+uv run pz_import_dataset dataset_import=isiisnet
 
 # Import other available datasets
-poetry run pz_import_dataset dataset_import=flowcamnet
-poetry run pz_import_dataset dataset_import=lensless
+uv run pz_import_dataset dataset_import=flowcamnet
+uv run pz_import_dataset dataset_import=lensless
 ```
 
 ### Train a model
 
 ```bash
 # Basic training with default configuration
-poetry run pz_train
+uv run pz_train
 
 # Train with specific dataset and model
-poetry run pz_train dataset=isiisnet model=resnet18
+uv run pz_train dataset=isiisnet model=resnet18
 
 # Use specialized loss for imbalanced data
-poetry run pz_train dataset=isiisnet model=resnet50 custom_loss=focal
+uv run pz_train dataset=isiisnet model=resnet50 custom_loss=focal
 
 # Override training parameters
-poetry run pz_train dataset=isiisnet model=resnet18 training_arguments.num_train_epochs=10 training_arguments.learning_rate=1e-4
+uv run pz_train dataset=isiisnet model=resnet18 training_arguments.num_train_epochs=10 training_arguments.learning_rate=1e-4
 ```
 
 ### Project structure
@@ -161,13 +162,13 @@ Planktonzilla uses Hydra for hierarchical configuration management. You can over
 
 ```bash
 # Use different model architecture
-poetry run pz_train model=efficientnet
+uv run pz_train model=efficientnet
 
 # Apply different augmentation strategy
-poetry run pz_train augmentation=autoaugment
+uv run pz_train augmentation=autoaugment
 
 # Combine multiple overrides
-poetry run pz_train dataset=isiisnet model=resnet50 custom_loss=ldam training_arguments.learning_rate=1e-4
+uv run pz_train dataset=isiisnet model=resnet50 custom_loss=ldam training_arguments.learning_rate=1e-4
 ```
 
 ### Architecture
@@ -253,10 +254,10 @@ Integrate with popular experiment tracking tools:
 
 ```bash
 # Enable Weights & Biases tracking
-poetry run pz_train tracking.use_wandb=true
+uv run pz_train tracking.use_wandb=true
 
 # Enable MLflow tracking  
-poetry run pz_train tracking.use_mlflow=true
+uv run pz_train tracking.use_mlflow=true
 ```
 
 ### Development
@@ -265,30 +266,30 @@ poetry run pz_train tracking.use_mlflow=true
 
 ```bash
 # Run all tests
-poetry run pytest
+uv run pytest
 
 # Run with coverage
-poetry run pytest --cov=planktonzilla
+uv run pytest --cov=planktonzilla
 
 # Run specific test file
-poetry run pytest tests/test_datasets.py
+uv run pytest tests/test_datasets.py
 ```
 
 #### Code Quality
 
 ```bash
 # Lint code
-poetry run ruff check
+uv run ruff check
 
 # Format code
-poetry run ruff format
+uv run ruff format
 ```
 
 #### Adding New Datasets
 
 1. Create a dataset configuration in `configs/dataset/your_dataset.yaml`
 2. Ensure your dataset is available on Hugging Face Hub
-3. Test with: `poetry run pz_train dataset=your_dataset`
+3. Test with: `uv run pz_train dataset=your_dataset`
 
 #### Custom Loss Functions
 

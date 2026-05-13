@@ -48,10 +48,7 @@ RUN chsh -s $(which zsh)
 
 # Install Python tools
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
-RUN python3.11 -m pip install --no-cache-dir -U pip wheel setuptools poetry
-
-# Install poetry in preview mode to be able to set the correct version of setuptools afterwards.
-# RUN curl -sSL https://install.python-poetry.org | python3.10 -
+RUN python3.11 -m pip install --no-cache-dir -U pip wheel setuptools uv
 
 ARG WORKSPACE_FOLDER
 RUN mkdir /workspace
@@ -59,7 +56,6 @@ WORKDIR ${WORKSPACE_FOLDER}
 
 # run the oh-my-zsh installation script  
 RUN wget https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - | zsh || true
-RUN sed -i 's/plugins=(git)/plugins=(git poetry)/g' ~/.zshrc
 RUN sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="kolo"/g' ~/.zshrc
 
 # install powerlevel10k
