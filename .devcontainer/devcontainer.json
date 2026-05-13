@@ -64,7 +64,7 @@
     "postCreateCommand": "[ ! -d /workspace/${localWorkspaceFolderBasename}/.git ] && cd /workspace && git clone https://github.com/Inria-Chile/${localWorkspaceFolderBasename} || echo 0",
 
     // A command string or list of command arguments to run when the container starts (in all cases).
-    "postStartCommand": "poetry install",
+    "postStartCommand": "uv sync --group dev",
 
 	// Pass wandb and mlflow local setup to remote container
 	"remoteEnv": {

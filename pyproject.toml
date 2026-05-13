@@ -3,51 +3,62 @@ name = "planktonzilla"
 version = "0.1.1"
 description = "Deep learning methods for plankton identification"
 authors = [{ name = "Inria Chile", email = "info@inria.cl" }]
-license = "mit"
+license = "MIT"
 readme = "README.md"
 keywords = ["deep learning", "computer vision", "plankton images"]
 requires-python = ">=3.11,<3.14"
+dependencies = [
+    "hydra-core>=1.3.2,<2.0.0",
+    "hydra-colorlog>=1.2.0,<2.0.0",
+    "hydra-submitit-launcher>=1.2.0,<2.0.0",
+    "evaluate>=0.4.6,<0.5.0",
+    "datasets>=4.4.0,<5.0.0",
+    "transformers[sentencepiece]>=5.3.0,<6.0.0",
+    "wandb>=0.22.2,<0.23.0",
+    "tqdm>=4.67.1,<5.0.0",
+    "torchvision>=0.23.0,<0.24.0",
+    "pyrootutils>=1.0.4,<2.0.0",
+    "rich>=14.2.0,<15.0.0",
+    "accelerate>=1.10.1,<2.0.0",
+    "timm>=1.0.20,<2.0.0",
+    "scikit-learn>=1.7.2,<2.0.0",
+    "humanize>=4.13.0,<5.0.0",
+    # "deepspeed>=0.18.0,<0.19.0",
+    "peft>=0.18.1,<0.19.0",
+    "plotext>=5.3.2,<6.0.0",
+    "trackio>=0.18.0,<0.19.0",
+    "regex",
+    "ftfy",
+    "huggingface-hub",
+    "safetensors",
+    "webdataset>=0.2.5,<=0.2.86",
+    "pandas",
+    "fsspec",
+]
 
 [project.urls]
 homepage = "https://oceania.inria.cl/"
 repository = "https://github.com/Inria-Chile/deep_plankton"
-# documentation = "https://python-poetry.org/docs/"
 "Bug Tracker" = "https://github.com/Inria-Chile/deep_plankton/issues"
 
-[tool.poetry]
-packages = [{ include = "planktonzilla" }]
-include = ["pyproject.toml", { path = "configs" }]
+[project.scripts]
+pz_import_dataset = 'planktonzilla.dataset_import.import_dataset:main'
+pz_prepare_train = 'planktonzilla.prepare_train:main'
+pz_train = 'planktonzilla.train:main'
+pz_push_model = 'planktonzilla.push_model:main'
 
-[tool.poetry.dependencies]
-hydra-core = "^1.3.2"
-hydra-colorlog = "^1.2.0"
-hydra-submitit-launcher = "^1.2.0"
-evaluate = "^0.4.6"
-datasets = "^4.4.0"
-transformers = {version = "^5.3.0", extras = ["sentencepiece"]}
-wandb = "^0.22.2"
-tqdm = "^4.67.1"
-torchvision = "^0.23.0"
-pyrootutils = "^1.0.4"
-rich = "^14.2.0"
-accelerate = "^1.10.1"
-timm = "^1.0.20"
-scikit-learn = "^1.7.2"
-humanize = "^4.13.0"
-# deepspeed = "^0.18.0"
-peft = "^0.18.1"
-plotext = "^5.3.2"
-trackio ="^0.18.0"
-regex = "*"
-ftfy = "*"
-huggingface-hub = "*"
-safetensors = "*"
-webdataset = ">=0.2.5,<=0.2.86"
-pandas = "*"
-fsspec = "*"
+[dependency-groups]
+dev = ["pytest", "notebook", "ipywidgets", "pytest-cov", "ipykernel"]
 
-[tool.poetry.group.dev.dependencies]
-ipykernel = "^7.2.0"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["planktonzilla"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"configs" = "configs"
 
 [tool.ruff]
 line-length = 128
@@ -75,16 +86,3 @@ testpaths = ["tests"]
 log_cli = true
 log_cli_level = "INFO"
 norecursedirs = ".venv"
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
-
-[project.scripts]
-pz_import_dataset = 'planktonzilla.dataset_import.import_dataset:main'
-pz_prepare_train = 'planktonzilla.prepare_train:main'
-pz_train = 'planktonzilla.train:main'
-pz_push_model = 'planktonzilla.push_model:main'
-
-[dependency-groups]
-dev = ["pytest", "notebook", "ipywidgets", "pytest-cov", "ipykernel"]
