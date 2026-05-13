@@ -137,41 +137,7 @@ poetry run pz_train dataset=isiisnet model=resnet18 training_arguments.num_train
 
 ### Project structure
 
-```mermaid
-flowchart TD
-  CLI["CLI: console scripts (pz_train, pz_import_dataset)"]
-  CFG["Hydra configs (configs/)"]
-  ENTRY["planktonzilla/train.py"]
-  DATA_IMPORT["planktonzilla/dataset_import/"]
-  DATA["planktonzilla/dataset.py"]
-  MODEL["Model (timm / HuggingFace / backbone)"]
-  LOSS["planktonzilla/loss.py + configs/custom_loss/"]
-  TRAIN_LOOP["Training loop / Trainer"]
-  TRACK["Tracking (W&amp;B) (configs/tracking/)"]
-  OUTPUTS["Outputs: logs/, wandb/, checkpoints/"]
-  SCRIPTS["scripts/train.sh"]
-  TESTS["tests/"]
-
-  subgraph ConfigFlow
-    CLI -->|cli args| CFG
-    CFG -->|merged config| ENTRY
-  end
-
-  ENTRY -->|loads importers| DATA_IMPORT
-  DATA_IMPORT --> DATA
-  ENTRY -->|selects model| MODEL
-  ENTRY -->|selects loss| LOSS
-  CFG -->|loss params| LOSS
-  DATA -->|batches| TRAIN_LOOP
-  MODEL -->|forward/backbone| TRAIN_LOOP
-  LOSS -->|compute loss| TRAIN_LOOP
-  TRAIN_LOOP -->|metrics and logs| TRACK
-  TRAIN_LOOP -->|save| OUTPUTS
-  SCRIPTS -->|helper| ENTRY
-  TESTS -->|validate| ENTRY
-```
-
-```
+```text
 planktonzilla/
 ├── configs/                    # Hydra configuration files
 │   ├── dataset/               # Dataset-specific configs
@@ -202,6 +168,72 @@ poetry run pz_train augmentation=autoaugment
 
 # Combine multiple overrides
 poetry run pz_train dataset=isiisnet model=resnet50 custom_loss=ldam training_arguments.learning_rate=1e-4
+```
+
+### Architecture
+
+The training pipeline composes Hydra-configured datasets, models, and losses through the Hugging Face `Trainer`, then publishes the resulting checkpoint to the Hub — where external users load it with `AutoModelForImageClassification.from_pretrained`.
+
+```mermaid
+flowchart TB
+  subgraph Configure["1 · Configure"]
+    direction TB
+    CLI["CLI<br/>pz_import_dataset · pz_train"]:::entry
+    CFG["Hydra configs<br/>configs/"]:::cfg
+  end
+
+  subgraph Ingest["2 · Ingest"]
+    direction TB
+    DATA_IMPORT["planktonzilla/dataset_import/<br/>DatasetImporter subclasses"]:::code
+    HF_DATA[("HF Hub<br/>project-oceania datasets")]:::ext
+  end
+
+  subgraph Train["3 · Train"]
+    direction TB
+    DATA["planktonzilla/dataset.py<br/>DatasetWrapper"]:::code
+    MODEL["Model<br/>timm · HF · open_clip"]:::code
+    LOSS["planktonzilla/loss.py<br/>AbstractHFLoss subclasses"]:::code
+    TRAIN_LOOP["HF Trainer<br/>planktonzilla/train.py"]:::code
+    TRACK["Tracking<br/>W&B · MLflow · trackio"]:::ext
+    OUTPUTS["Local outputs<br/>logs/ · checkpoints/"]:::code
+  end
+
+  subgraph Publish["4 · Publish"]
+    direction TB
+    HF_MODEL[("HF Hub<br/>project-oceania models")]:::ext
+  end
+
+  SCRIPTS["scripts/*.sh<br/>SLURM launchers"]:::code
+  TESTS["tests/<br/>smoke runs"]:::code
+  CONSUMER(["AutoModelForImageClassification<br/>.from_pretrained"]):::consumer
+
+  CLI --> CFG
+  CFG -.->|configures| DATA_IMPORT
+  CFG -.->|configures| TRAIN_LOOP
+  CFG -.->|selects| MODEL
+  CFG -.->|selects + params| LOSS
+
+  DATA_IMPORT -->|push_to_hub| HF_DATA
+  HF_DATA -->|load_dataset| DATA
+
+  DATA -->|batches| TRAIN_LOOP
+  MODEL -->|forward| TRAIN_LOOP
+  LOSS -->|loss| TRAIN_LOOP
+
+  TRAIN_LOOP -->|metrics| TRACK
+  TRAIN_LOOP -->|checkpoints| OUTPUTS
+  OUTPUTS -->|push_to_hub| HF_MODEL
+
+  SCRIPTS -->|srun / sbatch| CLI
+  TESTS -->|smoke-runs train| TRAIN_LOOP
+
+  HF_MODEL -.->|loaded by external users| CONSUMER
+
+  classDef entry fill:#fef3c7,stroke:#b45309,stroke-width:2px
+  classDef code fill:#eef2ff,stroke:#4338ca,stroke-width:1px
+  classDef cfg fill:#f5f5f4,stroke:#78716c,stroke-width:1px,stroke-dasharray: 4 2
+  classDef ext fill:#fde68a,stroke:#b45309,stroke-width:2px
+  classDef consumer fill:#dcfce7,stroke:#15803d,stroke-width:2px
 ```
 
 ### Loss functions for imbalanced learning
