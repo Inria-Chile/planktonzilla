@@ -1,6 +1,6 @@
 # State: planktonzilla
 
-**Last updated:** 2026-05-12
+**Last updated:** 2026-05-13
 **Project initialized:** 2026-05-12
 
 ## Project Reference
@@ -66,6 +66,12 @@ These are flagged in research as needing a small spike during planning, NOT bloc
 - **Phase 4:** Spaces hardware tier — benchmark EVA02-L-14 + ConvNeXtV2-Huge inference latency on `cpu-upgrade` before deciding whether to bump to `t4-small` (research/SUMMARY.md, research/STACK.md). Resolution belongs in Phase 4's plan.
 - **Phase 1:** Eval split strategy for datasets with cruise/station metadata (WHOI, ISIIS) — grouped split (more honest, more work) vs random split with explicit limitation disclosure. Decision belongs in Phase 1's plan because changing the split after publishing invalidates the published numbers (research/PITFALLS.md D4).
 - **Phase 1:** Audit existing private Hub checkpoints — if `Trainer.push_to_hub` was called with `model_push_as_private: true` during training, there may be private repos with stale or missing `preprocessor_config.json` to clean up (research/SUMMARY.md). Belongs in Phase 1's plan.
+
+## Quick Tasks Completed
+
+| ID         | Title                                  | Date       | Commit    | Summary                                                                                  |
+|------------|----------------------------------------|------------|-----------|------------------------------------------------------------------------------------------|
+| 260512-u20 | Restructure README.md for v1 milestone | 2026-05-13 | `1d6d293` | [SUMMARY](quick/260512-u20-restructure-readme-md-for-v1-milestone/260512-u20-SUMMARY.md) |
 
 ## Session Continuity
 
