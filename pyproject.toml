@@ -18,6 +18,7 @@ dependencies = [
     "wandb>=0.22.2",
     "tqdm>=4.67.1",
     "torchvision>=0.23.0",
+    "open-clip-torch>=3.3.0,<4.0.0",
     "pyrootutils>=1.0.4",
     "rich>=14.2.0",
     "accelerate>=1.10.1",
