@@ -38,7 +38,7 @@ srun torchrun \
   --nnodes=16 \
   --rdzv_backend=c10d \
   --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT \
-  -m open_clip_train.main \
+  -m planktonzilla.clip_train.main \
   --save-frequency 5 \
   --train-data "/lustre/fsn1/projects/rech/tec/uod68bo/data/shards/train/shard_{00000..01771}.tar" \
   --val-data "/lustre/fsn1/projects/rech/tec/uod68bo/data/shards/validation/shard_{00000..00590}.tar" \
