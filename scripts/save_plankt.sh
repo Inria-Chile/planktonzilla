@@ -13,4 +13,5 @@ cd notebooks
 
 
 # === Ejecutar torchrun ===
-srun python save_planktonzilla2.py
+# WIRE-01 (CONCERNS #10): repointed at notebooks/save_planktonzilla_for_clip.py. Was previously a non-existent 'save_planktonzilla<N>.py' filename that broke job submission.
+srun python save_planktonzilla_for_clip.py
