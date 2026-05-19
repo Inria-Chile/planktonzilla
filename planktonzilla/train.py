@@ -18,20 +18,17 @@ torch.multiprocessing.set_sharing_strategy("file_system")
 import os
 from functools import partial
 
-import numpy as np
-from sklearn.metrics import (
-    f1_score,
-    precision_score,
-    recall_score,
-    accuracy_score,
-)
-
 import hydra
 import numpy as np
 import torch
-from evaluate import combine, load
 from huggingface_hub import DatasetCard, login
 from omegaconf import DictConfig, OmegaConf
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score,
+)
 from transformers import AutoModelForImageClassification, Trainer, TrainingArguments, set_seed
 
 from planktonzilla.clip_model import ClipClassifier
@@ -64,7 +61,7 @@ def validate_environment():
         if "HF_TOKEN" in os.environ:
             log.info("✅ HF_TOKEN environment variable is set.")
             try:
-                login(new_session=False, write_permission=True)
+                login()
                 log.info("✅ Login to Hugging Face hub verified.")
             except ValueError as e:
                 log.error(f"🛑 Login to Hugging Face hub failed: {e}.")
@@ -97,6 +94,7 @@ def validate_environment():
 #     res = metrics.compute(predictions=predictions, references=eval_pred.label_ids, average="macro")
 #     acc = load("accuracy").compute(predictions=predictions, references=eval_pred.label_ids)
 #     return {**res, **acc}
+
 
 def compute_metrics(eval_pred):
     """
@@ -164,7 +162,7 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
             _convert_="all",
         )
 
-    except:
+    except Exception:
         model: ClipClassifier = hydra.utils.instantiate(
             cfg.model,
             num_features=cfg.num_features,
@@ -173,7 +171,7 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
             num_labels=len(dataset_wrapper.label2id),
             _convert_="all",
         )
-        
+
     if cfg.get("peft"):
         log.info("Adding LoRA adapter(s).")
         for adapter_name in cfg.peft:
