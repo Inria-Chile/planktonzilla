@@ -47,13 +47,26 @@ except ValueError:
     pass
 
 
-def validate_environment():
+def validate_environment(cfg: DictConfig | None = None):
     """Check and log important external service environment variables.
 
     Warns when Hugging Face hub or tracking services are likely unavailable
     and logs presence of common environment variables such as `HF_TOKEN`,
     `WANDB_API_KEY` and `MLFLOW_TRACKING_URI`.
+
+    Per ABSORB-02 / audit Q6: also applies the planktonzilla-specific
+    `torch.backends.cuda.matmul.allow_tf32` setting when `cfg.tf32` is True.
+    This reproduces the throughput characteristic the vendored
+    `open_clip_train.main` had by default; opt-in to preserve strict
+    reproducibility with pre-Phase-4 runs. `cfg` is optional for backward
+    compat with call sites that don't have a Hydra config in scope.
     """
+    if cfg is not None and bool(cfg.get("tf32", False)):
+        import torch as _torch  # local import keeps top-level torch state untouched if disabled
+
+        _torch.backends.cuda.matmul.allow_tf32 = True
+        log.info("✅ TF32 matmul enabled (cfg.tf32=true; reproduces vendored open_clip_train default).")
+
 
     if "HF_HUB_OFFLINE" in os.environ and os.environ["HF_HUB_OFFLINE"] == "1":
         log.warning("⚠️ Environment variable HF_HUB_OFFLINE=1. Hugging Face hub will be offline.")
@@ -129,7 +142,7 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
 
     # set seed for random number generators in pytorch, numpy and python.random
 
-    validate_environment()
+    validate_environment(cfg)
 
     if cfg.get("seed"):
         set_seed(cfg.seed, cfg.get("deterministic", False))

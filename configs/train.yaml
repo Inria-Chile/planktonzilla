@@ -55,3 +55,9 @@ seed: ${dataset.split_seed}
 
 # Whether to use deterministic algorithms where available. Can slow down training.
 deterministic: false
+
+# ABSORB-02: enable TF32 matmul on Ampere+ GPUs (vendored open_clip_train's default
+# per docs/open_clip_audit.md Q6 — was not reproduced by pz_train before Phase 4).
+# Opt-in to preserve pre-refactor strict reproducibility; set to true for the
+# throughput characteristics the vendored open_clip_train pipeline had.
+tf32: false
