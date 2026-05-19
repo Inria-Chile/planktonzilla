@@ -10,7 +10,7 @@ wandb_dir: ${paths.log_dir}
 use_mlflow: false
 mlflow_log_artifacts: false # makes sense only with remote! copy each saved checkpoint on output_dir to the local or remote artifact storage.
 mlflow_tracking_uri: file:${paths.log_dir}/mlflow # store runs locally
-mlflow_experiment_name: vendimia50
+mlflow_experiment_name: ${oc.env:MLFLOW_EXPERIMENT_NAME, planktonzilla}
 
 # trackio config
 use_trackio: false

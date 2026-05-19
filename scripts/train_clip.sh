@@ -42,8 +42,8 @@ srun torchrun \
   --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT \
   -m planktonzilla.clip_train.main \
   --save-frequency 5 \
-  --train-data "/lustre/fsn1/projects/rech/tec/uod68bo/data/shards/train/shard_{00000..01771}.tar" \
-  --val-data "/lustre/fsn1/projects/rech/tec/uod68bo/data/shards/validation/shard_{00000..00590}.tar" \
+  --train-data "${WORK:-$PWD}/data/shards/train/shard_{00000..01771}.tar" \
+  --val-data "${WORK:-$PWD}/data/shards/validation/shard_{00000..00590}.tar" \
   --train-num-samples 1771611 \
   --dataset-type webdataset \
   --lr 1e-4 \

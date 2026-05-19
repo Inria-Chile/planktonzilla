@@ -149,7 +149,6 @@ class DatasetWrapper:
         """
 
         self.dataset = load_dataset(self.name, streaming=self.streaming)
-        # self.test_data = load_dataset("vendimia50/ct_metadataset", streaming=self.streaming)["train"]
 
         categories = self.dataset["train"].features["label"].names
         self.id2label = {index: x for index, x in enumerate(categories, start=0)}
