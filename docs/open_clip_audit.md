@@ -57,8 +57,8 @@ The pre-refactor metrics in `docs/baseline.json` (produced by plan `01-02-PLAN.m
 | Logging strategy | `steps`, `logging_steps=10` (capture intermediate `train_loss`) |
 | Save strategy | `steps`, `save_steps=100` (writes `trainer_state.json` for machine-readable metrics extraction; checkpoint goes to `/tmp` and is NOT committed) |
 | open_clip version | vendored `4.0.0.dev0` (pre-refactor) |
-| Hardware | _to be filled in by plan 01-02 (Baseline)_ |
-| Wall time | _to be filled in by plan 01-02 (Baseline)_ |
+| Hardware | CPU run on macOS (no NVIDIA GPU); `fp16=false`. Recorded in `docs/baseline.json` `hardware_override` field. |
+| Wall time | ~33 min for 100 steps on CPU (vs CONTEXT.md's "~minutes on a single GPU" estimate). Phase 3 SMOKE-01 should re-baseline if comparison hardware differs from CPU. |
 
 **Full reproducibility command** (verbatim from `.planning/phases/01-audit-baseline/01-RESEARCH.md` Pattern 2):
 

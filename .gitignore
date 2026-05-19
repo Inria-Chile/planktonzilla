@@ -209,10 +209,7 @@ __marimo__/
 # default logs location
 logs/
 
-# poetry lock should not be stored
-poetry.lock
-
-# macOS 
+# macOS
 .DS_Store
 
 # vscode configs are particular to each one
@@ -243,3 +240,6 @@ vendor/
 coverage/
 .cache/
 tmp/
+.claude/
+.planning/
+CLAUDE.md

@@ -383,6 +383,7 @@ class BalancedMetaSoftmaxLoss(AbstractHFLoss):
         loss = F.cross_entropy(adjusted_logits, target)
         return loss
 
+
 class CrossEntropyLossHF(AbstractHFLoss):
     def __init__(self, weight=None):
         super().__init__()
