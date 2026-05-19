@@ -11,10 +11,10 @@ defaults:
   - override /tracking: default.yaml
 
 experiment_metadata:
-  dataset: ${eval:'"${hydra:runtime.choices.dataset}"[0:-5]'}
-  model_name: ${eval:'"${hydra:runtime.choices.model}"[0:-5]'}
+  dataset: ${strip_yaml_suffix:${hydra:runtime.choices.dataset}}
+  model_name: ${strip_yaml_suffix:${hydra:runtime.choices.model}}
   loss: ${model.criterion._target_}
-  augmentation_name: ${eval:'"${hydra:runtime.choices.augmentation}"[0:-5]'}
+  augmentation_name: ${strip_yaml_suffix:${hydra:runtime.choices.augmentation}}
   sampler_type: ${dataset.sampler_type}
 
 # all parameters below will be merged with parameters from default configurations set above
@@ -24,8 +24,8 @@ trainer:
 
 find_optimal_batch_size: false
 find_optimal_learning_rate: false
-hgfc_hub_base_model_name: inria-chile/${model.net.model_name}_${eval:'"${hydra:runtime.choices.dataset}"[0:-5]'}
-pytorch_script_filename: ${model.net.model_name}_${eval:'"${hydra:runtime.choices.dataset}"[0:-5]'}.script.pt
+hgfc_hub_base_model_name: inria-chile/${model.net.model_name}_${strip_yaml_suffix:${hydra:runtime.choices.dataset}}
+pytorch_script_filename: ${model.net.model_name}_${strip_yaml_suffix:${hydra:runtime.choices.dataset}}.script.pt
 
 
 logger:
@@ -33,5 +33,5 @@ logger:
     tags: ${tags}
     project: none # to be set at runtime
     entity: oceania-plankton # set to name of your wandb team
-    name: ${model.net.model_name}__${eval:'"${hydra:runtime.choices.dataset}"[0:-5]'}
+    name: ${model.net.model_name}__${strip_yaml_suffix:${hydra:runtime.choices.dataset}}
     log_model: false

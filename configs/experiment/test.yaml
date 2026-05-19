@@ -11,10 +11,10 @@ defaults:
   - override /tracking: many_loggers.yaml
 
 experiment_metadata:
-  dataset: ${eval:'"${hydra:runtime.choices.dataset}"[0:-5]'}
-  model_name: ${eval:'"${hydra:runtime.choices.model}"[0:-5]'}
+  dataset: ${strip_yaml_suffix:${hydra:runtime.choices.dataset}}
+  model_name: ${strip_yaml_suffix:${hydra:runtime.choices.model}}
   loss: ${model.criterion._target_}
-  aumentation_name: ${eval:'"${hydra:runtime.choices.augmentation}"[0:-5]'}
+  aumentation_name: ${strip_yaml_suffix:${hydra:runtime.choices.augmentation}}
   weighted_random_sampling: ${dataset.weighted_random_sampling}
   imbalanced_dataset_sampler: ${dataset.imbalanced_dataset_sampler}
   experimental_augmentation_sampler: ${dataset.experimental_augmentation_sampler}
@@ -29,8 +29,8 @@ datamodule:
 
 #find_optimal_batch_size: false
 #find_optimal_learning_rate: true
-#hgfc_hub_base_model_name: inria-chile/${model.net.model_name}_${eval:'"${hydra:runtime.choices.datamodule}"[0:-5]'}
-# pytorch_script_filename: ${model.net.model_name}_${eval:'"${hydra:runtime.choices.datamodule}"[0:-5]'}.script.pt
+#hgfc_hub_base_model_name: inria-chile/${model.net.model_name}_${strip_yaml_suffix:${hydra:runtime.choices.datamodule}}
+# pytorch_script_filename: ${model.net.model_name}_${strip_yaml_suffix:${hydra:runtime.choices.datamodule}}.script.pt
 
 
 # logger:
@@ -38,4 +38,4 @@ datamodule:
 #     tags: ${tags}
 #     project: planktonzilla # to be set at runtime
 #     entity: oceania-plankton # set to name of your wandb team
-#     name: ${model.net.model_name}_${eval:'"${hydra:runtime.choices.datamodule}"[0:-5]'}_${now:%Y%m%d_%H%M%S}
+#     name: ${model.net.model_name}_${strip_yaml_suffix:${hydra:runtime.choices.datamodule}}_${now:%Y%m%d_%H%M%S}

@@ -41,8 +41,21 @@ from planktonzilla.utils.logger import get_pylogger
 
 log = get_pylogger(__name__)
 
+
+def strip_yaml_suffix(s: str) -> str:
+    """Strip a single trailing ``.yaml`` suffix from ``s``; pass-through otherwise.
+
+    Replaces the prior ``eval`` OmegaConf resolver (CONCERNS #7 RCE vector).
+    Used by ``configs/experiment/*.yaml`` to derive bare names from
+    ``${hydra:runtime.choices.<group>}`` which arrive with the ``.yaml`` suffix.
+    """
+    if s.endswith(".yaml"):
+        return s[:-5]
+    return s
+
+
 try:
-    OmegaConf.register_new_resolver("eval", eval)
+    OmegaConf.register_new_resolver("strip_yaml_suffix", strip_yaml_suffix)
 except ValueError:
     pass
 
@@ -66,7 +79,6 @@ def validate_environment(cfg: DictConfig | None = None):
 
         _torch.backends.cuda.matmul.allow_tf32 = True
         log.info("✅ TF32 matmul enabled (cfg.tf32=true; reproduces vendored open_clip_train default).")
-
 
     if "HF_HUB_OFFLINE" in os.environ and os.environ["HF_HUB_OFFLINE"] == "1":
         log.warning("⚠️ Environment variable HF_HUB_OFFLINE=1. Hugging Face hub will be offline.")
