@@ -47,6 +47,7 @@ import sys
 import warnings
 from unittest.mock import patch
 
+import pytest
 import torch
 from PIL import Image
 
@@ -55,6 +56,23 @@ from planktonzilla.open_clip_ext import create_model_and_transforms
 from planktonzilla.open_clip_ext.factory import load_checkpoint
 
 from .shared import skip_in_github_ci
+
+# Phase 5 (DEL-01) deleted the vendored open_clip/ directory. Tests that
+# compare vendored-vs-override (SMOKE-03 + SMOKE-04) become degenerate
+# post-deletion — sys.path.insert to the missing path is a no-op, and
+# `import open_clip` falls back to the installed PyPI package on both
+# sides of the comparison. Skip these tests cleanly when the vendored
+# tree is gone; their defense-in-depth value applied only during the
+# Phase 3 cutover window when both code paths coexisted.
+_VENDORED_OPEN_CLIP_EXISTS = (root / "open_clip" / "src").exists()
+skip_if_vendored_deleted = pytest.mark.skipif(
+    not _VENDORED_OPEN_CLIP_EXISTS,
+    reason="vendored open_clip/ was deleted in Phase 5 (DEL-01); "
+    "vendored-vs-override comparison is no longer meaningful. Defense "
+    "fired during the Phase 3 cutover window (state_dict + pixel checks "
+    "passed). Either delete this test in a future cleanup or replace it "
+    "with a single-pipeline structural invariant check.",
+)
 
 
 def _build_classifier_with_vendored_open_clip(name, pretrained, num_features, num_labels):
@@ -112,6 +130,7 @@ def _restore_sys_state(original_modules):
 
 
 @skip_in_github_ci
+@skip_if_vendored_deleted
 def test_state_dict_keys_match_vendored():
     """SMOKE-03: post-cutover ClipClassifier state_dict keys match a vendored-built equivalent.
 
@@ -183,6 +202,7 @@ def test_state_dict_keys_match_vendored():
 
 
 @skip_in_github_ci
+@skip_if_vendored_deleted
 def test_preprocessing_pixel_equivalence():
     """SMOKE-04: override-layer preprocessing matches vendored open_clip preprocessing pixelwise.
 
