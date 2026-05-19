@@ -42,13 +42,17 @@ root = pyrootutils.setup_root(
 )
 
 
+import pickle
 import sys
+import warnings
+from unittest.mock import patch
 
 import torch
 from PIL import Image
 
 from planktonzilla.clip_model import ClipClassifier
 from planktonzilla.open_clip_ext import create_model_and_transforms
+from planktonzilla.open_clip_ext.factory import load_checkpoint
 
 from .shared import skip_in_github_ci
 
@@ -225,3 +229,75 @@ def test_preprocessing_pixel_equivalence():
         f"pixel divergence between vendored and override-layer preprocessing — "
         f"max abs diff: {(override_tensor - vendored_tensor).abs().max().item()}"
     )
+
+
+def test_load_checkpoint_weights_only_retry():
+    """SMOKE-02 retry safeguard: load_checkpoint retries with weights_only=False
+    on pickle.UnpicklingError and emits a DeprecationWarning.
+
+    Defends PITFALLS P4 — open_clip#998/#966: legacy .bin checkpoints containing
+    numpy scalars or other non-tensor pickled objects fail under torch.load's
+    weights_only=True default (torch>=2.4). The retry preserves backward
+    compatibility with older checkpoints; the warning surfaces the deprecation
+    so the user knows to re-save as safetensors.
+
+    Mock-based unit test (no network, no real model weights). Verifies:
+      1. First call uses weights_only=True (the safe default).
+      2. On pickle.UnpicklingError, retry uses weights_only=False.
+      3. A DeprecationWarning is emitted on the retry path.
+      4. The successful result of the retry is returned.
+    """
+    call_log = []
+
+    def fake_open_clip_load_checkpoint(model, checkpoint_path, *, strict, weights_only, device):
+        call_log.append({"weights_only": weights_only})
+        if weights_only is True:
+            raise pickle.UnpicklingError("simulated legacy .bin numpy-scalar failure")
+        return {"missing_keys": [], "unexpected_keys": []}
+
+    with patch("planktonzilla.open_clip_ext.factory.open_clip.load_checkpoint", side_effect=fake_open_clip_load_checkpoint):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", DeprecationWarning)
+            result = load_checkpoint(model=None, checkpoint_path="/fake/legacy.bin")
+
+    # 1+2: two calls, first weights_only=True, second weights_only=False.
+    assert len(call_log) == 2, f"expected 2 attempts, got {len(call_log)}: {call_log}"
+    assert call_log[0]["weights_only"] is True, "first call should use safe default (weights_only=True)"
+    assert call_log[1]["weights_only"] is False, "retry should use weights_only=False"
+
+    # 3: DeprecationWarning fired.
+    dep_warnings = [w for w in caught if issubclass(w.category, DeprecationWarning)]
+    assert len(dep_warnings) >= 1, f"expected DeprecationWarning, got: {[(w.category, str(w.message)) for w in caught]}"
+    msg = str(dep_warnings[0].message)
+    assert "weights_only=True" in msg and "weights_only=False" in msg, (
+        f"warning message should explain both states: {msg!r}"
+    )
+    assert "/fake/legacy.bin" in msg, f"warning should include the checkpoint path: {msg!r}"
+
+    # 4: result propagated from the successful retry.
+    assert result == {"missing_keys": [], "unexpected_keys": []}
+
+
+def test_load_checkpoint_does_not_retry_when_caller_passed_weights_only_false():
+    """SMOKE-02 retry safeguard guardrail: explicit weights_only=False from caller
+    skips the retry layer entirely. Failures propagate as-is.
+
+    Prevents an infinite-retry scenario if a genuinely corrupt checkpoint hits
+    UnpicklingError even at weights_only=False (e.g. truncated file).
+    """
+    call_log = []
+
+    def always_fails(model, checkpoint_path, *, strict, weights_only, device):
+        call_log.append({"weights_only": weights_only})
+        raise pickle.UnpicklingError("corrupt file simulation")
+
+    with patch("planktonzilla.open_clip_ext.factory.open_clip.load_checkpoint", side_effect=always_fails):
+        try:
+            load_checkpoint(model=None, checkpoint_path="/fake/corrupt.bin", weights_only=False)
+            raise AssertionError("expected UnpicklingError to propagate")
+        except pickle.UnpicklingError:
+            pass
+
+    # Single attempt — no retry since caller already opted out of the safe default.
+    assert len(call_log) == 1, f"expected 1 attempt (no retry), got {len(call_log)}: {call_log}"
+    assert call_log[0]["weights_only"] is False
