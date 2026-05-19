@@ -17,7 +17,9 @@ module purge
 module load arch/h100
 source .env/bin/activate
 
-export PYTHONPATH=/home/acontreras/planktonzilla/open_clip/src:$PYTHONPATH
+# Phase 5 DEL-02: vendored open_clip/ deleted; the wrapper at
+# planktonzilla.clip_train.main delegates to the PyPI-installed open-clip-torch.
+# No PYTHONPATH injection required.
 
 export TORCH_DISTRIBUTED_TIMEOUT=7200
 export NCCL_TIMEOUT=7200
