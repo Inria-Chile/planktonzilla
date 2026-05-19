@@ -17,11 +17,21 @@ class ClipClassifier(nn.Module):
     ):
         super().__init__()
 
+        # Compat shim: open-clip-torch >= 3.x dropped the implicit
+        # "openai pretrained tag -> quick_gelu=True" default. The OpenAI CLIP
+        # weights were trained with QuickGELU; loading them into the modern
+        # GELU-default model produces NaN gradients (~0.44 max-abs activation
+        # delta on ViT-B-16, fully empirically verified via SMOKE-01).
+        # See planktonzilla/.planning/phases/03-cutover-smoke/03-02-FAIL-SUMMARY.md.
+        extra_kwargs = {}
+        if pretrained and "openai" in pretrained:
+            extra_kwargs["force_quick_gelu"] = True
+
         if repo_path:
-            clip_model, _, _ = open_clip_ext.create_model_and_transforms(repo_path)
+            clip_model, _, _ = open_clip_ext.create_model_and_transforms(repo_path, **extra_kwargs)
 
         else:
-            clip_model, _, _ = open_clip_ext.create_model_and_transforms(name, pretrained)
+            clip_model, _, _ = open_clip_ext.create_model_and_transforms(name, pretrained, **extra_kwargs)
 
         self.id2label = id2label
         self.label2id = label2id
