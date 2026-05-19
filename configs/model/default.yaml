@@ -5,6 +5,10 @@ model:
   _args_:
     - ????
   ignore_mismatched_sizes: true
+  # FIX-02: explicit dispatch field (replaces broad except: in train.py:165).
+  # 'hf' routes to AutoModelForImageClassification.from_pretrained; 'clip'
+  # routes to planktonzilla.clip_model.ClipClassifier. See configs/model/default_clip.yaml.
+  type: hf
 
 img_size: ???
 freeze_backbone: false

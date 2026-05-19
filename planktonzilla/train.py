@@ -153,7 +153,15 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
 
     log.info(f"Instantiating base model «{cfg.model._args_[0]}».")
 
-    try:
+    # FIX-02: explicit cfg.model.type dispatch replaces the broad `except Exception:`
+    # pattern that silently misrouted real dispatch failures into the CLIP branch.
+    # Pop the dispatch field before instantiate() (Hydra would pass it as a kwarg
+    # to the model constructor otherwise — neither HF nor ClipClassifier accept `type=`).
+    OmegaConf.set_struct(cfg.model, False)
+    model_type = cfg.model.pop("type")
+    OmegaConf.set_struct(cfg.model, True)
+
+    if model_type == "hf":
         model: AutoModelForImageClassification = hydra.utils.instantiate(
             cfg.model,
             id2label=dataset_wrapper.id2label,
@@ -161,8 +169,7 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
             num_labels=len(dataset_wrapper.label2id),
             _convert_="all",
         )
-
-    except Exception:
+    elif model_type == "clip":
         model: ClipClassifier = hydra.utils.instantiate(
             cfg.model,
             num_features=cfg.num_features,
@@ -170,6 +177,12 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
             label2id=dataset_wrapper.label2id,
             num_labels=len(dataset_wrapper.label2id),
             _convert_="all",
+        )
+    else:
+        raise ValueError(
+            f"Unknown cfg.model.type: {model_type!r} (expected 'hf' or 'clip'). "
+            f"Add the `type:` field to your model config; see configs/model/default.yaml "
+            f"or configs/model/default_clip.yaml for examples."
         )
 
     if cfg.get("peft"):

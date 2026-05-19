@@ -4,6 +4,10 @@ model:
   _target_: planktonzilla.clip_model.ClipClassifier
   _args_:
     - ????
+  # FIX-02: explicit dispatch field (replaces broad except: in train.py:165).
+  # 'clip' routes to ClipClassifier; 'hf' routes to AutoModelForImageClassification.
+  # See configs/model/default.yaml.
+  type: clip
 
 num_features: ???
 img_size: ???
