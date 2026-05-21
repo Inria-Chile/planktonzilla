@@ -33,6 +33,7 @@ from transformers import AutoModelForImageClassification, Trainer, TrainingArgum
 
 from planktonzilla.clip_model import ClipClassifier
 from planktonzilla.dataset import DatasetWrapper
+from planktonzilla.utils import resolvers as _resolvers  # noqa: F401  -- side-effect: registers strip_yaml_suffix
 from planktonzilla.utils.hydra import (
     get_metric_value,
     task_wrapper,
@@ -40,24 +41,6 @@ from planktonzilla.utils.hydra import (
 from planktonzilla.utils.logger import get_pylogger
 
 log = get_pylogger(__name__)
-
-
-def strip_yaml_suffix(s: str) -> str:
-    """Strip a single trailing ``.yaml`` suffix from ``s``; pass-through otherwise.
-
-    Replaces the prior ``eval`` OmegaConf resolver (CONCERNS #7 RCE vector).
-    Used by ``configs/experiment/*.yaml`` to derive bare names from
-    ``${hydra:runtime.choices.<group>}`` which arrive with the ``.yaml`` suffix.
-    """
-    if s.endswith(".yaml"):
-        return s[:-5]
-    return s
-
-
-try:
-    OmegaConf.register_new_resolver("strip_yaml_suffix", strip_yaml_suffix)
-except ValueError:
-    pass
 
 
 def validate_environment(cfg: DictConfig | None = None):

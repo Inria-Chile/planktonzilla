@@ -14,7 +14,7 @@ root = pyrootutils.setup_root(
 import pytest
 from omegaconf import OmegaConf
 
-import planktonzilla.train  # noqa: F401  --- import-time side effect registers resolvers
+import planktonzilla.utils.resolvers  # noqa: F401  -- side-effect: registers strip_yaml_suffix and removes eval
 
 
 def test_eval_resolver_removed():
