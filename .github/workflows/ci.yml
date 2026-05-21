@@ -1,0 +1,91 @@
+# planktonzilla CI — runs on every push to main and every PR targeting main.
+# 3 parallel jobs (lint, test, smoke). Stand-up artifact of v1.1 Phase 8.
+
+name: CI
+
+# 'on' is a YAML 1.1 boolean; quote the key so PyYAML / local validators don't
+# coerce it to True. GitHub Actions accepts either form.
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  # Cancel in-flight runs when a new push lands on the same ref. Saves minutes
+  # on rapid push cycles while still running on every PR head commit.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup uv (with cache)
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          # Python is pinned by .python-version / pyproject.toml requires-python.
+          # uv will resolve to 3.12 (the current devcontainer + HPC runtime).
+          python-version: "3.12"
+
+      - name: Install project deps (uv sync)
+        run: uv sync
+
+      - name: Ruff format --check (planktonzilla/, tests/)
+        run: uv run ruff format --check planktonzilla/ tests/
+
+      - name: Ruff check (planktonzilla/, tests/)
+        run: uv run ruff check planktonzilla/ tests/
+
+  test:
+    name: Test (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup uv (with cache)
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Install project deps (uv sync)
+        run: uv sync
+
+      # Excludes the slow HF Trainer / HF Hub integration matrices (per-combo
+      # ~7 min runtime; would blow the per-job timeout). Keeps the FOCUS-01
+      # axis tests, FOCUS-02 resolver tests, and the post-DEL-01 vendored
+      # fixtures (which self-skip via skip_if_vendored_deleted).
+      - name: Run pytest (excluding slow integration matrix)
+        run: uv run pytest tests/ --ignore=tests/test_train.py --ignore=tests/test_datasets.py -v
+
+  smoke:
+    name: Smoke (CI-fast subset)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup uv (with cache)
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Install project deps (uv sync)
+        run: uv sync
+
+      # SMOKE-02 (HF Hub checkpoint forward pass) + SMOKE-05 eva02 (WIRE-02
+      # wiring gate). Skips SMOKE-01 baseline-band run (~33 min CPU; too slow
+      # for CI minutes).
+      - name: Run CI-fast smoke (SMOKE-02 + eva02 SMOKE-05)
+        run: bash scripts/smoke_clip_ci.sh
