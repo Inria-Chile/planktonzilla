@@ -22,9 +22,8 @@ Remove when:
 from collections.abc import Callable
 from typing import Any
 
-from open_clip.transform import AugmentationCfg, PreprocessCfg
-
 import open_clip
+from open_clip.transform import AugmentationCfg, PreprocessCfg
 
 
 def image_transform(

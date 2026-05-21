@@ -25,10 +25,9 @@ import pickle
 from collections.abc import Callable
 from typing import Any
 
+import open_clip
 import torch
 import torch.nn as nn
-
-import open_clip
 
 
 def create_model_and_transforms(
@@ -111,9 +110,7 @@ def load_checkpoint(
     "incompatible_keys" dict whose shape varies by checkpoint era.
     """
     try:
-        return open_clip.load_checkpoint(
-            model, checkpoint_path, strict=strict, weights_only=weights_only, device=device
-        )
+        return open_clip.load_checkpoint(model, checkpoint_path, strict=strict, weights_only=weights_only, device=device)
     except pickle.UnpicklingError:
         # Only retry when the caller used the safe default; if they explicitly
         # passed weights_only=False and STILL hit UnpicklingError, that's a
@@ -130,6 +127,4 @@ def load_checkpoint(
             DeprecationWarning,
             stacklevel=2,
         )
-        return open_clip.load_checkpoint(
-            model, checkpoint_path, strict=strict, weights_only=False, device=device
-        )
+        return open_clip.load_checkpoint(model, checkpoint_path, strict=strict, weights_only=False, device=device)

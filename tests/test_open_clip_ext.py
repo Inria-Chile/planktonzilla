@@ -87,13 +87,12 @@ def _build_classifier_with_vendored_open_clip(name, pretrained, num_features, nu
     """
     vendored_path = str(root / "open_clip" / "src")
     sys.path.insert(0, vendored_path)
-    import open_clip as vendored_open_clip  # noqa: F811 — deliberate reimport
+    import open_clip as vendored_open_clip
+
     # Apply the SAME QuickGELU compat shim that planktonzilla/clip_model.py uses
     # post-cutover, so the comparison is fair (both ends use the same activation).
     extra_kwargs = {"force_quick_gelu": True} if pretrained and "openai" in pretrained else {}
-    clip_model, _, vendored_preprocess = vendored_open_clip.create_model_and_transforms(
-        name, pretrained, **extra_kwargs
-    )
+    clip_model, _, vendored_preprocess = vendored_open_clip.create_model_and_transforms(name, pretrained, **extra_kwargs)
 
     # Replicate the cutover-equivalent visual-head wiring without going through
     # ClipClassifier (which imports the OVERRIDE layer's _introspection). We need
@@ -235,7 +234,8 @@ def test_preprocessing_pixel_equivalence():
     vendored_path = str(root / "open_clip" / "src")
     sys.path.insert(0, vendored_path)
     try:
-        import open_clip as vendored_open_clip  # noqa: F811 — deliberate reimport
+        import open_clip as vendored_open_clip
+
         _, _, vendored_preprocess = vendored_open_clip.create_model_and_transforms("ViT-B-16", "openai")
         vendored_tensor = vendored_preprocess(pil_image)
     finally:
@@ -289,9 +289,7 @@ def test_load_checkpoint_weights_only_retry():
     dep_warnings = [w for w in caught if issubclass(w.category, DeprecationWarning)]
     assert len(dep_warnings) >= 1, f"expected DeprecationWarning, got: {[(w.category, str(w.message)) for w in caught]}"
     msg = str(dep_warnings[0].message)
-    assert "weights_only=True" in msg and "weights_only=False" in msg, (
-        f"warning message should explain both states: {msg!r}"
-    )
+    assert "weights_only=True" in msg and "weights_only=False" in msg, f"warning message should explain both states: {msg!r}"
     assert "/fake/legacy.bin" in msg, f"warning should include the checkpoint path: {msg!r}"
 
     # 4: result propagated from the successful retry.
