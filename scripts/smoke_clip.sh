@@ -185,22 +185,13 @@ print(f'SMOKE-02 PASS: forward pass returned image_features of shape {tuple(imag
 
 echo "==> SMOKE-05: exercising usable configs/model/*clip*.yaml for >= 1 training step"
 # Configs that go through ClipClassifier (per docs/open_clip_audit.md Q4):
-#   - vit-base-clip-224-openai            (pure-ViT path) — TESTED below
-#   - eva02-large-clip-224-2b-s4b-b131k   (timm-trunk path) — PRE-EXISTING BREAKAGE
+#   - vit-base-clip-224-openai            (pure-ViT path)
+#   - eva02-large-clip-224-2b-s4b-b131k   (timm-trunk path; wired by WIRE-02 in Phase 06).
 # SKIPPED on purpose:
 #   - default_clip.yaml  (defaults file with _args_=[????], never instantiated standalone)
 #   - timm-vit-base-16-clip-openai.yaml  (inherits default.yaml -> AutoModelForImageClassification
 #     path, NOT ClipClassifier; does not exercise the open_clip externalization)
-#   - eva02-large-clip-224-2b-s4b-b131k  (pre-existing CONCERNS.md #11 wiring breakage —
-#     yaml is missing `num_features` field; fails MissingMandatoryValue at Hydra compose
-#     time, before any open_clip code runs. NOT a Phase 3 regression. Audit Q4 documents
-#     the issue; broader CLIP-config hardening is explicitly out of this milestone's
-#     scope. To re-include this config: set `num_features: 1024` in its yaml and remove
-#     it from this SKIPPED list. Tracked as a follow-up release-hardening item.)
-# shellcheck disable=SC2043  # Single-iteration loop is intentional (only one
-#   ClipClassifier config is usable today; loop structure preserved so adding the
-#   eva02 config back later is a one-token change).
-for cfg_name in vit-base-clip-224-openai; do
+for cfg_name in vit-base-clip-224-openai eva02-large-clip-224-2b-s4b-b131k; do
     echo "    -- $cfg_name --"
     SMOKE_RUN_DIR="/tmp/pz_smoke05_${cfg_name//[^a-zA-Z0-9]/_}"
     rm -rf "$SMOKE_RUN_DIR"

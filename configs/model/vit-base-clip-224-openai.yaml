@@ -7,8 +7,7 @@ model:
   _args_:
     - ViT-B-16
     - openai
-    - null
-  
+
 num_features: 768
 img_size: 224
 freeze_backbone: false

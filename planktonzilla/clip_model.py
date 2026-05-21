@@ -1,3 +1,7 @@
+"""
+(c) Inria
+"""
+
 import torch.nn as nn
 from transformers.modeling_outputs import ImageClassifierOutput
 
@@ -9,7 +13,8 @@ class ClipClassifier(nn.Module):
         self,
         name: str,
         pretrained: str,
-        repo_path: str,
+        *,
+        repo_path: str | None = None,
         num_features: int,
         num_labels: int,
         id2label: dict | None = None,
@@ -58,8 +63,13 @@ class ClipClassifier(nn.Module):
             features = self.model[0](pixel_values)
             logits = self.model[1](features)
         else:
-            features = self.model.trunk(pixel_values)
-            logits = self.model.head(features)
+            # timm-trunk path: __init__ stripped the open_clip wrapper and stored
+            # the timm trunk directly (with our nn.Linear head). The trunk's
+            # __call__ chains forward_features -> pooling -> head, returning
+            # logits of shape (B, num_labels). Surfaced by WIRE-02 once eva02
+            # was un-skipped from SMOKE-05; the prior `self.model.trunk(...)`
+            # referenced a wrapper that no longer exists.
+            logits = self.model(pixel_values)
 
         if not return_dict:
             return (None, logits, None, None)
