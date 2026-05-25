@@ -44,7 +44,9 @@ repository = "https://github.com/Inria-Chile/deep_plankton"
 
 [project.scripts]
 pz_import_dataset = 'planktonzilla.dataset_import.import_dataset:main'
+pz_prepare_train = 'planktonzilla.prepare_train:main'
 pz_train = 'planktonzilla.train:main'
+pz_push_model = 'planktonzilla.push_model:main'
 
 [dependency-groups]
 dev = ["pytest", "notebook", "ipywidgets", "pytest-cov", "ipykernel"]
@@ -55,6 +57,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["planktonzilla"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"configs" = "configs"
 
 [tool.ruff]
 line-length = 128

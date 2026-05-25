@@ -24,7 +24,30 @@ Multimodal deep learning framework, datasets, and models for plankton identifica
 - `planktonzilla-17M` dataset: 17 million plankton images from 9 different datasets, all standardized and preprocessed for deep learning applications. Available: <https://huggingface.co/datasets/project-oceania/planktonzilla-17m>.
 
 - OcéanIA project website: <https://oceania.inria.cl>.
-- OcéanIA in Hugging Face hub (datasets, trained models and demos): <https://huggingface.co/project-oceania>.
+- OcéanIA on Hugging Face Hub (datasets, trained models, and demos): <https://huggingface.co/project-oceania>.
+
+## Load a pre-trained model
+
+The published planktonzilla models are landing in the v1 release. The snippet below is the target API every v1 model will conform to — a single universal `from_pretrained` call that works for the entire model collection, no clone of this repository required.
+
+```python
+from transformers import AutoModelForImageClassification, AutoImageProcessor
+from PIL import Image
+
+model_id = "project-oceania/<model-name>"  # see https://huggingface.co/project-oceania
+processor = AutoImageProcessor.from_pretrained(model_id, trust_remote_code=True)
+model = AutoModelForImageClassification.from_pretrained(model_id, trust_remote_code=True)
+
+image = Image.open("plankton.jpg").convert("RGB")
+inputs = processor(images=image, return_tensors="pt")
+outputs = model(**inputs)
+predicted_idx = outputs.logits.argmax(-1).item()
+print(model.config.id2label[predicted_idx])
+```
+
+- Browse published models: <https://huggingface.co/project-oceania>
+- No clone of this repo is required — `pip install transformers pillow` is the consumer dependency surface.
+- v1 status: pre-trained models are being prepared for release; see [project status](https://oceania.inria.cl/) and the HF org page above for current availability.
 
 ## Features
 
@@ -148,7 +171,7 @@ planktonzilla/
 
 ```bash
 # Clone the repository
-git clone https://github.com/Inria-Chile/deep_plankton.git
+git clone https://github.com/Inria-Chile/planktonzilla.git
 cd planktonzilla
 
 # Install dependencies (creates .venv automatically)
@@ -161,9 +184,11 @@ uv sync --group dev
 source .venv/bin/activate
 ```
 
-### Basic Usage
+`uv run <command>` runs any project script inside the project venv without needing
+to activate it manually. If you prefer an activated shell, run
+`source .venv/bin/activate`.
 
-#### 1. Import a Dataset
+### Import a dataset
 
 ```bash
 # Import ISIISNET dataset
@@ -174,7 +199,7 @@ uv run pz_import_dataset dataset_import=flowcamnet
 uv run pz_import_dataset dataset_import=lensless
 ```
 
-#### 2. Train a Model
+### Train a model
 
 ```bash
 # Basic training with default configuration
@@ -190,11 +215,7 @@ uv run pz_train dataset=isiisnet model=resnet50 custom_loss=focal
 uv run pz_train dataset=isiisnet model=resnet18 training_arguments.num_train_epochs=10 training_arguments.learning_rate=1e-4
 ```
 
-
-
-## 🎯 Advanced Usage
-
-### Configuration System
+### Configuration system
 
 Planktonzilla uses Hydra for hierarchical configuration management. You can override any configuration parameter:
 
@@ -209,7 +230,49 @@ uv run pz_train augmentation=autoaugment
 uv run pz_train dataset=isiisnet model=resnet50 custom_loss=ldam training_arguments.learning_rate=1e-4
 ```
 
-### Supported Datasets
+### Architecture
+
+The training pipeline composes Hydra-configured datasets, models, and losses through the Hugging Face `Trainer`, then publishes the resulting checkpoint to the Hub — where external users load it with `AutoModelForImageClassification.from_pretrained`.
+
+```mermaid
+flowchart TB
+  subgraph Configure["1 · Configure"]
+    direction TB
+    CLI["CLI<br/>pz_import_dataset · pz_train"]:::entry
+    CFG["Hydra configs<br/>configs/"]:::cfg
+  end
+
+  subgraph Ingest["2 · Ingest"]
+    direction TB
+    DATA_IMPORT["planktonzilla/dataset_import/<br/>DatasetImporter subclasses"]:::code
+    HF_DATA[("HF Hub<br/>project-oceania datasets")]:::ext
+  end
+
+  subgraph Train["3 · Train"]
+    direction TB
+    DATA["planktonzilla/dataset.py<br/>DatasetWrapper"]:::code
+    MODEL["Model<br/>timm · HF · open_clip"]:::code
+    LOSS["planktonzilla/loss.py<br/>AbstractHFLoss subclasses"]:::code
+    TRAIN_LOOP["HF Trainer<br/>planktonzilla/train.py"]:::code
+    TRACK["Tracking<br/>W&B · MLflow · trackio"]:::ext
+    OUTPUTS["Local outputs<br/>logs/ · checkpoints/"]:::code
+  end
+
+  subgraph Publish["4 · Publish"]
+    direction TB
+    HF_MODEL[("HF Hub<br/>project-oceania models")]:::ext
+  end
+
+  SCRIPTS["scripts/*.sh<br/>SLURM launchers"]:::code
+  TESTS["tests/<br/>smoke runs"]:::code
+  CONSUMER(["AutoModelForImageClassification<br/>.from_pretrained"]):::consumer
+
+  CLI --> CFG
+  CFG -.->|configures| DATA_IMPORT
+  CFG -.->|configures| TRAIN_LOOP
+  CFG -.->|selects| MODEL
+  CFG -.->|selects + params| LOSS
+```
 
 - **ISIISNET**: In-Situ Ichthyoplankton Imaging System Network
 - **FlowCamNet**: FlowCam plankton dataset
@@ -221,7 +284,7 @@ uv run pz_train dataset=isiisnet model=resnet50 custom_loss=ldam training_argume
 - **JEDI-Oceans**: JEDI oceanic plankton dataset
 - **CIFAR-10**: Generic image classification benchmark (sanity-check / smoke-test runs)
 
-### Loss Functions for Imbalanced Learning
+### Loss functions for imbalanced learning
 
 Planktonzilla includes specialized loss functions designed for imbalanced plankton classification:
 
@@ -232,7 +295,7 @@ Planktonzilla includes specialized loss functions designed for imbalanced plankt
 - **MaximumMarginLoss**: Margin-based learning approach
 - **BalancedMetaSoftmaxLoss**: Meta-learning approach for class balance
 
-### Experiment Tracking
+### Experiment tracking
 
 Integrate with popular experiment tracking tools:
 
@@ -247,9 +310,9 @@ uv run pz_train tracking.use_mlflow=true
 uv run pz_train tracking.use_trackio=true
 ```
 
-## 🧪 Development
+### Development
 
-### Running Tests
+#### Running Tests
 
 ```bash
 # Run all tests
@@ -262,7 +325,7 @@ uv run pytest --cov=planktonzilla
 uv run pytest tests/test_datasets.py
 ```
 
-### Code Quality
+#### Code Quality
 
 ```bash
 # Lint code
@@ -272,13 +335,13 @@ uv run ruff check
 uv run ruff format
 ```
 
-### Adding New Datasets
+#### Adding New Datasets
 
 1. Create a dataset configuration in `configs/dataset/your_dataset.yaml`
 2. Ensure your dataset is available on Hugging Face Hub
 3. Test with: `uv run pz_train dataset=your_dataset`
 
-### Custom Loss Functions
+#### Custom Loss Functions
 
 1. Implement your loss class inheriting from `AbstractHFLoss` in `planktonzilla/loss.py`
 2. Add configuration file in `configs/custom_loss/your_loss.yaml`  
