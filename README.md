@@ -303,15 +303,22 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 If you use Planktonzilla in your research, please cite:
 
 ```bibtex
-@software{planktonzilla,
-  title={Planktonzilla: A Deep Learning Framework for Plankton Identification},
-  author={Inria Chile},
-  year={2024},
-  url={https://github.com/Inria-Chile/deep_plankton},
-  version={0.1.1}
+@report{contrerasmontanares:hal-05621003,
+  title      = {Planktonzilla: Multimodal dataset and models for understanding plankton ecosystems},
+  author     = {Contreras Montanares, Alan Gerson and Valenzuela, Luis and Mart{\'i}, Luis and Sanchez-Pi, Nayat},
+  year       = 2026,
+  month      = {May},
+  url        = {https://hal.science/hal-05621003},
+  note       = {Submitted to NeurIPS 2026.},
+  keywords   = {Explainable AI; XAI ; Plankton Classification ; CLIPS ; Multimodal Classification},
+  pdf        = {https://hal.science/hal-05621003v1/file/neurips\_2026.pdf},
+  eprint     = {hal-05621003},
+  eprinttype = {hal},
+  hal_id     = {hal-05621003},
+  hal_version = {v1}
 }
 ```
 
 <div align="center">
-  <strong>Built with ❤️ by <a href="https://oceania.inria.cl/">Inria Chile</a></strong>
+  <strong>Built with ❤️ by <a href="https://inria.cl/">Inria</a>.</strong>
 </div>
