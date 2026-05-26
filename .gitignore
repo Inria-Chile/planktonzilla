@@ -240,6 +240,6 @@ vendor/
 coverage/
 .cache/
 tmp/
-
-.claude
+.claude/
+.planning/
 CLAUDE.md

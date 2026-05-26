@@ -1,0 +1,18 @@
+{
+  "model": "vit-base-clip-224-openai",
+  "dataset": "project-oceania/lensless",
+  "seed": 42,
+  "step_K": 100,
+  "open_clip_version": "PyPI open-clip-torch==3.3.0 (post-refactor)",
+  "extraction_method": "trainer_state.json via save_strategy=steps save_steps=100",
+  "hardware_override": "fp16=false (CPU run, macOS, no CUDA)",
+  "train_loss": 0.013127410411834716,
+  "val_acc": 0.999,
+  "val_f1": 0.998999974999375,
+  "tolerance_band": {
+    "val_acc": "±5 absolute points",
+    "val_f1": "±5 absolute points",
+    "train_loss": "±10% relative"
+  },
+  "tolerance_band_authority": "docs/open_clip_audit.md (BASELINE-02; gate for SMOKE-01 in Phase 3)"
+}

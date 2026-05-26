@@ -11,4 +11,5 @@ module purge
 source .venv/bin/activate
 
 # === Ejecutar torchrun ===
-srun pz_import_dataset action=import dataset_import.data_dir=/lustre/fsn1/projects/rech/tec/uod68bo/data "$@"
+# WIRE-03 (CONCERNS #12): data_dir parameterized via $WORK (Jean Zay) or $PWD (local checkout fallback).
+srun pz_import_dataset action=import "dataset_import.data_dir=${WORK:-$PWD}/data" "$@"

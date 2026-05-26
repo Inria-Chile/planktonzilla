@@ -14,18 +14,14 @@ root = pyrootutils.setup_root(
 from typing import Optional
 
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 from planktonzilla.dataset_import.dataset_importer import DatasetImporter
+from planktonzilla.utils import resolvers as _resolvers  # noqa: F401  -- side-effect: registers strip_yaml_suffix
 from planktonzilla.utils.hydra import task_wrapper
 from planktonzilla.utils.logger import get_pylogger
 
 log = get_pylogger(__name__)
-
-try:
-    OmegaConf.register_new_resolver("eval", eval)
-except ValueError:
-    pass
 
 
 @task_wrapper

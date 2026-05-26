@@ -31,7 +31,7 @@ losses = ["asymmetric", "balanced_meta_softmax", "focal", "ldam", "max_margin", 
 @pytest.mark.parametrize("model_name", model_names)
 def test_training(hydra_conf_path: Path, model_name: str, dataset_name: str):
     with TemporaryDirectory() as tmp_dir:
-        with initialize(config_path=hydra_conf_path, job_name="test_training"):
+        with initialize(config_path=hydra_conf_path, job_name="test_training", version_base="1.3"):
             cfg: DictConfig = compose(
                 config_name="train",
                 overrides=[
@@ -62,7 +62,7 @@ def test_training(hydra_conf_path: Path, model_name: str, dataset_name: str):
 @pytest.mark.parametrize("custom_loss", losses)
 def test_training_custom_losses(hydra_conf_path: Path, model_name: str, dataset_name: str, custom_loss: str):
     with TemporaryDirectory() as tmp_dir:
-        with initialize(config_path=hydra_conf_path, job_name="test_training"):
+        with initialize(config_path=hydra_conf_path, job_name="test_training", version_base="1.3"):
             cfg: DictConfig = compose(
                 config_name="train",
                 overrides=[

@@ -1,59 +1,82 @@
+"""
+(c) Inria
+"""
+
 import torch.nn as nn
-import open_clip
 from transformers.modeling_outputs import ImageClassifierOutput
+
+from planktonzilla import open_clip_ext
+
 
 class ClipClassifier(nn.Module):
     def __init__(
         self,
         name: str,
         pretrained: str,
-        repo_path: str,
+        *,
+        repo_path: str | None = None,
         num_features: int,
         num_labels: int,
-        id2label: dict = None,
-        label2id: dict = None,
+        id2label: dict | None = None,
+        label2id: dict | None = None,
     ):
         super().__init__()
 
+        # Compat shim: open-clip-torch >= 3.x dropped the implicit
+        # "openai pretrained tag -> quick_gelu=True" default. The OpenAI CLIP
+        # weights were trained with QuickGELU; loading them into the modern
+        # GELU-default model produces NaN gradients (~0.44 max-abs activation
+        # delta on ViT-B-16, fully empirically verified via SMOKE-01).
+        # See planktonzilla/.planning/phases/03-cutover-smoke/03-02-FAIL-SUMMARY.md.
+        extra_kwargs = {}
+        if pretrained and "openai" in pretrained:
+            extra_kwargs["force_quick_gelu"] = True
+
         if repo_path:
-            clip_model, _, _ = open_clip.create_model_and_transforms(repo_path)
+            clip_model, _, _ = open_clip_ext.create_model_and_transforms(repo_path, **extra_kwargs)
 
         else:
-            clip_model, _, _ = open_clip.create_model_and_transforms(name, pretrained)
+            clip_model, _, _ = open_clip_ext.create_model_and_transforms(name, pretrained, **extra_kwargs)
 
         self.id2label = id2label
         self.label2id = label2id
         self.num_labels = num_labels
-        
-        self.name_or_path = name + pretrained
-        self.model = clip_model.visual
-        
-        try:
-            _ = self.model.proj # ViT models
-            self.model.proj = None # Delete the projection
 
-            self.model = nn.Sequential(
-                self.model,
-                nn.Linear(num_features, num_labels)
-            )
-        except:
-            self.model = self.model.trunk
-            self.model.head = nn.Linear(num_features, num_labels)
+        self.name_or_path = name + pretrained
+
+        # Work on a local before self.model assignment — visual_tower_kind() needs
+        # a narrowed nn.Module type (nn.Module.__setattr__ widens to Tensor | Module).
+        visual = clip_model.visual
+        kind = open_clip_ext.visual_tower_kind(visual)
+        if kind == "vit":
+            visual.proj = None  # Delete the projection
+            self.model = nn.Sequential(visual, nn.Linear(num_features, num_labels))
+        else:
+            # kind == "timm" — visual_tower_kind() raises TypeError on unknown,
+            # so we don't need a fallback or default branch.
+            visual = visual.trunk
+            visual.head = nn.Linear(num_features, num_labels)
+            self.model = visual
 
     def forward(self, pixel_values, labels=None, output_attentions=None, output_hidden_states=None, return_dict=True):
         if isinstance(self.model, nn.Sequential):
-            features = self.model[0](pixel_values) 
-            logits = self.model[1](features)       
+            features = self.model[0](pixel_values)
+            logits = self.model[1](features)
         else:
-            features = self.model.trunk(pixel_values)
-            logits = self.model.head(features)
-        
+            # timm-trunk path: __init__ stripped the open_clip wrapper and stored
+            # the timm trunk directly (with our nn.Linear head). The trunk's
+            # __call__ chains forward_features -> pooling -> head, returning
+            # logits of shape (B, num_labels). Surfaced by WIRE-02 once eva02
+            # was un-skipped from SMOKE-05; the prior `self.model.trunk(...)`
+            # referenced a wrapper that no longer exists.
+            logits = self.model(pixel_values)
+
         if not return_dict:
-            return (None, logits, None, None) 
+            return (None, logits, None, None)
 
         return ImageClassifierOutput(
-            loss=None, 
-            logits=logits, 
-            hidden_states=None, # (features,),
+            loss=None,
+            logits=logits,
+            hidden_states=None,  # (features,),
             attentions=None,
         )

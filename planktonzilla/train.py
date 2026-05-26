@@ -18,24 +18,22 @@ torch.multiprocessing.set_sharing_strategy("file_system")
 import os
 from functools import partial
 
-import numpy as np
-from sklearn.metrics import (
-    f1_score,
-    precision_score,
-    recall_score,
-    accuracy_score,
-)
-
 import hydra
 import numpy as np
 import torch
-from evaluate import combine, load
 from huggingface_hub import DatasetCard, login
 from omegaconf import DictConfig, OmegaConf
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score,
+)
 from transformers import AutoModelForImageClassification, Trainer, TrainingArguments, set_seed
 
 from planktonzilla.clip_model import ClipClassifier
 from planktonzilla.dataset import DatasetWrapper
+from planktonzilla.utils import resolvers as _resolvers  # noqa: F401  -- side-effect: registers strip_yaml_suffix
 from planktonzilla.utils.hydra import (
     get_metric_value,
     task_wrapper,
@@ -44,19 +42,26 @@ from planktonzilla.utils.logger import get_pylogger
 
 log = get_pylogger(__name__)
 
-try:
-    OmegaConf.register_new_resolver("eval", eval)
-except ValueError:
-    pass
 
-
-def validate_environment():
+def validate_environment(cfg: DictConfig | None = None):
     """Check and log important external service environment variables.
 
     Warns when Hugging Face hub or tracking services are likely unavailable
     and logs presence of common environment variables such as `HF_TOKEN`,
     `WANDB_API_KEY` and `MLFLOW_TRACKING_URI`.
+
+    Per ABSORB-02 / audit Q6: also applies the planktonzilla-specific
+    `torch.backends.cuda.matmul.allow_tf32` setting when `cfg.tf32` is True.
+    This reproduces the throughput characteristic the vendored
+    `open_clip_train.main` had by default; opt-in to preserve strict
+    reproducibility with pre-Phase-4 runs. `cfg` is optional for backward
+    compat with call sites that don't have a Hydra config in scope.
     """
+    if cfg is not None and bool(cfg.get("tf32", False)):
+        import torch as _torch  # local import keeps top-level torch state untouched if disabled
+
+        _torch.backends.cuda.matmul.allow_tf32 = True
+        log.info("✅ TF32 matmul enabled (cfg.tf32=true; reproduces vendored open_clip_train default).")
 
     if "HF_HUB_OFFLINE" in os.environ and os.environ["HF_HUB_OFFLINE"] == "1":
         log.warning("⚠️ Environment variable HF_HUB_OFFLINE=1. Hugging Face hub will be offline.")
@@ -64,7 +69,7 @@ def validate_environment():
         if "HF_TOKEN" in os.environ:
             log.info("✅ HF_TOKEN environment variable is set.")
             try:
-                login(new_session=False, write_permission=True)
+                login()
                 log.info("✅ Login to Hugging Face hub verified.")
             except ValueError as e:
                 log.error(f"🛑 Login to Hugging Face hub failed: {e}.")
@@ -97,6 +102,7 @@ def validate_environment():
 #     res = metrics.compute(predictions=predictions, references=eval_pred.label_ids, average="macro")
 #     acc = load("accuracy").compute(predictions=predictions, references=eval_pred.label_ids)
 #     return {**res, **acc}
+
 
 def compute_metrics(eval_pred):
     """
@@ -131,7 +137,7 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
 
     # set seed for random number generators in pytorch, numpy and python.random
 
-    validate_environment()
+    validate_environment(cfg)
 
     if cfg.get("seed"):
         set_seed(cfg.seed, cfg.get("deterministic", False))
@@ -155,7 +161,15 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
 
     log.info(f"Instantiating base model «{cfg.model._args_[0]}».")
 
-    try:
+    # FIX-02: explicit cfg.model.type dispatch replaces the broad `except Exception:`
+    # pattern that silently misrouted real dispatch failures into the CLIP branch.
+    # Pop the dispatch field before instantiate() (Hydra would pass it as a kwarg
+    # to the model constructor otherwise — neither HF nor ClipClassifier accept `type=`).
+    OmegaConf.set_struct(cfg.model, False)
+    model_type = cfg.model.pop("type")
+    OmegaConf.set_struct(cfg.model, True)
+
+    if model_type == "hf":
         model: AutoModelForImageClassification = hydra.utils.instantiate(
             cfg.model,
             id2label=dataset_wrapper.id2label,
@@ -163,8 +177,7 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
             num_labels=len(dataset_wrapper.label2id),
             _convert_="all",
         )
-
-    except:
+    elif model_type == "clip":
         model: ClipClassifier = hydra.utils.instantiate(
             cfg.model,
             num_features=cfg.num_features,
@@ -173,7 +186,13 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
             num_labels=len(dataset_wrapper.label2id),
             _convert_="all",
         )
-        
+    else:
+        raise ValueError(
+            f"Unknown cfg.model.type: {model_type!r} (expected 'hf' or 'clip'). "
+            f"Add the `type:` field to your model config; see configs/model/default.yaml "
+            f"or configs/model/default_clip.yaml for examples."
+        )
+
     if cfg.get("peft"):
         log.info("Adding LoRA adapter(s).")
         for adapter_name in cfg.peft:

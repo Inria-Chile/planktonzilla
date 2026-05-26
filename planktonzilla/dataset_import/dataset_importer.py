@@ -2,20 +2,19 @@
 (c) Inria
 """
 
+import concurrent.futures
+import csv
+import gzip
 import os
 import re
 import shutil
 import stat
-import gzip
-import csv
 from dataclasses import dataclass
 from multiprocessing import cpu_count
 from pathlib import Path
 from shutil import copy2, copytree, move, rmtree
 from typing import ClassVar, Dict, Final, Optional, Union
 from zipfile import ZipFile
-
-import concurrent.futures
 
 import aiohttp
 import numpy as np
@@ -89,6 +88,7 @@ def strip_ansi_codes(text):
     reaesc = re.compile(r"\x1b[^m]*m")
     return reaesc.sub("", text)
 
+
 def copytree_filtered(src: Path, dst: Path):
     copytree(
         src,
@@ -96,6 +96,7 @@ def copytree_filtered(src: Path, dst: Path):
         dirs_exist_ok=True,
         ignore=shutil.ignore_patterns("._*", ".DS_Store"),
     )
+
 
 def report_dataset_content(huggingface_dataset: Dataset | DatasetDict) -> str:
     def report_split(dataset: Dataset, split_name: str) -> str:
@@ -326,7 +327,6 @@ class DatasetImporter:
             logger.info("Keeping downloaded and intermediate files, set cleanup_after_processing=True to change this.")
 
     def import_dataset(self) -> Union[Dataset, DatasetDict]:
-
         imagefolder_exists = not is_dir_empty(self.imagefolder_dir)
         raw_exists = self.raw_dir.exists() and bool(os.listdir(self.raw_dir))
 
@@ -337,23 +337,20 @@ class DatasetImporter:
                 logger.info(f"Raw data already exists at {self.raw_dir}, resolving extracted paths from cache.")
             else:
                 logger.info("Downloading and extracting dataset.")
-            
+
             # Si los archivos ya están en el raw_dir,
             # no los descargará de nuevo; solo leerá la caché y asignará la ruta
             self._download_and_extract()
 
             if getattr(self, "extracted_dirs", None) is None:
-                raise RuntimeError(
-                    "Cannot prepare imagefolder: extraction failed or raw data is unavailable."
-                )
+                raise RuntimeError("Cannot prepare imagefolder: extraction failed or raw data is unavailable.")
 
             logger.info(f"Preparing dataset as imagefolder in {self.imagefolder_dir}")
             self._prepare_imagefolder()
-            
+
         else:
             logger.info(
-                f"Using existing imagefolder at {self.imagefolder_dir}. "
-                "Set force_imagefolder_preparation=True to rebuild."
+                f"Using existing imagefolder at {self.imagefolder_dir}. Set force_imagefolder_preparation=True to rebuild."
             )
 
         if self.check_image_file_integrity:
@@ -393,9 +390,7 @@ class DatasetImporter:
 
         # fallback: dataset sin splits
         if not data_files:
-            data_files = {
-                "train": str(root / "*/*[!._]*")
-            }
+            data_files = {"train": str(root / "*/*[!._]*")}
 
         self.hf_dataset = load_dataset(
             "imagefolder",
@@ -408,7 +403,6 @@ class DatasetImporter:
 
         self._push_to_hub()
         self.cleanup()
-
 
 
 class LenslessDatasetImporter(DatasetImporter):
@@ -608,8 +602,9 @@ class ISIISNetDatasetImporter(DatasetImporter):
         ):
             copytree_filtered(plankton_class_dir, self.imagefolder_dir / plankton_class_dir.name)
 
-class PlanktoScopeDatasetImporter(DatasetImporter): 
-    def _prepare_imagefolder(self): 
+
+class PlanktoScopeDatasetImporter(DatasetImporter):
+    def _prepare_imagefolder(self):
         for plankton_class_dir in tqdm(
             (Path(self.extracted_dirs) / "Planktoscope_reference" / "imgs").iterdir(),
             desc="Progress",
@@ -624,7 +619,6 @@ class PlanktoScopeDatasetImporter(DatasetImporter):
                 continue
 
             copytree_filtered(plankton_class_dir, self.imagefolder_dir / plankton_class_dir.name)
-
 
 
 class GlobalUVP5NetDatasetImporter(DatasetImporter):
@@ -645,11 +639,7 @@ class GlobalUVP5NetDatasetImporter(DatasetImporter):
                 max_retries=self.max_download_retries,
                 num_proc=self.num_proc,
                 disable_tqdm=not self.show_progress,
-                storage_options={
-                    "client_kwargs": {
-                        "timeout": aiohttp.ClientTimeout(total=self.http_timeout)
-                    }
-                },
+                storage_options={"client_kwargs": {"timeout": aiohttp.ClientTimeout(total=self.http_timeout)}},
             ),
         )
 
@@ -668,7 +658,7 @@ class GlobalUVP5NetDatasetImporter(DatasetImporter):
                 with gzip.open(gz_fileobj, "rt", encoding="utf-8") as f:
                     reader = csv.reader(f, delimiter="\t")
                     header = next(reader)
-                    
+
                     try:
                         obj_idx = header.index("object_id")
                         taxon_idx = header.index("taxon")
@@ -687,28 +677,22 @@ class GlobalUVP5NetDatasetImporter(DatasetImporter):
         copy_tasks = []
 
         logger.info("Mapping files to their target directories...")
-        
+
         try:
             sample_dirs = [entry.path for entry in os.scandir(images_root) if entry.is_dir()]
         except FileNotFoundError:
             raise RuntimeError(f"Directory not found: {images_root}. Check your extracted_dirs path.")
 
-        for sample_dir_path in tqdm(
-            sample_dirs, 
-            desc="Scanning directories", 
-            leave=False, 
-            disable=not self.show_progress
-        ):
+        for sample_dir_path in tqdm(sample_dirs, desc="Scanning directories", leave=False, disable=not self.show_progress):
             for entry in os.scandir(sample_dir_path):
                 if not entry.is_file():
                     continue
 
-                object_id = entry.name.rsplit('.', 1)[0]
+                object_id = entry.name.rsplit(".", 1)[0]
                 taxon = mapping.get(object_id)
 
-
                 dst = self.imagefolder_dir / taxon / entry.name
-                
+
                 copy_tasks.append((entry.path, dst))
 
         # --- MultiThread ---
@@ -721,19 +705,22 @@ class GlobalUVP5NetDatasetImporter(DatasetImporter):
                     logger.warning(f"Failed to copy {src}: {e}")
 
         if copy_tasks:
-            max_threads = min(16, self.num_proc) 
+            max_threads = min(16, self.num_proc)
             logger.info(f"Starting multi-threaded copy with {max_threads} workers...")
-            
+
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
-                list(tqdm(
-                    executor.map(copy_worker, copy_tasks),
-                    total=len(copy_tasks),
-                    desc="Copying images",
-                    disable=not self.show_progress,
-                    leave=False
-                ))
+                list(
+                    tqdm(
+                        executor.map(copy_worker, copy_tasks),
+                        total=len(copy_tasks),
+                        desc="Copying images",
+                        disable=not self.show_progress,
+                        leave=False,
+                    )
+                )
         else:
             logger.info("No new images to copy.")
+
 
 class PlanktonSet1DatasetImporter(DatasetImporter):
     def _prepare_imagefolder(self):
@@ -743,7 +730,6 @@ class PlanktonSet1DatasetImporter(DatasetImporter):
             leave=False,
             disable=not self.show_progress,
         ):
-
             if (
                 not plankton_class_dir.is_dir()
                 or plankton_class_dir.name.startswith(".")

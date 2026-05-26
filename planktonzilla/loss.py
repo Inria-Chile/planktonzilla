@@ -6,7 +6,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F  # noqa: N812
-from torch.autograd import Variable
 from transformers.modeling_outputs import ImageClassifierOutputWithNoAttention
 
 
@@ -60,16 +59,16 @@ class FocalLoss(AbstractHFLoss):
 
         target = target.view(-1, 1)
 
-        logpt = F.log_softmax(logits)
+        logpt = F.log_softmax(logits, dim=-1)
         logpt = logpt.gather(1, target)
         logpt = logpt.view(-1)
-        pt = Variable(logpt.data.exp())
+        pt = logpt.exp()
 
         if self.alpha is not None:
             if self.alpha.type() != logits.data.type():
                 self.alpha = self.alpha.type_as(logits.data)
             at = self.alpha.gather(0, target.data.view(-1))
-            logpt = logpt * Variable(at)
+            logpt = logpt * at
 
         loss = -1 * (1 - pt) ** self.gamma * logpt
 
@@ -382,6 +381,7 @@ class BalancedMetaSoftmaxLoss(AbstractHFLoss):
         adjusted_logits = logits + self.cls_num_list.log().to(logits.device)
         loss = F.cross_entropy(adjusted_logits, target)
         return loss
+
 
 class CrossEntropyLossHF(AbstractHFLoss):
     def __init__(self, weight=None):

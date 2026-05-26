@@ -23,9 +23,9 @@ RUN apt install --no-install-recommends -y \
         wget \
         unzip \
         openssh-client \
-        python3.11 \
-        python3.11-dev \
-        python3.11-venv \
+        python3.12 \
+        python3.12-dev \
+        python3.12-venv \
         python3-pip \ 
         libyaml-dev \
         apt-transport-https \
@@ -47,8 +47,11 @@ RUN git lfs install --skip-smudge
 RUN chsh -s $(which zsh)
 
 # Install Python tools
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
-RUN python3.11 -m pip install --no-cache-dir -U pip wheel setuptools uv
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
+RUN python3.12 -m pip install --no-cache-dir -U pip wheel setuptools
+
+# Install uv (https://docs.astral.sh/uv/)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 ARG WORKSPACE_FOLDER
 RUN mkdir /workspace
