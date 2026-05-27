@@ -7,7 +7,7 @@ hf_dataset_name: jedi_system_oceans_cpics
 manual_download_local_file_names: ${paths.data_dir}/manual_downloads/CPICS_Validated.zip
 push_to_hub: true
 
-human_readable_name: "JEDI System/OCEANS_CPICS"
+human_readable_name: JEDI System/OCEANS_CPICS
 description: |
   Plankton image dataset from a cabled observatory system (JEDI System/OCEANS) deployed at coastal area of
   Oshima island, Tokyo, Japan. To understand multiscale process of planktonic ecosystem in the Kuroshio, a cabled observatory
@@ -17,9 +17,9 @@ description: |
   identified using machine learning with the validation process and compiled into DarwinCore occurrence records. All
   biological images and measured environmental parameters were archived at JST NBDC
   (https://dbarchive.biosciencedbc.jp/en/jedisystem-oceansdb/desc.html).
-license: "cc-by-sa-4.0"
-download_uris: "https://dbarchive.biosciencedbc.jp/data/jedisystem-oceansdb/LATEST/CPICS_Validated.zip"
-source_url: "https://dbarchive.biosciencedbc.jp/data/jedisystem-oceansdb/LATEST/README_e.html#Sec3"
+license: cc-by-sa-4.0
+download_uris: https://dbarchive.biosciencedbc.jp/data/jedisystem-oceansdb/LATEST/CPICS_Validated.zip
+source_url: https://dbarchive.biosciencedbc.jp/data/jedisystem-oceansdb/LATEST/README_e.html#Sec3
 citation_apa: |
   Yamasaki, H. (2022). Plankton image dataset from a cabled observatory system (JEDI System/OCEANS) deployed at coastal area of 
   Oshima Island, Tokyo, Japan. JAMSTEC. https://doi.org/10.48518/00014

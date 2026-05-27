@@ -6,7 +6,7 @@ hf_dataset_name: medplanktonset
 push_to_hub: true
 
 human_readable_name: "MedPlanktonSet - A dataset of labeled IFCB images from the Mediterranean Sea"
-license: cc-by-nc-4.0
+license: cc-by-4.0
 description: |
 download_uris: "https://zenodo.org/records/15471023/files/IFCB_images.zip?download=1"
 source_url: "https://zenodo.org/records/15471023"

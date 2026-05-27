@@ -6,7 +6,7 @@ hf_dataset_name: sykezooscan2024
 push_to_hub: true
 
 human_readable_name: "SYKE-plankton_ZooScan_2024 "
-license: "cc-by-nc-4.0"
+license: "cc-by-4.0"
 description: |
     The SYKE-plankton_ZooScan_2024 dataset consists of over 24k expert-labeled single-specimen zooplankton images. The dataset was 
     acquired using the ZooScan instrument applied to water samples collected from the Baltic Sea. The data is divided into 20 classes 

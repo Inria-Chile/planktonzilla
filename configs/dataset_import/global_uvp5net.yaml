@@ -5,8 +5,8 @@ _target_: planktonzilla.dataset_import.dataset_importer.GlobalUVP5NetDatasetImpo
 hf_dataset_name: globaluvp5net
 push_to_hub: true
 
-human_readable_name: "A global consistent database of plankton and detritus from in situ imaging by the Underwater Vision Profiler 5"
-license: "cc-by-nc-4.0"
+human_readable_name: A global consistent database of plankton and detritus from in situ imaging by the Underwater Vision Profiler 5
+license: cc-by-4.0
 description: |
   Plankton and detritus are essential components of the Earths oceans influencing biogeochemical 
   cycles and carbon sequestration. Climate change impacts their composition and marine ecosystems as 
@@ -28,8 +28,8 @@ description: |
   community. This will reduce uncertainty by classifying previously unclassified objects and expand the 
   classification categories, ultimately enhancing biodiversity quantification.
 
-download_uris: "https://www.seanoe.org/data/00964/107583/data/121258.zip"
-source_url: "https://www.seanoe.org/data/00964/107583/"
+download_uris: https://www.seanoe.org/data/00964/107583/data/121258.zip
+source_url: https://www.seanoe.org/data/00964/107583/
 paperswithcode_id: "globaluvp5net"
 citation_apa: |
   Nocera Ariadna, Stemmann Lars, Babin Marcel, Biard Tristan, Coustenoble Julie, Carlotti François, Coppola Laurent, 

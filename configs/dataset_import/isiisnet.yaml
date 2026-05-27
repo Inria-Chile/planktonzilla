@@ -17,8 +17,8 @@ description: |
   classifiers, the images in each class were split into training, validation, and test sets, with proportions 70%,
   15% and 15%.
 
-download_uris: "https://www.seanoe.org/data/00908/101950/data/113146.tar"
-source_url: "https://www.seanoe.org/data/00908/101950/"
+download_uris: https://www.seanoe.org/data/00908/101950/data/113146.tar
+source_url: https://www.seanoe.org/data/00908/101950/
 paperswithcode_id: isiisnet
 citation_apa: |
   Panaïotis, T., Caray-Counil, L., Jalabert, L., & Irisson, J.-O. (2024). ISIISNet: plankton images captured with the ISIIS 

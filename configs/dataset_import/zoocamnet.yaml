@@ -6,7 +6,7 @@ hf_dataset_name: zoocamnet
 push_to_hub: true
 
 human_readable_name: "ZooCAMNet: plankton images captured with the ZooCAM"
-license: "cc-by-nc-4.0"
+license: "cc-by-4.0"
 description: |
   Plankton was sampled with a Continuous Underway Fish Egg Sampler (CUFES, 315µm mesh size) at 4 m below the
   surface, and a WP2 net (200µm mesh size) from 100m to the surface, or 5 m above the sea floor to the surface

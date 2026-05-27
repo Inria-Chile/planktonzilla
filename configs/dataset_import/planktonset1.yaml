@@ -6,7 +6,7 @@ hf_dataset_name: planktonset1.0
 push_to_hub: true
 
 human_readable_name: "PlanktonSet 1.0: Plankton imagery data collected from F.G. Walton Smith in Straits of Florida from 2014-06-03 to 2014-06-06 and used in the 2015 National Data Science Bowl (NCEI Accession 0127422)"
-license: cc-by-nc-4.0
+license: other
 description: |
   Data presented here are subset of a larger plankton imagery data set collected in the subtropical Straits of 
   Florida from 2014-05-28 to 2014-06-14. Imagery data were collected using the In Situ Ichthyoplankton Imaging 

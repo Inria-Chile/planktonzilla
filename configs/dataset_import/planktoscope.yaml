@@ -6,7 +6,7 @@ hf_dataset_name: planktoscope
 push_to_hub: true
 
 human_readable_name: "PlanktoScope_reference : plankton images captured with the PlanktoScope"
-license: "cc-by-nc-4.0"
+license: cc-by-nc-4.0
 description: |
   Plankton was imaged with the PlanktoScope in different oceanic regions using different nets and protocol of 
   conservation. This dataset aims to serve as reference for taxonomic identification with the PlanktoScope 

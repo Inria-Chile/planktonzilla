@@ -6,7 +6,7 @@ hf_dataset_name: syke_ifcb_2022
 push_to_hub: true
 
 human_readable_name: "SYKE-plankton_IFCB_2022"
-license: "cc-by-nc-4.0"
+license: "cc-by-4.0"
 description: |
   The data set available here is published along with an article “Kraft et al. (2022). Towards operational 
   phytoplankton recognition with automated high-throughput imaging, near real-time data processing, and 
