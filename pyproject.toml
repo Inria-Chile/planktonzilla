@@ -35,6 +35,7 @@ dependencies = [
     "webdataset>=0.2.5,<0.2.9",
     "pandas",
     "fsspec",
+    "polars>=1.41.2",
 ]
 
 [project.urls]
