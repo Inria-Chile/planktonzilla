@@ -1,17 +1,16 @@
-from datasets import ClassLabel, Dataset, Sequence, concatenate_datasets, load_dataset, Features, Image, Value, DatasetDict, load_from_disk
-from joblib import Parallel, delayed
+import io
+import os
+import tarfile
+
+from datasets import DatasetDict, load_from_disk
+from PIL import Image
 from tqdm import tqdm
 
-from datasets import concatenate_datasets
-import numpy as np
-import os
+# Rutas relativas al repositorio para no depender de un cluster concreto.
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+INPUT_DIR = os.path.join(REPO_ROOT, "data", "planktonzilla_17M_only_plankton")
+SHARDS_DIR = os.path.join(REPO_ROOT, "data", "shards")
 
-import os
-import io
-import tarfile
-from io import BytesIO
-from PIL import Image
-from tqdm import tqdm 
 
 def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
     """
@@ -48,17 +47,17 @@ def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
                     if not isinstance(img, Image.Image):
                         raise ValueError(f"El campo 'image' en el índice {i_abs} no es un objeto PIL.Image")
 
-                    # *** CAMBIO CLAVE: Convertir la imagen a RGB antes de guardar ***
-                    # Esto maneja imágenes en escala de grises (L) o con paleta (P), o RGBA
+                    # Convertimos a RGB antes de guardar para cubrir escala de grises (L),
+                    # paleta (P) o RGBA, ya que JPEG solo admite RGB.
                     img_rgb = img.convert('RGB')
-                    
-                    # Guardar la imagen en un buffer de bytes
+
+                    # Guardamos la imagen como JPEG en un buffer de bytes.
                     img_bytes = io.BytesIO()
-                    img_rgb.save(img_bytes, format="PNG") 
+                    img_rgb.save(img_bytes, format="JPEG", quality=95)
                     img_bytes.seek(0)
 
                     # Crear el TarInfo y añadir el archivo de imagen
-                    img_info = tarfile.TarInfo(name=f"image_{i}.png")
+                    img_info = tarfile.TarInfo(name=f"image_{i}.jpg")
                     img_info.size = len(img_bytes.getbuffer())
                     tar.addfile(img_info, img_bytes)
 
@@ -73,10 +72,16 @@ def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
 
 
 def main():
-    dataset = load_from_disk("/lustre/fsn1/projects/rech/tec/uod68bo/data/planktonzilla_only_plankton2")
-    # del dataset["test"]
-    export_to_tar_shards(dataset, output_dir="/lustre/fsn1/projects/rech/tec/uod68bo/data/shards")
-    
+    dataset = load_from_disk(INPUT_DIR)
+
+    # Exportamos a shards unicamente el split train, que queda en data/shards/train.
+    export_to_tar_shards(
+        DatasetDict({"train": dataset["train"]}),
+        output_dir=SHARDS_DIR,
+    )
+
     print("DONE")
+
+
 if __name__ == "__main__":
     main()

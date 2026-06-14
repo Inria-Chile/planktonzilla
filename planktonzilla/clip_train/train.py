@@ -1,0 +1,580 @@
+import json
+import logging
+import math
+
+_logger = logging.getLogger(__name__)
+import os
+import time
+from contextlib import nullcontext
+from dataclasses import dataclass
+from typing import Any, Callable, Optional
+
+import numpy as np
+import torch
+import torch.distributed as dist
+import torch.nn.functional as F
+from torch.nn.parallel.distributed import DistributedDataParallel
+
+try:
+    import wandb
+except ImportError:
+    wandb = None
+
+from open_clip import get_input_dtype
+from open_clip_train.distributed import is_master
+try:
+    from open_clip_train.scheduler import get_learning_rate
+except ImportError:
+    def get_learning_rate(optimizer):
+        return optimizer.param_groups[0]["lr"]
+from open_clip_train.zero_shot import zero_shot_eval
+from open_clip_train.precision import get_autocast
+
+
+@dataclass
+class TrainState:
+    """Runtime training state.
+
+    Checkpoint serialization remains owned by the existing task helpers.
+    ``global_step`` and ``samples_seen`` are optional checkpoint metadata;
+    ``compiled_train_step`` is runtime-only and is not saved.
+    """
+    task: Any
+    optimizer: Optional[torch.optim.Optimizer] = None
+    scaler: Optional[Any] = None
+    scheduler: Optional[Callable[[int], None]] = None
+    epoch: int = 0
+    global_step: int = 0
+    samples_seen: int = 0
+    compiled_train_step: Optional[Callable] = None
+
+
+def estimate_train_state_counters(epoch: int, data: dict, args) -> tuple[int, int]:
+    """Estimate train counters for legacy checkpoints without explicit counters."""
+    if epoch <= 0 or 'train' not in data:
+        return 0, 0
+
+    dataloader = data['train'].dataloader
+    global_step = (dataloader.num_batches // args.accum_freq) * epoch
+    samples_seen = dataloader.num_samples * epoch
+    return global_step, samples_seen
+
+
+def restore_train_state_counters(
+        state: TrainState,
+        metadata: Optional[dict],
+        data: dict,
+        args,
+) -> None:
+    """Restore counters from checkpoint metadata, estimating them for old checkpoints."""
+    estimated_global_step, estimated_samples_seen = estimate_train_state_counters(state.epoch, data, args)
+    state.global_step = estimated_global_step
+    state.samples_seen = estimated_samples_seen
+    if metadata is not None:
+        if "global_step" in metadata:
+            state.global_step = int(metadata["global_step"])
+        if "samples_seen" in metadata:
+            state.samples_seen = int(metadata["samples_seen"])
+
+
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
+
+def postprocess_clip_output(model_out):
+    return {
+        "image_features": model_out[0],
+        "text_features": model_out[1],
+        "logit_scale": model_out[2]
+    }
+
+
+def backward(total_loss, scaler):
+    if scaler is not None:
+        scaler.scale(total_loss).backward()
+    else:
+        total_loss.backward()
+
+
+def _torch_compile_kwargs(args):
+    kwargs = {}
+    backend = getattr(args, "torchcompile_backend", None)
+    mode = getattr(args, "torchcompile_mode", None)
+    if backend is not None:
+        kwargs["backend"] = backend
+    if mode is not None:
+        kwargs["mode"] = mode
+    return kwargs
+
+
+def _make_train_step_no_accum_no_scaler(task, optimizer, autocast, args):
+    grad_clip_norm = getattr(args, "grad_clip_norm", None)
+    # Parameters are snapshotted when the step is created/compiled. Do not swap
+    # or re-wrap task.trainable_module after this point.
+    clip_params = tuple(task.trainable_module.parameters()) if grad_clip_norm is not None else ()
+
+    def train_step(batch):
+        # Keep zero_grad and logit-scale clamp outside this compiled closure.
+        # Dynamo intentionally graph-breaks on optimizer.zero_grad(), and the
+        # clamp is tiny eager bookkeeping after the optimizer update.
+        loss_scale = get_naflex_loss_scale(batch, args, task)
+        with autocast():
+            losses = task(batch)
+            total_loss = losses["loss"]
+        if loss_scale != 1.0:
+            total_loss = total_loss * loss_scale
+        total_loss.backward()
+        if grad_clip_norm is not None:
+            torch.nn.utils.clip_grad_norm_(clip_params, grad_clip_norm, norm_type=2.0)
+        optimizer.step()
+        return losses
+
+    return train_step
+
+
+def _get_compiled_train_step(state: TrainState, autocast, args):
+    assert state.optimizer is not None, "_get_compiled_train_step requires state.optimizer."
+    if state.compiled_train_step is not None:
+        return state.compiled_train_step
+
+    compiled_train_step = torch.compile(
+        _make_train_step_no_accum_no_scaler(state.task, state.optimizer, autocast, args),
+        **_torch_compile_kwargs(args),
+    )
+    state.compiled_train_step = compiled_train_step
+    return state.compiled_train_step
+
+
+def _finish_eager_train_step(task, optimizer, scaler, args):
+    if scaler is not None:
+        if args.grad_clip_norm is not None:
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(
+                task.trainable_module.parameters(), args.grad_clip_norm, norm_type=2.0,
+            )
+        scaler.step(optimizer)
+        scaler.update()
+    else:
+        if args.grad_clip_norm is not None:
+            torch.nn.utils.clip_grad_norm_(
+                task.trainable_module.parameters(), args.grad_clip_norm, norm_type=2.0,
+            )
+        optimizer.step()
+
+    # Note: we clamp to 4.6052 = ln(100), as in the original paper.
+    task.clamp_logit_scale()
+
+
+def _train_step_eager(task, batch, accum_state, optimizer, scaler, autocast, args):
+    if args.accum_freq == 1:
+        optimizer.zero_grad()
+        with autocast():
+            losses = task(batch)
+            total_loss = losses["loss"]
+
+        loss_scale = get_naflex_loss_scale(batch, args, task)
+        if loss_scale != 1.0:
+            total_loss = total_loss * loss_scale
+        backward(total_loss, scaler)
+
+        _finish_eager_train_step(task, optimizer, scaler, args)
+        return losses, task.batch_size(batch), accum_state
+
+    accum_batches, accum_features = accum_state
+
+    # First, cache the features without any gradient tracking.
+    with torch.no_grad():
+        with autocast():
+            model_out = task.trainable_module(**batch)
+
+            for f in ("logit_scale", "logit_bias"):
+                model_out.pop(f, None)
+
+            for key, val in model_out.items():
+                if key in accum_features:
+                    accum_features[key].append(val)
+                else:
+                    accum_features[key] = [val]
+
+        accum_batches.append(batch)
+
+    if len(accum_batches) < args.accum_freq:
+        # FIXME this makes data time logging unreliable when accumulating
+        return None
+
+    # Now, ready to take gradients for the last accum_freq batches.
+    # Re-do the forward pass for those batches, and use the cached features from the other batches as negatives.
+    # Call backwards each time, but only step optimizer at the end.
+    optimizer.zero_grad()
+    for j in range(args.accum_freq):
+        batch_j = accum_batches[j]
+
+        # Disable gradient sync for all but the last accumulation step.
+        # FSDP2: set_requires_gradient_sync; DDP: no_sync context manager.
+        is_last_step = (j == args.accum_freq - 1)
+        use_fsdp_no_sync = (
+            not is_last_step
+            and hasattr(task.trainable_module, 'set_requires_gradient_sync')
+        )
+        use_ddp_no_sync = (
+            not is_last_step
+            and not use_fsdp_no_sync
+            and isinstance(task.trainable_module, DistributedDataParallel)
+        )
+        if use_fsdp_no_sync:
+            task.trainable_module.set_requires_gradient_sync(False)
+
+        ddp_context = task.trainable_module.no_sync() if use_ddp_no_sync else nullcontext()
+        with ddp_context:
+            with autocast():
+                model_out = task.trainable_module(**batch_j)
+
+                inputs_no_accum = {}
+                inputs_no_accum["logit_scale"] = logit_scale = model_out.pop("logit_scale")
+                if "logit_bias" in model_out:
+                    inputs_no_accum["logit_bias"] = model_out.pop("logit_bias")
+
+                inputs = {}
+                for key, val in accum_features.items():
+                    accumulated = accum_features[key]
+                    inputs[key] = torch.cat(accumulated[:j] + [model_out[key]] + accumulated[j + 1:])
+
+                losses = task.compute_accum_loss(inputs, inputs_no_accum, accum_batches)
+                del inputs
+                del inputs_no_accum
+                total_loss = sum(v for k, v in losses.items() if k.endswith('_loss'))
+                losses["loss"] = total_loss
+                losses["logit_scale"] = logit_scale
+
+            loss_scale = get_naflex_loss_scale(batch_j, args, task)
+            if loss_scale != 1.0:
+                total_loss = total_loss * loss_scale
+            backward(total_loss, scaler)
+
+        if use_fsdp_no_sync:
+            task.trainable_module.set_requires_gradient_sync(True)
+
+    step_batch_size = sum(task.batch_size(accum_batch) for accum_batch in accum_batches)
+    _finish_eager_train_step(task, optimizer, scaler, args)
+    return losses, step_batch_size, ([], {})
+
+
+def is_naflex_batch(batch):
+    image = batch.get("image")
+    return isinstance(image, dict) and "patches" in image
+
+
+def get_naflex_loss_scale(batch, args, task):
+    loss_scale = getattr(args, "naflex_loss_scale", "none")
+    if loss_scale in (None, "none") or not is_naflex_batch(batch):
+        return 1.0
+
+    batch_size = task.batch_size(batch)
+    reference_batch_size = getattr(args, "batch_size", None)
+    if reference_batch_size is None or reference_batch_size <= 0:
+        raise ValueError("NaFlex loss scaling requires a positive --batch-size reference.")
+
+    scale = batch_size / reference_batch_size
+    if loss_scale == "linear":
+        return scale
+    if loss_scale == "sqrt":
+        return math.sqrt(scale)
+    raise ValueError(f"Unsupported NaFlex loss scale: {loss_scale}")
+
+
+def train_one_epoch(state: TrainState, data, args, tb_writer=None):
+    task = state.task
+    optimizer = state.optimizer
+    scaler = state.scaler
+    scheduler = state.scheduler
+    epoch = state.epoch
+    assert optimizer is not None, "train_one_epoch requires state.optimizer."
+    if not args.skip_scheduler:
+        assert scheduler is not None, "train_one_epoch requires state.scheduler unless --skip-scheduler is set."
+
+    device = torch.device(args.device)
+    autocast = get_autocast(
+        args.precision,
+        device_type=device.type,
+        fsdp=getattr(args, 'fsdp', False),
+    )
+    input_dtype = get_input_dtype(args.precision)
+    compile_step = (
+        getattr(args, "torchcompile", False)
+        and getattr(args, "torchcompile_strategy", "task") == "step"
+    )
+    eager_step = args.accum_freq > 1 or scaler is not None
+    if compile_step and eager_step:
+        raise ValueError(
+            "--torchcompile-strategy step requires --accum-freq 1 and a precision without GradScaler."
+        )
+    if eager_step:
+        train_step = None
+    elif compile_step:
+        train_step = _get_compiled_train_step(state, autocast, args)
+    else:
+        train_step = _make_train_step_no_accum_no_scaler(task, optimizer, autocast, args)
+
+    task.train()
+
+    data['train'].set_epoch(epoch)  # set epoch in process safe manner via sampler or shared_epoch
+    dataloader = data['train'].dataloader
+    num_batches_per_epoch = dataloader.num_batches // args.accum_freq
+    sample_digits = math.ceil(math.log(dataloader.num_samples + 1, 10))
+
+    accum_state = ([], {}) if args.accum_freq > 1 else None
+
+    losses_m = {}
+    batch_time_m = AverageMeter()
+    data_time_m = AverageMeter()
+    end = time.time()
+    num_samples = 0
+    for i, batch in enumerate(dataloader):
+        i_accum = i // args.accum_freq
+        step = num_batches_per_epoch * epoch + i_accum
+
+        if not args.skip_scheduler:
+            scheduler(step)
+
+        batch = task.prepare_batch(batch, device=device, input_dtype=input_dtype)
+
+        data_time_m.update(time.time() - end)
+        if train_step is not None:
+            optimizer.zero_grad()
+            losses = train_step(batch)
+            task.clamp_logit_scale()
+            step_batch_size = task.batch_size(batch)
+        else:
+            result = _train_step_eager(
+                task,
+                batch,
+                accum_state,
+                optimizer,
+                scaler,
+                autocast,
+                args,
+            )
+            if result is None:
+                continue
+            losses, step_batch_size, accum_state = result
+
+        batch_time_m.update(time.time() - end)
+        end = time.time()
+        batch_count = i_accum + 1
+        num_samples += step_batch_size * args.world_size
+        state.global_step = step + 1
+        state.samples_seen += step_batch_size * args.world_size
+        if is_master(args) and (i_accum % args.log_every_n_steps == 0 or batch_count == num_batches_per_epoch):
+            samples_per_epoch = dataloader.num_samples
+            percent_complete = 100.0 * batch_count / num_batches_per_epoch
+
+            # NOTE loss is coarsely sampled, just master node and per log update
+            for key, val in losses.items():
+                if key not in losses_m:
+                    losses_m[key] = AverageMeter()
+                losses_m[key].update(val.item(), step_batch_size)
+
+            logit_scale = losses.get("logit_scale", None)
+            logit_scale_scalar = logit_scale.item() if logit_scale is not None else 0.0
+            loss_log = " ".join(
+                [
+                    f"{loss_name.capitalize()}: {loss_m.val:#.5g} ({loss_m.avg:#.5g})"
+                    for loss_name, loss_m in losses_m.items()
+                ]
+            )
+            samples_per_second = step_batch_size * args.world_size / batch_time_m.val
+            samples_per_second_per_gpu = step_batch_size / batch_time_m.val
+            learning_rate = get_learning_rate(optimizer)
+            _logger.info(
+                f"Train Epoch: {epoch} [{num_samples:>{sample_digits}}/{samples_per_epoch} ({percent_complete:.0f}%)] "
+                f"Data (t): {data_time_m.avg:.3f} "
+                f"Batch (t): {batch_time_m.avg:.3f}, {samples_per_second:#g}/s, {samples_per_second_per_gpu:#g}/s/gpu "
+                f"LR: {learning_rate:5f} "
+                f"Logit Scale: {logit_scale_scalar:.3f} " + loss_log
+            )
+
+            # Save train loss / etc. Using non avg meter values as loggers have their own smoothing
+            log_data = {
+                "data_time": data_time_m.val,
+                "batch_time": batch_time_m.val,
+                "samples_per_second": samples_per_second,
+                "samples_per_second_per_gpu": samples_per_second_per_gpu,
+                "scale": logit_scale_scalar,
+                "lr": learning_rate,
+            }
+            log_data.update({name:val.val for name,val in losses_m.items()})
+
+            log_data = {"train/" + name: val for name, val in log_data.items()}
+
+            if tb_writer is not None:
+                for name, val in log_data.items():
+                    tb_writer.add_scalar(name, val, step)
+
+            if args.wandb:
+                assert wandb is not None, 'Please install wandb.'
+                log_data['step'] = step  # for backwards compatibility
+                wandb.log(log_data, step=step)
+
+            # resetting batch / data time meters per log window
+            batch_time_m.reset()
+            data_time_m.reset()
+    # end for
+
+
+def zero_shot_eval_all(task, data, epoch, args, tokenizer=None):
+    """Run requested zero-shot evaluators based on entries in the data dict."""
+    zero_shot_metrics = {}
+    if "imagenet-val" in data or "imagenet-v2" in data:
+        zero_shot_metrics.update(zero_shot_eval(task, data, epoch, args, tokenizer=tokenizer))
+    if "audio-zeroshot" in data:
+        from open_clip_train.audio_zero_shot import audio_zero_shot_eval
+
+        zero_shot_metrics.update(
+            audio_zero_shot_eval(task, data["audio-zeroshot"], epoch, args, tokenizer=tokenizer)
+        )
+    return zero_shot_metrics
+
+
+def evaluate(model, data, epoch, args, tb_writer=None, tokenizer=None):
+    """Evaluate reporting precision/recall/F1 per class instead of retrieval R@k."""
+    from sklearn.metrics import f1_score, precision_score, recall_score
+
+    metrics = {}
+    if not is_master(args):
+        return metrics
+
+    device = torch.device(args.device)
+    model.eval()
+
+    zero_shot_metrics = zero_shot_eval(model, data, epoch, args, tokenizer=tokenizer)
+    metrics.update(zero_shot_metrics)
+
+    autocast = get_autocast(args.precision, device_type=device.type)
+    input_dtype = get_input_dtype(args.precision)
+
+    if 'val' in data and (args.val_frequency and ((epoch % args.val_frequency) == 0 or epoch == args.epochs)):
+        model_no_ddp = model.module if hasattr(model, "module") else model
+        dataloader = data['val'].dataloader
+        num_samples = 0
+        samples_per_val = dataloader.num_samples
+
+        cumulative_loss = 0.0
+        cumulative_gen_loss = 0.0
+        imgs_features_val, txt_tokens_val = [], []
+        with torch.inference_mode():
+            for i, batch in enumerate(dataloader):
+                images, texts = batch
+                images = images.to(device=device, dtype=input_dtype, non_blocking=True)
+                texts = texts.to(device=device, non_blocking=True)
+
+                with autocast():
+                    model_out = model(images, texts)
+                    image_features = model_out["image_features"]
+                    text_features = model_out["text_features"]
+                    logit_scale = model_out["logit_scale"]
+
+                    imgs_features_val.append(image_features.cpu())
+                    txt_tokens_val.append(texts.cpu())
+
+                    logit_scale = logit_scale.mean()
+                    logits_per_image = logit_scale * image_features @ text_features.t()
+                    logits_per_text = logits_per_image.t()
+
+                    batch_size = images.shape[0]
+                    labels = torch.arange(batch_size, device=device).long()
+                    total_loss = (
+                        F.cross_entropy(logits_per_image, labels) +
+                        F.cross_entropy(logits_per_text, labels)
+                    ) / 2
+
+                    gen_loss = maybe_compute_generative_loss(model_out)
+
+                cumulative_loss += total_loss * batch_size
+                num_samples += batch_size
+                if is_master(args) and (i % 100) == 0:
+                    _logger.info(
+                        f"Eval Epoch: {epoch} [{num_samples} / {samples_per_val}]\t"
+                        f"Clip Loss: {cumulative_loss / num_samples:.6f}\t"
+                    )
+                    if gen_loss is not None:
+                        cumulative_gen_loss += gen_loss * batch_size
+                        _logger.info(f"Generative Loss: {cumulative_gen_loss / num_samples:.6f}\t")
+
+            # Classification metrics
+            imgs_features_val = torch.cat(imgs_features_val)
+            imgs_features_val /= imgs_features_val.norm(dim=-1, keepdim=True)
+
+            txt_tokens_val = torch.cat(txt_tokens_val)
+            txt_unique_tokens_val = torch.unique(txt_tokens_val, dim=0)
+
+            txt_unique_features_val = model_no_ddp.encode_text(txt_unique_tokens_val.to(device))
+            txt_unique_features_val /= txt_unique_features_val.norm(dim=-1, keepdim=True)
+            txt_unique_features_val = txt_unique_features_val.cpu()
+
+            class_preds = (100.0 * imgs_features_val @ txt_unique_features_val.T).softmax(dim=-1).argmax(1).cpu()
+            class_targets = (txt_tokens_val.unsqueeze(1) == txt_unique_tokens_val.unsqueeze(0)).all(dim=-1).to(torch.int64).argmax(dim=1).cpu()
+
+            precision = precision_score(class_targets, class_preds, average='macro', zero_division=0)
+            recall = recall_score(class_targets, class_preds, average='macro', zero_division=0)
+            f1 = f1_score(class_targets, class_preds, average='macro', zero_division=0)
+
+            loss = cumulative_loss / num_samples
+            metrics.update(
+                {"clip_val_loss": loss.item(), "val_precision": precision, "val_recall": recall, "val_f1": f1, "epoch": epoch, "num_samples": num_samples}
+            )
+            if gen_loss is not None:
+                gen_loss = cumulative_gen_loss / num_samples
+                metrics.update({"val_generative_loss": gen_loss.item()})
+
+    if not metrics:
+        return metrics
+
+    _logger.info(
+        f"Eval Epoch: {epoch} "
+        + "\t".join([f"{k}: {round(v, 4):.4f}" for k, v in metrics.items()])
+    )
+
+    log_data = {"val/" + name: val for name, val in metrics.items()}
+
+    if args.save_logs:
+        if tb_writer is not None:
+            for name, val in log_data.items():
+                tb_writer.add_scalar(name, val, epoch)
+        with open(os.path.join(args.checkpoint_path, "results.jsonl"), "a+") as f:
+            f.write(json.dumps(metrics))
+            f.write("\n")
+
+    if args.wandb:
+        assert wandb is not None, 'Please install wandb.'
+        if 'train' in data:
+            dataloader = data['train'].dataloader
+            num_batches_per_epoch = dataloader.num_batches // args.accum_freq
+            step = num_batches_per_epoch * epoch
+        else:
+            step = None
+        log_data['epoch'] = epoch
+        wandb.log(log_data, step=step)
+
+    return metrics
+
+
+def maybe_compute_generative_loss(model_out, texts=None, pad_id=0):
+    if "logits" in model_out and texts is not None:
+        logits = model_out["logits"][:, :-1]
+        labels = texts[:, 1:]
+        return F.cross_entropy(logits.permute(0, 2, 1), labels, ignore_index=pad_id)

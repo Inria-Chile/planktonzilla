@@ -17,10 +17,6 @@ module purge
 module load arch/h100
 source .env/bin/activate
 
-# Phase 5 DEL-02: vendored open_clip/ deleted; the wrapper at
-# planktonzilla.clip_train.main delegates to the PyPI-installed open-clip-torch.
-# No PYTHONPATH injection required.
-
 export TORCH_DISTRIBUTED_TIMEOUT=7200
 export NCCL_TIMEOUT=7200
 export TORCH_NCCL_BLOCKING_WAIT=1
@@ -43,7 +39,6 @@ srun torchrun \
   -m planktonzilla.clip_train.main \
   --save-frequency 5 \
   --train-data "${WORK:-$PWD}/data/shards/train/shard_{00000..01771}.tar" \
-  --val-data "${WORK:-$PWD}/data/shards/validation/shard_{00000..00590}.tar" \
   --train-num-samples 1771611 \
   --dataset-type webdataset \
   --lr 1e-4 \
