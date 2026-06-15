@@ -483,7 +483,11 @@ def evaluate(model, data, epoch, args, tb_writer=None, tokenizer=None):
                 texts = texts.to(device=device, non_blocking=True)
 
                 with autocast():
-                    model_out = model(images, texts)
+                    # Use the unwrapped module: this branch runs on rank 0 only
+                    # (non-master ranks return early), and calling the DDP-wrapped
+                    # forward on a single rank enqueues unmatched NCCL collectives
+                    # (buffer broadcasts) that deadlock the barrier after evaluate().
+                    model_out = model_no_ddp(images, texts)
                     image_features = model_out["image_features"]
                     text_features = model_out["text_features"]
                     logit_scale = model_out["logit_scale"]

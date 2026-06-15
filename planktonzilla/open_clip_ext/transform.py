@@ -15,6 +15,12 @@ from typing import Any, Optional, Tuple, Union
 
 import open_clip
 from open_clip.transform import PreprocessCfg
+from open_clip.transform import image_transform as _UPSTREAM_IMAGE_TRANSFORM
+
+# Captured at module import time, BEFORE clip_train/main.py::_patch_upstream
+# rebinds open_clip.transform.image_transform to the wrapper below. Re-importing
+# the name from open_clip.transform after the patch would return THIS wrapper and
+# recurse infinitely, so we keep a direct handle to the genuine upstream callable.
 
 
 @dataclass
@@ -50,9 +56,9 @@ def image_transform(
         upstream_fields = set(_UpstreamCfg.__dataclass_fields__)
         kwargs = {**kwargs, "aug_cfg": _UpstreamCfg(**{k: v for k, v in asdict(aug_cfg).items() if k in upstream_fields})}
 
-    # import the original directly from the submodule to avoid hitting our own patch
-    from open_clip.transform import image_transform as _upstream
-    result = _upstream(image_size, is_train, **kwargs)
+    # Use the handle captured at import time; re-importing here would resolve to
+    # this wrapper (after _patch_upstream rebinds the name) and recurse.
+    result = _UPSTREAM_IMAGE_TRANSFORM(image_size, is_train, **kwargs)
 
     if is_train and trivial_augment:
         from torchvision.transforms import Compose, TrivialAugmentWide
