@@ -582,3 +582,4 @@ def maybe_compute_generative_loss(model_out, texts=None, pad_id=0):
         logits = model_out["logits"][:, :-1]
         labels = texts[:, 1:]
         return F.cross_entropy(logits.permute(0, 2, 1), labels, ignore_index=pad_id)
+    return None
