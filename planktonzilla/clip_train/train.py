@@ -9,7 +9,6 @@ from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
-import numpy as np
 import torch
 import torch.distributed as dist
 import torch.nn.functional as F
