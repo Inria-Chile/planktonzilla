@@ -74,9 +74,13 @@ def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
 def main():
     dataset = load_from_disk(INPUT_DIR)
 
-    # Exportamos a shards unicamente el split train, que queda en data/shards/train.
+    # Exportamos train y validation. El split de validacion en el DatasetDict se
+    # llama "validation"; lo mapeamos a la carpeta "val" para que coincida con el
+    # --val-data data/shards/val del flujo de entrenamiento CLIP.
+    # (acepta alias "validation"/"val" segun como se haya guardado el dataset).
+    val_key = "validation" if "validation" in dataset else "val"
     export_to_tar_shards(
-        DatasetDict({"train": dataset["train"]}),
+        DatasetDict({"train": dataset["train"], "val": dataset[val_key]}),
         output_dir=SHARDS_DIR,
     )
 
