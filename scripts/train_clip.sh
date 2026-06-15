@@ -39,6 +39,7 @@ srun torchrun \
   -m planktonzilla.clip_train.main \
   --save-frequency 5 \
   --train-data "${WORK:-$PWD}/data/shards/train/shard_{00000..01771}.tar" \
+  --val-data "${WORK:-$PWD}/data/shards/val/shard_{00000..01771}.tar" \
   --train-num-samples 1771611 \
   --dataset-type webdataset \
   --lr 1e-4 \
