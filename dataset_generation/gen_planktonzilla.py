@@ -77,7 +77,7 @@ def clean_corrupt_examples_optimized(dataset, batch_size=1000, n_jobs=-1):
                     _ = dataset[i]
                     valid.append(i)
                 except Exception:
-                    pass
+                    continue
             return valid
 
     starts = range(0, total, batch_size)
