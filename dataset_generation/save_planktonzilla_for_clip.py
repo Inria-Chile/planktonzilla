@@ -6,7 +6,7 @@ from datasets import DatasetDict, load_from_disk
 from PIL import Image
 from tqdm import tqdm
 
-# Rutas relativas al repositorio para no depender de un cluster concreto.
+# Paths relative to the repository so we don't depend on a specific cluster.
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 INPUT_DIR = os.path.join(REPO_ROOT, "data", "planktonzilla_17M_only_plankton")
 SHARDS_DIR = os.path.join(REPO_ROOT, "data", "shards")
@@ -14,8 +14,8 @@ SHARDS_DIR = os.path.join(REPO_ROOT, "data", "shards")
 
 def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
     """
-    Exporta un DatasetDict a shards .tar para entrenamiento tipo CLIP/WebDataset,
-    asegurando que todas las imágenes se guarden en formato RGB.
+    Export a DatasetDict to .tar shards for CLIP/WebDataset-style training,
+    making sure all images are saved in RGB format.
     """
     os.makedirs(output_dir, exist_ok=True)
 
@@ -37,35 +37,35 @@ def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
             shard_indices = range(start, end)
             
             with tarfile.open(shard_path, "w") as tar:
-                # Iterar sobre los índices absolutos del dataset
+                # Loop over the absolute indices of the dataset
                 for i_abs in tqdm(shard_indices, desc=f"{split_name} shard {shard_idx}"):
                     example = dataset[i_abs]
-                    i = i_abs - start # Índice relativo dentro del shard
+                    i = i_abs - start # Relative index within the shard
 
-                    # --- 1. Imagen (key: image_{i}.jpg) ---
+                    # --- 1. Image (key: image_{i}.jpg) ---
                     img = example["image"]
                     if not isinstance(img, Image.Image):
-                        raise ValueError(f"El campo 'image' en el índice {i_abs} no es un objeto PIL.Image")
+                        raise ValueError(f"The 'image' field at index {i_abs} is not a PIL.Image object")
 
-                    # Convertimos a RGB antes de guardar para cubrir escala de grises (L),
-                    # paleta (P) o RGBA, ya que JPEG solo admite RGB.
+                    # Convert to RGB before saving to cover grayscale (L),
+                    # palette (P) or RGBA, since JPEG only supports RGB.
                     img_rgb = img.convert('RGB')
 
-                    # Guardamos la imagen como JPEG en un buffer de bytes.
+                    # Save the image as JPEG into a bytes buffer.
                     img_bytes = io.BytesIO()
                     img_rgb.save(img_bytes, format="JPEG", quality=95)
                     img_bytes.seek(0)
 
-                    # Crear el TarInfo y añadir el archivo de imagen
+                    # Create the TarInfo and add the image file
                     img_info = tarfile.TarInfo(name=f"image_{i}.jpg")
                     img_info.size = len(img_bytes.getbuffer())
                     tar.addfile(img_info, img_bytes)
 
-                    # --- 2. Etiqueta/Texto (key: text_{i}.txt) ---
+                    # --- 2. Label/Text (key: text_{i}.txt) ---
                     label_str = str(taxo_classes[example["label"]])
                     label_bytes = io.BytesIO(label_str.encode("utf-8"))
-                    
-                    # Crear el TarInfo y añadir el archivo de texto
+
+                    # Create the TarInfo and add the text file
                     label_info = tarfile.TarInfo(name=f"image_{i}.txt")
                     label_info.size = len(label_bytes.getbuffer())
                     tar.addfile(label_info, label_bytes)
@@ -74,10 +74,10 @@ def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
 def main():
     dataset = load_from_disk(INPUT_DIR)
 
-    # Exportamos train y validation. El split de validacion en el DatasetDict se
-    # llama "validation"; lo mapeamos a la carpeta "val" para que coincida con el
-    # --val-data data/shards/val del flujo de entrenamiento CLIP.
-    # (acepta alias "validation"/"val" segun como se haya guardado el dataset).
+    # Export train and validation. The validation split in the DatasetDict is
+    # called "validation"; we map it to the "val" folder so it matches the
+    # --val-data data/shards/val of the CLIP training flow.
+    # (accepts the "validation"/"val" alias depending on how the dataset was saved).
     val_key = "validation" if "validation" in dataset else "val"
     export_to_tar_shards(
         DatasetDict({"train": dataset["train"], "val": dataset[val_key]}),

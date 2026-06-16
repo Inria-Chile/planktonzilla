@@ -1,25 +1,26 @@
-"""Genera el dataset planktonzilla completo desde cero.
+"""Build the full planktonzilla dataset from scratch.
 
-Para cada dataset de origen arma el imagefolder con Hydra, le asigna la taxonomia
-y los IDs externos desde el CSV de taxonomia, recupera la metadata por API
-(latitud, longitud, profundidad, temperatura, humedad y fecha) y al final
-concatena todo, descarta los ejemplos corruptos y guarda el resultado en disco.
+For each source dataset it builds the imagefolder with Hydra, assigns the
+taxonomy and external IDs from the taxonomy CSV, fetches the metadata through the
+APIs (latitude, longitude, depth, temperature, humidity and date) and, at the
+end, concatenates everything, drops the corrupt examples and saves the result to
+disk.
 
-Requisitos previos:
+Prerequisites:
 
-  - CSV de taxonomia con las columnas de taxonomia y de IDs externos
-    (wikidata_ID, ecotaxa_ID, aphia_ID, NCBI_ID, BOLD_ID), indexado por
+  - Taxonomy CSV with the taxonomy and external ID columns
+    (wikidata_ID, ecotaxa_ID, aphia_ID, NCBI_ID, BOLD_ID), indexed by
     (Dataset, Raw_Labels).
 
-  - Algunos datasets tienen proteccion anti-bot en su descarga, asi que hay que
-    bajar el .zip a mano y pasar su ruta en los overrides de Hydra. Mientras no se
-    indique esa ruta quedan comentados mas abajo:
+  - Some datasets have anti-bot protection on their download, so you have to
+    download the .zip by hand and pass its path in the Hydra overrides. Until that
+    path is given they stay commented out below:
       * Zoolake: https://opendata.eawag.ch/dataset/.../download/data.zip
       * SYKE ZooScan 2024: https://etsin.fairdata.fi/dataset/.../data
       * JEDI CPICS: https://dbarchive.biosciencedbc.jp/data/jedisystem-oceansdb/LATEST/CPICS_Validated.zip
 
-  - Acceso a internet para las APIs de WHOI y EcoTaxa. Los objetos de EcoTaxa en
-    proyectos privados no devuelven metadata y quedan en null.
+  - Internet access for the WHOI and EcoTaxa APIs. EcoTaxa objects in private
+    projects do not return metadata and stay null.
 """
 
 import concurrent.futures
@@ -57,20 +58,20 @@ logger = get_pylogger(__name__)
 num_proc = int(cpu_count() / 2)
 
 
-# Limpieza de ejemplos corruptos
+# Cleaning up corrupt examples
 def clean_corrupt_examples_optimized(dataset, batch_size=1000, n_jobs=-1):
-    """Descarta los ejemplos corruptos leyendo por lotes para ir rapido."""
+    """Drop the corrupt examples, reading in batches to go fast."""
     total = len(dataset)
 
     def process_batch(start):
         end = min(start + batch_size, total)
         batch = range(start, end)
         try:
-            # Si el lote entero se lee sin error, todos estan sanos.
+            # If the whole batch reads without error, all of them are fine.
             _ = dataset[start:end]
             return list(batch)
         except Exception:
-            # Si el lote falla, revisamos fila por fila y descartamos las corruptas.
+            # If the batch fails, we check row by row and drop the corrupt ones.
             valid = []
             for i in batch:
                 try:
@@ -82,17 +83,17 @@ def clean_corrupt_examples_optimized(dataset, batch_size=1000, n_jobs=-1):
 
     starts = range(0, total, batch_size)
     results = Parallel(n_jobs=n_jobs)(
-        delayed(process_batch)(s) for s in tqdm(starts, desc="Verificando integridad")
+        delayed(process_batch)(s) for s in tqdm(starts, desc="Checking integrity")
     )
     good = [i for batch in results for i in batch]
 
-    print(f"Original: {total} -> limpio: {len(good)} (eliminados {total - len(good)})")
+    print(f"Original: {total} -> clean: {len(good)} (removed {total - len(good)})")
     return dataset.select(good)
 
 
-# Recuperacion de metadata por API
+# Fetching metadata through the APIs
 def retrieve_whoi_metadata(bin_id, session=None):
-    """Trae lat/lon, profundidad, temperatura, humedad y fecha de un bin de WHOI."""
+    """Get lat/lon, depth, temperature, humidity and date from a WHOI bin."""
     api_url = f"https://ifcb-data.whoi.edu/api/bin/{bin_id}"
     hdr_url = f"https://ifcb-data.whoi.edu/mvco/{bin_id}.hdr"
 
@@ -109,7 +110,7 @@ def retrieve_whoi_metadata(bin_id, session=None):
     }
 
     try:
-        # Metadata en JSON: coordenadas, profundidad y fecha del bin.
+        # JSON metadata: coordinates, depth and date of the bin.
         r = requester.get(api_url, timeout=10)
         if r.ok:
             data = r.json()
@@ -117,10 +118,10 @@ def retrieve_whoi_metadata(bin_id, session=None):
             info["Longitude"] = data.get("lng")
             info["Depth"] = data.get("depth")
             ts = data.get("timestamp_iso")
-            # Nos quedamos solo con la fecha (YYYY-MM-DD).
+            # We keep only the date (YYYY-MM-DD).
             info["Timestamp"] = ts.split("T")[0] if ts else None
 
-        # Metadata en el archivo .hdr: temperatura y humedad.
+        # Metadata in the .hdr file: temperature and humidity.
         r = requester.get(hdr_url, timeout=10)
         if r.ok:
             lines = r.text.splitlines()
@@ -135,7 +136,7 @@ def retrieve_whoi_metadata(bin_id, session=None):
                     info["Humidity"] = mapping.get("Humidity")
                     break
 
-        # Cast numerico de los campos que lo necesitan.
+        # Numeric cast for the fields that need it.
         for k in ("Latitude", "Longitude", "Depth", "Temperature", "Humidity"):
             v = info[k]
             info[k] = float(v) if v not in (None, "", np.nan) else np.nan
@@ -147,7 +148,7 @@ def retrieve_whoi_metadata(bin_id, session=None):
 
 
 def retrieve_ecotaxa_metadata(obj_id, session=None):
-    """Trae profundidad, lat/lon y fecha de un objeto de EcoTaxa."""
+    """Get depth, lat/lon and date from an EcoTaxa object."""
     api_url = f"https://ecotaxa.obs-vlfr.fr/api/object/{obj_id}"
 
     info = {
@@ -177,7 +178,7 @@ def retrieve_ecotaxa_metadata(obj_id, session=None):
             val = data.get(src)
             info[dst] = float(val) if val is not None else np.nan
 
-        # objdate ya viene como fecha (YYYY-MM-DD).
+        # objdate already comes as a date (YYYY-MM-DD).
         info["Timestamp"] = data.get("objdate")
 
     except (requests.RequestException, ValueError, TypeError):
@@ -186,23 +187,23 @@ def retrieve_ecotaxa_metadata(obj_id, session=None):
     return info
 
 
-# Asignacion de taxonomia, IDs y metadata
+# Assigning taxonomy, IDs and metadata
 class RedefineDataset:
-    """Base para asignar taxonomia, IDs externos y metadata a un dataset."""
+    """Base class to assign taxonomy, external IDs and metadata to a dataset."""
 
     TAXONOMY_COLS = ("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
     EXTRA_COLS = ("proposed_label", "plankton", "root_class", "qualifier")
-    ID_STR_COLS = ("wikidata_ID", "ecotaxa_ID")        # ya son texto en el CSV
-    ID_NUM_COLS = ("aphia_ID", "NCBI_ID", "BOLD_ID")   # vienen como numero -> texto sin decimales
+    ID_STR_COLS = ("wikidata_ID", "ecotaxa_ID")        # already text in the CSV
+    ID_NUM_COLS = ("aphia_ID", "NCBI_ID", "BOLD_ID")   # come as numbers -> text without decimals
 
     def __init__(self, csv_taxonomies_path):
-        # Columnas que se traen del CSV indexadas por (Dataset, Raw_Labels).
+        # Columns pulled from the CSV, indexed by (Dataset, Raw_Labels).
         self.lookup_cols = [
             *self.TAXONOMY_COLS, *self.EXTRA_COLS, *self.ID_STR_COLS, *self.ID_NUM_COLS,
         ]
         self.lookup = self._build_lookup(csv_taxonomies_path)
 
-        # Columnas que se aplanan desde el JSON de metadata.
+        # Columns flattened out of the metadata JSON.
         self.metadata_cols_final = [
             "Latitude", "Humidity", "Temperature", "Longitude",
             "ObjID", "Depth_max", "Depth_min", "timestamp",
@@ -210,7 +211,7 @@ class RedefineDataset:
 
     @staticmethod
     def _norm(v):
-        """Cadenas vacias o en blanco pasan a None; el resto se deja igual."""
+        """Empty or blank strings become None; everything else is left as is."""
         if isinstance(v, str):
             v = v.strip()
             return v or None
@@ -219,7 +220,7 @@ class RedefineDataset:
     def _build_lookup(self, csv_path):
         df = pl.read_csv(csv_path)
 
-        # Los IDs numericos se guardan como texto sin decimales (135336.0 -> "135336").
+        # Numeric IDs are stored as text without decimals (135336.0 -> "135336").
         for c in self.ID_NUM_COLS:
             if c in df.columns:
                 df = df.with_columns(
@@ -236,11 +237,11 @@ class RedefineDataset:
         return lookup
 
     def _add_metadata(self, ds):
-        """Adjunta la metadata como JSON string. Lo definen las subclases."""
+        """Attach the metadata as a JSON string. Defined by the subclasses."""
         raise NotImplementedError()
 
     def _flatten_metadata(self, ds):
-        """Convierte el JSON de metadata en columnas independientes."""
+        """Turn the metadata JSON into separate columns."""
 
         def extract(example):
             try:
@@ -251,11 +252,11 @@ class RedefineDataset:
             for col in self.metadata_cols_final:
                 example[col] = None
 
-            # ObjID para EcoTaxa, BinID para WHOI.
+            # ObjID for EcoTaxa, BinID for WHOI.
             obj = md.get("ObjID") if md.get("ObjID") is not None else md.get("BinID")
             example["ObjID"] = str(obj) if obj not in (None, "") else None
 
-            # WHOI trae una sola profundidad; EcoTaxa trae rango.
+            # WHOI gives a single depth; EcoTaxa gives a range.
             depth = md.get("Depth")
             if depth not in (None, ""):
                 example["Depth_max"] = np.float32(depth)
@@ -275,11 +276,11 @@ class RedefineDataset:
 
             return example
 
-        ds = ds.map(extract, desc="Aplanando metadata", num_proc=num_proc)
+        ds = ds.map(extract, desc="Flattening metadata", num_proc=num_proc)
         return ds.remove_columns("metadata")
 
     def _cast_scalar_types(self, ds):
-        """Fija tipos consistentes para que todos los datasets concatenen sin conflicto."""
+        """Set consistent types so all datasets concatenate without conflicts."""
         features = ds.features.copy()
 
         string_cols = [
@@ -303,7 +304,7 @@ class RedefineDataset:
         return ds.cast(features)
 
     def redefine(self, hf_dataset, dataset_name, num_proc):
-        """Asigna taxonomia, IDs y metadata a todos los splits y los concatena."""
+        """Assign taxonomy, IDs and metadata to every split and concatenate them."""
         parts = []
         n_splits = len(hf_dataset)
 
@@ -335,8 +336,8 @@ class RedefineDataset:
                     **tax,
                 }
 
-            print(f"Procesando split {split}...")
-            ds = ds.map(process_row, desc="Mapeo de taxonomia", num_proc=num_proc)
+            print(f"Processing split {split}...")
+            ds = ds.map(process_row, desc="Mapping taxonomy", num_proc=num_proc)
 
             ds = self._add_metadata(ds)
             ds = self._flatten_metadata(ds)
@@ -353,7 +354,7 @@ class RedefineDataset:
 
 
 class EcoTaxaRedefiner(RedefineDataset):
-    """Datasets de EcoTaxa (flowcamnet, uvp6net, zooscan, etc.)."""
+    """EcoTaxa datasets (flowcamnet, uvp6net, zooscan, etc.)."""
 
     def _add_metadata(self, ds):
         ids = [path.split("/")[-1].split(".")[0] for path in ds["original_path"]]
@@ -375,7 +376,7 @@ class EcoTaxaRedefiner(RedefineDataset):
 
         ds = ds.map(
             lambda ex: {"metadata": json.dumps(ex["metadata"])},
-            desc="Serializando metadata",
+            desc="Serializing metadata",
             num_proc=num_proc,
         )
 
@@ -385,14 +386,14 @@ class EcoTaxaRedefiner(RedefineDataset):
 
 
 class NoMetadataRedefiner(RedefineDataset):
-    """Datasets sin metadata externa (lensless, medplanktonset, zoolake, etc.)."""
+    """Datasets without external metadata (lensless, medplanktonset, zoolake, etc.)."""
 
     def _add_metadata(self, ds):
         ds = ds.add_column("metadata", [{}] * len(ds))
 
         ds = ds.map(
             lambda ex: {"metadata": json.dumps(ex["metadata"])},
-            desc="Serializando metadata",
+            desc="Serializing metadata",
             num_proc=num_proc,
         )
 
@@ -402,7 +403,7 @@ class NoMetadataRedefiner(RedefineDataset):
 
 
 class WHOIRedefiner(RedefineDataset):
-    """Dataset de WHOI: la metadata se consulta por bin_id."""
+    """WHOI dataset: the metadata is queried by bin_id."""
 
     def _add_metadata(self, ds):
         def extract_bin_id(example):
@@ -410,12 +411,12 @@ class WHOIRedefiner(RedefineDataset):
             parts = fname.split(".")[0].split("_")[:-1]
             return {"bin_id": "_".join(parts)}
 
-        ds = ds.map(extract_bin_id, desc="Extrayendo bin_id de WHOI")
+        ds = ds.map(extract_bin_id, desc="Extracting WHOI bin_id")
 
         bin_ids = np.unique(ds["bin_id"])
-        print(f"{len(bin_ids)} bin_ids unicos")
+        print(f"{len(bin_ids)} unique bin_ids")
 
-        # Un bin agrupa muchas imagenes, asi que consultamos una vez por bin.
+        # A bin groups many images, so we query once per bin.
         bin_lookup = {}
         with requests.Session() as session:
             with concurrent.futures.ThreadPoolExecutor(max_workers=num_proc) as executor:
@@ -439,13 +440,13 @@ class WHOIRedefiner(RedefineDataset):
 
         ds = ds.map(
             lambda ex: {"metadata": bin_lookup.get(ex["bin_id"], {})},
-            desc="Adjuntando metadata WHOI",
+            desc="Attaching WHOI metadata",
         )
         ds = ds.remove_columns("bin_id")
 
         ds = ds.map(
             lambda ex: {"metadata": json.dumps(ex["metadata"])},
-            desc="Serializando metadata",
+            desc="Serializing metadata",
             num_proc=num_proc,
         )
 
@@ -455,7 +456,7 @@ class WHOIRedefiner(RedefineDataset):
 
 
 class JediRedefiner(RedefineDataset):
-    """Dataset JEDI Oceans: metadata fija para todos los ejemplos."""
+    """JEDI Oceans dataset: fixed metadata for all the examples."""
 
     def __init__(self, csv_taxonomies_path):
         super().__init__(csv_taxonomies_path)
@@ -471,7 +472,7 @@ class JediRedefiner(RedefineDataset):
 
         ds = ds.map(
             lambda ex: {"metadata": json.dumps(ex["metadata"])},
-            desc="Serializando metadata",
+            desc="Serializing metadata",
             num_proc=num_proc,
         )
 
@@ -512,7 +513,7 @@ def main():
             ],
             "redefiner": EcoTaxaRedefiner(csv_taxonomies_path=taxo_csv_path),
         },
-        # JEDI Oceans requiere descargar CPICS_Validated.zip a mano.
+        # JEDI Oceans requires downloading CPICS_Validated.zip by hand.
         # "jedi_oceans_cpics": {
         #     "overrides": [
         #         "dataset_import=jedi",
@@ -541,7 +542,7 @@ def main():
             ],
             "redefiner": NoMetadataRedefiner(csv_taxonomies_path=taxo_csv_path),
         },
-        # SYKE ZooScan 2024 requiere descargar su .zip a mano.
+        # SYKE ZooScan 2024 requires downloading its .zip by hand.
         # "sykezooscan2024": {
         #     "overrides": [
         #         "dataset_import=sykezooscan2024",
@@ -570,7 +571,7 @@ def main():
             ],
             "redefiner": NoMetadataRedefiner(csv_taxonomies_path=taxo_csv_path),
         },
-        # Zoolake requiere descargar data.zip a mano.
+        # Zoolake requires downloading data.zip by hand.
         # "zoolake": {
         #     "overrides": [
         #         "dataset_import=zoolake",
@@ -639,16 +640,16 @@ def main():
             dataset_importer = hydra.utils.instantiate(cfg.dataset_import)
             imagefolder_dir = Path(dataset_importer.imagefolder_dir)
 
-            # Reusamos el imagefolder si ya existe; si no, lo construimos.
+            # Reuse the imagefolder if it already exists; otherwise build it.
             has_content = imagefolder_dir.exists() and bool(os.listdir(imagefolder_dir))
             if has_content:
                 num_items = len(os.listdir(imagefolder_dir))
-                print(f"Usando imagefolder existente con {num_items} categorias en {imagefolder_dir}")
+                print(f"Using existing imagefolder with {num_items} categories in {imagefolder_dir}")
             else:
-                print("Construyendo imagefolder desde los datos crudos...")
+                print("Building imagefolder from the raw data...")
                 dataset_importer.import_dataset()
 
-            # Resolvemos los archivos de cada split (acepta alias val/validation).
+            # Resolve the files for each split (accepts the val/validation alias).
             split_aliases = {
                 "train": ["train"],
                 "validation": ["validation", "val"],
@@ -662,14 +663,14 @@ def main():
                         data_files[canonical_split] = str(split_path / "*/[!._]*")
                         break
 
-            # Sin splits explicitos: tomamos todo como train.
+            # No explicit splits: take everything as train.
             if not data_files:
                 data_files = {"train": str(dataset_importer.imagefolder_dir / "*/*[!._]*")}
 
-            print("Cargando dataset con el loader imagefolder...")
+            print("Loading dataset with the imagefolder loader...")
             dataset = load_dataset("imagefolder", data_files=data_files)
 
-            print("Asignando taxonomia, IDs y metadata...")
+            print("Assigning taxonomy, IDs and metadata...")
             dataset = ds_cfg["redefiner"].redefine(
                 hf_dataset=dataset,
                 dataset_name=dataset_name,
@@ -680,14 +681,14 @@ def main():
 
     ds = concatenate_datasets(parts)
 
-    # Con el dataset ya completo, descartamos los ejemplos cuya imagen este corrupta.
+    # With the full dataset ready, we drop the examples whose image is corrupt.
     ds = clean_corrupt_examples_optimized(ds, batch_size=1000, n_jobs=-1)
 
     output_path = DATA_ROOT / "planktonzilla_17M"
-    print(f"Guardando dataset en {output_path}")
+    print(f"Saving dataset to {output_path}")
     ds.save_to_disk(output_path)
 
-    print("\nProceso completado")
+    print("\nProcess completed")
 
 
 if __name__ == "__main__":
