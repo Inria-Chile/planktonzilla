@@ -1,30 +1,30 @@
 """
-Descarga secuencias genéticas COX1 desde NCBI para especies de plancton.
+Download COX1 gene sequences from NCBI for plankton species.
 
-Flujo por especie:
-    1. build_query        -> arma la consulta Entrez (txid + filtros COX).
-    2. search_nuccore     -> obtiene los accession IDs de GenBank que coinciden.
-    3. fetch_sequences    -> descarga los registros FASTA en lotes.
-    4. save_fasta         -> guarda un .fasta por especie + un summary.csv.
+Steps per species:
+    1. build_query        -> builds the Entrez query (txid + COX filters).
+    2. search_nuccore     -> gets the matching GenBank accession IDs.
+    3. fetch_sequences    -> downloads the FASTA records in batches.
+    4. save_fasta         -> saves one .fasta per species + a summary.csv.
 
-Lugar en el pipeline:
-    taxonomía -> [extract_taxon_ids] wikidata_ID/aphia/NCBI/BOLD
-              -> [extract_cox] secuencias COX1 (FASTA)
+Where this fits in the pipeline:
+    taxonomy -> [extract_taxon_ids] wikidata_ID/aphia/NCBI/BOLD
+             -> [extract_cox] COX1 sequences (FASTA)
 
-Credenciales (NCBI Entrez exige identificarte):
-    Configúralas por variable de entorno (NUNCA hardcodeadas en el código):
-        export NCBI_EMAIL="tu_email@ejemplo.com"     # obligatorio
-        export NCBI_API_KEY="tu_api_key"             # opcional, sube el rate-limit 3->10 req/s
-    Consigue una API key gratis en: https://www.ncbi.nlm.nih.gov/account/
-    El email también puede pasarse con --email (tiene prioridad sobre la env var).
+Credentials (NCBI Entrez requires you to identify yourself):
+    Set them through environment variables (NEVER hardcoded in the code):
+        export NCBI_EMAIL="your_email@example.com"   # required
+        export NCBI_API_KEY="your_api_key"           # optional, raises the rate limit 3->10 req/s
+    Get a free API key at: https://www.ncbi.nlm.nih.gov/account/
+    The email can also be passed with --email (it takes priority over the env var).
 
-Uso (una sola especie):
+Usage (a single species):
     python extract_cox.py --ncbi_id 124140
 
-Uso (batch desde CSV):
+Usage (batch from a CSV):
     python extract_cox.py --csv data/taxonomy_wiki_and_ids.csv --nb_rows 10 --clean
 
-Requisitos:
+Requirements:
     pip install biopython polars requests tqdm
 """
 
@@ -44,14 +44,14 @@ try:
 except ImportError:
     raise ImportError("Install biopython: pip install biopython")
 
-# ── Configuración ───────────────────────────────────────────────────────────────
+# ── Configuration ─────────────────────────────────────────────────────────────
 
-# Credenciales NCBI Entrez. Se leen de variables de entorno; nunca se hardcodean.
-# El email es obligatorio (NCBI lo exige); la API key es opcional.
+# NCBI Entrez credentials. Read from environment variables; never hardcoded.
+# The email is required (NCBI demands it); the API key is optional.
 ENTREZ_EMAIL = os.environ.get("NCBI_EMAIL")
 ENTREZ_API_KEY = os.environ.get("NCBI_API_KEY")
 
-# Términos COX (matchea título, nombre de gen y campos de producto).
+# COX terms (match the title, gene name and product fields).
 COX_TERMS = [
     "COI", "CO1", "COX1", "COXI",
     "cytochrome c oxidase subunit I",
@@ -59,12 +59,12 @@ COX_TERMS = [
     "cytochrome oxidase subunit I",
 ]
 
-# Fragmento de query OR-joined con los filtros COX.
+# Query fragment with the COX filters joined by OR.
 COX_FILTER = " OR ".join(f'"{t}"[All Fields]' for t in COX_TERMS)
 
-MAX_SEQS_PER_SPECIES = 500   # Tope de seguridad por especie; súbelo si hace falta.
-BATCH_SIZE = 50              # Registros descargados por petición Entrez.
-SLEEP_BETWEEN_CALLS = 0.4    # segundos; respeta el rate-limit de NCBI (~3/s sin API key).
+MAX_SEQS_PER_SPECIES = 500   # Safety cap per species; raise it if needed.
+BATCH_SIZE = 50              # Records downloaded per Entrez request.
+SLEEP_BETWEEN_CALLS = 0.4    # seconds; respects the NCBI rate limit (~3/s without an API key).
 
 logging.basicConfig(
     level=logging.INFO,
@@ -77,12 +77,12 @@ log = logging.getLogger(__name__)
 # ── NCBI helpers ─────────────────────────────────────────────────────────────────
 
 def configure_entrez(email: str | None = None):
-    """Configura Entrez con el email (obligatorio) y la API key (opcional)."""
+    """Set up Entrez with the email (required) and the API key (optional)."""
     resolved_email = email or ENTREZ_EMAIL
     if not resolved_email:
         raise SystemExit(
-            "Falta el email de NCBI. Define NCBI_EMAIL en el entorno o pásalo con --email.\n"
-            '  export NCBI_EMAIL="tu_email@ejemplo.com"'
+            "Missing NCBI email. Set NCBI_EMAIL in the environment or pass it with --email.\n"
+            '  export NCBI_EMAIL="your_email@example.com"'
         )
     Entrez.email = resolved_email
     if ENTREZ_API_KEY:
@@ -91,19 +91,19 @@ def configure_entrez(email: str | None = None):
 
 def build_query(ncbi_tax_id: int | str, expand_to_children: bool = True) -> str:
     """
-    Arma una query Entrez nuccore para un taxonomy ID.
+    Build an Entrez nuccore query for a taxonomy ID.
 
     expand_to_children=True  → txid{ID}[Organism:exp]
-        Incluye todos los taxones descendientes (útil a nivel de género/familia).
+        Includes all child taxa (useful at the genus/family level).
     expand_to_children=False → txid{ID}[Organism:noexp]
-        Solo el taxón exacto (cuando quieres estrictamente esa especie).
+        Only the exact taxon (when you want strictly that species).
     """
     scope = "exp" if expand_to_children else "noexp"
     return f"(txid{ncbi_tax_id}[Organism:{scope}]) AND ({COX_FILTER})"
 
 
 def search_nuccore(query: str, max_results: int = MAX_SEQS_PER_SPECIES) -> list[str]:
-    """Devuelve la lista de accession IDs de GenBank que coinciden con la query."""
+    """Return the list of GenBank accession IDs that match the query."""
     time.sleep(SLEEP_BETWEEN_CALLS)
     try:
         handle = Entrez.esearch(
@@ -124,7 +124,7 @@ def search_nuccore(query: str, max_results: int = MAX_SEQS_PER_SPECIES) -> list[
 
 
 def fetch_sequences(id_list: list[str], label: str = "") -> list[SeqRecord]:
-    """Descarga registros GenBank en lotes y devuelve objetos SeqRecord."""
+    """Download GenBank records in batches and return SeqRecord objects."""
     records = []
     if not id_list:
         return records
@@ -155,8 +155,8 @@ def get_cox_sequences(
     max_results: int = MAX_SEQS_PER_SPECIES,
 ) -> list[SeqRecord]:
     """
-    Dado un taxonomy ID, devuelve los SeqRecords COX.
-    Prueba primero la búsqueda expandida; si no hay resultados, reintenta noexp.
+    Given a taxonomy ID, return the COX SeqRecords.
+    Tries the expanded search first; if there are no results, retries with noexp.
     """
     query = build_query(ncbi_tax_id, expand_to_children=expand_to_children)
     log.info(f"Query: {query}")
@@ -173,7 +173,7 @@ def get_cox_sequences(
 # ── Output helpers ───────────────────────────────────────────────────────────────
 
 def save_fasta(records: list[SeqRecord], filepath: str | Path):
-    """Escribe las secuencias a un archivo FASTA."""
+    """Write the sequences to a FASTA file."""
     filepath = Path(filepath)
     filepath.parent.mkdir(parents=True, exist_ok=True)
     with open(filepath, "w") as f:
@@ -182,10 +182,10 @@ def save_fasta(records: list[SeqRecord], filepath: str | Path):
 
 
 def records_to_dataframe(records: list[SeqRecord], ncbi_tax_id=None) -> pl.DataFrame:
-    """Convierte una lista de SeqRecords en un DataFrame ordenado."""
+    """Turn a list of SeqRecords into a tidy DataFrame."""
     rows = []
     for rec in records:
-        # Parsea accession y descripción desde el header FASTA.
+        # Parse the accession and description from the FASTA header.
         parts = rec.description.split(" ", 1)
         accession = parts[0]
         description = parts[1] if len(parts) > 1 else ""
@@ -211,11 +211,11 @@ def process_csv(
     nb_rows: int | None = None,
 ):
     """
-    Lee el CSV de plancton, itera sobre las filas, descarga las secuencias COX
-    de cada especie con NCBI_ID válido y escribe las salidas.
+    Read the plankton CSV, loop over the rows, download the COX sequences
+    for every species with a valid NCBI_ID and write the outputs.
 
-    Salidas por especie:   out_dir/{label}_{ncbi_id}.fasta
-    Resumen:               out_dir/summary.csv
+    Output per species:   out_dir/{label}_{ncbi_id}.fasta
+    Summary:              out_dir/summary.csv
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -233,7 +233,7 @@ def process_csv(
         ncbi_id = row.get(ncbi_col)
         label = str(row.get(label_col, "unknown")).strip().replace(" ", "_")
 
-        # Determina qué ID usar.
+        # Decide which ID to use.
         if ncbi_id is not None and str(ncbi_id).strip() not in ("", "nan", "NaN"):
             tax_id = str(int(float(ncbi_id)))
             source = "ncbi"
@@ -290,26 +290,26 @@ def main():
         description="Fetch COX1 sequences from NCBI for plankton species.",
     )
     mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--ncbi_id", type=str, help="NCBI Taxonomy ID único")
-    mode.add_argument("--csv", type=str, help="CSV de plancton para procesamiento batch")
+    mode.add_argument("--ncbi_id", type=str, help="A single NCBI Taxonomy ID")
+    mode.add_argument("--csv", type=str, help="Plankton CSV for batch processing")
 
-    parser.add_argument("--out_dir_b", type=str, default="cox_output_batch", help="Directorio de salida (batch)")
-    parser.add_argument("--out_dir_s", type=str, default="cox_output_single", help="Directorio de salida (single)")
-    parser.add_argument("--ncbi_col", type=str, default="NCBI_ID", help="Columna de NCBI IDs en el CSV")
-    parser.add_argument("--label_col", type=str, default="proposed_label", help="Columna usada para nombrar los archivos")
-    parser.add_argument("--max_seqs", type=int, default=MAX_SEQS_PER_SPECIES, help="Máx. secuencias por especie")
-    parser.add_argument("--noexp", action="store_true", help="Usar noexp (taxón exacto, sin descendientes)")
-    parser.add_argument("--email", type=str, default=None, help="Email para NCBI Entrez (si no, usa NCBI_EMAIL)")
-    parser.add_argument("--nb_rows", type=int, default=None, help="Nº de filas a procesar del CSV (default: todas)")
-    parser.add_argument("--clean", action="store_true", help="Borra el directorio de salida antes de procesar")
+    parser.add_argument("--out_dir_b", type=str, default="cox_output_batch", help="Output directory (batch)")
+    parser.add_argument("--out_dir_s", type=str, default="cox_output_single", help="Output directory (single)")
+    parser.add_argument("--ncbi_col", type=str, default="NCBI_ID", help="Column with the NCBI IDs in the CSV")
+    parser.add_argument("--label_col", type=str, default="proposed_label", help="Column used to name the files")
+    parser.add_argument("--max_seqs", type=int, default=MAX_SEQS_PER_SPECIES, help="Max sequences per species")
+    parser.add_argument("--noexp", action="store_true", help="Use noexp (exact taxon, no children)")
+    parser.add_argument("--email", type=str, default=None, help="Email for NCBI Entrez (otherwise uses NCBI_EMAIL)")
+    parser.add_argument("--nb_rows", type=int, default=None, help="Number of CSV rows to process (default: all)")
+    parser.add_argument("--clean", action="store_true", help="Delete the output directory before processing")
 
     args = parser.parse_args()
 
-    # Configura Entrez con el email resuelto (--email tiene prioridad sobre la env var).
+    # Set up Entrez with the resolved email (--email takes priority over the env var).
     configure_entrez(email=args.email)
 
     if args.ncbi_id:
-        # ── Modo single NCBI ID ──
+        # ── Single NCBI ID mode ──
         log.info(f"Fetching COX sequences for NCBI Taxonomy ID: {args.ncbi_id}")
         records = get_cox_sequences(
             args.ncbi_id,
@@ -328,7 +328,7 @@ def main():
             save_fasta(records, fasta_out)
 
     elif args.csv:
-        # ── Modo batch CSV ──
+        # ── Batch CSV mode ──
         out_dir = Path(args.out_dir_b)
 
         if args.clean and out_dir.exists():

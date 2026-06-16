@@ -10,7 +10,7 @@ from datasets import (
     load_dataset,
 )
 
-# Configuracion
+# Configuration
 REPO_ID = "project-oceania/planktonzilla-17M"
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -19,29 +19,29 @@ OUTPUT_DIR = os.path.join(REPO_ROOT, "data", "planktonzilla_17M_only_plankton")
 SEED = 42
 TEST_FRAC = 0.2
 VAL_FRAC = 0.2
-MIN_CLASS_FREQ = 5  # clases con menos ejemplos se mantienen integras en train
+MIN_CLASS_FREQ = 5  # classes with fewer examples are kept whole in train
 
-# Rango taxonomico usado para construir la etiqueta, de mayor a menor jerarquia.
+# Taxonomy ranks used to build the label, from highest to lowest in the hierarchy.
 TAXONOMY_COLS = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]
 
 
 def build_only_plankton(ds, num_proc=1):
-    """Filtra a solo plankton con taxonomia y codifica la etiqueta taxonomica."""
+    """Keep only plankton with taxonomy and encode the taxonomy label."""
 
-    # Mascara de plankton: marcado como plankton y con Kingdom asignado.
+    # Plankton mask: marked as plankton and with a Kingdom assigned.
     ds = ds.filter(
         lambda x: x["plankton"] is True and x["Kingdom"] != "",
         num_proc=num_proc,
     )
 
-    # La etiqueta es el camino taxonomico completo, ignorando los rangos vacios.
+    # The label is the full taxonomy path, skipping the empty ranks.
     def build_tax_string(example):
         tax = [example[c] for c in TAXONOMY_COLS if example[c] not in ("", None)]
         return {"tax_label": " ".join(tax)}
 
     ds = ds.map(build_tax_string, num_proc=num_proc)
 
-    # Codificamos cada string taxonomico unico a un entero de clase.
+    # Encode each unique taxonomy string into an integer class.
     unique_labels = sorted(set(ds["tax_label"]))
     class_label = ClassLabel(names=unique_labels)
 
@@ -50,7 +50,7 @@ def build_only_plankton(ds, num_proc=1):
 
     ds = ds.map(encode_label, num_proc=num_proc)
 
-    # Nos quedamos solo con lo necesario para entrenar.
+    # Keep only what we need for training.
     ds = ds.remove_columns(
         [c for c in ds.column_names if c not in ["image", "label", "dataset"]]
     )
@@ -67,11 +67,11 @@ def build_only_plankton(ds, num_proc=1):
 
 
 def stratified_split_by_dataset(ds, num_proc, seed=SEED, test_frac=TEST_FRAC, val_frac=VAL_FRAC):
-    """Split train/val/test estratificado por dataset y por taxonomia.
+    """Train/val/test split stratified by dataset and by taxonomy.
 
-    El split se hace de forma independiente dentro de cada dataset de origen, y
-    dentro de cada uno se estratifica por etiqueta. Las clases con menos de
-    MIN_CLASS_FREQ ejemplos se envian completas a train.
+    The split is done independently within each source dataset, and within each
+    one it is stratified by label. Classes with fewer than MIN_CLASS_FREQ examples
+    are sent whole to train.
     """
     train_splits = []
     val_splits = []
@@ -83,7 +83,7 @@ def stratified_split_by_dataset(ds, num_proc, seed=SEED, test_frac=TEST_FRAC, va
         labels = ds_sub["label"]
         counts = Counter(labels)
 
-        # Clases minoritarias: se reservan para train para no perderlas en val/test.
+        # Minority classes: held back for train so we don't lose them in val/test.
         minority = {k for k, v in counts.items() if v < MIN_CLASS_FREQ}
         minority_idx = [i for i, y in enumerate(labels) if y in minority]
         remaining_idx = [i for i, y in enumerate(labels) if y not in minority]
@@ -91,14 +91,14 @@ def stratified_split_by_dataset(ds, num_proc, seed=SEED, test_frac=TEST_FRAC, va
         ds_minority = ds_sub.select(minority_idx) if minority_idx else None
         ds_remaining = ds_sub.select(remaining_idx) if remaining_idx else None
 
-        # Si tras quitar las minoritarias no queda nada que dividir, todo va a train.
+        # If nothing is left to split after removing the minority ones, all goes to train.
         if ds_remaining is None or len(ds_remaining) == 0:
             train_splits.append(ds_sub)
             continue
 
         n = len(ds_remaining)
 
-        # Primer corte: train contra el bloque reservado para val + test.
+        # First cut: train against the block reserved for val + test.
         try:
             splits = ds_remaining.train_test_split(
                 test_size=int(n * (test_frac + val_frac)),
@@ -116,7 +116,7 @@ def stratified_split_by_dataset(ds, num_proc, seed=SEED, test_frac=TEST_FRAC, va
         train_split = splits["train"]
         val_test_split = splits["test"]
 
-        # Segundo corte: separamos val y test dentro del bloque reservado.
+        # Second cut: we separate val and test inside the reserved block.
         try:
             splits = val_test_split.train_test_split(
                 test_size=int(n * val_frac),
@@ -134,7 +134,7 @@ def stratified_split_by_dataset(ds, num_proc, seed=SEED, test_frac=TEST_FRAC, va
         test_split = splits["train"]
         val_split = splits["test"]
 
-        # Anadimos las clases minoritarias reservadas a train.
+        # Add the reserved minority classes to train.
         if ds_minority is not None:
             train_split = concatenate_datasets([train_split, ds_minority])
 

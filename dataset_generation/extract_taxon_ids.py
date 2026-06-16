@@ -1,32 +1,32 @@
 """
 extract_taxon_ids.py
 =====================
-Pipeline en dos pasos que, partiendo de la taxonomia de planktonzilla, resuelve
-los identificadores externos de cada taxon.
+Two-step pipeline that, starting from the planktonzilla taxonomy, resolves the
+external identifiers for each taxon.
 
-Paso 1 (Wikidata):
-    Para cada taxon unico (Kingdom -> Species) busca su Qcode de Wikidata,
-    quedandose con el rango mas profundo disponible (primero Species, si no
-    existe sube hasta Kingdom).
+Step 1 (Wikidata):
+    For each unique taxon (Kingdom -> Species) it looks up its Wikidata Qcode,
+    keeping the deepest rank available (Species first, and if it does not exist
+    it goes up to Kingdom).
 
-Paso 2 (Bases externas):
-    A partir de cada Qcode consulta Wikidata (wbgetentities) y extrae los IDs de
-    WoRMS (P850 -> aphia_ID), NCBI Taxonomy (P685 -> NCBI_ID) y
+Step 2 (External databases):
+    From each Qcode it queries Wikidata (wbgetentities) and extracts the IDs for
+    WoRMS (P850 -> aphia_ID), NCBI Taxonomy (P685 -> NCBI_ID) and
     BOLD Systems (P3606 -> BOLD_ID).
 
-Entrada:
-    data/planktonzilla_taxonomy_v20.csv   (separador ",")
+Input:
+    data/planktonzilla_taxonomy_v20.csv   (separator ",")
 
-Salidas (en data/):
-    taxonomy_and_wikidata.csv     -> taxones unicos + wikidata_ID
-    taxonomy_wiki_and_ids.csv     -> taxones unicos + wikidata_ID + aphia/NCBI/BOLD
+Outputs (in data/):
+    taxonomy_and_wikidata.csv     -> unique taxa + wikidata_ID
+    taxonomy_wiki_and_ids.csv     -> unique taxa + wikidata_ID + aphia/NCBI/BOLD
 
-Uso:
+Usage:
     python extract_taxon_ids.py
-    python extract_taxon_ids.py --limit 10        # prueba rapida con 10 taxones
-    python extract_taxon_ids.py --input data/otra_taxonomia.csv
+    python extract_taxon_ids.py --limit 10        # quick test with 10 taxa
+    python extract_taxon_ids.py --input data/another_taxonomy.csv
 
-Requisitos:
+Requirements:
     pip install polars requests
 """
 
@@ -37,25 +37,25 @@ import time
 import polars as pl
 import requests
 
-# ── Rutas (relativas al repo, sin rutas absolutas hardcodeadas) ─────────────────
+# ── Paths (relative to the repo, no hardcoded absolute paths) ───────────────────
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(REPO_ROOT, "data")
 INPUT_CSV = os.path.join(DATA_DIR, "planktonzilla_taxonomy_v20.csv")
 WIKIDATA_CSV = os.path.join(DATA_DIR, "taxonomy_and_wikidata.csv")
 IDS_CSV = os.path.join(DATA_DIR, "taxonomy_wiki_and_ids.csv")
 
-# Separador del CSV de entrada/salida (planktonzilla_taxonomy_v20 usa ",").
+# Separator for the input/output CSV (planktonzilla_taxonomy_v20 uses ",").
 SEP = ","
 
-# Columnas taxonomicas, de mas general a mas especifico.
+# Taxonomy columns, from most general to most specific.
 COLS = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]
 
 HEADERS = {"User-Agent": "plankton-script/1.0"}
 
-# Palabras clave para validar que un resultado de Wikidata es biologico.
+# Keywords to check that a Wikidata result is biological.
 BIOLOGICAL_KEYWORDS = ["taxon", "species", "genus", "family", "order", "phylum", "organism"]
 
-# Propiedades de Wikidata que queremos extraer.
+# Wikidata properties we want to extract.
 WIKIDATA_PROPERTIES = {
     "aphia_ID": "P850",   # WoRMS ID
     "NCBI_ID": "P685",    # NCBI Taxonomy ID
@@ -66,12 +66,12 @@ session = requests.Session()
 _SEARCH_CACHE: dict[str, dict | None] = {}
 
 
-# ── Paso 1: Wikidata Qcode por taxon ────────────────────────────────────────────
+# ── Step 1: Wikidata Qcode per taxon ──────────────────────────────────────────
 
 def search_wikidata_taxon(taxon: str) -> dict | None:
-    """Busca un taxon en Wikidata y devuelve {qid, label, description, url} o None.
+    """Search a taxon on Wikidata and return {qid, label, description, url} or None.
 
-    Cachea por taxon y reintenta ante rate-limit (HTTP 429).
+    Caches per taxon and retries on rate limit (HTTP 429).
     """
     if taxon in _SEARCH_CACHE:
         return _SEARCH_CACHE[taxon]
@@ -118,14 +118,14 @@ def search_wikidata_taxon(taxon: str) -> dict | None:
 
 
 def fetch_wikidata_ids(taxa: pl.DataFrame) -> pl.DataFrame:
-    """Anade Wikidata URL/Matched Taxon/Matched Rank/wikidata_ID a cada taxon unico."""
+    """Add Wikidata URL/Matched Taxon/Matched Rank/wikidata_ID to each unique taxon."""
     wikidata_urls, matched_taxon, matched_rank = [], [], []
 
     total = taxa.height
     for idx, row in enumerate(taxa.iter_rows(named=True), start=1):
         print(f"[wikidata] {idx}/{total}")
 
-        # Taxones presentes, de Species hacia Kingdom (rango mas profundo primero).
+        # Taxa present, from Species down to Kingdom (deepest rank first).
         taxons = [(row[c], c) for c in COLS if row[c] != ""]
 
         found_url = found_taxon = found_rank = ""
@@ -148,10 +148,10 @@ def fetch_wikidata_ids(taxa: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-# ── Paso 2: WoRMS / NCBI / BOLD por Qcode ───────────────────────────────────────
+# ── Step 2: WoRMS / NCBI / BOLD per Qcode ───────────────────────────────────────
 
 def _extract_property(claims: dict, prop: str):
-    """Extrae el valor de una propiedad de los claims de una entidad Wikidata."""
+    """Extract a property value from the claims of a Wikidata entity."""
     if prop not in claims:
         return None
     try:
@@ -161,7 +161,7 @@ def _extract_property(claims: dict, prop: str):
 
 
 def fetch_external_ids(taxa_wiki: pl.DataFrame, batch_size: int = 50) -> pl.DataFrame:
-    """Consulta Wikidata en lotes y devuelve un DF con wikidata_ID + aphia/NCBI/BOLD."""
+    """Query Wikidata in batches and return a DF with wikidata_ID + aphia/NCBI/BOLD."""
     qcodes = (
         taxa_wiki.select("wikidata_ID")
         .drop_nulls()
@@ -179,7 +179,7 @@ def fetch_external_ids(taxa_wiki: pl.DataFrame, batch_size: int = 50) -> pl.Data
             f"&ids={'|'.join(batch)}"
             "&format=json"
         )
-        print(f"[ids] lote {i // batch_size + 1} ({len(batch)} Qcodes)")
+        print(f"[ids] batch {i // batch_size + 1} ({len(batch)} Qcodes)")
 
         success = False
         for attempt in range(5):
@@ -187,7 +187,7 @@ def fetch_external_ids(taxa_wiki: pl.DataFrame, batch_size: int = 50) -> pl.Data
                 r = requests.get(url, headers=HEADERS, timeout=60)
                 if r.status_code == 429:
                     wait = 2 ** attempt
-                    print(f"  429 -> espera {wait}s")
+                    print(f"  429 -> waiting {wait}s")
                     time.sleep(wait)
                     continue
                 r.raise_for_status()
@@ -201,7 +201,7 @@ def fetch_external_ids(taxa_wiki: pl.DataFrame, batch_size: int = 50) -> pl.Data
                 success = True
                 break
             except Exception as e:
-                print(f"  error lote {i}: {e}")
+                print(f"  error in batch {i}: {e}")
                 time.sleep(2)
 
         if not success:
@@ -213,10 +213,10 @@ def fetch_external_ids(taxa_wiki: pl.DataFrame, batch_size: int = 50) -> pl.Data
     return taxa_wiki.join(df_ids, on="wikidata_ID", how="left")
 
 
-# ── Orquestacion ────────────────────────────────────────────────────────────────
+# ── Orchestration ───────────────────────────────────────────────────────────────
 
 def load_unique_taxa(input_csv: str, limit: int | None) -> pl.DataFrame:
-    """Lee el CSV de taxonomia y devuelve las combinaciones taxonomicas unicas."""
+    """Read the taxonomy CSV and return the unique taxonomy combinations."""
     df = pl.read_csv(input_csv, separator=SEP).fill_null("")
     if limit is not None:
         df = df[:limit]
@@ -230,29 +230,29 @@ def load_unique_taxa(input_csv: str, limit: int | None) -> pl.DataFrame:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--input", default=INPUT_CSV, help="CSV de taxonomia de entrada.")
-    parser.add_argument("--wikidata-out", default=WIKIDATA_CSV, help="Salida del paso 1 (taxones + wikidata_ID).")
-    parser.add_argument("--ids-out", default=IDS_CSV, help="Salida final (taxones + todos los IDs).")
-    parser.add_argument("--limit", type=int, default=None, help="Procesar solo las primeras N filas (prueba).")
+    parser.add_argument("--input", default=INPUT_CSV, help="Input taxonomy CSV.")
+    parser.add_argument("--wikidata-out", default=WIKIDATA_CSV, help="Step 1 output (taxa + wikidata_ID).")
+    parser.add_argument("--ids-out", default=IDS_CSV, help="Final output (taxa + all the IDs).")
+    parser.add_argument("--limit", type=int, default=None, help="Process only the first N rows (test).")
     args = parser.parse_args()
 
-    # Paso 0: taxones unicos.
+    # Step 0: unique taxa.
     taxa = load_unique_taxa(args.input, args.limit)
-    print(f"{taxa.height} taxones unicos a resolver.")
+    print(f"{taxa.height} unique taxa to resolve.")
 
-    # Paso 1: Wikidata Qcodes.
+    # Step 1: Wikidata Qcodes.
     taxa_wiki = fetch_wikidata_ids(taxa)
     taxa_wiki.write_csv(args.wikidata_out, separator=SEP)
-    print(f"Paso 1 listo -> {args.wikidata_out}")
+    print(f"Step 1 done -> {args.wikidata_out}")
 
-    # Paso 2: WoRMS / NCBI / BOLD.
+    # Step 2: WoRMS / NCBI / BOLD.
     taxa_ids = fetch_external_ids(taxa_wiki)
-    # Normaliza cadenas vacias a null antes de guardar.
+    # Normalize empty strings to null before saving.
     taxa_ids = taxa_ids.with_columns(
         pl.when(pl.col(pl.String) == "").then(None).otherwise(pl.col(pl.String)).name.keep()
     )
     taxa_ids.write_csv(args.ids_out, separator=SEP)
-    print(f"Paso 2 listo -> {args.ids_out}")
+    print(f"Step 2 done -> {args.ids_out}")
 
     print("DONE")
 
