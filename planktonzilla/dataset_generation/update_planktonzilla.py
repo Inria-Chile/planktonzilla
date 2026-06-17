@@ -21,11 +21,9 @@ from .constants import (
 logger = get_pylogger(__name__)
 
 # Configuration
-# On-disk copy of the re-synced dataset, written to the shared storage space.
-OUTPUT_DIR = "/home/acontreras/group_storage_rennes/acontreras/planktonzilla_17M_updated"
-
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CSV_PATH = os.path.join(REPO_ROOT, "data", TAXONOMY_CSV_FILENAME)
+OUTPUT_DIR = os.path.join(REPO_ROOT, "data", "planktonzilla_17M_updated")
 
 # Taxonomy columns that get re-synced (seven ranks + label/classification extras).
 TAXO_COLS = list(TAXONOMY_RANKS) + list(EXTRA_COLS)

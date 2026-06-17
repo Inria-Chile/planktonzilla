@@ -108,13 +108,9 @@ def main() -> None:
 
     dataset = load_from_disk(args.input_dir)
 
-    # Export train and validation. The validation split in the DatasetDict is
-    # called "validation"; we map it to the "val" folder so it matches the
-    # --val-data data/shards/val of the CLIP training flow.
-    # (accepts the "validation"/"val" alias depending on how the dataset was saved).
-    val_key = "validation" if "validation" in dataset else "val"
+    # Export train and validation
     export_to_tar_shards(
-        DatasetDict({"train": dataset["train"], "val": dataset[val_key]}),
+        DatasetDict({"train": dataset["train"], "validation": dataset["validation"]}),
         output_dir=args.output_dir,
         shard_size=args.shard_size,
         jpeg_quality=args.jpeg_quality,
