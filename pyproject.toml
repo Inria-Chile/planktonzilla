@@ -36,6 +36,12 @@ dependencies = [
     "pandas",
     "fsspec",
     "polars>=1.41.2",
+    "requests>=2.34.2",
+    "joblib>=1.5.3",
+    "biopython>=1.87",
+    "orjson>=3.11.9",
+    "numpy>=2.4.6",
+    "pillow>=12.2.0",
 ]
 
 [project.urls]
@@ -45,9 +51,7 @@ repository = "https://github.com/Inria-Chile/deep_plankton"
 
 [project.scripts]
 pz_import_dataset = 'planktonzilla.dataset_import.import_dataset:main'
-pz_prepare_train = 'planktonzilla.prepare_train:main'
 pz_train = 'planktonzilla.train:main'
-pz_push_model = 'planktonzilla.push_model:main'
 
 [dependency-groups]
 dev = ["pytest", "notebook", "ipywidgets", "pytest-cov", "ipykernel"]
