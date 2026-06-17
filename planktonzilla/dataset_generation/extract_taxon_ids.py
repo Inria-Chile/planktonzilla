@@ -248,6 +248,7 @@ def main() -> None:
 
     # Step 1: Wikidata Qcodes.
     taxa_wiki = fetch_wikidata_ids(taxa)
+    os.makedirs(os.path.dirname(args.wikidata_out), exist_ok=True)
     taxa_wiki.write_csv(args.wikidata_out, separator=SEP)
     logger.info(f"Step 1 done -> {args.wikidata_out}")
 
@@ -255,6 +256,7 @@ def main() -> None:
     taxa_ids = fetch_external_ids(taxa_wiki)
     # Normalize empty strings to null before saving.
     taxa_ids = taxa_ids.with_columns(pl.when(pl.col(pl.String) == "").then(None).otherwise(pl.col(pl.String)).name.keep())
+    os.makedirs(os.path.dirname(args.ids_out), exist_ok=True)
     taxa_ids.write_csv(args.ids_out, separator=SEP)
     logger.info(f"Step 2 done -> {args.ids_out}")
 

@@ -23,6 +23,7 @@ Prerequisites:
     projects do not return metadata and stay null.
 """
 
+import argparse
 import concurrent.futures
 import json
 import logging
@@ -496,7 +497,29 @@ def main() -> None:
     """Build, redefine, concatenate and save the full planktonzilla dataset."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     DATA_ROOT = (root / "data").resolve()
-    taxo_csv_path = str(DATA_ROOT / constants.TAXONOMY_CSV_FILENAME)
+
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument(
+        "--taxo-csv",
+        default=str(DATA_ROOT / constants.TAXONOMY_CSV_FILENAME),
+        help="Taxonomy CSV with taxonomy + external ID columns.",
+    )
+    parser.add_argument(
+        "--output",
+        "--out-dir",
+        dest="output",
+        default=str(DATA_ROOT / "planktonzilla_17M"),
+        help="Directory to save the assembled dataset to.",
+    )
+    parser.add_argument(
+        "--num-proc",
+        type=int,
+        default=constants.default_num_proc(),
+        help="Number of processes for dataset .map / metadata fetching.",
+    )
+    args = parser.parse_args()
+
+    taxo_csv_path = args.taxo_csv
 
     datasets_configs = {
         "isiisnet": {
@@ -687,7 +710,7 @@ def main() -> None:
             dataset = ds_cfg["redefiner"].redefine(
                 hf_dataset=dataset,
                 dataset_name=dataset_name,
-                num_proc=num_proc,
+                num_proc=args.num_proc,
             )
 
             parts.append(dataset)
@@ -697,7 +720,7 @@ def main() -> None:
     # With the full dataset ready, we drop the examples whose image is corrupt.
     ds = clean_corrupt_examples_optimized(ds, batch_size=1000, n_jobs=-1)
 
-    output_path = DATA_ROOT / "planktonzilla_17M"
+    output_path = Path(args.output)
     logger.info(f"Saving dataset to {output_path}")
     ds.save_to_disk(output_path)
 

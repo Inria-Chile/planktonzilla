@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 from collections import Counter
@@ -166,12 +167,28 @@ def stratified_split_by_dataset(
 def main() -> None:
     """Load the dataset, keep plankton, stratify-split, and save the DatasetDict."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    num_proc = default_num_proc()
 
-    ds = load_dataset(REPO_ID, split="train")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--repo-id", default=REPO_ID, help="HuggingFace Hub dataset repo to load.")
+    parser.add_argument("--output-dir", default=OUTPUT_DIR, help="Directory to save the split DatasetDict to.")
+    parser.add_argument("--seed", type=int, default=SEED, help="Random seed for the stratified split.")
+    parser.add_argument("--test-frac", type=float, default=TEST_FRAC, help="Fraction of each dataset reserved for test.")
+    parser.add_argument("--val-frac", type=float, default=VAL_FRAC, help="Fraction of each dataset reserved for validation.")
+    parser.add_argument("--num-proc", type=int, default=default_num_proc(), help="Number of processes for dataset ops.")
+    args = parser.parse_args()
+
+    num_proc = args.num_proc
+
+    ds = load_dataset(args.repo_id, split="train")
     ds = build_only_plankton(ds, num_proc=num_proc)
 
-    train_ds, val_ds, test_ds = stratified_split_by_dataset(ds, num_proc=num_proc)
+    train_ds, val_ds, test_ds = stratified_split_by_dataset(
+        ds,
+        num_proc=num_proc,
+        seed=args.seed,
+        test_frac=args.test_frac,
+        val_frac=args.val_frac,
+    )
 
     dataset = DatasetDict(
         {
@@ -181,7 +198,7 @@ def main() -> None:
         }
     )
 
-    dataset.save_to_disk(OUTPUT_DIR)
+    dataset.save_to_disk(args.output_dir)
     logger.info("DONE")
 
 

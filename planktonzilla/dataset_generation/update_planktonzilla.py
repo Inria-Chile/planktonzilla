@@ -1,3 +1,4 @@
+import argparse
 import logging
 import math
 import os
@@ -112,14 +113,21 @@ def sync_columns(ds: Dataset, sync_dict: dict) -> Dataset:
 def main() -> None:
     """Load the dataset, re-sync taxonomy/ID columns from the CSV, and save it."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    logger.info(f"Loading dataset {REPO_ID}...")
-    ds = load_dataset(REPO_ID, split="train")
 
-    sync_dict = build_sync_dict(CSV_PATH)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--repo-id", default=REPO_ID, help="HuggingFace Hub dataset repo to load.")
+    parser.add_argument("--output-dir", default=OUTPUT_DIR, help="Directory to save the re-synced dataset to.")
+    parser.add_argument("--csv-path", default=CSV_PATH, help="Taxonomy CSV used to re-sync the columns.")
+    args = parser.parse_args()
+
+    logger.info(f"Loading dataset {args.repo_id}...")
+    ds = load_dataset(args.repo_id, split="train")
+
+    sync_dict = build_sync_dict(args.csv_path)
     dataset_final = sync_columns(ds, sync_dict)
 
-    logger.info(f"Saving dataset to disk ({OUTPUT_DIR})...")
-    dataset_final.save_to_disk(OUTPUT_DIR)
+    logger.info(f"Saving dataset to disk ({args.output_dir})...")
+    dataset_final.save_to_disk(args.output_dir)
 
     logger.info("\nProcess finished!")
 

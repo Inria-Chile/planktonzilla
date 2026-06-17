@@ -74,6 +74,10 @@ SLEEP_BETWEEN_CALLS = 0.4  # seconds; respects the NCBI rate limit (~3/s without
 log = get_pylogger(__name__)
 
 
+class EntrezConfigError(RuntimeError):
+    """Raised when Entrez cannot be configured (e.g. missing NCBI email)."""
+
+
 # ── NCBI helpers ─────────────────────────────────────────────────────────────────
 
 
@@ -81,7 +85,7 @@ def configure_entrez(email: str | None = None):
     """Set up Entrez with the email (required) and the API key (optional)."""
     resolved_email = email or ENTREZ_EMAIL
     if not resolved_email:
-        raise SystemExit(
+        raise EntrezConfigError(
             "Missing NCBI email. Set NCBI_EMAIL in the environment or pass it with --email.\n"
             '  export NCBI_EMAIL="your_email@example.com"'
         )

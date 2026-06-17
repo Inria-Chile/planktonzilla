@@ -1,3 +1,4 @@
+import argparse
 import io
 import logging
 import os
@@ -21,6 +22,7 @@ def export_to_tar_shards(
     dataset_dict: DatasetDict,
     output_dir: str = "data",
     shard_size: int = 1_000,
+    jpeg_quality: int = 95,
 ) -> None:
     """Export a DatasetDict to .tar shards for CLIP/WebDataset-style training.
 
@@ -30,6 +32,7 @@ def export_to_tar_shards(
         dataset_dict: Splits to export; one subdirectory of shards per split.
         output_dir: Directory where the per-split shard folders are written.
         shard_size: Maximum number of samples per .tar shard.
+        jpeg_quality: JPEG quality used when re-encoding the images.
     """
     os.makedirs(output_dir, exist_ok=True)
 
@@ -66,7 +69,7 @@ def export_to_tar_shards(
 
                     # Save the image as JPEG into a bytes buffer.
                     img_bytes = io.BytesIO()
-                    img_rgb.save(img_bytes, format="JPEG", quality=95)
+                    img_rgb.save(img_bytes, format="JPEG", quality=jpeg_quality)
                     img_bytes.seek(0)
 
                     # Create the TarInfo and add the image file
@@ -89,7 +92,21 @@ def export_to_tar_shards(
 def main() -> None:
     """Load the only-plankton dataset and export train/val splits to tar shards."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    dataset = load_from_disk(INPUT_DIR)
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--input-dir", default=INPUT_DIR, help="Saved only-plankton DatasetDict to load.")
+    parser.add_argument(
+        "--output-dir",
+        "--shards-dir",
+        dest="output_dir",
+        default=SHARDS_DIR,
+        help="Directory where the per-split shard folders are written.",
+    )
+    parser.add_argument("--shard-size", type=int, default=1_000, help="Maximum number of samples per .tar shard.")
+    parser.add_argument("--jpeg-quality", type=int, default=95, help="JPEG quality used when re-encoding the images.")
+    args = parser.parse_args()
+
+    dataset = load_from_disk(args.input_dir)
 
     # Export train and validation. The validation split in the DatasetDict is
     # called "validation"; we map it to the "val" folder so it matches the
@@ -98,7 +115,9 @@ def main() -> None:
     val_key = "validation" if "validation" in dataset else "val"
     export_to_tar_shards(
         DatasetDict({"train": dataset["train"], "val": dataset[val_key]}),
-        output_dir=SHARDS_DIR,
+        output_dir=args.output_dir,
+        shard_size=args.shard_size,
+        jpeg_quality=args.jpeg_quality,
     )
 
     logger.info("DONE")
