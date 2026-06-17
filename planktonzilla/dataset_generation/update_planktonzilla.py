@@ -4,33 +4,29 @@ import os
 import pandas as pd
 from datasets import Dataset, Value, load_dataset
 
-# Configuration
-REPO_ID = "project-oceania/planktonzilla-17M"
+from .constants import (
+    EXTRA_COLS,
+    ID_NUM_COLS,
+    ID_STR_COLS,
+    REPO_ID,
+    TAXONOMY_CSV_FILENAME,
+    TAXONOMY_RANKS,
+    default_num_proc,
+)
 
+# Configuration
 # On-disk copy of the re-synced dataset, written to the shared storage space.
 OUTPUT_DIR = "/home/acontreras/group_storage_rennes/acontreras/planktonzilla_17M_updated"
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CSV_PATH = os.path.join(REPO_ROOT, "data", "planktonzilla_taxonomy_v20.csv")
+CSV_PATH = os.path.join(REPO_ROOT, "data", TAXONOMY_CSV_FILENAME)
 
-# Taxonomy columns that get re-synced.
-TAXO_COLS = [
-    "Kingdom",
-    "Phylum",
-    "Class",
-    "Order",
-    "Family",
-    "Genus",
-    "Species",
-    "proposed_label",
-    "plankton",
-    "root_class",
-    "qualifier",
-]
+# Taxonomy columns that get re-synced (seven ranks + label/classification extras).
+TAXO_COLS = list(TAXONOMY_RANKS) + list(EXTRA_COLS)
 
 # ID columns from external databases. All are stored as string.
-STR_ID_COLS = ["wikidata_ID", "ecotaxa_ID"]  # already come as string in the CSV
-NUMERIC_ID_COLS = ["aphia_ID", "NCBI_ID", "BOLD_ID"]  # come as float in the CSV -> string without decimals
+STR_ID_COLS = list(ID_STR_COLS)  # already come as string in the CSV
+NUMERIC_ID_COLS = list(ID_NUM_COLS)  # come as float in the CSV -> string without decimals
 ID_COLS = STR_ID_COLS + NUMERIC_ID_COLS
 
 # All the columns to update. They already exist in the dataset.
@@ -102,7 +98,7 @@ def sync_columns(ds: Dataset, sync_dict: dict) -> Dataset:
     print("Updating columns...")
     return ds.map(
         update_example,
-        num_proc=int(os.cpu_count() / 2),
+        num_proc=default_num_proc(),
         features=new_features,
         desc="Re-syncing taxonomy and external IDs",
     )

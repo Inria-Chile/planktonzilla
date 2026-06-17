@@ -37,10 +37,12 @@ import time
 import polars as pl
 import requests
 
+from .constants import TAXONOMY_CSV_FILENAME, TAXONOMY_RANKS
+
 # ── Paths (relative to the repo, no hardcoded absolute paths) ───────────────────
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(REPO_ROOT, "data")
-INPUT_CSV = os.path.join(DATA_DIR, "planktonzilla_taxonomy_v20.csv")
+INPUT_CSV = os.path.join(DATA_DIR, TAXONOMY_CSV_FILENAME)
 WIKIDATA_CSV = os.path.join(DATA_DIR, "taxonomy_and_wikidata.csv")
 IDS_CSV = os.path.join(DATA_DIR, "taxonomy_wiki_and_ids.csv")
 
@@ -48,7 +50,7 @@ IDS_CSV = os.path.join(DATA_DIR, "taxonomy_wiki_and_ids.csv")
 SEP = ","
 
 # Taxonomy columns, from most general to most specific.
-COLS = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]
+COLS = list(TAXONOMY_RANKS)
 
 HEADERS = {"User-Agent": "plankton-script/1.0"}
 

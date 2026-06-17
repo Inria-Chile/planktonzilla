@@ -27,7 +27,6 @@ import concurrent.futures
 import json
 import os
 from functools import partial
-from multiprocessing import cpu_count
 from pathlib import Path
 
 import hydra
@@ -48,6 +47,8 @@ from tqdm import tqdm
 
 from planktonzilla.utils.logger import get_pylogger
 
+from . import constants
+
 root = pyrootutils.setup_root(
     search_from=".",
     indicator=[".git", "pyproject.toml"],
@@ -56,7 +57,7 @@ root = pyrootutils.setup_root(
 )
 
 logger = get_pylogger(__name__)
-num_proc = int(cpu_count() / 2)
+num_proc = constants.default_num_proc()
 
 
 # Cleaning up corrupt examples
@@ -190,10 +191,10 @@ def retrieve_ecotaxa_metadata(obj_id, session: requests.Session | None = None) -
 class RedefineDataset:
     """Base class to assign taxonomy, external IDs and metadata to a dataset."""
 
-    TAXONOMY_COLS = ("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
-    EXTRA_COLS = ("proposed_label", "plankton", "root_class", "qualifier")
-    ID_STR_COLS = ("wikidata_ID", "ecotaxa_ID")  # already text in the CSV
-    ID_NUM_COLS = ("aphia_ID", "NCBI_ID", "BOLD_ID")  # come as numbers -> text without decimals
+    TAXONOMY_COLS = constants.TAXONOMY_RANKS
+    EXTRA_COLS = constants.EXTRA_COLS
+    ID_STR_COLS = constants.ID_STR_COLS  # already text in the CSV
+    ID_NUM_COLS = constants.ID_NUM_COLS  # come as numbers -> text without decimals
 
     def __init__(self, csv_taxonomies_path):
         # Columns pulled from the CSV, indexed by (Dataset, Raw_Labels).
@@ -489,7 +490,7 @@ class JediRedefiner(RedefineDataset):
 def main() -> None:
     """Build, redefine, concatenate and save the full planktonzilla dataset."""
     DATA_ROOT = (root / "data").resolve()
-    taxo_csv_path = str(DATA_ROOT / "planktonzilla_taxonomy_v20.csv")
+    taxo_csv_path = str(DATA_ROOT / constants.TAXONOMY_CSV_FILENAME)
 
     datasets_configs = {
         "isiisnet": {

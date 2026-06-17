@@ -11,9 +11,9 @@ from datasets import (
     load_dataset,
 )
 
-# Configuration
-REPO_ID = "project-oceania/planktonzilla-17M"
+from .constants import REPO_ID, TAXONOMY_RANKS, default_num_proc
 
+# Configuration
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUTPUT_DIR = os.path.join(REPO_ROOT, "data", "planktonzilla_17M_only_plankton")
 
@@ -23,7 +23,7 @@ VAL_FRAC = 0.2
 MIN_CLASS_FREQ = 5  # classes with fewer examples are kept whole in train
 
 # Taxonomy ranks used to build the label, from highest to lowest in the hierarchy.
-TAXONOMY_COLS = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]
+TAXONOMY_COLS = list(TAXONOMY_RANKS)
 
 
 def build_only_plankton(ds: Dataset, num_proc: int = 1) -> Dataset:
@@ -158,7 +158,7 @@ def stratified_split_by_dataset(
 
 def main() -> None:
     """Load the dataset, keep plankton, stratify-split, and save the DatasetDict."""
-    num_proc = int(os.cpu_count() / 2)
+    num_proc = default_num_proc()
 
     ds = load_dataset(REPO_ID, split="train")
     ds = build_only_plankton(ds, num_proc=num_proc)
