@@ -1,4 +1,7 @@
-"""Shared constants and helpers for the dataset_generation scripts.
+"""
+(c) Inria
+
+Shared constants and helpers for the dataset_generation scripts.
 
 Centralizes values that were previously copy-pasted across the generation
 scripts. Values and ordering are preserved EXACTLY — this module only removes
@@ -12,12 +15,13 @@ only the trailing filename is shared here.
 """
 
 import os
+from pathlib import Path
 
 # HuggingFace Hub dataset repository.
 REPO_ID = "project-oceania/planktonzilla-17M"
 
 # Raw enriched-taxonomy CSV filename (lives under each script's own data/ dir).
-TAXONOMY_CSV_FILENAME = "planktonzilla_taxonomy_v20.csv"
+TAXONOMY_CSV_FILENAME = Path(__file__).parent / "planktonzilla_taxonomy.csv"
 
 # The seven taxonomic ranks, ordered Kingdom -> Species.
 TAXONOMY_RANKS = ("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")

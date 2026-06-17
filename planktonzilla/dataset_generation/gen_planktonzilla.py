@@ -1,4 +1,7 @@
-"""Build the full planktonzilla dataset from scratch.
+"""
+(c) Inria
+
+Build the full planktonzilla dataset from scratch.
 
 For each source dataset it builds the imagefolder with Hydra, assigns the
 taxonomy and external IDs from the taxonomy CSV, fetches the metadata through the

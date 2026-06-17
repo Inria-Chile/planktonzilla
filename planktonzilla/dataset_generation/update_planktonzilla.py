@@ -1,3 +1,7 @@
+"""
+(c) Inria
+"""
+
 import argparse
 import logging
 import math
@@ -22,7 +26,6 @@ logger = get_pylogger(__name__)
 
 # Configuration
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CSV_PATH = os.path.join(REPO_ROOT, "data", TAXONOMY_CSV_FILENAME)
 OUTPUT_DIR = os.path.join(REPO_ROOT, "data", "planktonzilla_17M_updated")
 
 # Taxonomy columns that get re-synced (seven ranks + label/classification extras).
@@ -115,7 +118,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-id", default=REPO_ID, help="HuggingFace Hub dataset repo to load.")
     parser.add_argument("--output-dir", default=OUTPUT_DIR, help="Directory to save the re-synced dataset to.")
-    parser.add_argument("--csv-path", default=CSV_PATH, help="Taxonomy CSV used to re-sync the columns.")
+    parser.add_argument("--csv-path", default=TAXONOMY_CSV_FILENAME, help="Taxonomy CSV used to re-sync the columns.")
     args = parser.parse_args()
 
     logger.info(f"Loading dataset {args.repo_id}...")

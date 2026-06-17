@@ -1,3 +1,7 @@
+"""
+(c) Inria
+"""
+
 import json
 import logging
 import math
@@ -10,7 +14,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 from torch.nn.parallel.distributed import DistributedDataParallel
 
 try:
@@ -20,13 +24,17 @@ except ImportError:
 
 from open_clip import get_input_dtype
 from open_clip_train.distributed import is_master
+
 try:
     from open_clip_train.scheduler import get_learning_rate
 except ImportError:
+
     def get_learning_rate(optimizer):
         return optimizer.param_groups[0]["lr"]
-from open_clip_train.zero_shot import zero_shot_eval
+
+
 from open_clip_train.precision import get_autocast
+from open_clip_train.zero_shot import zero_shot_eval
 
 
 @dataclass
@@ -37,6 +45,7 @@ class TrainState:
     ``global_step`` and ``samples_seen`` are optional checkpoint metadata;
     ``compiled_train_step`` is runtime-only and is not saved.
     """
+
     task: Any
     optimizer: Optional[torch.optim.Optimizer] = None
     scaler: Optional[Any] = None
@@ -49,20 +58,20 @@ class TrainState:
 
 def estimate_train_state_counters(epoch: int, data: dict, args) -> tuple[int, int]:
     """Estimate train counters for legacy checkpoints without explicit counters."""
-    if epoch <= 0 or 'train' not in data:
+    if epoch <= 0 or "train" not in data:
         return 0, 0
 
-    dataloader = data['train'].dataloader
+    dataloader = data["train"].dataloader
     global_step = (dataloader.num_batches // args.accum_freq) * epoch
     samples_seen = dataloader.num_samples * epoch
     return global_step, samples_seen
 
 
 def restore_train_state_counters(
-        state: TrainState,
-        metadata: Optional[dict],
-        data: dict,
-        args,
+    state: TrainState,
+    metadata: Optional[dict],
+    data: dict,
+    args,
 ) -> None:
     """Restore counters from checkpoint metadata, estimating them for old checkpoints."""
     estimated_global_step, estimated_samples_seen = estimate_train_state_counters(state.epoch, data, args)
@@ -95,11 +104,7 @@ class AverageMeter(object):
 
 
 def postprocess_clip_output(model_out):
-    return {
-        "image_features": model_out[0],
-        "text_features": model_out[1],
-        "logit_scale": model_out[2]
-    }
+    return {"image_features": model_out[0], "text_features": model_out[1], "logit_scale": model_out[2]}
 
 
 def backward(total_loss, scaler):
@@ -163,14 +168,18 @@ def _finish_eager_train_step(task, optimizer, scaler, args):
         if args.grad_clip_norm is not None:
             scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(
-                task.trainable_module.parameters(), args.grad_clip_norm, norm_type=2.0,
+                task.trainable_module.parameters(),
+                args.grad_clip_norm,
+                norm_type=2.0,
             )
         scaler.step(optimizer)
         scaler.update()
     else:
         if args.grad_clip_norm is not None:
             torch.nn.utils.clip_grad_norm_(
-                task.trainable_module.parameters(), args.grad_clip_norm, norm_type=2.0,
+                task.trainable_module.parameters(),
+                args.grad_clip_norm,
+                norm_type=2.0,
             )
         optimizer.step()
 
@@ -224,15 +233,10 @@ def _train_step_eager(task, batch, accum_state, optimizer, scaler, autocast, arg
 
         # Disable gradient sync for all but the last accumulation step.
         # FSDP2: set_requires_gradient_sync; DDP: no_sync context manager.
-        is_last_step = (j == args.accum_freq - 1)
-        use_fsdp_no_sync = (
-            not is_last_step
-            and hasattr(task.trainable_module, 'set_requires_gradient_sync')
-        )
+        is_last_step = j == args.accum_freq - 1
+        use_fsdp_no_sync = not is_last_step and hasattr(task.trainable_module, "set_requires_gradient_sync")
         use_ddp_no_sync = (
-            not is_last_step
-            and not use_fsdp_no_sync
-            and isinstance(task.trainable_module, DistributedDataParallel)
+            not is_last_step and not use_fsdp_no_sync and isinstance(task.trainable_module, DistributedDataParallel)
         )
         if use_fsdp_no_sync:
             task.trainable_module.set_requires_gradient_sync(False)
@@ -250,12 +254,12 @@ def _train_step_eager(task, batch, accum_state, optimizer, scaler, autocast, arg
                 inputs = {}
                 for key, val in accum_features.items():
                     accumulated = accum_features[key]
-                    inputs[key] = torch.cat(accumulated[:j] + [model_out[key]] + accumulated[j + 1:])
+                    inputs[key] = torch.cat([*accumulated[:j], model_out[key], *accumulated[j + 1 :]])
 
                 losses = task.compute_accum_loss(inputs, inputs_no_accum, accum_batches)
                 del inputs
                 del inputs_no_accum
-                total_loss = sum(v for k, v in losses.items() if k.endswith('_loss'))
+                total_loss = sum(v for k, v in losses.items() if k.endswith("_loss"))
                 losses["loss"] = total_loss
                 losses["logit_scale"] = logit_scale
 
@@ -309,18 +313,13 @@ def train_one_epoch(state: TrainState, data, args, tb_writer=None):
     autocast = get_autocast(
         args.precision,
         device_type=device.type,
-        fsdp=getattr(args, 'fsdp', False),
+        fsdp=getattr(args, "fsdp", False),
     )
     input_dtype = get_input_dtype(args.precision)
-    compile_step = (
-        getattr(args, "torchcompile", False)
-        and getattr(args, "torchcompile_strategy", "task") == "step"
-    )
+    compile_step = getattr(args, "torchcompile", False) and getattr(args, "torchcompile_strategy", "task") == "step"
     eager_step = args.accum_freq > 1 or scaler is not None
     if compile_step and eager_step:
-        raise ValueError(
-            "--torchcompile-strategy step requires --accum-freq 1 and a precision without GradScaler."
-        )
+        raise ValueError("--torchcompile-strategy step requires --accum-freq 1 and a precision without GradScaler.")
     if eager_step:
         train_step = None
     elif compile_step:
@@ -330,10 +329,10 @@ def train_one_epoch(state: TrainState, data, args, tb_writer=None):
 
     task.train()
 
-    data['train'].set_epoch(epoch)  # set epoch in process safe manner via sampler or shared_epoch
-    dataloader = data['train'].dataloader
+    data["train"].set_epoch(epoch)  # set epoch in process safe manner via sampler or shared_epoch
+    dataloader = data["train"].dataloader
     num_batches_per_epoch = dataloader.num_batches // args.accum_freq
-    sample_digits = math.ceil(math.log(dataloader.num_samples + 1, 10))
+    sample_digits = math.ceil(math.log10(dataloader.num_samples + 1))
 
     accum_state = ([], {}) if args.accum_freq > 1 else None
 
@@ -390,10 +389,7 @@ def train_one_epoch(state: TrainState, data, args, tb_writer=None):
             logit_scale = losses.get("logit_scale", None)
             logit_scale_scalar = logit_scale.item() if logit_scale is not None else 0.0
             loss_log = " ".join(
-                [
-                    f"{loss_name.capitalize()}: {loss_m.val:#.5g} ({loss_m.avg:#.5g})"
-                    for loss_name, loss_m in losses_m.items()
-                ]
+                [f"{loss_name.capitalize()}: {loss_m.val:#.5g} ({loss_m.avg:#.5g})" for loss_name, loss_m in losses_m.items()]
             )
             samples_per_second = step_batch_size * args.world_size / batch_time_m.val
             samples_per_second_per_gpu = step_batch_size / batch_time_m.val
@@ -415,7 +411,7 @@ def train_one_epoch(state: TrainState, data, args, tb_writer=None):
                 "scale": logit_scale_scalar,
                 "lr": learning_rate,
             }
-            log_data.update({name:val.val for name,val in losses_m.items()})
+            log_data.update({name: val.val for name, val in losses_m.items()})
 
             log_data = {"train/" + name: val for name, val in log_data.items()}
 
@@ -424,8 +420,8 @@ def train_one_epoch(state: TrainState, data, args, tb_writer=None):
                     tb_writer.add_scalar(name, val, step)
 
             if args.wandb:
-                assert wandb is not None, 'Please install wandb.'
-                log_data['step'] = step  # for backwards compatibility
+                assert wandb is not None, "Please install wandb."
+                log_data["step"] = step  # for backwards compatibility
                 wandb.log(log_data, step=step)
 
             # resetting batch / data time meters per log window
@@ -442,9 +438,7 @@ def zero_shot_eval_all(task, data, epoch, args, tokenizer=None):
     if "audio-zeroshot" in data:
         from open_clip_train.audio_zero_shot import audio_zero_shot_eval
 
-        zero_shot_metrics.update(
-            audio_zero_shot_eval(task, data["audio-zeroshot"], epoch, args, tokenizer=tokenizer)
-        )
+        zero_shot_metrics.update(audio_zero_shot_eval(task, data["audio-zeroshot"], epoch, args, tokenizer=tokenizer))
     return zero_shot_metrics
 
 
@@ -465,9 +459,9 @@ def evaluate(model, data, epoch, args, tb_writer=None, tokenizer=None):
     autocast = get_autocast(args.precision, device_type=device.type)
     input_dtype = get_input_dtype(args.precision)
 
-    if 'val' in data and (args.val_frequency and ((epoch % args.val_frequency) == 0 or epoch == args.epochs)):
+    if "val" in data and (args.val_frequency and ((epoch % args.val_frequency) == 0 or epoch == args.epochs)):
         model_no_ddp = model.module if hasattr(model, "module") else model
-        dataloader = data['val'].dataloader
+        dataloader = data["val"].dataloader
         num_samples = 0
         samples_per_val = dataloader.num_samples
 
@@ -499,10 +493,7 @@ def evaluate(model, data, epoch, args, tb_writer=None, tokenizer=None):
 
                     batch_size = images.shape[0]
                     labels = torch.arange(batch_size, device=device).long()
-                    total_loss = (
-                        F.cross_entropy(logits_per_image, labels) +
-                        F.cross_entropy(logits_per_text, labels)
-                    ) / 2
+                    total_loss = (F.cross_entropy(logits_per_image, labels) + F.cross_entropy(logits_per_text, labels)) / 2
 
                     gen_loss = maybe_compute_generative_loss(model_out)
 
@@ -529,15 +520,28 @@ def evaluate(model, data, epoch, args, tb_writer=None, tokenizer=None):
             txt_unique_features_val = txt_unique_features_val.cpu()
 
             class_preds = (100.0 * imgs_features_val @ txt_unique_features_val.T).softmax(dim=-1).argmax(1).cpu()
-            class_targets = (txt_tokens_val.unsqueeze(1) == txt_unique_tokens_val.unsqueeze(0)).all(dim=-1).to(torch.int64).argmax(dim=1).cpu()
+            class_targets = (
+                (txt_tokens_val.unsqueeze(1) == txt_unique_tokens_val.unsqueeze(0))
+                .all(dim=-1)
+                .to(torch.int64)
+                .argmax(dim=1)
+                .cpu()
+            )
 
-            precision = precision_score(class_targets, class_preds, average='macro', zero_division=0)
-            recall = recall_score(class_targets, class_preds, average='macro', zero_division=0)
-            f1 = f1_score(class_targets, class_preds, average='macro', zero_division=0)
+            precision = precision_score(class_targets, class_preds, average="macro", zero_division=0)
+            recall = recall_score(class_targets, class_preds, average="macro", zero_division=0)
+            f1 = f1_score(class_targets, class_preds, average="macro", zero_division=0)
 
             loss = cumulative_loss / num_samples
             metrics.update(
-                {"clip_val_loss": loss.item(), "val_precision": precision, "val_recall": recall, "val_f1": f1, "epoch": epoch, "num_samples": num_samples}
+                {
+                    "clip_val_loss": loss.item(),
+                    "val_precision": precision,
+                    "val_recall": recall,
+                    "val_f1": f1,
+                    "epoch": epoch,
+                    "num_samples": num_samples,
+                }
             )
             if gen_loss is not None:
                 gen_loss = cumulative_gen_loss / num_samples
@@ -546,10 +550,7 @@ def evaluate(model, data, epoch, args, tb_writer=None, tokenizer=None):
     if not metrics:
         return metrics
 
-    _logger.info(
-        f"Eval Epoch: {epoch} "
-        + "\t".join([f"{k}: {round(v, 4):.4f}" for k, v in metrics.items()])
-    )
+    _logger.info(f"Eval Epoch: {epoch} " + "\t".join([f"{k}: {round(v, 4):.4f}" for k, v in metrics.items()]))
 
     log_data = {"val/" + name: val for name, val in metrics.items()}
 
@@ -562,14 +563,14 @@ def evaluate(model, data, epoch, args, tb_writer=None, tokenizer=None):
             f.write("\n")
 
     if args.wandb:
-        assert wandb is not None, 'Please install wandb.'
-        if 'train' in data:
-            dataloader = data['train'].dataloader
+        assert wandb is not None, "Please install wandb."
+        if "train" in data:
+            dataloader = data["train"].dataloader
             num_batches_per_epoch = dataloader.num_batches // args.accum_freq
             step = num_batches_per_epoch * epoch
         else:
             step = None
-        log_data['epoch'] = epoch
+        log_data["epoch"] = epoch
         wandb.log(log_data, step=step)
 
     return metrics

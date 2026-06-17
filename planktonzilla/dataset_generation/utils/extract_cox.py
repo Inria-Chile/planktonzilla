@@ -1,4 +1,6 @@
 """
+(c) Inria
+
 Download COX1 gene sequences from NCBI for plankton species.
 
 Steps per species:

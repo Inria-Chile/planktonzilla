@@ -1,4 +1,6 @@
 """
+(c) Inria
+
 Overrides:
     The bare-except discriminator at planktonzilla/clip_model.py:33-40
     (replaced via Phase 3 FIX-01; Phase 2 builds the helper, Phase 3

@@ -1,3 +1,7 @@
+"""
+(c) Inria
+"""
+
 import argparse
 import logging
 import os

@@ -1,4 +1,6 @@
 """
+(c) Inria
+
 extract_taxon_ids.py
 =====================
 Two-step pipeline that, starting from the planktonzilla taxonomy, resolves the
@@ -40,7 +42,7 @@ import requests
 
 from planktonzilla.utils.logger import get_pylogger
 
-from .constants import TAXONOMY_CSV_FILENAME, TAXONOMY_RANKS
+from ..constants import TAXONOMY_CSV_FILENAME, TAXONOMY_RANKS
 
 logger = get_pylogger(__name__)
 
@@ -208,8 +210,7 @@ def fetch_external_ids(taxa_wiki: pl.DataFrame, batch_size: int = 50) -> pl.Data
                 time.sleep(2)
 
         if not success:
-            for qcode in batch:
-                results.append({"wikidata_ID": qcode, **{col: None for col in WIKIDATA_PROPERTIES}})
+            results.extend([{"wikidata_ID": qcode, **{col: None for col in WIKIDATA_PROPERTIES}} for qcode in batch])
         time.sleep(1)
 
     df_ids = pl.DataFrame(results)

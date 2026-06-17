@@ -1,4 +1,6 @@
 """
+(c) Inria
+
 Overrides:
     (re-export of upstream open_clip.transformer.VisionTransformer and
     open_clip.timm_model.TimmModel — no behavioral override)

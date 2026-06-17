@@ -1,4 +1,6 @@
 """
+(c) Inria
+
 planktonzilla.open_clip_ext — wrap-and-delegate seam over upstream open-clip-torch.
 
 Overrides:

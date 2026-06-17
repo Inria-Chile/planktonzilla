@@ -1,4 +1,6 @@
 """
+(c) Inria
+
 Overrides:
     open_clip.create_model_and_transforms, create_model,
     create_model_from_pretrained, load_checkpoint (pass-through

@@ -1,4 +1,6 @@
 """
+(c) Inria
+
 Overrides:
     open_clip.transform.image_transform, image_transform_v2, AugmentationCfg.
 
@@ -13,9 +15,8 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from typing import Any, Optional, Tuple, Union
 
-import open_clip
 from open_clip.transform import PreprocessCfg
-from open_clip.transform import image_transform as _UPSTREAM_IMAGE_TRANSFORM
+from open_clip.transform import image_transform as _upstream_image_transform
 
 # Captured at module import time, BEFORE clip_train/main.py::_patch_upstream
 # rebinds open_clip.transform.image_transform to the wrapper below. Re-importing
@@ -53,15 +54,17 @@ def image_transform(
     elif isinstance(aug_cfg, AugmentationCfg):
         trivial_augment = aug_cfg.trivial_augment
         from open_clip.transform import AugmentationCfg as _UpstreamCfg
+
         upstream_fields = set(_UpstreamCfg.__dataclass_fields__)
         kwargs = {**kwargs, "aug_cfg": _UpstreamCfg(**{k: v for k, v in asdict(aug_cfg).items() if k in upstream_fields})}
 
     # Use the handle captured at import time; re-importing here would resolve to
     # this wrapper (after _patch_upstream rebinds the name) and recurse.
-    result = _UPSTREAM_IMAGE_TRANSFORM(image_size, is_train, **kwargs)
+    result = _upstream_image_transform(image_size, is_train, **kwargs)
 
     if is_train and trivial_augment:
         from torchvision.transforms import Compose, TrivialAugmentWide
+
         if hasattr(result, "transforms"):
             transforms_list = list(result.transforms)
             # insert before MaybeToTensor so it operates on PIL images
