@@ -38,6 +38,8 @@ from pathlib import Path
 import polars as pl
 from tqdm import tqdm
 
+from planktonzilla.utils.logger import get_pylogger
+
 try:
     from Bio import Entrez, SeqIO
     from Bio.SeqRecord import SeqRecord
@@ -69,12 +71,7 @@ MAX_SEQS_PER_SPECIES = 500  # Safety cap per species; raise it if needed.
 BATCH_SIZE = 50  # Records downloaded per Entrez request.
 SLEEP_BETWEEN_CALLS = 0.4  # seconds; respects the NCBI rate limit (~3/s without an API key).
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%H:%M:%S",
-)
-log = logging.getLogger(__name__)
+log = get_pylogger(__name__)
 
 
 # ── NCBI helpers ─────────────────────────────────────────────────────────────────
@@ -123,6 +120,7 @@ def search_nuccore(query: str, max_results: int = MAX_SEQS_PER_SPECIES) -> list[
         log.info(f"  Found {count} total matches, retrieving up to {max_results}.")
         return ids
     except Exception as e:
+        log.warning(f"  esearch failed for query {query!r}, returning no IDs: {e}")
         log.error(f"  esearch failed: {e}")
         return []
 
@@ -148,6 +146,7 @@ def fetch_sequences(id_list: list[str], label: str = "") -> list[SeqRecord]:
             records.extend(batch_records)
             log.info(f"  [{label}] Fetched {len(records)}/{len(id_list)} sequences…")
         except Exception as e:
+            log.warning(f"  efetch batch {start}-{start + BATCH_SIZE} failed for [{label}], skipping batch: {e}")
             log.error(f"  efetch batch {start}-{start + BATCH_SIZE} failed: {e}")
 
     return records
@@ -280,6 +279,7 @@ def process_csv(
 
 def main() -> None:
     """Parse CLI args and fetch COX1 sequences for a single ID or a CSV batch."""
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     parser = argparse.ArgumentParser(
         description="Fetch COX1 sequences from NCBI for plankton species.",
     )
@@ -310,9 +310,9 @@ def main() -> None:
             expand_to_children=not args.noexp,
             max_results=args.max_seqs,
         )
-        print(f"\nFound {len(records)} COX sequences for taxid {args.ncbi_id}\n")
+        log.info(f"\nFound {len(records)} COX sequences for taxid {args.ncbi_id}\n")
         for r in records:
-            print(f"  {r.id}  len={len(r.seq)} bp  {r.description[:100]}")
+            log.info(f"  {r.id}  len={len(r.seq)} bp  {r.description[:100]}")
 
         out_dir = Path(args.out_dir_s)
         out_dir.mkdir(parents=True, exist_ok=True)

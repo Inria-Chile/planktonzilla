@@ -31,13 +31,18 @@ Requirements:
 """
 
 import argparse
+import logging
 import os
 import time
 
 import polars as pl
 import requests
 
+from planktonzilla.utils.logger import get_pylogger
+
 from .constants import TAXONOMY_CSV_FILENAME, TAXONOMY_RANKS
+
+logger = get_pylogger(__name__)
 
 # ── Paths (relative to the repo, no hardcoded absolute paths) ───────────────────
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -100,7 +105,8 @@ def search_wikidata_taxon(taxon: str) -> dict | None:
         if r.status_code != 200:
             return None
         data = r.json()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Wikidata search failed for taxon {taxon!r}, returning None: {e}")
         return None
 
     for result in data.get("search", []):
@@ -126,7 +132,7 @@ def fetch_wikidata_ids(taxa: pl.DataFrame) -> pl.DataFrame:
 
     total = taxa.height
     for idx, row in enumerate(taxa.iter_rows(named=True), start=1):
-        print(f"[wikidata] {idx}/{total}")
+        logger.info(f"[wikidata] {idx}/{total}")
 
         # Taxa present, from Species down to Kingdom (deepest rank first).
         taxons = [(row[c], c) for c in COLS if row[c] != ""]
@@ -160,7 +166,8 @@ def _extract_property(claims: dict, prop: str) -> str | None:
         return None
     try:
         return claims[prop][0]["mainsnak"]["datavalue"]["value"]
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Could not extract property {prop} from claims, returning None: {e}")
         return None
 
 
@@ -171,8 +178,9 @@ def fetch_external_ids(taxa_wiki: pl.DataFrame, batch_size: int = 50) -> pl.Data
     results = []
     for i in range(0, len(qcodes), batch_size):
         batch = qcodes[i : i + batch_size]
+        batch_idx = i // batch_size + 1
         url = f"https://www.wikidata.org/w/api.php?action=wbgetentities&ids={'|'.join(batch)}&format=json"
-        print(f"[ids] batch {i // batch_size + 1} ({len(batch)} Qcodes)")
+        logger.info(f"[ids] batch {batch_idx} ({len(batch)} Qcodes)")
 
         success = False
         for attempt in range(5):
@@ -180,7 +188,7 @@ def fetch_external_ids(taxa_wiki: pl.DataFrame, batch_size: int = 50) -> pl.Data
                 r = requests.get(url, headers=HEADERS, timeout=60)
                 if r.status_code == 429:
                     wait = 2**attempt
-                    print(f"  429 -> waiting {wait}s")
+                    logger.info(f"  429 -> waiting {wait}s")
                     time.sleep(wait)
                     continue
                 r.raise_for_status()
@@ -196,7 +204,7 @@ def fetch_external_ids(taxa_wiki: pl.DataFrame, batch_size: int = 50) -> pl.Data
                 success = True
                 break
             except Exception as e:
-                print(f"  error in batch {i}: {e}")
+                logger.warning(f"  error in batch {batch_idx}: {e}")
                 time.sleep(2)
 
         if not success:
@@ -226,6 +234,7 @@ def load_unique_taxa(input_csv: str, limit: int | None) -> pl.DataFrame:
 
 def main() -> None:
     """Resolve Wikidata Qcodes and external IDs for each taxon and write CSVs."""
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--input", default=INPUT_CSV, help="Input taxonomy CSV.")
     parser.add_argument("--wikidata-out", default=WIKIDATA_CSV, help="Step 1 output (taxa + wikidata_ID).")
@@ -235,21 +244,21 @@ def main() -> None:
 
     # Step 0: unique taxa.
     taxa = load_unique_taxa(args.input, args.limit)
-    print(f"{taxa.height} unique taxa to resolve.")
+    logger.info(f"{taxa.height} unique taxa to resolve.")
 
     # Step 1: Wikidata Qcodes.
     taxa_wiki = fetch_wikidata_ids(taxa)
     taxa_wiki.write_csv(args.wikidata_out, separator=SEP)
-    print(f"Step 1 done -> {args.wikidata_out}")
+    logger.info(f"Step 1 done -> {args.wikidata_out}")
 
     # Step 2: WoRMS / NCBI / BOLD.
     taxa_ids = fetch_external_ids(taxa_wiki)
     # Normalize empty strings to null before saving.
     taxa_ids = taxa_ids.with_columns(pl.when(pl.col(pl.String) == "").then(None).otherwise(pl.col(pl.String)).name.keep())
     taxa_ids.write_csv(args.ids_out, separator=SEP)
-    print(f"Step 2 done -> {args.ids_out}")
+    logger.info(f"Step 2 done -> {args.ids_out}")
 
-    print("DONE")
+    logger.info("DONE")
 
 
 if __name__ == "__main__":

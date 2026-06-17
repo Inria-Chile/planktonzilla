@@ -1,3 +1,4 @@
+import logging
 import os
 from collections import Counter
 
@@ -11,7 +12,11 @@ from datasets import (
     load_dataset,
 )
 
+from planktonzilla.utils.logger import get_pylogger
+
 from .constants import REPO_ID, TAXONOMY_RANKS, default_num_proc
+
+logger = get_pylogger(__name__)
 
 # Configuration
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -113,7 +118,8 @@ def stratified_split_by_dataset(
                 seed=seed,
                 stratify_by_column="label",
             )
-        except ValueError:
+        except ValueError as e:
+            logger.warning(f"Stratified train/val-test split failed for dataset {dname!r}, falling back to unstratified: {e}")
             splits = ds_remaining.train_test_split(
                 test_size=int(n * (test_frac + val_frac)),
                 shuffle=True,
@@ -131,7 +137,8 @@ def stratified_split_by_dataset(
                 seed=seed,
                 stratify_by_column="label",
             )
-        except ValueError:
+        except ValueError as e:
+            logger.warning(f"Stratified val/test split failed for dataset {dname!r}, falling back to unstratified: {e}")
             splits = val_test_split.train_test_split(
                 test_size=int(n * val_frac),
                 shuffle=True,
@@ -158,6 +165,7 @@ def stratified_split_by_dataset(
 
 def main() -> None:
     """Load the dataset, keep plankton, stratify-split, and save the DatasetDict."""
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     num_proc = default_num_proc()
 
     ds = load_dataset(REPO_ID, split="train")
@@ -174,7 +182,7 @@ def main() -> None:
     )
 
     dataset.save_to_disk(OUTPUT_DIR)
-    print("DONE")
+    logger.info("DONE")
 
 
 if __name__ == "__main__":

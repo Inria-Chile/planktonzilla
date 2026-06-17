@@ -1,8 +1,11 @@
+import logging
 import math
 import os
 
 import pandas as pd
 from datasets import Dataset, Value, load_dataset
+
+from planktonzilla.utils.logger import get_pylogger
 
 from .constants import (
     EXTRA_COLS,
@@ -13,6 +16,8 @@ from .constants import (
     TAXONOMY_RANKS,
     default_num_proc,
 )
+
+logger = get_pylogger(__name__)
 
 # Configuration
 # On-disk copy of the re-synced dataset, written to the shared storage space.
@@ -35,7 +40,7 @@ SYNC_COLS = TAXO_COLS + ID_COLS
 
 def build_sync_dict(csv_path: str) -> dict:
     """Load the CSV and build the (Dataset, Raw_Labels) -> values-to-update dictionary."""
-    print("Loading CSV and preparing dictionary...")
+    logger.info("Loading CSV and preparing dictionary...")
     df = pd.read_csv(csv_path, sep=",")
 
     # wikidata_ID / ecotaxa_ID: string as is (e.g. "Q3386609" or "274;1231;15123").
@@ -95,7 +100,7 @@ def sync_columns(ds: Dataset, sync_dict: dict) -> Dataset:
 
         return example
 
-    print("Updating columns...")
+    logger.info("Updating columns...")
     return ds.map(
         update_example,
         num_proc=default_num_proc(),
@@ -106,16 +111,17 @@ def sync_columns(ds: Dataset, sync_dict: dict) -> Dataset:
 
 def main() -> None:
     """Load the dataset, re-sync taxonomy/ID columns from the CSV, and save it."""
-    print(f"Loading dataset {REPO_ID}...")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    logger.info(f"Loading dataset {REPO_ID}...")
     ds = load_dataset(REPO_ID, split="train")
 
     sync_dict = build_sync_dict(CSV_PATH)
     dataset_final = sync_columns(ds, sync_dict)
 
-    print(f"Saving dataset to disk ({OUTPUT_DIR})...")
+    logger.info(f"Saving dataset to disk ({OUTPUT_DIR})...")
     dataset_final.save_to_disk(OUTPUT_DIR)
 
-    print("\nProcess finished!")
+    logger.info("\nProcess finished!")
 
 
 if __name__ == "__main__":

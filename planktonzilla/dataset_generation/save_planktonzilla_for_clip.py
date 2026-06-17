@@ -1,10 +1,15 @@
 import io
+import logging
 import os
 import tarfile
 
 from datasets import DatasetDict, load_from_disk
 from PIL import Image
 from tqdm import tqdm
+
+from planktonzilla.utils.logger import get_pylogger
+
+logger = get_pylogger(__name__)
 
 # Paths relative to the repository so we don't depend on a specific cluster.
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -83,6 +88,7 @@ def export_to_tar_shards(
 
 def main() -> None:
     """Load the only-plankton dataset and export train/val splits to tar shards."""
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     dataset = load_from_disk(INPUT_DIR)
 
     # Export train and validation. The validation split in the DatasetDict is
@@ -95,7 +101,7 @@ def main() -> None:
         output_dir=SHARDS_DIR,
     )
 
-    print("DONE")
+    logger.info("DONE")
 
 
 if __name__ == "__main__":

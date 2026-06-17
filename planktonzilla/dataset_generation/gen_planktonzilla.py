@@ -25,6 +25,7 @@ Prerequisites:
 
 import concurrent.futures
 import json
+import logging
 import os
 from functools import partial
 from pathlib import Path
@@ -72,14 +73,16 @@ def clean_corrupt_examples_optimized(dataset: Dataset, batch_size: int = 1000, n
             # If the whole batch reads without error, all of them are fine.
             _ = dataset[start:end]
             return list(batch)
-        except Exception:
+        except Exception as e:
             # If the batch fails, we check row by row and drop the corrupt ones.
+            logger.warning(f"Batch [{start}:{end}] failed to read, checking row by row: {e}")
             valid = []
             for i in batch:
                 try:
                     _ = dataset[i]
                     valid.append(i)
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Dropping corrupt example at index {i}: {e}")
                     continue
             return valid
 
@@ -87,7 +90,7 @@ def clean_corrupt_examples_optimized(dataset: Dataset, batch_size: int = 1000, n
     results = Parallel(n_jobs=n_jobs)(delayed(process_batch)(s) for s in tqdm(starts, desc="Checking integrity"))
     good = [i for batch in results for i in batch]
 
-    print(f"Original: {total} -> clean: {len(good)} (removed {total - len(good)})")
+    logger.info(f"Original: {total} -> clean: {len(good)} (removed {total - len(good)})")
     return dataset.select(good)
 
 
@@ -141,8 +144,8 @@ def retrieve_whoi_metadata(bin_id, session: requests.Session | None = None) -> d
             v = info[k]
             info[k] = float(v) if v not in (None, "", np.nan) else np.nan
 
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"WHOI metadata fetch failed for bin {bin_id}: {e}")
 
     return info
 
@@ -181,8 +184,8 @@ def retrieve_ecotaxa_metadata(obj_id, session: requests.Session | None = None) -
         # objdate already comes as a date (YYYY-MM-DD).
         info["Timestamp"] = data.get("objdate")
 
-    except (requests.RequestException, ValueError, TypeError):
-        pass
+    except (requests.RequestException, ValueError, TypeError) as e:
+        logger.warning(f"EcoTaxa metadata fetch failed for obj {obj_id}: {e}")
 
     return info
 
@@ -253,7 +256,8 @@ class RedefineDataset:
         def extract(example):
             try:
                 md = orjson.loads(example["metadata"]) if example["metadata"] else {}
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to parse metadata JSON, using empty metadata: {e}")
                 md = {}
 
             for col in self.metadata_cols_final:
@@ -345,7 +349,7 @@ class RedefineDataset:
                     **tax,
                 }
 
-            print(f"Processing split {split}...")
+            logger.info(f"Processing split {split}...")
             ds = ds.map(process_row, desc="Mapping taxonomy", num_proc=num_proc)
 
             ds = self._add_metadata(ds)
@@ -421,7 +425,7 @@ class WHOIRedefiner(RedefineDataset):
         ds = ds.map(extract_bin_id, desc="Extracting WHOI bin_id")
 
         bin_ids = np.unique(ds["bin_id"])
-        print(f"{len(bin_ids)} unique bin_ids")
+        logger.info(f"{len(bin_ids)} unique bin_ids")
 
         # A bin groups many images, so we query once per bin.
         bin_lookup = {}
@@ -437,7 +441,8 @@ class WHOIRedefiner(RedefineDataset):
                     try:
                         raw = future.result()
                         bin_lookup[bin_id] = {str(k): str(v) for k, v in raw.items() if v is not None}
-                    except Exception:
+                    except Exception as e:
+                        logger.warning(f"WHOI metadata future failed for bin {bin_id}, defaulting to empty: {e}")
                         bin_lookup[bin_id] = {}
 
         ds = ds.map(
@@ -489,6 +494,7 @@ class JediRedefiner(RedefineDataset):
 
 def main() -> None:
     """Build, redefine, concatenate and save the full planktonzilla dataset."""
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     DATA_ROOT = (root / "data").resolve()
     taxo_csv_path = str(DATA_ROOT / constants.TAXONOMY_CSV_FILENAME)
 
@@ -640,7 +646,7 @@ def main() -> None:
 
     with hydra.initialize(version_base="1.3", config_path="../configs"):
         for dataset_name, ds_cfg in datasets_configs.items():
-            print(f"\n=== Dataset: {dataset_name} ===")
+            logger.info(f"\n=== Dataset: {dataset_name} ===")
 
             cfg = hydra.compose(config_name="import_dataset", overrides=ds_cfg["overrides"])
 
@@ -651,9 +657,9 @@ def main() -> None:
             has_content = imagefolder_dir.exists() and bool(os.listdir(imagefolder_dir))
             if has_content:
                 num_items = len(os.listdir(imagefolder_dir))
-                print(f"Using existing imagefolder with {num_items} categories in {imagefolder_dir}")
+                logger.info(f"Using existing imagefolder with {num_items} categories in {imagefolder_dir}")
             else:
-                print("Building imagefolder from the raw data...")
+                logger.info("Building imagefolder from the raw data...")
                 dataset_importer.import_dataset()
 
             # Resolve the files for each split (accepts the val/validation alias).
@@ -674,10 +680,10 @@ def main() -> None:
             if not data_files:
                 data_files = {"train": str(dataset_importer.imagefolder_dir / "*/*[!._]*")}
 
-            print("Loading dataset with the imagefolder loader...")
+            logger.info("Loading dataset with the imagefolder loader...")
             dataset = load_dataset("imagefolder", data_files=data_files)
 
-            print("Assigning taxonomy, IDs and metadata...")
+            logger.info("Assigning taxonomy, IDs and metadata...")
             dataset = ds_cfg["redefiner"].redefine(
                 hf_dataset=dataset,
                 dataset_name=dataset_name,
@@ -692,10 +698,10 @@ def main() -> None:
     ds = clean_corrupt_examples_optimized(ds, batch_size=1000, n_jobs=-1)
 
     output_path = DATA_ROOT / "planktonzilla_17M"
-    print(f"Saving dataset to {output_path}")
+    logger.info(f"Saving dataset to {output_path}")
     ds.save_to_disk(output_path)
 
-    print("\nProcess completed")
+    logger.info("\nProcess completed")
 
 
 if __name__ == "__main__":
