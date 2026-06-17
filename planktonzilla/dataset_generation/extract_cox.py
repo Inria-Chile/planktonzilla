@@ -25,7 +25,7 @@ Usage (batch from a CSV):
     python extract_cox.py --csv data/taxonomy_wiki_and_ids.csv --nb_rows 10 --clean
 
 Requirements:
-    pip install biopython polars requests tqdm
+    pip install biopython polars tqdm
 """
 
 import argparse
@@ -53,7 +53,10 @@ ENTREZ_API_KEY = os.environ.get("NCBI_API_KEY")
 
 # COX terms (match the title, gene name and product fields).
 COX_TERMS = [
-    "COI", "CO1", "COX1", "COXI",
+    "COI",
+    "CO1",
+    "COX1",
+    "COXI",
     "cytochrome c oxidase subunit I",
     "cytochrome c oxidase subunit 1",
     "cytochrome oxidase subunit I",
@@ -62,9 +65,9 @@ COX_TERMS = [
 # Query fragment with the COX filters joined by OR.
 COX_FILTER = " OR ".join(f'"{t}"[All Fields]' for t in COX_TERMS)
 
-MAX_SEQS_PER_SPECIES = 500   # Safety cap per species; raise it if needed.
-BATCH_SIZE = 50              # Records downloaded per Entrez request.
-SLEEP_BETWEEN_CALLS = 0.4    # seconds; respects the NCBI rate limit (~3/s without an API key).
+MAX_SEQS_PER_SPECIES = 500  # Safety cap per species; raise it if needed.
+BATCH_SIZE = 50  # Records downloaded per Entrez request.
+SLEEP_BETWEEN_CALLS = 0.4  # seconds; respects the NCBI rate limit (~3/s without an API key).
 
 logging.basicConfig(
     level=logging.INFO,
@@ -75,6 +78,7 @@ log = logging.getLogger(__name__)
 
 
 # ── NCBI helpers ─────────────────────────────────────────────────────────────────
+
 
 def configure_entrez(email: str | None = None):
     """Set up Entrez with the email (required) and the API key (optional)."""
@@ -130,7 +134,7 @@ def fetch_sequences(id_list: list[str], label: str = "") -> list[SeqRecord]:
         return records
 
     for start in range(0, len(id_list), BATCH_SIZE):
-        batch = id_list[start: start + BATCH_SIZE]
+        batch = id_list[start : start + BATCH_SIZE]
         time.sleep(SLEEP_BETWEEN_CALLS)
         try:
             handle = Entrez.efetch(
@@ -172,6 +176,7 @@ def get_cox_sequences(
 
 # ── Output helpers ───────────────────────────────────────────────────────────────
 
+
 def save_fasta(records: list[SeqRecord], filepath: str | Path):
     """Write the sequences to a FASTA file."""
     filepath = Path(filepath)
@@ -181,25 +186,8 @@ def save_fasta(records: list[SeqRecord], filepath: str | Path):
     log.info(f"  Saved {len(records)} sequences → {filepath}")
 
 
-def records_to_dataframe(records: list[SeqRecord], ncbi_tax_id=None) -> pl.DataFrame:
-    """Turn a list of SeqRecords into a tidy DataFrame."""
-    rows = []
-    for rec in records:
-        # Parse the accession and description from the FASTA header.
-        parts = rec.description.split(" ", 1)
-        accession = parts[0]
-        description = parts[1] if len(parts) > 1 else ""
-        rows.append({
-            "ncbi_tax_id": ncbi_tax_id,
-            "accession": accession,
-            "description": description,
-            "length_bp": len(rec.seq),
-            "sequence": str(rec.seq),
-        })
-    return pl.DataFrame(rows)
-
-
 # ── Batch processing ─────────────────────────────────────────────────────────────
+
 
 def process_csv(
     csv_path: str,
@@ -233,20 +221,22 @@ def process_csv(
         ncbi_id = row.get(ncbi_col)
         label = str(row.get(label_col, "unknown")).strip().replace(" ", "_")
 
-        # Decide which ID to use.
+        # Only NCBI IDs are currently used to drive the COX search.
         if ncbi_id is not None and str(ncbi_id).strip() not in ("", "nan", "NaN"):
             tax_id = str(int(float(ncbi_id)))
             source = "ncbi"
         else:
             if skip_empty:
                 log.debug(f"Skipping {label}: no ID found.")
-                summary_rows.append({
-                    "label": label,
-                    "ncbi_tax_id": None,
-                    "source": None,
-                    "n_sequences": 0,
-                    "status": "no_id",
-                })
+                summary_rows.append(
+                    {
+                        "label": label,
+                        "ncbi_tax_id": None,
+                        "source": None,
+                        "n_sequences": 0,
+                        "status": "no_id",
+                    }
+                )
             continue
 
         log.info(f"[{label}] NCBI tax ID: {tax_id} (source: {source})")
@@ -264,13 +254,15 @@ def process_csv(
             fasta_path = out_dir / f"{label}_{tax_id}.fasta"
             save_fasta(records, fasta_path)
 
-        summary_rows.append({
-            "label": label,
-            "ncbi_tax_id": tax_id,
-            "source": source,
-            "n_sequences": n,
-            "status": status,
-        })
+        summary_rows.append(
+            {
+                "label": label,
+                "ncbi_tax_id": tax_id,
+                "source": source,
+                "n_sequences": n,
+                "status": status,
+            }
+        )
 
     summary_df = pl.DataFrame(summary_rows)
     summary_path = out_dir / "summary.csv"
@@ -285,7 +277,9 @@ def process_csv(
 
 # ── CLI ──────────────────────────────────────────────────────────────────────────
 
-def main():
+
+def main() -> None:
+    """Parse CLI args and fetch COX1 sequences for a single ID or a CSV batch."""
     parser = argparse.ArgumentParser(
         description="Fetch COX1 sequences from NCBI for plankton species.",
     )

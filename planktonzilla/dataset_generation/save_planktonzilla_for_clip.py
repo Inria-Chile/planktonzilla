@@ -12,13 +12,21 @@ INPUT_DIR = os.path.join(REPO_ROOT, "data", "planktonzilla_17M_only_plankton")
 SHARDS_DIR = os.path.join(REPO_ROOT, "data", "shards")
 
 
-def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
-    """
-    Export a DatasetDict to .tar shards for CLIP/WebDataset-style training,
-    making sure all images are saved in RGB format.
+def export_to_tar_shards(
+    dataset_dict: DatasetDict,
+    output_dir: str = "data",
+    shard_size: int = 1_000,
+) -> None:
+    """Export a DatasetDict to .tar shards for CLIP/WebDataset-style training.
+
+    All images are re-encoded as RGB JPEG so JPEG-only consumers can read them.
+
+    Args:
+        dataset_dict: Splits to export; one subdirectory of shards per split.
+        output_dir: Directory where the per-split shard folders are written.
+        shard_size: Maximum number of samples per .tar shard.
     """
     os.makedirs(output_dir, exist_ok=True)
-
 
     for split_name, dataset in dataset_dict.items():
         split_dir = os.path.join(output_dir, split_name)
@@ -26,7 +34,7 @@ def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
 
         total_samples = len(dataset)
         n_shards = (total_samples + shard_size - 1) // shard_size
-        
+
         taxo_classes = dataset.features["label"].names
 
         for shard_idx in range(n_shards):
@@ -35,12 +43,12 @@ def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
 
             shard_path = os.path.join(split_dir, f"shard_{shard_idx:05d}.tar")
             shard_indices = range(start, end)
-            
+
             with tarfile.open(shard_path, "w") as tar:
                 # Loop over the absolute indices of the dataset
                 for i_abs in tqdm(shard_indices, desc=f"{split_name} shard {shard_idx}"):
                     example = dataset[i_abs]
-                    i = i_abs - start # Relative index within the shard
+                    i = i_abs - start  # Relative index within the shard
 
                     # --- 1. Image (key: image_{i}.jpg) ---
                     img = example["image"]
@@ -49,7 +57,7 @@ def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
 
                     # Convert to RGB before saving to cover grayscale (L),
                     # palette (P) or RGBA, since JPEG only supports RGB.
-                    img_rgb = img.convert('RGB')
+                    img_rgb = img.convert("RGB")
 
                     # Save the image as JPEG into a bytes buffer.
                     img_bytes = io.BytesIO()
@@ -61,7 +69,9 @@ def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
                     img_info.size = len(img_bytes.getbuffer())
                     tar.addfile(img_info, img_bytes)
 
-                    # --- 2. Label/Text (key: text_{i}.txt) ---
+                    # --- 2. Label/Text (key: image_{i}.txt) ---
+                    # The basename must match the image (image_{i}) so WebDataset
+                    # groups the .jpg and its .txt into the same sample.
                     label_str = str(taxo_classes[example["label"]])
                     label_bytes = io.BytesIO(label_str.encode("utf-8"))
 
@@ -71,7 +81,8 @@ def export_to_tar_shards(dataset_dict, output_dir="data", shard_size=1_000):
                     tar.addfile(label_info, label_bytes)
 
 
-def main():
+def main() -> None:
+    """Load the only-plankton dataset and export train/val splits to tar shards."""
     dataset = load_from_disk(INPUT_DIR)
 
     # Export train and validation. The validation split in the DatasetDict is

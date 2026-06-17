@@ -3,6 +3,7 @@ from collections import Counter
 
 from datasets import (
     ClassLabel,
+    Dataset,
     DatasetDict,
     Features,
     Value,
@@ -25,7 +26,7 @@ MIN_CLASS_FREQ = 5  # classes with fewer examples are kept whole in train
 TAXONOMY_COLS = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]
 
 
-def build_only_plankton(ds, num_proc=1):
+def build_only_plankton(ds: Dataset, num_proc: int = 1) -> Dataset:
     """Keep only plankton with taxonomy and encode the taxonomy label."""
 
     # Plankton mask: marked as plankton and with a Kingdom assigned.
@@ -51,22 +52,28 @@ def build_only_plankton(ds, num_proc=1):
     ds = ds.map(encode_label, num_proc=num_proc)
 
     # Keep only what we need for training.
-    ds = ds.remove_columns(
-        [c for c in ds.column_names if c not in ["image", "label", "dataset"]]
-    )
+    ds = ds.remove_columns([c for c in ds.column_names if c not in ["image", "label", "dataset"]])
 
     ds = ds.cast(
-        Features({
-            "image": ds.features["image"],
-            "label": class_label,
-            "dataset": Value("string"),
-        })
+        Features(
+            {
+                "image": ds.features["image"],
+                "label": class_label,
+                "dataset": Value("string"),
+            }
+        )
     )
 
     return ds
 
 
-def stratified_split_by_dataset(ds, num_proc, seed=SEED, test_frac=TEST_FRAC, val_frac=VAL_FRAC):
+def stratified_split_by_dataset(
+    ds: Dataset,
+    num_proc: int,
+    seed: int = SEED,
+    test_frac: float = TEST_FRAC,
+    val_frac: float = VAL_FRAC,
+) -> tuple[Dataset, Dataset | None, Dataset | None]:
     """Train/val/test split stratified by dataset and by taxonomy.
 
     The split is done independently within each source dataset, and within each
@@ -149,22 +156,26 @@ def stratified_split_by_dataset(ds, num_proc, seed=SEED, test_frac=TEST_FRAC, va
     return train_ds, val_ds, test_ds
 
 
-def main():
-    num_proc = int(os.cpu_count()/2)
+def main() -> None:
+    """Load the dataset, keep plankton, stratify-split, and save the DatasetDict."""
+    num_proc = int(os.cpu_count() / 2)
 
     ds = load_dataset(REPO_ID, split="train")
     ds = build_only_plankton(ds, num_proc=num_proc)
 
     train_ds, val_ds, test_ds = stratified_split_by_dataset(ds, num_proc=num_proc)
 
-    dataset = DatasetDict({
-        "train": train_ds,
-        "validation": val_ds,
-        "test": test_ds,
-    })
+    dataset = DatasetDict(
+        {
+            "train": train_ds,
+            "validation": val_ds,
+            "test": test_ds,
+        }
+    )
 
     dataset.save_to_disk(OUTPUT_DIR)
     print("DONE")
+
 
 if __name__ == "__main__":
     main()

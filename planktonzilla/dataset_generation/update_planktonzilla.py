@@ -2,12 +2,12 @@ import math
 import os
 
 import pandas as pd
-from datasets import Value, load_dataset
+from datasets import Dataset, Value, load_dataset
 
 # Configuration
 REPO_ID = "project-oceania/planktonzilla-17M"
 
-# On-disk copy in the shared space, which retrieve_timestamp.py reads later.
+# On-disk copy of the re-synced dataset, written to the shared storage space.
 OUTPUT_DIR = "/home/acontreras/group_storage_rennes/acontreras/planktonzilla_17M_updated"
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -15,21 +15,29 @@ CSV_PATH = os.path.join(REPO_ROOT, "data", "planktonzilla_taxonomy_v20.csv")
 
 # Taxonomy columns that get re-synced.
 TAXO_COLS = [
-    "Kingdom", "Phylum", "Class", "Order", "Family",
-    "Genus", "Species", "proposed_label", "plankton",
-    "root_class", "qualifier",
+    "Kingdom",
+    "Phylum",
+    "Class",
+    "Order",
+    "Family",
+    "Genus",
+    "Species",
+    "proposed_label",
+    "plankton",
+    "root_class",
+    "qualifier",
 ]
 
 # ID columns from external databases. All are stored as string.
-STR_ID_COLS = ["wikidata_ID", "ecotaxa_ID"]            # already come as string in the CSV
-NUMERIC_ID_COLS = ["aphia_ID", "NCBI_ID", "BOLD_ID"]   # come as float in the CSV -> string without decimals
+STR_ID_COLS = ["wikidata_ID", "ecotaxa_ID"]  # already come as string in the CSV
+NUMERIC_ID_COLS = ["aphia_ID", "NCBI_ID", "BOLD_ID"]  # come as float in the CSV -> string without decimals
 ID_COLS = STR_ID_COLS + NUMERIC_ID_COLS
 
 # All the columns to update. They already exist in the dataset.
 SYNC_COLS = TAXO_COLS + ID_COLS
 
 
-def build_sync_dict(csv_path):
+def build_sync_dict(csv_path: str) -> dict:
     """Load the CSV and build the (Dataset, Raw_Labels) -> values-to-update dictionary."""
     print("Loading CSV and preparing dictionary...")
     df = pd.read_csv(csv_path, sep=",")
@@ -57,13 +65,10 @@ def build_sync_dict(csv_path):
             return None
         return v
 
-    return {
-        key: {col: to_null(val) for col, val in row.items()}
-        for key, row in rows.items()
-    }
+    return {key: {col: to_null(val) for col, val in row.items()} for key, row in rows.items()}
 
 
-def sync_columns(ds, sync_dict):
+def sync_columns(ds: Dataset, sync_dict: dict) -> Dataset:
     """Update the values of the already-existing columns from the CSV."""
     # All the ID columns end up as string.
     new_features = ds.features.copy()
@@ -97,13 +102,14 @@ def sync_columns(ds, sync_dict):
     print("Updating columns...")
     return ds.map(
         update_example,
-        num_proc= int(os.cpu_count()/2),
+        num_proc=int(os.cpu_count() / 2),
         features=new_features,
         desc="Re-syncing taxonomy and external IDs",
     )
 
 
-def main():
+def main() -> None:
+    """Load the dataset, re-sync taxonomy/ID columns from the CSV, and save it."""
     print(f"Loading dataset {REPO_ID}...")
     ds = load_dataset(REPO_ID, split="train")
 
@@ -112,13 +118,6 @@ def main():
 
     print(f"Saving dataset to disk ({OUTPUT_DIR})...")
     dataset_final.save_to_disk(OUTPUT_DIR)
-
-    # print(f"Uploading dataset to the Hub ({REPO_ID})...")
-    # dataset_final.push_to_hub(
-    #     REPO_ID,
-    #     split="train",
-    #     commit_message="update: re-sync columns",
-    # )
 
     print("\nProcess finished!")
 

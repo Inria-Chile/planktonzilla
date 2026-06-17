@@ -37,6 +37,7 @@ import polars as pl
 import pyrootutils
 import requests
 from datasets import (
+    Dataset,
     Image,
     Value,
     concatenate_datasets,
@@ -59,7 +60,7 @@ num_proc = int(cpu_count() / 2)
 
 
 # Cleaning up corrupt examples
-def clean_corrupt_examples_optimized(dataset, batch_size=1000, n_jobs=-1):
+def clean_corrupt_examples_optimized(dataset: Dataset, batch_size: int = 1000, n_jobs: int = -1) -> Dataset:
     """Drop the corrupt examples, reading in batches to go fast."""
     total = len(dataset)
 
@@ -82,9 +83,7 @@ def clean_corrupt_examples_optimized(dataset, batch_size=1000, n_jobs=-1):
             return valid
 
     starts = range(0, total, batch_size)
-    results = Parallel(n_jobs=n_jobs)(
-        delayed(process_batch)(s) for s in tqdm(starts, desc="Checking integrity")
-    )
+    results = Parallel(n_jobs=n_jobs)(delayed(process_batch)(s) for s in tqdm(starts, desc="Checking integrity"))
     good = [i for batch in results for i in batch]
 
     print(f"Original: {total} -> clean: {len(good)} (removed {total - len(good)})")
@@ -92,7 +91,7 @@ def clean_corrupt_examples_optimized(dataset, batch_size=1000, n_jobs=-1):
 
 
 # Fetching metadata through the APIs
-def retrieve_whoi_metadata(bin_id, session=None):
+def retrieve_whoi_metadata(bin_id, session: requests.Session | None = None) -> dict:
     """Get lat/lon, depth, temperature, humidity and date from a WHOI bin."""
     api_url = f"https://ifcb-data.whoi.edu/api/bin/{bin_id}"
     hdr_url = f"https://ifcb-data.whoi.edu/mvco/{bin_id}.hdr"
@@ -147,7 +146,7 @@ def retrieve_whoi_metadata(bin_id, session=None):
     return info
 
 
-def retrieve_ecotaxa_metadata(obj_id, session=None):
+def retrieve_ecotaxa_metadata(obj_id, session: requests.Session | None = None) -> dict:
     """Get depth, lat/lon and date from an EcoTaxa object."""
     api_url = f"https://ecotaxa.obs-vlfr.fr/api/object/{obj_id}"
 
@@ -193,20 +192,29 @@ class RedefineDataset:
 
     TAXONOMY_COLS = ("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
     EXTRA_COLS = ("proposed_label", "plankton", "root_class", "qualifier")
-    ID_STR_COLS = ("wikidata_ID", "ecotaxa_ID")        # already text in the CSV
-    ID_NUM_COLS = ("aphia_ID", "NCBI_ID", "BOLD_ID")   # come as numbers -> text without decimals
+    ID_STR_COLS = ("wikidata_ID", "ecotaxa_ID")  # already text in the CSV
+    ID_NUM_COLS = ("aphia_ID", "NCBI_ID", "BOLD_ID")  # come as numbers -> text without decimals
 
     def __init__(self, csv_taxonomies_path):
         # Columns pulled from the CSV, indexed by (Dataset, Raw_Labels).
         self.lookup_cols = [
-            *self.TAXONOMY_COLS, *self.EXTRA_COLS, *self.ID_STR_COLS, *self.ID_NUM_COLS,
+            *self.TAXONOMY_COLS,
+            *self.EXTRA_COLS,
+            *self.ID_STR_COLS,
+            *self.ID_NUM_COLS,
         ]
         self.lookup = self._build_lookup(csv_taxonomies_path)
 
         # Columns flattened out of the metadata JSON.
         self.metadata_cols_final = [
-            "Latitude", "Humidity", "Temperature", "Longitude",
-            "ObjID", "Depth_max", "Depth_min", "timestamp",
+            "Latitude",
+            "Humidity",
+            "Temperature",
+            "Longitude",
+            "ObjID",
+            "Depth_max",
+            "Depth_min",
+            "timestamp",
         ]
 
     @staticmethod
@@ -223,9 +231,7 @@ class RedefineDataset:
         # Numeric IDs are stored as text without decimals (135336.0 -> "135336").
         for c in self.ID_NUM_COLS:
             if c in df.columns:
-                df = df.with_columns(
-                    pl.col(c).cast(pl.Int64, strict=False).cast(pl.Utf8).alias(c)
-                )
+                df = df.with_columns(pl.col(c).cast(pl.Int64, strict=False).cast(pl.Utf8).alias(c))
 
         present = [c for c in self.lookup_cols if c in df.columns]
         keys = zip(df["Dataset"].to_list(), df["Raw_Labels"].to_list())
@@ -285,8 +291,14 @@ class RedefineDataset:
 
         string_cols = [
             *self.TAXONOMY_COLS,
-            "proposed_label", "root_class", "qualifier",
-            "dataset", "original_label", "original_path", "ObjID", "timestamp",
+            "proposed_label",
+            "root_class",
+            "qualifier",
+            "dataset",
+            "original_label",
+            "original_path",
+            "ObjID",
+            "timestamp",
             *self.ID_STR_COLS,
             *self.ID_NUM_COLS,
         ]
@@ -318,11 +330,7 @@ class RedefineDataset:
                 full_path = example["image"]["path"]
 
                 chunks = full_path.split(os.sep)
-                short_path = (
-                    "/" + "/".join(chunks[-3:])
-                    if n_splits >= 2
-                    else "/" + "/".join(chunks[-2:])
-                )
+                short_path = "/" + "/".join(chunks[-3:]) if n_splits >= 2 else "/" + "/".join(chunks[-2:])
 
                 tax = self.lookup.get(
                     (dataset_name, label_str),
@@ -362,9 +370,7 @@ class EcoTaxaRedefiner(RedefineDataset):
         with requests.Session() as session:
             func = partial(retrieve_ecotaxa_metadata, session=session)
             with concurrent.futures.ThreadPoolExecutor(max_workers=num_proc) as executor:
-                raw = list(
-                    tqdm(executor.map(func, ids), total=len(ids), desc="Metadata EcoTaxa")
-                )
+                raw = list(tqdm(executor.map(func, ids), total=len(ids), desc="Metadata EcoTaxa"))
 
         def normalize(md):
             if not md:
@@ -420,10 +426,7 @@ class WHOIRedefiner(RedefineDataset):
         bin_lookup = {}
         with requests.Session() as session:
             with concurrent.futures.ThreadPoolExecutor(max_workers=num_proc) as executor:
-                futures = {
-                    executor.submit(retrieve_whoi_metadata, bin_id, session): bin_id
-                    for bin_id in bin_ids
-                }
+                futures = {executor.submit(retrieve_whoi_metadata, bin_id, session): bin_id for bin_id in bin_ids}
                 for future in tqdm(
                     concurrent.futures.as_completed(futures),
                     total=len(futures),
@@ -432,9 +435,7 @@ class WHOIRedefiner(RedefineDataset):
                     bin_id = futures[future]
                     try:
                         raw = future.result()
-                        bin_lookup[bin_id] = {
-                            str(k): str(v) for k, v in raw.items() if v is not None
-                        }
+                        bin_lookup[bin_id] = {str(k): str(v) for k, v in raw.items() if v is not None}
                     except Exception:
                         bin_lookup[bin_id] = {}
 
@@ -456,7 +457,11 @@ class WHOIRedefiner(RedefineDataset):
 
 
 class JediRedefiner(RedefineDataset):
-    """JEDI Oceans dataset: fixed metadata for all the examples."""
+    """JEDI Oceans dataset: fixed metadata for all the examples.
+
+    Kept for reference: JEDI Oceans is a manual-download dataset, so its config
+    in ``main`` stays commented out below.
+    """
 
     def __init__(self, csv_taxonomies_path):
         super().__init__(csv_taxonomies_path)
@@ -480,8 +485,9 @@ class JediRedefiner(RedefineDataset):
         features["metadata"] = Value("string")
         return ds.cast(features)
 
-def main():
 
+def main() -> None:
+    """Build, redefine, concatenate and save the full planktonzilla dataset."""
     DATA_ROOT = (root / "data").resolve()
     taxo_csv_path = str(DATA_ROOT / "planktonzilla_taxonomy_v20.csv")
 
