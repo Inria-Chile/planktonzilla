@@ -192,6 +192,33 @@ def retrieve_ecotaxa_metadata(obj_id, session: requests.Session | None = None) -
 
 
 # Assigning taxonomy, IDs and metadata
+def _taxonomy_row(example, *, class_names, n_splits, dataset_name, lookup, lookup_cols):
+    """Map one example to its dataset/original_label/original_path + taxonomy fields.
+
+    Hoisted out of ``RedefineDataset.redefine``'s per-split loop so it can be bound
+    with ``functools.partial`` and reused across splits. Behavior is identical to
+    the former ``process_row`` closure, including the ``n_splits >= 2`` short-path
+    slicing and the ``(dataset_name, label_str)`` lookup default.
+    """
+    label_str = class_names[example["label"]]
+    full_path = example["image"]["path"]
+
+    chunks = full_path.split(os.sep)
+    short_path = "/" + "/".join(chunks[-3:]) if n_splits >= 2 else "/" + "/".join(chunks[-2:])
+
+    tax = lookup.get(
+        (dataset_name, label_str),
+        {col: None for col in lookup_cols},
+    )
+
+    return {
+        "dataset": dataset_name,
+        "original_label": label_str,
+        "original_path": short_path,
+        **tax,
+    }
+
+
 class RedefineDataset:
     """Base class to assign taxonomy, external IDs and metadata to a dataset."""
 
@@ -250,6 +277,23 @@ class RedefineDataset:
     def _add_metadata(self, ds):
         """Attach the metadata as a JSON string. Defined by the subclasses."""
         raise NotImplementedError()
+
+    def _serialize_metadata(self, ds):
+        """Serialize the `metadata` column to a JSON string and cast it to ``string``.
+
+        Shared by every subclass' ``_add_metadata``: it takes a dataset whose
+        ``metadata`` column holds Python dicts and replaces it with their
+        ``json.dumps`` representation typed as ``Value("string")``.
+        """
+        ds = ds.map(
+            lambda ex: {"metadata": json.dumps(ex["metadata"])},
+            desc="Serializing metadata",
+            num_proc=num_proc,
+        )
+
+        features = ds.features.copy()
+        features["metadata"] = Value("string")
+        return ds.cast(features)
 
     def _flatten_metadata(self, ds):
         """Turn the metadata JSON into separate columns."""
@@ -331,24 +375,14 @@ class RedefineDataset:
             class_names = ds.features["label"].names
             ds = ds.cast_column("image", Image(decode=False))
 
-            def process_row(example):
-                label_str = class_names[example["label"]]
-                full_path = example["image"]["path"]
-
-                chunks = full_path.split(os.sep)
-                short_path = "/" + "/".join(chunks[-3:]) if n_splits >= 2 else "/" + "/".join(chunks[-2:])
-
-                tax = self.lookup.get(
-                    (dataset_name, label_str),
-                    {col: None for col in self.lookup_cols},
-                )
-
-                return {
-                    "dataset": dataset_name,
-                    "original_label": label_str,
-                    "original_path": short_path,
-                    **tax,
-                }
+            process_row = partial(
+                _taxonomy_row,
+                class_names=class_names,
+                n_splits=n_splits,
+                dataset_name=dataset_name,
+                lookup=self.lookup,
+                lookup_cols=self.lookup_cols,
+            )
 
             logger.info(f"Processing split {split}...")
             ds = ds.map(process_row, desc="Mapping taxonomy", num_proc=num_proc)
@@ -386,15 +420,7 @@ class EcoTaxaRedefiner(RedefineDataset):
         metadata = [normalize(r) for r in raw]
         ds = ds.add_column("metadata", metadata)
 
-        ds = ds.map(
-            lambda ex: {"metadata": json.dumps(ex["metadata"])},
-            desc="Serializing metadata",
-            num_proc=num_proc,
-        )
-
-        features = ds.features.copy()
-        features["metadata"] = Value("string")
-        return ds.cast(features)
+        return self._serialize_metadata(ds)
 
 
 class NoMetadataRedefiner(RedefineDataset):
@@ -403,15 +429,7 @@ class NoMetadataRedefiner(RedefineDataset):
     def _add_metadata(self, ds):
         ds = ds.add_column("metadata", [{}] * len(ds))
 
-        ds = ds.map(
-            lambda ex: {"metadata": json.dumps(ex["metadata"])},
-            desc="Serializing metadata",
-            num_proc=num_proc,
-        )
-
-        features = ds.features.copy()
-        features["metadata"] = Value("string")
-        return ds.cast(features)
+        return self._serialize_metadata(ds)
 
 
 class WHOIRedefiner(RedefineDataset):
@@ -452,15 +470,7 @@ class WHOIRedefiner(RedefineDataset):
         )
         ds = ds.remove_columns("bin_id")
 
-        ds = ds.map(
-            lambda ex: {"metadata": json.dumps(ex["metadata"])},
-            desc="Serializing metadata",
-            num_proc=num_proc,
-        )
-
-        features = ds.features.copy()
-        features["metadata"] = Value("string")
-        return ds.cast(features)
+        return self._serialize_metadata(ds)
 
 
 class JediRedefiner(RedefineDataset):
@@ -482,15 +492,7 @@ class JediRedefiner(RedefineDataset):
     def _add_metadata(self, ds):
         ds = ds.add_column("metadata", [self.metadata] * len(ds))
 
-        ds = ds.map(
-            lambda ex: {"metadata": json.dumps(ex["metadata"])},
-            desc="Serializing metadata",
-            num_proc=num_proc,
-        )
-
-        features = ds.features.copy()
-        features["metadata"] = Value("string")
-        return ds.cast(features)
+        return self._serialize_metadata(ds)
 
 
 def main() -> None:
@@ -521,34 +523,27 @@ def main() -> None:
 
     taxo_csv_path = args.taxo_csv
 
-    datasets_configs = {
-        "isiisnet": {
-            "overrides": [
-                "dataset_import=isiisnet",
-                "dataset_import.cleanup_after_processing=True",
-                "dataset_import.push_to_hub=False",
-                f"dataset_import.data_dir={DATA_ROOT}",
-            ],
-            "redefiner": NoMetadataRedefiner(csv_taxonomies_path=taxo_csv_path),
-        },
-        "whoi": {
-            "overrides": [
-                "dataset_import=whoi-plankton",
-                "dataset_import.cleanup_after_processing=True",
-                "dataset_import.push_to_hub=False",
-                f"dataset_import.data_dir={DATA_ROOT}",
-            ],
-            "redefiner": WHOIRedefiner(csv_taxonomies_path=taxo_csv_path),
-        },
-        "flowcamnet": {
-            "overrides": [
-                "dataset_import=flowcamnet",
-                "dataset_import.cleanup_after_processing=True",
-                "dataset_import.push_to_hub=False",
-                f"dataset_import.data_dir={DATA_ROOT}",
-            ],
-            "redefiner": EcoTaxaRedefiner(csv_taxonomies_path=taxo_csv_path),
-        },
+    def build_overrides(import_name, cleanup):
+        """Build the identical 4-element Hydra override block for a dataset.
+
+        Only ``dataset_import`` and ``cleanup_after_processing`` vary between
+        datasets; ``push_to_hub`` and ``data_dir`` are the same everywhere. This
+        reproduces, byte for byte, the override list that was previously inlined
+        for each dataset.
+        """
+        return [
+            f"dataset_import={import_name}",
+            f"dataset_import.cleanup_after_processing={cleanup}",
+            "dataset_import.push_to_hub=False",
+            f"dataset_import.data_dir={DATA_ROOT}",
+        ]
+
+    # (name, import_name, cleanup, redefiner_factory). Order is preserved exactly
+    # because main() iterates datasets_configs.items() in this order.
+    datasets_table = [
+        ("isiisnet", "isiisnet", True, NoMetadataRedefiner),
+        ("whoi", "whoi-plankton", True, WHOIRedefiner),
+        ("flowcamnet", "flowcamnet", True, EcoTaxaRedefiner),
         # JEDI Oceans requires downloading CPICS_Validated.zip by hand.
         # "jedi_oceans_cpics": {
         #     "overrides": [
@@ -560,24 +555,8 @@ def main() -> None:
         #     ],
         #     "redefiner": JediRedefiner(csv_taxonomies_path=taxo_csv_path),
         # },
-        "lensless": {
-            "overrides": [
-                "dataset_import=lensless",
-                "dataset_import.cleanup_after_processing=True",
-                "dataset_import.push_to_hub=False",
-                f"dataset_import.data_dir={DATA_ROOT}",
-            ],
-            "redefiner": NoMetadataRedefiner(csv_taxonomies_path=taxo_csv_path),
-        },
-        "medplanktonset": {
-            "overrides": [
-                "dataset_import=medplanktonset",
-                "dataset_import.cleanup_after_processing=True",
-                "dataset_import.push_to_hub=False",
-                f"dataset_import.data_dir={DATA_ROOT}",
-            ],
-            "redefiner": NoMetadataRedefiner(csv_taxonomies_path=taxo_csv_path),
-        },
+        ("lensless", "lensless", True, NoMetadataRedefiner),
+        ("medplanktonset", "medplanktonset", True, NoMetadataRedefiner),
         # SYKE ZooScan 2024 requires downloading its .zip by hand.
         # "sykezooscan2024": {
         #     "overrides": [
@@ -589,24 +568,8 @@ def main() -> None:
         #     ],
         #     "redefiner": NoMetadataRedefiner(csv_taxonomies_path=taxo_csv_path),
         # },
-        "uvp6net": {
-            "overrides": [
-                "dataset_import=uvp6net",
-                "dataset_import.cleanup_after_processing=True",
-                "dataset_import.push_to_hub=False",
-                f"dataset_import.data_dir={DATA_ROOT}",
-            ],
-            "redefiner": EcoTaxaRedefiner(csv_taxonomies_path=taxo_csv_path),
-        },
-        "zoocamnet": {
-            "overrides": [
-                "dataset_import=zoocamnet",
-                "dataset_import.cleanup_after_processing=True",
-                "dataset_import.push_to_hub=False",
-                f"dataset_import.data_dir={DATA_ROOT}",
-            ],
-            "redefiner": NoMetadataRedefiner(csv_taxonomies_path=taxo_csv_path),
-        },
+        ("uvp6net", "uvp6net", True, EcoTaxaRedefiner),
+        ("zoocamnet", "zoocamnet", True, NoMetadataRedefiner),
         # Zoolake requires downloading data.zip by hand.
         # "zoolake": {
         #     "overrides": [
@@ -618,51 +581,19 @@ def main() -> None:
         #     ],
         #     "redefiner": NoMetadataRedefiner(csv_taxonomies_path=taxo_csv_path),
         # },
-        "zooscan": {
-            "overrides": [
-                "dataset_import=zooscannet",
-                "dataset_import.cleanup_after_processing=True",
-                "dataset_import.push_to_hub=False",
-                f"dataset_import.data_dir={DATA_ROOT}",
-            ],
-            "redefiner": EcoTaxaRedefiner(csv_taxonomies_path=taxo_csv_path),
-        },
-        "planktonset1.0": {
-            "overrides": [
-                "dataset_import=planktonset1",
-                "dataset_import.cleanup_after_processing=False",
-                "dataset_import.push_to_hub=False",
-                f"dataset_import.data_dir={DATA_ROOT}",
-            ],
-            "redefiner": NoMetadataRedefiner(csv_taxonomies_path=taxo_csv_path),
-        },
-        "syke_ifcb_2022": {
-            "overrides": [
-                "dataset_import=syke_ifcb_2022",
-                "dataset_import.cleanup_after_processing=False",
-                "dataset_import.push_to_hub=False",
-                f"dataset_import.data_dir={DATA_ROOT}",
-            ],
-            "redefiner": NoMetadataRedefiner(csv_taxonomies_path=taxo_csv_path),
-        },
-        "planktoscope": {
-            "overrides": [
-                "dataset_import=planktoscope",
-                "dataset_import.cleanup_after_processing=False",
-                "dataset_import.push_to_hub=False",
-                f"dataset_import.data_dir={DATA_ROOT}",
-            ],
-            "redefiner": EcoTaxaRedefiner(csv_taxonomies_path=taxo_csv_path),
-        },
-        "global_uvp5": {
-            "overrides": [
-                "dataset_import=global_uvp5net",
-                "dataset_import.cleanup_after_processing=False",
-                "dataset_import.push_to_hub=False",
-                f"dataset_import.data_dir={DATA_ROOT}",
-            ],
-            "redefiner": EcoTaxaRedefiner(csv_taxonomies_path=taxo_csv_path),
-        },
+        ("zooscan", "zooscannet", True, EcoTaxaRedefiner),
+        ("planktonset1.0", "planktonset1", False, NoMetadataRedefiner),
+        ("syke_ifcb_2022", "syke_ifcb_2022", False, NoMetadataRedefiner),
+        ("planktoscope", "planktoscope", False, EcoTaxaRedefiner),
+        ("global_uvp5", "global_uvp5net", False, EcoTaxaRedefiner),
+    ]
+
+    datasets_configs = {
+        name: {
+            "overrides": build_overrides(import_name, cleanup),
+            "redefiner": redefiner_factory(csv_taxonomies_path=taxo_csv_path),
+        }
+        for name, import_name, cleanup, redefiner_factory in datasets_table
     }
 
     parts = []

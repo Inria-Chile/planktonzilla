@@ -278,6 +278,41 @@ def process_csv(
     return summary_df
 
 
+# ── Single-ID processing ───────────────────────────────────────────────────────
+
+
+def process_single(
+    ncbi_id: int | str,
+    out_dir: str | Path,
+    expand_to_children: bool = True,
+    max_results: int = MAX_SEQS_PER_SPECIES,
+):
+    """Fetch the COX sequences for a single NCBI Taxonomy ID and save them.
+
+    Output:   out_dir/{ncbi_id}.fasta (only written when there are sequences).
+
+    Faithful extraction of the former inline single-``--ncbi_id`` branch of
+    ``main`` — same logging, same expand_to_children/max_results semantics, same
+    "save only when records exist" guard.
+    """
+    log.info(f"Fetching COX sequences for NCBI Taxonomy ID: {ncbi_id}")
+    records = get_cox_sequences(
+        ncbi_id,
+        expand_to_children=expand_to_children,
+        max_results=max_results,
+    )
+    log.info(f"\nFound {len(records)} COX sequences for taxid {ncbi_id}\n")
+    for r in records:
+        log.info(f"  {r.id}  len={len(r.seq)} bp  {r.description[:100]}")
+
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    fasta_out = out_dir / f"{ncbi_id}.fasta"
+    if records:
+        save_fasta(records, fasta_out)
+
+
 # ── CLI ──────────────────────────────────────────────────────────────────────────
 
 
@@ -308,22 +343,12 @@ def main() -> None:
 
     if args.ncbi_id:
         # ── Single NCBI ID mode ──
-        log.info(f"Fetching COX sequences for NCBI Taxonomy ID: {args.ncbi_id}")
-        records = get_cox_sequences(
+        process_single(
             args.ncbi_id,
+            out_dir=args.out_dir_s,
             expand_to_children=not args.noexp,
             max_results=args.max_seqs,
         )
-        log.info(f"\nFound {len(records)} COX sequences for taxid {args.ncbi_id}\n")
-        for r in records:
-            log.info(f"  {r.id}  len={len(r.seq)} bp  {r.description[:100]}")
-
-        out_dir = Path(args.out_dir_s)
-        out_dir.mkdir(parents=True, exist_ok=True)
-
-        fasta_out = out_dir / f"{args.ncbi_id}.fasta"
-        if records:
-            save_fasta(records, fasta_out)
 
     elif args.csv:
         # ── Batch CSV mode ──

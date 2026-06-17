@@ -563,3 +563,469 @@ def test_search_wikidata_taxon_429_then_200_retry():
     }
     # pins current behavior: the 429 branch recurses, so two requests are made total.
     assert mock_get.call_count == 2
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# TEST-04 — REFACTOR-04 characterization tests (Phase 6 Wave B)
+#
+# These PIN the current output of gen_planktonzilla.RedefineDataset.redefine(),
+# the _add_metadata serialization for all four redefiners, the datasets_configs
+# override table in main(), and the extract_cox single-ID path. They are written
+# against the CURRENT (un-refactored) code and must stay green through the
+# god-function decomposition. All are network-free / mocked.
+# ──────────────────────────────────────────────────────────────────────────────
+
+import json as _json
+
+import orjson as _orjson
+
+
+def _write_taxonomy_csv(path, dataset_name, raw_label):
+    """Write a tiny taxonomy CSV that _build_lookup can resolve.
+
+    Columns mirror the real planktonzilla_taxonomy.csv: Dataset, Raw_Labels plus
+    the lookup columns (taxonomy ranks, extras, str IDs and numeric IDs).
+    """
+    header = (
+        "Dataset,Raw_Labels,Kingdom,Phylum,Class,Order,Family,Genus,Species,"
+        "proposed_label,plankton,root_class,qualifier,"
+        "wikidata_ID,ecotaxa_ID,aphia_ID,NCBI_ID,BOLD_ID"
+    )
+    # aphia_ID / NCBI_ID / BOLD_ID are numeric in the CSV (float) -> text w/o decimals.
+    row = f"{dataset_name},{raw_label},Animalia,Arthropoda,,,,,,Copepoda,True,zoo,,Q3386609,274;1231,135336.0,6854.0,"
+    with open(path, "w") as f:
+        f.write(header + "\n" + row + "\n")
+
+
+def _make_split(tmpdir, dataset_name, raw_label, png_subpath):
+    """Build a 1-row datasets.Dataset with a ClassLabel `label` + Image pointing at a real PNG.
+
+    png_subpath has >= 3 path components so chunks[-3:] vs chunks[-2:] is exercised.
+    """
+    png_path = os.path.join(tmpdir, png_subpath)
+    os.makedirs(os.path.dirname(png_path), exist_ok=True)
+    PILImage.new("RGB", (4, 4), (10, 20, 30)).save(png_path)
+
+    feats = Features({"label": ClassLabel(names=[raw_label]), "image": Image()})
+    ds = Dataset.from_dict({"label": [0], "image": [png_path]}, features=feats)
+    return ds
+
+
+def test_redefine_nometadata_two_splits_pins_output():
+    """Pin NoMetadataRedefiner.redefine() output for a 2-split DatasetDict.
+
+    Pins: column set, dataset/original_label/original_path values (original_path
+    uses the last-3 path components when n_splits>=2), the taxonomy join values,
+    and that metadata is flattened away.
+    """
+    from planktonzilla.dataset_generation import gen_planktonzilla as gp
+
+    dataset_name = "isiisnet"
+    raw_label = "copepod"
+
+    with tempfile.TemporaryDirectory() as tmp:
+        csv_path = os.path.join(tmp, "taxo.csv")
+        _write_taxonomy_csv(csv_path, dataset_name, raw_label)
+
+        # >= 3 path components so last-3 vs last-2 slicing is observable.
+        train = _make_split(tmp, dataset_name, raw_label, "imgs/train/copepod/a.png")
+        val = _make_split(tmp, dataset_name, raw_label, "imgs/val/copepod/b.png")
+        dd = DatasetDict({"train": train, "validation": val})
+
+        redefiner = gp.NoMetadataRedefiner(csv_taxonomies_path=csv_path)
+        out = redefiner.redefine(hf_dataset=dd, dataset_name=dataset_name, num_proc=1)
+
+    # Two splits concatenated -> 2 rows.
+    assert len(out) == 2
+
+    cols = set(out.column_names)
+    # The structural / join columns the pipeline always produces.
+    for c in [
+        "image",
+        "dataset",
+        "original_label",
+        "original_path",
+        "Kingdom",
+        "Phylum",
+        "proposed_label",
+        "plankton",
+        "root_class",
+        "qualifier",
+        "wikidata_ID",
+        "ecotaxa_ID",
+        "aphia_ID",
+        "NCBI_ID",
+        "ObjID",
+        "timestamp",
+        "Latitude",
+        "Longitude",
+        "Depth_max",
+        "Depth_min",
+    ]:
+        assert c in cols, f"missing column {c}"
+    # metadata is flattened away; the raw label column is dropped.
+    assert "metadata" not in cols
+    assert "label" not in cols
+
+    rows = out.to_list()
+    for r in rows:
+        assert r["dataset"] == dataset_name
+        assert r["original_label"] == raw_label
+        # Taxonomy join values.
+        assert r["Kingdom"] == "Animalia"
+        assert r["Phylum"] == "Arthropoda"
+        assert r["proposed_label"] == "Copepoda"
+        assert r["root_class"] == "zoo"
+        assert r["wikidata_ID"] == "Q3386609"
+        assert r["ecotaxa_ID"] == "274;1231"
+        # Numeric IDs come back as strings without decimals.
+        assert r["aphia_ID"] == "135336"
+        assert r["NCBI_ID"] == "6854"
+        # No metadata -> all metadata-derived columns are null.
+        assert r["ObjID"] is None
+        assert r["timestamp"] is None
+        assert r["Latitude"] is None
+
+    # pins current behavior: with n_splits>=2 original_path keeps the LAST 3 components
+    # (leading slash + 3 components = "/<split>/<class>/<file>").
+    paths = sorted(r["original_path"] for r in rows)
+    assert paths == ["/train/copepod/a.png", "/val/copepod/b.png"]
+
+
+def test_redefine_nometadata_one_split_pins_short_path():
+    """Pin NoMetadataRedefiner.redefine() for a 1-split DatasetDict.
+
+    pins current behavior: with n_splits==1 original_path keeps the LAST 2 path
+    components ("/<class>/<file>"), not 3.
+    """
+    from planktonzilla.dataset_generation import gen_planktonzilla as gp
+
+    dataset_name = "lensless"
+    raw_label = "diatom"
+
+    with tempfile.TemporaryDirectory() as tmp:
+        csv_path = os.path.join(tmp, "taxo.csv")
+        _write_taxonomy_csv(csv_path, dataset_name, raw_label)
+
+        train = _make_split(tmp, dataset_name, raw_label, "imgs/train/diatom/c.png")
+        dd = DatasetDict({"train": train})
+
+        redefiner = gp.NoMetadataRedefiner(csv_taxonomies_path=csv_path)
+        out = redefiner.redefine(hf_dataset=dd, dataset_name=dataset_name, num_proc=1)
+
+    assert len(out) == 1
+    row = out.to_list()[0]
+    # Last 2 components only (no split component).
+    assert row["original_path"] == "/diatom/c.png"
+    assert row["dataset"] == dataset_name
+    assert row["original_label"] == raw_label
+
+
+def test_redefine_unknown_label_uses_null_default():
+    """Pin the taxonomy-miss default: lookup.get((name,label), {col: None}) -> nulls."""
+    from planktonzilla.dataset_generation import gen_planktonzilla as gp
+
+    with tempfile.TemporaryDirectory() as tmp:
+        csv_path = os.path.join(tmp, "taxo.csv")
+        # CSV resolves a DIFFERENT (dataset, label) than what the split carries.
+        _write_taxonomy_csv(csv_path, "other_ds", "other_label")
+
+        train = _make_split(tmp, "lensless", "unknownlabel", "imgs/train/unknownlabel/x.png")
+        dd = DatasetDict({"train": train})
+
+        redefiner = gp.NoMetadataRedefiner(csv_taxonomies_path=csv_path)
+        out = redefiner.redefine(hf_dataset=dd, dataset_name="lensless", num_proc=1)
+
+    row = out.to_list()[0]
+    # Unknown (dataset, label) -> every lookup column is None.
+    for c in ["Kingdom", "Phylum", "proposed_label", "root_class", "wikidata_ID", "aphia_ID"]:
+        assert row[c] is None
+    # But the structural columns are still set.
+    assert row["dataset"] == "lensless"
+    assert row["original_label"] == "unknownlabel"
+
+
+# ── _add_metadata serialization pins (the block to be extracted) ──────────────
+
+
+def _redefiner_add_metadata_ds(redefiner_cls, csv_path, n_rows=2):
+    """Build a tiny Dataset with an `original_path` column ready for `_add_metadata`.
+
+    Returns (redefiner, ds) so the test can run _add_metadata and pin the column.
+    """
+    paths = [f"/train/cls/img_{i}.jpg" for i in range(n_rows)]
+    ds = Dataset.from_dict({"original_path": paths})
+    redefiner = redefiner_cls(csv_taxonomies_path=csv_path)
+    return redefiner, ds
+
+
+def test_add_metadata_nometadata_serializes_empty_json():
+    """Pin NoMetadataRedefiner._add_metadata: metadata col is json.dumps({}) as Value(string)."""
+    from planktonzilla.dataset_generation import gen_planktonzilla as gp
+
+    with tempfile.TemporaryDirectory() as tmp:
+        csv_path = os.path.join(tmp, "taxo.csv")
+        _write_taxonomy_csv(csv_path, "lensless", "diatom")
+        redefiner, ds = _redefiner_add_metadata_ds(gp.NoMetadataRedefiner, csv_path)
+        out = redefiner._add_metadata(ds)
+
+    assert out.features["metadata"] == Value("string")
+    vals = out["metadata"]
+    assert all(v == _json.dumps({}) for v in vals)
+    assert all(_orjson.loads(v) == {} for v in vals)
+
+
+def test_add_metadata_jedi_serializes_fixed_dict():
+    """Pin JediRedefiner._add_metadata: metadata col is json.dumps(fixed dict) as Value(string)."""
+    from planktonzilla.dataset_generation import gen_planktonzilla as gp
+
+    with tempfile.TemporaryDirectory() as tmp:
+        csv_path = os.path.join(tmp, "taxo.csv")
+        _write_taxonomy_csv(csv_path, "jedi_oceans_cpics", "x")
+        redefiner, ds = _redefiner_add_metadata_ds(gp.JediRedefiner, csv_path)
+        out = redefiner._add_metadata(ds)
+
+    assert out.features["metadata"] == Value("string")
+    expected = _json.dumps(
+        {
+            "Latitude": "34.682718",
+            "Longitude": "139.444779",
+            "Depth_min": "20",
+            "Depth_max": "20",
+        }
+    )
+    vals = out["metadata"]
+    assert all(v == expected for v in vals)
+
+
+def test_add_metadata_ecotaxa_serializes_mocked_metadata():
+    """Pin EcoTaxaRedefiner._add_metadata with retrieve_ecotaxa_metadata mocked (no network)."""
+    from planktonzilla.dataset_generation import gen_planktonzilla as gp
+
+    fake = {
+        "Depth_max": 50.0,
+        "Depth_min": 5.0,
+        "Latitude": -33.0,
+        "Longitude": -71.5,
+        "Timestamp": "2019-07-01",
+        "ObjID": "987",
+    }
+
+    with tempfile.TemporaryDirectory() as tmp:
+        csv_path = os.path.join(tmp, "taxo.csv")
+        _write_taxonomy_csv(csv_path, "flowcamnet", "cls")
+        redefiner, ds = _redefiner_add_metadata_ds(gp.EcoTaxaRedefiner, csv_path)
+        with patch.object(gp, "retrieve_ecotaxa_metadata", return_value=dict(fake)):
+            out = redefiner._add_metadata(ds)
+
+    assert out.features["metadata"] == Value("string")
+    # normalize() stringifies every non-None value before json.dumps.
+    expected = _json.dumps({str(k): str(v) for k, v in fake.items() if v is not None})
+    vals = out["metadata"]
+    assert all(v == expected for v in vals)
+
+
+def test_add_metadata_whoi_serializes_mocked_metadata():
+    """Pin WHOIRedefiner._add_metadata with retrieve_whoi_metadata mocked (no network)."""
+    from planktonzilla.dataset_generation import gen_planktonzilla as gp
+
+    fake = {
+        "Latitude": 41.5,
+        "Longitude": -70.6,
+        "Depth": 4.0,
+        "Temperature": 22.5,
+        "Humidity": 55.0,
+        "Timestamp": "2018-05-03",
+        "BinID": "B123",
+    }
+
+    with tempfile.TemporaryDirectory() as tmp:
+        csv_path = os.path.join(tmp, "taxo.csv")
+        _write_taxonomy_csv(csv_path, "whoi", "cls")
+        # original_path of the form <bin>_<suffix>.jpg so extract_bin_id yields a bin id.
+        paths = ["/train/cls/B123_00001.jpg", "/train/cls/B123_00002.jpg"]
+        ds = Dataset.from_dict({"original_path": paths})
+        redefiner = gp.WHOIRedefiner(csv_taxonomies_path=csv_path)
+        with patch.object(gp, "retrieve_whoi_metadata", return_value=dict(fake)):
+            out = redefiner._add_metadata(ds)
+
+    assert out.features["metadata"] == Value("string")
+    assert "bin_id" not in out.column_names
+    expected = _json.dumps({str(k): str(v) for k, v in fake.items() if v is not None})
+    vals = out["metadata"]
+    assert all(v == expected for v in vals)
+
+
+# ── datasets_configs override table pin ──────────────────────────────────────
+
+
+def _expected_overrides(data_root, dataset_import, cleanup):
+    return [
+        f"dataset_import={dataset_import}",
+        f"dataset_import.cleanup_after_processing={cleanup}",
+        "dataset_import.push_to_hub=False",
+        f"dataset_import.data_dir={data_root}",
+    ]
+
+
+def test_datasets_configs_structure_pins(monkeypatch, tmp_path):
+    """Pin the datasets_configs override blocks built inside gen_planktonzilla.main().
+
+    Drives main() with a real tiny CSV and mocks the whole per-dataset loop body
+    (hydra.compose / instantiate / load_dataset / redefiner.redefine) so the loop
+    runs to completion. Captures, in order, the exact `overrides` list passed to
+    hydra.compose and the redefiner type bound to each dataset_name, then asserts
+    they match the expected (name, import_name, cleanup, redefiner) table EXACTLY.
+    This pins the literal the decomposition must reproduce byte for byte.
+    """
+    import sys
+
+    from planktonzilla.dataset_generation import gen_planktonzilla as gp
+
+    # Real CSV so the redefiner constructors (run while building datasets_configs)
+    # succeed; --taxo-csv routes every redefiner here.
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "x", "y")
+
+    # hydra.initialize is a context manager; keep a no-op CM so the `with` works.
+    class _NullCM:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr(gp.hydra, "initialize", lambda *a, **k: _NullCM())
+
+    captured_overrides = []  # one entry per dataset, in iteration order.
+
+    def _fake_compose(*args, **kwargs):
+        captured_overrides.append(list(kwargs["overrides"]))
+        return MagicMock()
+
+    monkeypatch.setattr(gp.hydra, "compose", _fake_compose)
+
+    # Make the loop body a no-op: a mock importer whose imagefolder is "present"
+    # and empty so no real import / load happens, and a redefine() that returns a
+    # trivial dataset so concatenate/clean/save still work.
+    importer = MagicMock()
+    importer.imagefolder_dir = tmp_path  # a Path; exists, force has_content below
+    monkeypatch.setattr(gp.hydra.utils, "instantiate", lambda *a, **k: importer)
+    monkeypatch.setattr(gp.os, "listdir", lambda p: ["dummy_category"])
+    monkeypatch.setattr(gp, "load_dataset", lambda *a, **k: MagicMock())
+
+    # Record (dataset_name -> redefiner type) and short-circuit the heavy work.
+    captured_redefiners = {}
+    tiny = Dataset.from_dict({"x": [1]})
+
+    def _fake_redefine(self, hf_dataset, dataset_name, num_proc):
+        captured_redefiners[dataset_name] = type(self)
+        return tiny
+
+    monkeypatch.setattr(gp.RedefineDataset, "redefine", _fake_redefine)
+    # Skip corrupt-cleaning and disk save (both would choke on the tiny dataset).
+    monkeypatch.setattr(gp, "clean_corrupt_examples_optimized", lambda ds, **k: ds)
+    monkeypatch.setattr(gp.Dataset, "save_to_disk", lambda self, path: None)
+
+    monkeypatch.setattr(sys, "argv", ["gen_planktonzilla.py", "--taxo-csv", str(csv_path)])
+
+    gp.main()
+
+    data_root = (gp.root / "data").resolve()
+
+    # (dataset_name, import_name, cleanup, redefiner_type) — the table the literal
+    # encodes. Order matters: datasets_configs is iterated in insertion order.
+    expected_table = [
+        ("isiisnet", "isiisnet", "True", gp.NoMetadataRedefiner),
+        ("whoi", "whoi-plankton", "True", gp.WHOIRedefiner),
+        ("flowcamnet", "flowcamnet", "True", gp.EcoTaxaRedefiner),
+        ("lensless", "lensless", "True", gp.NoMetadataRedefiner),
+        ("medplanktonset", "medplanktonset", "True", gp.NoMetadataRedefiner),
+        ("uvp6net", "uvp6net", "True", gp.EcoTaxaRedefiner),
+        ("zoocamnet", "zoocamnet", "True", gp.NoMetadataRedefiner),
+        ("zooscan", "zooscannet", "True", gp.EcoTaxaRedefiner),
+        ("planktonset1.0", "planktonset1", "False", gp.NoMetadataRedefiner),
+        ("syke_ifcb_2022", "syke_ifcb_2022", "False", gp.NoMetadataRedefiner),
+        ("planktoscope", "planktoscope", "False", gp.EcoTaxaRedefiner),
+        ("global_uvp5", "global_uvp5net", "False", gp.EcoTaxaRedefiner),
+    ]
+
+    # Exactly these 12 active datasets, in this order (commented ones excluded).
+    assert list(captured_redefiners.keys()) == [t[0] for t in expected_table]
+    assert len(captured_overrides) == len(expected_table)
+
+    for (name, import_name, cleanup, rtype), overrides in zip(expected_table, captured_overrides):
+        # Override block reproduced byte for byte.
+        assert overrides == _expected_overrides(data_root, import_name, cleanup)
+        # Redefiner type bound to this dataset is exactly the expected class.
+        assert captured_redefiners[name] is rtype
+
+
+# ── extract_cox single-ID path pin ───────────────────────────────────────────
+
+
+def test_extract_cox_single_id_path(monkeypatch, tmp_path):
+    """Pin extract_cox.main() single --ncbi_id branch with get_cox_sequences/save_fasta mocked."""
+    import sys
+
+    from planktonzilla.dataset_generation import extract_cox as ec
+
+    out_dir = tmp_path / "single_out"
+
+    fake_records = [MagicMock(), MagicMock()]  # 2 fake SeqRecords -> records truthy
+    get_seqs = MagicMock(return_value=fake_records)
+    save = MagicMock()
+    cfg = MagicMock()
+
+    monkeypatch.setattr(ec, "get_cox_sequences", get_seqs)
+    monkeypatch.setattr(ec, "save_fasta", save)
+    monkeypatch.setattr(ec, "configure_entrez", cfg)
+
+    argv = [
+        "extract_cox.py",
+        "--ncbi_id",
+        "124140",
+        "--out_dir_s",
+        str(out_dir),
+    ]
+    monkeypatch.setattr(sys, "argv", argv)
+
+    ec.main()
+
+    # Entrez configured exactly once with the resolved email.
+    cfg.assert_called_once()
+    # get_cox_sequences called with the id, expand_to_children True (no --noexp),
+    # max_results default MAX_SEQS_PER_SPECIES.
+    get_seqs.assert_called_once_with(
+        "124140",
+        expand_to_children=True,
+        max_results=ec.MAX_SEQS_PER_SPECIES,
+    )
+    # Output dir created and save_fasta called with the <ncbi_id>.fasta path.
+    assert out_dir.exists()
+    save.assert_called_once()
+    saved_records, saved_path = save.call_args.args
+    assert saved_records is fake_records
+    assert str(saved_path) == str(out_dir / "124140.fasta")
+
+
+def test_extract_cox_single_id_no_records_skips_save(monkeypatch, tmp_path):
+    """Pin: single-ID path with empty records does NOT call save_fasta but still mkdirs."""
+    import sys
+
+    from planktonzilla.dataset_generation import extract_cox as ec
+
+    out_dir = tmp_path / "single_out_empty"
+
+    monkeypatch.setattr(ec, "get_cox_sequences", MagicMock(return_value=[]))
+    save = MagicMock()
+    monkeypatch.setattr(ec, "save_fasta", save)
+    monkeypatch.setattr(ec, "configure_entrez", MagicMock())
+
+    argv = ["extract_cox.py", "--ncbi_id", "999", "--out_dir_s", str(out_dir)]
+    monkeypatch.setattr(sys, "argv", argv)
+
+    ec.main()
+
+    assert out_dir.exists()
+    save.assert_not_called()
