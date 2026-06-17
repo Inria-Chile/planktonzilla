@@ -52,6 +52,7 @@ repository = "https://github.com/Inria-Chile/deep_plankton"
 [project.scripts]
 pz_import_dataset = 'planktonzilla.dataset_import.import_dataset:main'
 pz_train = 'planktonzilla.train:main'
+pz_gen_planktonzilla = 'planktonzilla.dataset_generation.gen_planktonzilla:main'
 
 [dependency-groups]
 dev = ["pytest", "notebook", "ipywidgets", "pytest-cov", "ipykernel"]

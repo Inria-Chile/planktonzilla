@@ -26,7 +26,6 @@ Prerequisites:
     projects do not return metadata and stay null.
 """
 
-import argparse
 import concurrent.futures
 import json
 import logging
@@ -48,6 +47,7 @@ from datasets import (
     load_dataset,
 )
 from joblib import Parallel, delayed
+from omegaconf import DictConfig
 from tqdm import tqdm
 
 from planktonzilla.utils.logger import get_pylogger
@@ -62,6 +62,10 @@ root = pyrootutils.setup_root(
 )
 
 logger = get_pylogger(__name__)
+# why: this module-level global is intentionally independent of cfg.num_proc. It
+# is used by _serialize_metadata / _flatten_metadata / EcoTaxaRedefiner /
+# WHOIRedefiner; only redefine() receives the configurable value (num_proc_arg).
+# Matching pre-port behavior — do NOT wire cfg.num_proc into this global.
 num_proc = constants.default_num_proc()
 
 
@@ -498,33 +502,26 @@ class JediRedefiner(RedefineDataset):
         return self._serialize_metadata(ds)
 
 
-def main() -> None:
-    """Build, redefine, concatenate and save the full planktonzilla dataset."""
+def _run(cfg: DictConfig) -> None:
+    """Build, redefine, concatenate and save the full planktonzilla dataset.
+
+    Holds the ported body of ``main`` so it can be driven with an explicit ``cfg``
+    (a ``@hydra.main``-decorated function is not directly callable with a cfg
+    argument). The decorated ``main`` simply delegates here. This is purely a seam
+    for testability and changes no behavior.
+    """
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     DATA_ROOT = (root / "data").resolve()
 
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument(
-        "--taxo-csv",
-        default=str(DATA_ROOT / constants.TAXONOMY_CSV_FILENAME),
-        help="Taxonomy CSV with taxonomy + external ID columns.",
-    )
-    parser.add_argument(
-        "--output",
-        "--out-dir",
-        dest="output",
-        default=str(DATA_ROOT / "planktonzilla_17M"),
-        help="Directory to save the assembled dataset to.",
-    )
-    parser.add_argument(
-        "--num-proc",
-        type=int,
-        default=constants.default_num_proc(),
-        help="Number of processes for dataset .map / metadata fetching.",
-    )
-    args = parser.parse_args()
-
-    taxo_csv_path = args.taxo_csv
+    # In-code null fallbacks reproduce the legacy argparse defaults byte for byte
+    # so the DEFAULT (no-override) run has ZERO behavioral drift.
+    # why: the old --taxo-csv default was `str(DATA_ROOT / constants.TAXONOMY_CSV_FILENAME)`,
+    # but constants.TAXONOMY_CSV_FILENAME is an ABSOLUTE Path, so the `/` join is a
+    # no-op (the absolute RHS discards DATA_ROOT). `str(constants.TAXONOMY_CSV_FILENAME)`
+    # is the identical resolved string — do NOT "fix" this back to a DATA_ROOT join.
+    taxo_csv_path = cfg.taxo_csv if cfg.get("taxo_csv") is not None else str(constants.TAXONOMY_CSV_FILENAME)
+    output_path_str = cfg.output if cfg.get("output") is not None else str(DATA_ROOT / "planktonzilla_17M")
+    num_proc_arg = cfg.num_proc if cfg.get("num_proc") is not None else constants.default_num_proc()
 
     def build_overrides(import_name, cleanup):
         """Build the identical 4-element Hydra override block for a dataset.
@@ -601,64 +598,75 @@ def main() -> None:
 
     parts = []
 
-    with hydra.initialize(version_base="1.3", config_path="../configs"):
-        for dataset_name, ds_cfg in datasets_configs.items():
-            logger.info(f"\n=== Dataset: {dataset_name} ===")
+    # The inner hydra.compose calls reuse the GlobalHydra that @hydra.main already
+    # initialized; the former outer initialize() context manager has been removed.
+    for dataset_name, ds_cfg in datasets_configs.items():
+        logger.info(f"\n=== Dataset: {dataset_name} ===")
 
-            cfg = hydra.compose(config_name="import_dataset", overrides=ds_cfg["overrides"])
+        import_cfg = hydra.compose(config_name="import_dataset", overrides=ds_cfg["overrides"])
 
-            dataset_importer = hydra.utils.instantiate(cfg.dataset_import)
-            imagefolder_dir = Path(dataset_importer.imagefolder_dir)
+        dataset_importer = hydra.utils.instantiate(import_cfg.dataset_import)
+        imagefolder_dir = Path(dataset_importer.imagefolder_dir)
 
-            # Reuse the imagefolder if it already exists; otherwise build it.
-            has_content = imagefolder_dir.exists() and bool(os.listdir(imagefolder_dir))
-            if has_content:
-                num_items = len(os.listdir(imagefolder_dir))
-                logger.info(f"Using existing imagefolder with {num_items} categories in {imagefolder_dir}")
-            else:
-                logger.info("Building imagefolder from the raw data...")
-                dataset_importer.import_dataset()
+        # Reuse the imagefolder if it already exists; otherwise build it.
+        has_content = imagefolder_dir.exists() and bool(os.listdir(imagefolder_dir))
+        if has_content:
+            num_items = len(os.listdir(imagefolder_dir))
+            logger.info(f"Using existing imagefolder with {num_items} categories in {imagefolder_dir}")
+        else:
+            logger.info("Building imagefolder from the raw data...")
+            dataset_importer.import_dataset()
 
-            # Resolve the files for each split (accepts the val/validation alias).
-            split_aliases = {
-                "train": ["train"],
-                "validation": ["validation", "val"],
-                "test": ["test"],
-            }
-            data_files = {}
-            for canonical_split, aliases in split_aliases.items():
-                for alias in aliases:
-                    split_path = root / alias
-                    if split_path.exists():
-                        data_files[canonical_split] = str(split_path / "*/[!._]*")
-                        break
+        # Resolve the files for each split (accepts the val/validation alias).
+        split_aliases = {
+            "train": ["train"],
+            "validation": ["validation", "val"],
+            "test": ["test"],
+        }
+        data_files = {}
+        for canonical_split, aliases in split_aliases.items():
+            for alias in aliases:
+                split_path = root / alias
+                if split_path.exists():
+                    data_files[canonical_split] = str(split_path / "*/[!._]*")
+                    break
 
-            # No explicit splits: take everything as train.
-            if not data_files:
-                data_files = {"train": str(dataset_importer.imagefolder_dir / "*/*[!._]*")}
+        # No explicit splits: take everything as train.
+        if not data_files:
+            data_files = {"train": str(dataset_importer.imagefolder_dir / "*/*[!._]*")}
 
-            logger.info("Loading dataset with the imagefolder loader...")
-            dataset = load_dataset("imagefolder", data_files=data_files)
+        logger.info("Loading dataset with the imagefolder loader...")
+        dataset = load_dataset("imagefolder", data_files=data_files)
 
-            logger.info("Assigning taxonomy, IDs and metadata...")
-            dataset = ds_cfg["redefiner"].redefine(
-                hf_dataset=dataset,
-                dataset_name=dataset_name,
-                num_proc=args.num_proc,
-            )
+        logger.info("Assigning taxonomy, IDs and metadata...")
+        dataset = ds_cfg["redefiner"].redefine(
+            hf_dataset=dataset,
+            dataset_name=dataset_name,
+            num_proc=num_proc_arg,
+        )
 
-            parts.append(dataset)
+        parts.append(dataset)
 
     ds = concatenate_datasets(parts)
 
     # With the full dataset ready, we drop the examples whose image is corrupt.
     ds = clean_corrupt_examples_optimized(ds, batch_size=1000, n_jobs=-1)
 
-    output_path = Path(args.output)
+    output_path = Path(output_path_str)
     logger.info(f"Saving dataset to {output_path}")
     ds.save_to_disk(output_path)
 
     logger.info("\nProcess completed")
+
+
+@hydra.main(
+    version_base="1.3",
+    config_path=str(root / "configs"),
+    config_name="gen_planktonzilla.yaml",
+)
+def main(cfg: DictConfig) -> None:
+    """Hydra entry point: delegates to ``_run`` with the composed config."""
+    _run(cfg)
 
 
 if __name__ == "__main__":
