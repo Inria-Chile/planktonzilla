@@ -1,0 +1,27 @@
+# @package _global_
+
+# specify here default configuration
+# order of defaults determines the order in which configs override each other
+defaults:
+  - _self_
+  - paths: default.yaml
+  - extras: default.yaml
+  - hydra: default.yaml
+
+task_name: "update_planktonzilla"
+tags: ["dev"]
+
+# HuggingFace Hub repo id of the INPUT dataset to re-sync. This is the source
+# dataset loaded by update_planktonzilla._run (load_dataset), not an output
+# identity. Set concretely to the frozen consolidated dataset (mirrors generate).
+repo_id: project-oceania/planktonzilla-17M
+
+# Null defaults: the in-code fallbacks in update_planktonzilla._run() resolve
+# these to byte-identical values vs. the legacy argparse defaults. Override on the
+# CLI, e.g. `pz_update_planktonzilla num_proc=4`.
+#   - taxonomy_csv_path -> constants.DEFAULT_TAXONOMY_CSV_FILENAME (a raw Path).
+#   - num_proc          -> constants.default_num_proc().
+#   - output_dir        -> the PACKAGE-relative OUTPUT_DIR (data/planktonzilla_17M_updated).
+taxonomy_csv_path: null
+num_proc: null
+output_dir: null
