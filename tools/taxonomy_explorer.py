@@ -410,9 +410,7 @@ def build_app(df: pl.DataFrame):
     with gr.Blocks(title="planktonzilla taxonomy explorer") as app:
         gr.Markdown("# planktonzilla taxonomy explorer\nFlow width / node value = number of label rows.")
         with gr.Row():
-            plankton_in = gr.Dropdown(
-                choices=["All", "plankton only", "non-plankton"], value="All", label="Plankton filter"
-            )
+            plankton_in = gr.Dropdown(choices=["All", "plankton only", "non-plankton"], value="All", label="Plankton filter")
             kingdom_in = gr.Dropdown(choices=kingdom_choices, value="All", label="Kingdom focus")
             phylum_in = gr.Dropdown(choices=phylum_choices, value="All", label="Phylum focus")
 
