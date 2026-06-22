@@ -501,7 +501,7 @@ class JediRedefiner(RedefineDataset):
 
 
 # Redefiner key -> class. Keys match the `redefiner` field of each entry in
-# cfg.datasets (configs/gen_planktonzilla.yaml). Each class is constructed with the
+# cfg.datasets (configs/generate_planktonzilla.yaml). Each class is constructed with the
 # taxonomy CSV path inside _run().
 REDEFINERS = {
     "none": NoMetadataRedefiner,
@@ -549,7 +549,7 @@ def _run(cfg: DictConfig) -> None:
             *extra_overrides,
         ]
 
-    # The dataset table now lives in configs/gen_planktonzilla.yaml under `datasets`.
+    # The dataset table now lives in configs/generate_planktonzilla.yaml under `datasets`.
     # Order is preserved exactly: cfg.datasets is iterated in declaration order and
     # concatenation below follows it. `redefiner` is a key into REDEFINERS. Datasets
     # needing a manual .zip download are omitted from the config (kept commented

@@ -2,7 +2,7 @@
 (c) Inria
 
 Network-free single-source (lensless) end-to-end test for
-``planktonzilla.dataset_generation.gen_planktonzilla``.
+``planktonzilla.planktonzilla_dataset.generate_planktonzilla``.
 
 This drives the REAL imagefolder import + redefine path against ONLY the
 ``lensless`` source dataset and asserts on the reloaded consolidated dataset. It
@@ -33,8 +33,8 @@ from hydra.core.global_hydra import GlobalHydra
 from omegaconf import OmegaConf
 from PIL import Image as PILImage
 
-from planktonzilla.dataset_generation import constants
-from planktonzilla.dataset_generation import gen_planktonzilla as gp
+from planktonzilla.planktonzilla_dataset import constants
+from planktonzilla.planktonzilla_dataset import generate_planktonzilla as gp
 
 
 def _write_taxonomy_csv(path, dataset_name, raw_label):
@@ -105,7 +105,7 @@ def test_lensless_only_e2e_generation_is_offline_and_pins_behavior(monkeypatch, 
     GlobalHydra.instance().clear()
     hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_gen_lensless_e2e")
     cfg = hydra.compose(
-        config_name="gen_planktonzilla",
+        config_name="generate_planktonzilla",
         overrides=[f"taxonomy_csv_path={csv_path}", f"data_dir={tmp_path}", "num_proc=1"],
     )
 
@@ -134,7 +134,7 @@ def test_lensless_only_e2e_generation_is_offline_and_pins_behavior(monkeypatch, 
 
     assert len(ds) == total_png_count
 
-    rows = list(ds)
+    rows = [dict(row) for row in ds]
 
     # Every row comes from the single lensless source.
     assert all(row["dataset"] == "lensless" for row in rows)

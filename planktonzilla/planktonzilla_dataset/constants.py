@@ -1,7 +1,7 @@
 """
 (c) Inria
 
-Shared constants and helpers for the dataset_generation scripts.
+Shared constants and helpers for the planktonzilla_dataset scripts.
 
 Centralizes values that were previously copy-pasted across the generation
 scripts. Values and ordering are preserved EXACTLY — this module only removes
