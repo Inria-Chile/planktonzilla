@@ -28,7 +28,6 @@ Prerequisites:
 
 import concurrent.futures
 import json
-import logging
 import os
 from functools import partial
 from pathlib import Path
@@ -50,9 +49,8 @@ from joblib import Parallel, delayed
 from omegaconf import DictConfig
 from tqdm import tqdm
 
+from planktonzilla.planktonzilla_dataset import constants
 from planktonzilla.utils.logger import get_pylogger
-
-from . import constants
 
 root = pyrootutils.setup_root(
     search_from=".",
@@ -502,6 +500,17 @@ class JediRedefiner(RedefineDataset):
         return self._serialize_metadata(ds)
 
 
+# Redefiner key -> class. Keys match the `redefiner` field of each entry in
+# cfg.datasets (configs/gen_planktonzilla.yaml). Each class is constructed with the
+# taxonomy CSV path inside _run().
+REDEFINERS = {
+    "none": NoMetadataRedefiner,
+    "whoi": WHOIRedefiner,
+    "ecotaxa": EcoTaxaRedefiner,
+    "jedi": JediRedefiner,  # manual-download only; see the commented block in the config
+}
+
+
 def _run(cfg: DictConfig) -> None:
     """Build, redefine, concatenate and save the full planktonzilla dataset.
 
@@ -510,90 +519,47 @@ def _run(cfg: DictConfig) -> None:
     argument). The decorated ``main`` simply delegates here. This is purely a seam
     for testability and changes no behavior.
     """
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    DATA_ROOT = (root / "data").resolve()
-
     # In-code null fallbacks reproduce the legacy argparse defaults byte for byte
     # so the DEFAULT (no-override) run has ZERO behavioral drift.
-    # why: the old --taxo-csv default was `str(DATA_ROOT / constants.TAXONOMY_CSV_FILENAME)`,
-    # but constants.TAXONOMY_CSV_FILENAME is an ABSOLUTE Path, so the `/` join is a
-    # no-op (the absolute RHS discards DATA_ROOT). `str(constants.TAXONOMY_CSV_FILENAME)`
+    # why: the old --taxo-csv default was `str(DATA_ROOT / constants.DEFAULT_TAXONOMY_CSV_FILENAME)`,
+    # but DEFAULT_TAXONOMY_CSV_FILENAME is an ABSOLUTE Path, so the `/` join is a
+    # no-op (the absolute RHS discards DATA_ROOT). `str(constants.DEFAULT_TAXONOMY_CSV_FILENAME)`
     # is the identical resolved string — do NOT "fix" this back to a DATA_ROOT join.
-    taxo_csv_path = cfg.taxo_csv if cfg.get("taxo_csv") is not None else str(constants.TAXONOMY_CSV_FILENAME)
-    output_path_str = cfg.output if cfg.get("output") is not None else str(DATA_ROOT / "planktonzilla_17M")
+    taxo_csv_path = (
+        cfg.taxonomy_csv_path if cfg.get("taxonomy_csv_path") is not None else str(constants.DEFAULT_TAXONOMY_CSV_FILENAME)
+    )
+    output_path = Path(cfg.data_dir) / constants.DEFAULT_PLANKTONZILLA_DATASET_NAME
     num_proc_arg = cfg.num_proc if cfg.get("num_proc") is not None else constants.default_num_proc()
 
-    def build_overrides(import_name, cleanup):
-        """Build the identical 4-element Hydra override block for a dataset.
+    def build_overrides(import_name, cleanup, extra_overrides=()):
+        """Build the per-dataset Hydra override block for the import_dataset config.
 
-        Only ``dataset_import`` and ``cleanup_after_processing`` vary between
-        datasets; ``push_to_hub`` and ``data_dir`` are the same everywhere. This
-        reproduces, byte for byte, the override list that was previously inlined
-        for each dataset.
+        Only ``dataset_import`` and ``cleanup_after_processing`` vary between the
+        standard datasets; ``push_to_hub`` and ``data_dir`` are the same everywhere.
+        ``extra_overrides`` carries per-dataset extras straight from the config
+        (e.g. a manual-download ``manual_download_local_file_names`` path). For the
+        standard datasets it is empty, reproducing — byte for byte — the 4-element
+        override list that was previously inlined for each dataset.
         """
         return [
             f"dataset_import={import_name}",
             f"dataset_import.cleanup_after_processing={cleanup}",
             "dataset_import.push_to_hub=False",
-            f"dataset_import.data_dir={DATA_ROOT}",
+            f"dataset_import.data_dir={cfg.data_dir}",
+            *extra_overrides,
         ]
 
-    # (name, import_name, cleanup, redefiner_factory). Order is preserved exactly
-    # because main() iterates datasets_configs.items() in this order.
-    datasets_table = [
-        ("isiisnet", "isiisnet", True, NoMetadataRedefiner),
-        ("whoi", "whoi-plankton", True, WHOIRedefiner),
-        ("flowcamnet", "flowcamnet", True, EcoTaxaRedefiner),
-        # JEDI Oceans requires downloading CPICS_Validated.zip by hand.
-        # "jedi_oceans_cpics": {
-        #     "overrides": [
-        #         "dataset_import=jedi",
-        #         "dataset_import.cleanup_after_processing=True",
-        #         "dataset_import.push_to_hub=False",
-        #         f"dataset_import.data_dir={DATA_ROOT}",
-        #         f"dataset_import.manual_download_local_file_names={DATA_ROOT / 'CPICS_Validated.zip'}",
-        #     ],
-        #     "redefiner": JediRedefiner(csv_taxonomies_path=taxo_csv_path),
-        # },
-        ("lensless", "lensless", True, NoMetadataRedefiner),
-        ("medplanktonset", "medplanktonset", True, NoMetadataRedefiner),
-        # SYKE ZooScan 2024 requires downloading its .zip by hand.
-        # "sykezooscan2024": {
-        #     "overrides": [
-        #         "dataset_import=sykezooscan2024",
-        #         "dataset_import.cleanup_after_processing=True",
-        #         "dataset_import.push_to_hub=False",
-        #         f"dataset_import.data_dir={DATA_ROOT}",
-        #         f"dataset_import.manual_download_local_file_names={DATA_ROOT / 'SYKE-plankton_ZooScan_2024.zip'}",
-        #     ],
-        #     "redefiner": NoMetadataRedefiner(csv_taxonomies_path=taxo_csv_path),
-        # },
-        ("uvp6net", "uvp6net", True, EcoTaxaRedefiner),
-        ("zoocamnet", "zoocamnet", True, NoMetadataRedefiner),
-        # Zoolake requires downloading data.zip by hand.
-        # "zoolake": {
-        #     "overrides": [
-        #         "dataset_import=zoolake",
-        #         "dataset_import.cleanup_after_processing=True",
-        #         "dataset_import.push_to_hub=False",
-        #         f"dataset_import.data_dir={DATA_ROOT}",
-        #         f"dataset_import.manual_download_local_file_names={DATA_ROOT / 'zoolake_data.zip'}",
-        #     ],
-        #     "redefiner": NoMetadataRedefiner(csv_taxonomies_path=taxo_csv_path),
-        # },
-        ("zooscan", "zooscannet", True, EcoTaxaRedefiner),
-        ("planktonset1.0", "planktonset1", False, NoMetadataRedefiner),
-        ("syke_ifcb_2022", "syke_ifcb_2022", False, NoMetadataRedefiner),
-        ("planktoscope", "planktoscope", False, EcoTaxaRedefiner),
-        ("global_uvp5", "global_uvp5net", False, EcoTaxaRedefiner),
-    ]
-
+    # The dataset table now lives in configs/gen_planktonzilla.yaml under `datasets`.
+    # Order is preserved exactly: cfg.datasets is iterated in declaration order and
+    # concatenation below follows it. `redefiner` is a key into REDEFINERS. Datasets
+    # needing a manual .zip download are omitted from the config (kept commented
+    # there for reference).
     datasets_configs = {
-        name: {
-            "overrides": build_overrides(import_name, cleanup),
-            "redefiner": redefiner_factory(csv_taxonomies_path=taxo_csv_path),
+        d["name"]: {
+            "overrides": build_overrides(d["import_name"], d["cleanup"], d.get("extra_overrides", [])),
+            "redefiner": REDEFINERS[d["redefiner"]](csv_taxonomies_path=taxo_csv_path),
         }
-        for name, import_name, cleanup, redefiner_factory in datasets_table
+        for d in cfg.datasets
     }
 
     parts = []
@@ -601,7 +567,7 @@ def _run(cfg: DictConfig) -> None:
     # The inner hydra.compose calls reuse the GlobalHydra that @hydra.main already
     # initialized; the former outer initialize() context manager has been removed.
     for dataset_name, ds_cfg in datasets_configs.items():
-        logger.info(f"\n=== Dataset: {dataset_name} ===")
+        logger.info(f"Start importing dataset «{dataset_name}».")
 
         import_cfg = hydra.compose(config_name="import_dataset", overrides=ds_cfg["overrides"])
 
@@ -612,9 +578,9 @@ def _run(cfg: DictConfig) -> None:
         has_content = imagefolder_dir.exists() and bool(os.listdir(imagefolder_dir))
         if has_content:
             num_items = len(os.listdir(imagefolder_dir))
-            logger.info(f"Using existing imagefolder with {num_items} categories in {imagefolder_dir}")
+            logger.info(f"└─ Using existing imagefolder with {num_items} categories in {imagefolder_dir}.")
         else:
-            logger.info("Building imagefolder from the raw data...")
+            logger.info("└─ Building imagefolder from the raw dataset.")
             dataset_importer.import_dataset()
 
         # Resolve the files for each split (accepts the val/validation alias).
@@ -635,10 +601,10 @@ def _run(cfg: DictConfig) -> None:
         if not data_files:
             data_files = {"train": str(dataset_importer.imagefolder_dir / "*/*[!._]*")}
 
-        logger.info("Loading dataset with the imagefolder loader...")
+        logger.info("└─ Loading dataset with the imagefolder loader.")
         dataset = load_dataset("imagefolder", data_files=data_files)
 
-        logger.info("Assigning taxonomy, IDs and metadata...")
+        logger.info("└─ Assigning taxonomy, IDs and metadata...")
         dataset = ds_cfg["redefiner"].redefine(
             hf_dataset=dataset,
             dataset_name=dataset_name,
@@ -652,17 +618,16 @@ def _run(cfg: DictConfig) -> None:
     # With the full dataset ready, we drop the examples whose image is corrupt.
     ds = clean_corrupt_examples_optimized(ds, batch_size=1000, n_jobs=-1)
 
-    output_path = Path(output_path_str)
-    logger.info(f"Saving dataset to {output_path}")
+    logger.info(f"Saving consolidated dataset to {output_path} (HF repo id: {cfg.repo_id}).")
     ds.save_to_disk(output_path)
 
-    logger.info("\nProcess completed")
+    logger.info("Process completed!")
 
 
 @hydra.main(
     version_base="1.3",
     config_path=str(root / "configs"),
-    config_name="gen_planktonzilla.yaml",
+    config_name="generate_planktonzilla.yaml",
 )
 def main(cfg: DictConfig) -> None:
     """Hydra entry point: delegates to ``_run`` with the composed config."""

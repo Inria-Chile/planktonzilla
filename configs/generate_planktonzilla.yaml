@@ -1,0 +1,48 @@
+# @package _global_
+
+# specify here default configuration
+# order of defaults determines the order in which configs override each other
+defaults:
+  - _self_
+  - paths: default.yaml
+  - extras: default.yaml
+  - hydra: default.yaml
+
+task_name: "gen_planktonzilla"
+tags: ["dev"]
+
+# HuggingFace Hub repo id for the consolidated dataset. Single source of truth for
+# the dataset's published identity (used in logging; see gen_planktonzilla._run).
+repo_id: project-oceania/planktonzilla-17M
+
+# Null defaults: the in-code fallbacks in gen_planktonzilla._run() resolve these
+# to byte-identical values vs. the legacy argparse defaults. Override on the CLI,
+# e.g. `pz_gen_planktonzilla num_proc=4`.
+taxonomy_csv_path: null
+data_dir: ${paths.data_dir}
+num_proc: null
+
+# Source datasets to import + redefine, in build order (concatenation follows it).
+# `redefiner` is a key into the REDEFINERS map in gen_planktonzilla.py
+# (none -> NoMetadataRedefiner, whoi -> WHOIRedefiner, ecotaxa -> EcoTaxaRedefiner).
+# Datasets that require a manual .zip download are intentionally omitted here; they
+# match the commented-for-reference blocks below and in the script:
+#   - jedi_oceans_cpics (import_name: jedi,            redefiner: jedi,    CPICS_Validated.zip)
+#   - sykezooscan2024   (import_name: sykezooscan2024, redefiner: none,    SYKE-plankton_ZooScan_2024.zip)
+#   - zoolake           (import_name: zoolake,         redefiner: none,    zoolake_data.zip)
+# To enable one, add an entry with an extra override, e.g.:
+#   - {name: zoolake, import_name: zoolake, cleanup: true, redefiner: none,
+#      extra_overrides: ["dataset_import.manual_download_local_file_names=${data_dir}/zoolake_data.zip"]}
+datasets:
+  - {name: isiisnet,       import_name: isiisnet,       cleanup: true,  redefiner: none}
+  - {name: whoi,           import_name: whoi-plankton,  cleanup: true,  redefiner: whoi}
+  - {name: flowcamnet,     import_name: flowcamnet,     cleanup: true,  redefiner: ecotaxa}
+  - {name: lensless,       import_name: lensless,       cleanup: true,  redefiner: none}
+  - {name: medplanktonset, import_name: medplanktonset, cleanup: true,  redefiner: none}
+  - {name: uvp6net,        import_name: uvp6net,        cleanup: true,  redefiner: ecotaxa}
+  - {name: zoocamnet,      import_name: zoocamnet,      cleanup: true,  redefiner: none}
+  - {name: zooscan,        import_name: zooscannet,     cleanup: true,  redefiner: ecotaxa}
+  - {name: planktonset1.0, import_name: planktonset1,   cleanup: false, redefiner: none}
+  - {name: syke_ifcb_2022, import_name: syke_ifcb_2022, cleanup: false, redefiner: none}
+  - {name: planktoscope,   import_name: planktoscope,   cleanup: false, redefiner: ecotaxa}
+  - {name: global_uvp5,    import_name: global_uvp5net, cleanup: false, redefiner: ecotaxa}

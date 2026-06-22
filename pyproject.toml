@@ -52,7 +52,7 @@ repository = "https://github.com/Inria-Chile/deep_plankton"
 [project.scripts]
 pz_import_dataset = 'planktonzilla.dataset_import.import_dataset:main'
 pz_train = 'planktonzilla.train:main'
-pz_generate_planktonzilla = 'planktonzilla.dataset_generation.generate_planktonzilla:main'
+pz_generate_planktonzilla = 'planktonzilla.planktonzilla_dataset.generate_planktonzilla:main'
 pz_update_planktonzilla = 'planktonzilla.planktonzilla_dataset.update_planktonzilla:main'
 
 [dependency-groups]

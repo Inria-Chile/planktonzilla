@@ -17,9 +17,12 @@ from datasets import (
     load_dataset,
 )
 
+from planktonzilla.planktonzilla_dataset.constants import (
+    DEFAULT_PLANKTONZILLA_DATASET_REPO_ID,
+    TAXONOMY_RANKS,
+    default_num_proc,
+)
 from planktonzilla.utils.logger import get_pylogger
-
-from .constants import REPO_ID, TAXONOMY_RANKS, default_num_proc
 
 logger = get_pylogger(__name__)
 
@@ -173,7 +176,9 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--repo-id", default=REPO_ID, help="HuggingFace Hub dataset repo to load.")
+    parser.add_argument(
+        "--repo-id", default=DEFAULT_PLANKTONZILLA_DATASET_REPO_ID, help="HuggingFace Hub dataset repo to load."
+    )
     parser.add_argument("--output-dir", default=OUTPUT_DIR, help="Directory to save the split DatasetDict to.")
     parser.add_argument("--seed", type=int, default=SEED, help="Random seed for the stratified split.")
     parser.add_argument("--test-frac", type=float, default=TEST_FRAC, help="Fraction of each dataset reserved for test.")

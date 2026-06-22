@@ -17,11 +17,11 @@ only the trailing filename is shared here.
 import os
 from pathlib import Path
 
-# HuggingFace Hub dataset repository.
-REPO_ID = "project-oceania/planktonzilla-17M"
+DEFAULT_PLANKTONZILLA_DATASET_NAME = "planktonzilla-17M"
+DEFAULT_PLANKTONZILLA_DATASET_REPO_ID = f"project-oceania/{DEFAULT_PLANKTONZILLA_DATASET_NAME}"
 
 # Raw enriched-taxonomy CSV filename (lives under each script's own data/ dir).
-TAXONOMY_CSV_FILENAME = Path(__file__).parent / "planktonzilla_taxonomy.csv"
+DEFAULT_TAXONOMY_CSV_FILENAME = Path(__file__).parent / "planktonzilla_taxonomy.csv"
 
 # The seven taxonomic ranks, ordered Kingdom -> Species.
 TAXONOMY_RANKS = ("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")

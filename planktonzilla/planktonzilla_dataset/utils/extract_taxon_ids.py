@@ -40,16 +40,15 @@ import time
 import polars as pl
 import requests
 
+from planktonzilla.planktonzilla_dataset.constants import DEFAULT_TAXONOMY_CSV_FILENAME, TAXONOMY_RANKS
 from planktonzilla.utils.logger import get_pylogger
-
-from ..constants import TAXONOMY_CSV_FILENAME, TAXONOMY_RANKS
 
 logger = get_pylogger(__name__)
 
 # ── Paths (relative to the repo, no hardcoded absolute paths) ───────────────────
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(REPO_ROOT, "data")
-INPUT_CSV = os.path.join(DATA_DIR, TAXONOMY_CSV_FILENAME)
+INPUT_CSV = os.path.join(DATA_DIR, DEFAULT_TAXONOMY_CSV_FILENAME)
 WIKIDATA_CSV = os.path.join(DATA_DIR, "taxonomy_and_wikidata.csv")
 IDS_CSV = os.path.join(DATA_DIR, "taxonomy_wiki_and_ids.csv")
 
