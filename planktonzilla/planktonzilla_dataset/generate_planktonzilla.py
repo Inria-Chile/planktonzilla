@@ -534,10 +534,10 @@ def _run(cfg: DictConfig) -> None:
     def build_overrides(import_name, cleanup, extra_overrides=()):
         """Build the per-dataset Hydra override block for the import_dataset config.
 
-        Only ``dataset_import`` and ``cleanup_after_processing`` vary between the
-        standard datasets; ``push_to_hub`` and ``data_dir`` are the same everywhere.
-        ``extra_overrides`` carries per-dataset extras straight from the config
-        (e.g. a manual-download ``manual_download_local_file_names`` path). For the
+        Only `dataset_import` and `cleanup_after_processing` vary between the
+        standard datasets; `push_to_hub` and `data_dir` are the same everywhere.
+        `extra_overrides`` carries per-dataset extras straight from the config
+        (e.g. a manual-download `manual_download_local_file_names` path). For the
         standard datasets it is empty, reproducing — byte for byte — the 4-element
         override list that was previously inlined for each dataset.
         """
@@ -562,6 +562,7 @@ def _run(cfg: DictConfig) -> None:
         for d in cfg.datasets
     }
 
+    logger.info(f"Creating Planktonzilla dataset (HF: https://hf.co/{cfg.repo_id}).")
     parts = []
 
     # The inner hydra.compose calls reuse the GlobalHydra that @hydra.main already
@@ -613,12 +614,14 @@ def _run(cfg: DictConfig) -> None:
 
         parts.append(dataset)
 
+    logger.info("Concatenating all imported datasets.")
     ds = concatenate_datasets(parts)
 
+    logger.info("Cleaning up corrupt examples.")
     # With the full dataset ready, we drop the examples whose image is corrupt.
     ds = clean_corrupt_examples_optimized(ds, batch_size=1000, n_jobs=-1)
 
-    logger.info(f"Saving consolidated dataset to {output_path} (HF repo id: {cfg.repo_id}).")
+    logger.info(f"Saving consolidated Planktonzilla dataset to {output_path} (HF repo id: {cfg.repo_id}).")
     ds.save_to_disk(output_path)
 
     logger.info("Process completed!")

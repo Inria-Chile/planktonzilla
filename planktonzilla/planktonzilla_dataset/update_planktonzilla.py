@@ -3,7 +3,6 @@
 """
 
 import math
-import os
 from pathlib import Path
 
 import hydra
@@ -31,16 +30,6 @@ root = pyrootutils.setup_root(
 )
 
 logger = get_pylogger(__name__)
-
-# Configuration
-# why: REPO_ROOT here is the PACKAGE dir (dirname(dirname(__file__))), which is
-# intentionally DIFFERENT from the pyrootutils `root` (the repository root). Per
-# the constants.py docstring, generate_planktonzilla resolves data/ via pyrootutils
-# (repo root) while the other scripts (including this one) resolve it relative to
-# the package dir. Collapsing them into one would move the save location and break
-# the zero-drift guarantee, so they are kept distinct on purpose.
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUTPUT_DIR = os.path.join(REPO_ROOT, "data", "planktonzilla_17M_updated")
 
 # Taxonomy columns that get re-synced (seven ranks + label/classification extras).
 TAXO_COLS = list(TAXONOMY_RANKS) + list(EXTRA_COLS)
@@ -125,32 +114,20 @@ def sync_columns(ds: Dataset, sync_dict: dict, num_proc: int) -> Dataset:
     )
 
 
-def _run(cfg: DictConfig) -> None:
-    """Load the dataset, re-sync taxonomy/ID columns from the CSV, and save it.
-
-    Holds the ported body of ``main`` so it can be driven with an explicit ``cfg``
-    (a ``@hydra.main``-decorated function is not directly callable with a cfg
-    argument). The decorated ``main`` simply delegates here. This is purely a seam
-    for testability and changes no behavior.
-    """
-    # In-code null fallbacks reproduce the legacy CLI defaults byte for byte so
-    # the DEFAULT (no-override) run has ZERO behavioral drift.
+@hydra.main(
+    version_base="1.3",
+    config_path=str(root / "configs"),
+    config_name="update_planktonzilla.yaml",
+)
+def main(cfg: DictConfig) -> None:
     repo_id = cfg.repo_id
-
-    # why: the original --csv-path default was the raw DEFAULT_TAXONOMY_CSV_FILENAME
-    # Path (an absolute pathlib.Path), passed straight into pd.read_csv. We must pass
-    # the raw Path here too — str()-wrapping it would diverge from the legacy CLI
-    # (this is an INTENTIONAL divergence from generate_planktonzilla, which str()-wraps).
     taxo_csv_path = cfg.taxonomy_csv_path if cfg.get("taxonomy_csv_path") is not None else DEFAULT_TAXONOMY_CSV_FILENAME
-
     num_proc = cfg.num_proc if cfg.get("num_proc") is not None else default_num_proc()
+    output_dir = cfg.data_dir
 
-    # why: the legacy --output-dir default was the module-level package-relative
-    # OUTPUT_DIR (REPO_ROOT/data/planktonzilla_17M_updated). This is NOT generate's
-    # data_dir scheme — keep it package-relative to preserve the exact save location.
-    output_dir = cfg.output_dir if cfg.get("output_dir") is not None else OUTPUT_DIR
+    logger.info(f"Updating Planktonzilla dataset on {repo_id} with taxonomy CSV {taxo_csv_path}.")
 
-    logger.info(f"Loading dataset {repo_id}...")
+    logger.info(f"Loading dataset {repo_id}.")
     ds = load_dataset(repo_id, split="train")
 
     sync_dict = build_sync_dict(taxo_csv_path)
@@ -159,17 +136,7 @@ def _run(cfg: DictConfig) -> None:
     logger.info(f"Saving dataset to disk ({output_dir})...")
     dataset_final.save_to_disk(output_dir)
 
-    logger.info("\nProcess finished!")
-
-
-@hydra.main(
-    version_base="1.3",
-    config_path=str(root / "configs"),
-    config_name="update_planktonzilla.yaml",
-)
-def main(cfg: DictConfig) -> None:
-    """Hydra entry point: delegates to ``_run`` with the composed config."""
-    _run(cfg)
+    logger.info("Process finished!")
 
 
 if __name__ == "__main__":
