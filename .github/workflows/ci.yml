@@ -32,7 +32,7 @@ jobs:
           enable-cache: true
           # Python is pinned by .python-version / pyproject.toml requires-python.
           # uv will resolve to 3.12 (the current devcontainer + HPC runtime).
-          python-version: "3.12"
+          version: "3.12"
 
       - name: Install project deps (uv sync)
         run: uv sync
@@ -55,7 +55,7 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
-          python-version: "3.12"
+          version: "3.12"
 
       - name: Install project deps (uv sync)
         run: uv sync
@@ -79,7 +79,7 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
-          python-version: "3.12"
+          version: "3.12"
 
       - name: Install project deps (uv sync)
         run: uv sync
