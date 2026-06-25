@@ -15,7 +15,10 @@ update run. A full golden-output dataset diff is not runnable here (it needs the
       from cfg.data_dir (the package-relative OUTPUT_DIR seam was dropped in the
       @hydra.main port),
   (c) main() wires cfg.repo_id -> load_dataset, the resolved cfg.data_dir ->
-      save_to_disk, and the resolved num_proc -> sync_columns.
+      save_to_disk, and the resolved num_proc -> sync_columns,
+  (d) the opt-in Hub push is additive — the default (push_to_hub false) never
+      pushes (zero-drift), while push_to_hub=true pushes once to cfg.repo_id after
+      the unconditional save.
 
 Every test PINS current behavior; none "improves" it. All network is mocked.
 """
@@ -57,6 +60,29 @@ def _write_taxonomy_csv(path, dataset_name, raw_label):
     row = f"{dataset_name},{raw_label},Animalia,Arthropoda,,,,,,Copepoda,True,zoo,,Q3386609,274;1231,135336.0,6854.0,"
     with open(path, "w") as f:
         f.write(header + "\n" + row + "\n")
+
+
+def _drive_update_main(monkeypatch, cfg, push_mock=None):
+    """Run ``up.main(cfg)`` network-free (load / sync / save mocked) on a tiny dataset.
+
+    ``main`` is the @hydra.main entry point, driven via Hydra's cfg-passthrough
+    (``main(cfg)`` runs the task body directly — there is no separate ``_run`` seam).
+    When ``push_mock`` is given it is installed as ``Dataset.push_to_hub`` so the
+    opt-in push can be asserted.
+    """
+    columns = {"dataset": ["x"], "original_label": ["y"]}
+    for col in up.SYNC_COLS:
+        # plankton is a bool; everything else is a (nullable) string column.
+        columns[col] = [True] if col == "plankton" else [""]
+    tiny = Dataset.from_dict(columns)
+
+    monkeypatch.setattr(up, "load_dataset", lambda *a, **k: tiny)
+    monkeypatch.setattr(up, "sync_columns", lambda ds, sync_dict, num_proc: ds)
+    monkeypatch.setattr(up.Dataset, "save_to_disk", lambda self, path: None)
+    if push_mock is not None:
+        monkeypatch.setattr(up.Dataset, "push_to_hub", push_mock)
+
+    up.main(cfg)
 
 
 def test_config_composes_with_expected_keys():
@@ -174,35 +200,54 @@ def test_main_wires_repo_id_data_dir_and_num_proc(monkeypatch, tmp_path):
     assert captured["save_path"] == str(out_dir)
 
 
-def test_maybe_push_to_hub_skips_by_default(monkeypatch):
-    """PIN: the default (push=False) path NEVER pushes to the Hub.
+def test_main_skips_push_by_default(monkeypatch, tmp_path):
+    """PIN zero-drift: the default update run (push_to_hub absent/false) never pushes.
 
-    This is the zero-drift pin — with the flag absent/False, _maybe_push_to_hub
-    must leave the frozen project-oceania artifact untouched (no Hub call). The
-    save_to_disk that precedes it in main stays unconditional and is unaffected.
-    All network is mocked; this PINS current behavior, it does not "improve" it.
+    Drives main() with load / sync / save mocked and a recording mock on
+    Dataset.push_to_hub; the default config leaves push_to_hub false, so the push
+    branch is skipped and the frozen artifact is left untouched. All network is
+    mocked; this PINS current behavior, it does not "improve" it.
     """
-    push = MagicMock()
-    monkeypatch.setattr(up.Dataset, "push_to_hub", push)
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "x", "y")
 
-    dataset = Dataset.from_dict({"x": [1]})
-    up._maybe_push_to_hub(dataset, "project-oceania/planktonzilla-17M", False)
+    GlobalHydra.instance().clear()
+    hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_update_nopush")
+    cfg = hydra.compose(
+        config_name="update_planktonzilla",
+        overrides=[f"taxonomy_csv_path={csv_path}", f"data_dir={tmp_path / 'out'}"],
+    )
+
+    push = MagicMock()
+    _drive_update_main(monkeypatch, cfg, push_mock=push)
+
+    GlobalHydra.instance().clear()
 
     push.assert_not_called()
 
 
-def test_maybe_push_to_hub_pushes_once_when_enabled(monkeypatch):
-    """PIN: the push=True path pushes exactly once to cfg.repo_id.
+def test_main_pushes_to_hub_when_enabled(monkeypatch, tmp_path):
+    """PIN the opt-in push: push_to_hub=true pushes exactly once to cfg.repo_id.
 
-    The push is additive (it runs after the unconditional save_to_disk in main)
-    and targets the frozen repo id as the first positional arg. All network is
+    The push is additive (it runs after the unconditional save_to_disk in main) and
+    forwards the configured ``private`` (push_as_private) flag. All network is
     mocked; this PINS current behavior, it does not "improve" it.
     """
-    push = MagicMock()
-    monkeypatch.setattr(up.Dataset, "push_to_hub", push)
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "x", "y")
 
-    dataset = Dataset.from_dict({"x": [1]})
-    up._maybe_push_to_hub(dataset, "project-oceania/planktonzilla-17M", True)
+    GlobalHydra.instance().clear()
+    hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_update_push")
+    cfg = hydra.compose(
+        config_name="update_planktonzilla",
+        overrides=[f"taxonomy_csv_path={csv_path}", f"data_dir={tmp_path / 'out'}", "push_to_hub=true"],
+    )
+
+    push = MagicMock()
+    _drive_update_main(monkeypatch, cfg, push_mock=push)
+
+    GlobalHydra.instance().clear()
 
     push.assert_called_once()
-    assert push.call_args.args[0] == "project-oceania/planktonzilla-17M"
+    assert push.call_args.args[0] == cfg.repo_id
+    assert push.call_args.kwargs.get("private") == cfg.push_as_private

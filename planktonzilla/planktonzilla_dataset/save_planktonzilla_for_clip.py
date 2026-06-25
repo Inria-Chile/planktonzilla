@@ -1,5 +1,25 @@
 """
 (c) Inria
+
+Export the only-plankton dataset to .tar shards for CLIP / WebDataset training.
+
+Loads the on-disk only-plankton ``DatasetDict`` (produced by
+``gen_planktonzilla_only_plankton``) and writes WebDataset-style ``.tar`` shards,
+one folder per split. Each sample becomes a paired ``image_{i}.jpg`` (RGB JPEG)
+and ``image_{i}.txt`` (the taxonomy class string) so that WebDataset groups them
+into the same sample. Only the ``train`` and ``validation`` splits are exported.
+
+Prerequisites:
+  - An on-disk only-plankton ``DatasetDict`` at ``--input-dir`` with ``train`` and
+    ``validation`` splits, each exposing a PIL ``image`` and a ``label`` ``ClassLabel``.
+
+Side effects:
+  - Disk: reads the dataset from ``--input-dir`` and writes ``.tar`` shards under
+    ``--output-dir`` (per-split subfolders).
+
+Usage:
+    python save_planktonzilla_for_clip.py
+    python save_planktonzilla_for_clip.py --input-dir <dir> --output-dir <dir> --shard-size 2000
 """
 
 import argparse
@@ -94,7 +114,12 @@ def export_to_tar_shards(
 
 
 def main() -> None:
-    """Load the only-plankton dataset and export train/val splits to tar shards."""
+    """Load the only-plankton dataset and export train/val splits to tar shards.
+
+    CLI entry point. Parses arguments, loads the ``DatasetDict`` from ``--input-dir``
+    and writes the ``train`` and ``validation`` splits as ``.tar`` shards under
+    ``--output-dir`` (disk).
+    """
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
     parser = argparse.ArgumentParser(description=__doc__)

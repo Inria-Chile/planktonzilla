@@ -1,5 +1,8 @@
 """
 (c) Inria
+
+Hydra task-orchestration helpers: the `task_wrapper` decorator, config `extras`, hyperparameter
+logging, metric retrieval, and logger teardown shared across entry points.
 """
 
 import time
@@ -20,16 +23,26 @@ log = get_pylogger(__name__)
 
 
 def task_wrapper(task_func: Callable) -> Callable:
-    """Optional decorator that wraps the task function in extra utilities.
+    """Decorator that wraps a Hydra task function in failure-resilient utilities.
 
-    Makes multirun more resistant to failure.
+    The wrapped callable must have the signature ``(cfg: DictConfig) -> tuple[dict, dict]``
+    (returning ``(metric_dict, object_dict)``), and the returned wrapper preserves that
+    contract. Hardening the task this way keeps a multirun from aborting on a single failure.
 
-    Utilities:
-    - Calling the `utils.extras()` before the task is started
-    - Calling the `utils.close_loggers()` after the task is finished
-    - Logging the exception if occurs
-    - Logging the task total execution time
-    - Logging the output dir
+    Side effects (applied around every call):
+    - Runs `extras(cfg)` before the task to apply optional pre-task utilities.
+    - On exception: logs the full traceback via `log.exception("")` (saved to the `.log` file),
+      then re-raises so the failure is not swallowed.
+    - In a `finally` block (so it runs even on exception): writes the task execution time to
+      `exec_time.log` under `cfg.paths.output_dir`, and calls `close_loggers()` so a crashed
+      logger does not take down the rest of a multirun.
+    - On success: logs the output dir.
+
+    Args:
+        task_func: The Hydra task function to wrap.
+
+    Returns:
+        The wrapping callable, which returns the task's ``(metric_dict, object_dict)``.
     """
 
     def wrap(cfg: DictConfig):
@@ -185,7 +198,18 @@ def log_hyperparameters(object_dict: dict) -> None:
 
 
 def get_metric_value(metric_dict: dict, metric_name: str) -> float:
-    """Safely retrieves value of the metric logged in LightningModule."""
+    """Safely retrieve a logged metric value by name (used for hyperparameter-search optimization).
+
+    Args:
+        metric_dict: Mapping of metric name to a value exposing `.item()`.
+        metric_name: The metric to retrieve; a falsy value short-circuits to ``None``.
+
+    Returns:
+        The metric's scalar value, or ``None`` if ``metric_name`` is falsy.
+
+    Raises:
+        Exception: If ``metric_name`` is truthy but absent from ``metric_dict``.
+    """
 
     if not metric_name:
         log.info("Metric name is None! Skipping metric value retrieval.")

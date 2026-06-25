@@ -1,5 +1,14 @@
 """
 (c) Inria
+
+Training-step and evaluation helpers for the CLIP contrastive pretraining path.
+
+This module mirrors ``open_clip_train.train`` but carries the planktonzilla
+overrides that ``planktonzilla.clip_train.main._patch_upstream`` injects into
+the upstream namespace: ``evaluate`` reports classification precision/recall/F1
+(macro) instead of retrieval R@k, and the train loop supports gradient
+accumulation, ``torch.compile`` step strategies, NaFlex loss scaling, and a
+``TrainState`` carrier for checkpoint counters.
 """
 
 import json
@@ -85,18 +94,20 @@ def restore_train_state_counters(
 
 
 class AverageMeter(object):
-    """Computes and stores the average and current value"""
+    """Computes and stores the running average and current value of a scalar."""
 
     def __init__(self):
         self.reset()
 
     def reset(self):
+        """Reset the running sum, count, average, and last value to zero."""
         self.val = 0
         self.avg = 0
         self.sum = 0
         self.count = 0
 
     def update(self, val, n=1):
+        """Record ``val`` (seen ``n`` times) and refresh the running average."""
         self.val = val
         self.sum += val * n
         self.count += n
@@ -104,10 +115,12 @@ class AverageMeter(object):
 
 
 def postprocess_clip_output(model_out):
+    """Name a tuple CLIP output as a dict of image/text features and logit scale."""
     return {"image_features": model_out[0], "text_features": model_out[1], "logit_scale": model_out[2]}
 
 
 def backward(total_loss, scaler):
+    """Run the backward pass, scaling the loss first when an AMP ``GradScaler`` is in use."""
     if scaler is not None:
         scaler.scale(total_loss).backward()
     else:
@@ -277,11 +290,32 @@ def _train_step_eager(task, batch, accum_state, optimizer, scaler, autocast, arg
 
 
 def is_naflex_batch(batch):
+    """Return True when the batch carries NaFlex variable-resolution patch inputs."""
     image = batch.get("image")
     return isinstance(image, dict) and "patches" in image
 
 
 def get_naflex_loss_scale(batch, args, task):
+    """Compute the per-batch loss-scale factor for NaFlex variable-size batches.
+
+    NaFlex packs a variable number of samples per batch, so the contrastive loss
+    is rescaled relative to ``args.batch_size`` to keep gradient magnitudes
+    comparable across batches. Returns ``1.0`` (no scaling) when NaFlex scaling is
+    disabled or the batch is not a NaFlex batch.
+
+    Args:
+        batch: The current batch.
+        args: Parsed open_clip_train args; reads ``naflex_loss_scale`` ("none",
+            "linear", "sqrt") and ``batch_size`` (the reference batch size).
+        task: The training task, used to read the effective batch size.
+
+    Returns:
+        The multiplicative loss scale (``linear`` or ``sqrt`` of the size ratio).
+
+    Raises:
+        ValueError: If scaling is requested without a positive ``--batch-size``
+            reference, or for an unsupported ``naflex_loss_scale`` value.
+    """
     loss_scale = getattr(args, "naflex_loss_scale", "none")
     if loss_scale in (None, "none") or not is_naflex_batch(batch):
         return 1.0
@@ -300,6 +334,26 @@ def get_naflex_loss_scale(batch, args, task):
 
 
 def train_one_epoch(state: TrainState, data, args, tb_writer=None):
+    """Run one training epoch over ``data["train"]``, updating ``state`` in place.
+
+    Selects the appropriate train-step path from ``args``: an eager accumulating
+    step when ``accum_freq > 1`` or a ``GradScaler`` is active, a ``torch.compile``-d
+    step under ``--torchcompile-strategy step``, or a plain eager step otherwise.
+    Advances ``state.global_step`` / ``state.samples_seen``, and on the master rank
+    logs loss, throughput, LR, and logit scale to the logger, TensorBoard
+    (``tb_writer``), and Weights & Biases (when ``args.wandb``).
+
+    Args:
+        state: Mutable training state (task, optimizer, scaler, scheduler, epoch,
+            counters); counters and any compiled step are updated in place.
+        data: Mapping of split name to a wrapped dataloader; uses ``data["train"]``.
+        args: Parsed open_clip_train args controlling the step strategy and logging.
+        tb_writer: Optional TensorBoard ``SummaryWriter`` for scalar logging.
+
+    Raises:
+        ValueError: If ``--torchcompile-strategy step`` is combined with
+            ``accum_freq > 1`` or a precision that needs a ``GradScaler``.
+    """
     task = state.task
     optimizer = state.optimizer
     scaler = state.scaler
@@ -443,7 +497,30 @@ def zero_shot_eval_all(task, data, epoch, args, tokenizer=None):
 
 
 def evaluate(model, data, epoch, args, tb_writer=None, tokenizer=None):
-    """Evaluate reporting precision/recall/F1 per class instead of retrieval R@k."""
+    """Evaluate the model, reporting classification precision/recall/F1 (macro).
+
+    This is the planktonzilla override that replaces upstream retrieval R@k metrics:
+    it derives per-class predictions by matching image features against the unique
+    text-token classes in the validation set. Runs on the master rank only (other
+    ranks return an empty dict early); the master path uses the unwrapped module to
+    avoid enqueuing unmatched NCCL collectives that would deadlock the post-eval
+    barrier. Side effects on the master rank: logs metrics, optionally writes
+    ``results.jsonl`` under ``args.checkpoint_path`` (when ``args.save_logs``), and
+    logs to TensorBoard / Weights & Biases.
+
+    Args:
+        model: The CLIP model (optionally DDP-wrapped).
+        data: Mapping of split name to wrapped dataloaders; uses ``data["val"]``
+            and any zero-shot evaluators.
+        epoch: Current epoch, used for val-frequency gating and logging.
+        args: Parsed open_clip_train args (precision, val_frequency, save_logs, etc.).
+        tb_writer: Optional TensorBoard ``SummaryWriter``.
+        tokenizer: Optional tokenizer forwarded to zero-shot evaluation.
+
+    Returns:
+        A metrics dict (``clip_val_loss``, ``val_precision``, ``val_recall``,
+        ``val_f1``, plus zero-shot metrics); empty on non-master ranks.
+    """
     from sklearn.metrics import f1_score, precision_score, recall_score
 
     metrics = {}
@@ -577,6 +654,19 @@ def evaluate(model, data, epoch, args, tb_writer=None, tokenizer=None):
 
 
 def maybe_compute_generative_loss(model_out, texts=None, pad_id=0):
+    """Compute the next-token generative cross-entropy loss for CoCa-style models.
+
+    Returns ``None`` when the model produces no ``logits`` or no ``texts`` are
+    given (i.e. a non-generative CLIP model), so callers can skip the term.
+
+    Args:
+        model_out: Model output mapping; the generative term needs a ``logits`` key.
+        texts: Target token ids; shifted by one to form next-token labels.
+        pad_id: Padding token id ignored in the cross-entropy.
+
+    Returns:
+        The generative loss tensor, or ``None`` if not applicable.
+    """
     if "logits" in model_out and texts is not None:
         logits = model_out["logits"][:, :-1]
         labels = texts[:, 1:]

@@ -1,5 +1,15 @@
 """
 (c) Inria
+
+Imbalance-aware loss functions for the planktonzilla classification pipeline.
+
+The plankton dataset is heavily long-tailed (a few abundant classes dominate the
+many rare ones), so plain cross-entropy biases the model toward head classes. This
+module collects loss variants that counteract that imbalance via focal down-weighting,
+label-distribution-aware margins, asymmetric positive/negative weighting, or balanced
+softmax priors. Every loss subclasses :class:`AbstractHFLoss` so it can be passed to a
+Hugging Face ``Trainer`` as ``compute_loss_func`` and consume the
+``ImageClassifierOutputWithNoAttention`` produced by the model.
 """
 
 import numpy as np
@@ -10,7 +20,13 @@ from transformers.modeling_outputs import ImageClassifierOutputWithNoAttention
 
 
 class AbstractHFLoss(nn.Module):
-    """Abstract loss function for Hugging Face transformers Trainer. a"""
+    """Base class for the imbalance-aware losses used with the Hugging Face ``Trainer``.
+
+    Concrete subclasses implement :meth:`forward`, which receives an
+    ``ImageClassifierOutputWithNoAttention`` (the model output, whose ``.logits`` hold the
+    raw class scores) and the integer ``target`` labels, and returns a scalar loss tensor.
+    Instances are passed to ``Trainer(compute_loss_func=...)``.
+    """
 
     def __init__(self):
         super().__init__()
@@ -18,13 +34,24 @@ class AbstractHFLoss(nn.Module):
     def forward(self, output: ImageClassifierOutputWithNoAttention, target, **kwargs):
         """Compute the loss for a model output and target.
 
-        Subclasses must implement this method and return a scalar loss tensor.
+        Subclasses must override this method and return a scalar loss tensor. The base
+        implementation raises ``NotImplementedError``.
         """
         raise NotImplementedError("Not implemented!")
 
 
 class FocalLoss(AbstractHFLoss):
-    """Focal loss.
+    """Focal loss for class imbalance.
+
+    Down-weights well-classified (high-confidence) examples by the factor
+    ``(1 - pt) ** gamma`` so that training focuses on the hard, typically rare-class
+    examples instead of being swamped by the easy head-class majority.
+
+    Args:
+        alpha: Per-class weighting. A scalar is expanded to the two-class vector
+            ``[alpha, 1 - alpha]``; a list/tensor is used as explicit per-class weights.
+        gamma: Focusing exponent — larger values down-weight easy examples more aggressively.
+        size_average: If True, return the mean loss over the batch; otherwise the sum.
 
     *Source:* Lin, T.-Y., Goyal, P., Girshick, R., He, K., & Dollár, P. (2018).
     **Focal Loss for Dense Object Detection.** arXiv preprint arXiv:1708.02002.
@@ -81,6 +108,16 @@ class FocalLoss(AbstractHFLoss):
 class LDAMLoss(AbstractHFLoss):
     """Label-Distribution-Aware Margin (LDAM) loss.
 
+    Enforces larger classification margins for rare classes than for frequent ones: the
+    per-class margin scales as ``1 / n_c**0.25`` (``n_c`` is the class count), so minority
+    classes are pushed further from the decision boundary, improving their generalization.
+
+    Args:
+        cls_num_list: Number of training examples per class, used to derive the margins.
+        max_m: Maximum margin; margins are rescaled so the largest equals this value.
+        weight: Optional per-class weights passed through to ``cross_entropy`` (e.g. for DRW).
+        s: Logit scaling factor applied before cross-entropy.
+
     *Source:*  Kaidi Cao, Colin Wei, Adrien Gaidon, Nikos Aréchiga, and Tengyu Ma.
     (2019). **Learning Imbalanced Datasets with Label-Distribution-Aware Margin Loss.** CoRR, vol. abs/1906.07413.
     <https://arxiv.org/abs/1906.07413>
@@ -125,13 +162,29 @@ class LDAMLoss(AbstractHFLoss):
 
 
 class MaximumMarginLoss(nn.Module):
-    """Maximum Margin loss.
+    """Maximum Margin loss for imbalanced classification.
+
+    Extends the LDAM idea by replacing the fixed label-distribution margin with a
+    data-dependent margin estimated per batch from the gap between the positive (ground-truth)
+    score and the strongest negative score (see :meth:`obj_margins`). With ``ldam=True`` the
+    class-frequency margins are additionally blended in.
+
+    Args:
+        cls_num_list: Number of training examples per class, used to derive the base margins.
+        max_m: Maximum margin scale.
+        weight: Optional per-class weights passed to ``cross_entropy``.
+        s: Logit scaling factor applied before cross-entropy.
+        gamma: Sharpness of the foreground (positive-class) margin term in :meth:`obj_margins`.
+        ldam: If True, subtract the class-frequency margin from ``max_m`` to combine the
+            LDAM and maximum-margin schemes.
 
     *Source:* Kang, H., Vu, T., & Yoo, C. D. (2021). *Learning imbalanced datasets with maximum
     margin loss*. 2021 IEEE International Conference on Image Processing (ICIP), 1269-1273. IEEE.
     <https://arxiv.org/abs/2206.05380>
 
-    *Note:* Code adapted from <https://github.com/ihaeyong/Maximum-Margin-LDAM>.
+    *Note:* Code adapted from <https://github.com/ihaeyong/Maximum-Margin-LDAM>. This class
+    subclasses ``nn.Module`` directly (not :class:`AbstractHFLoss`); its ``forward`` matches the
+    same ``(output, target)`` interface so it is still ``Trainer``-compatible.
     """
 
     def __init__(
@@ -230,7 +283,19 @@ class MaximumMarginLoss(nn.Module):
 
 
 class AsymmetricLoss(AbstractHFLoss):
-    """Asymmetric loss
+    """Asymmetric loss (ASL) for imbalanced classification.
+
+    Decouples the focusing applied to positive vs. negative samples so that the abundant
+    easy negatives (dominant in long-tailed/multi-label settings) are down-weighted more
+    strongly than positives, preventing them from overwhelming the gradient. Optional label
+    smoothing (``eps``) further regularizes the targets.
+
+    Args:
+        gamma_pos: Focusing exponent for positive (ground-truth) classes.
+        gamma_neg: Focusing exponent for negative classes; typically ``gamma_neg > gamma_pos``.
+        eps: Label-smoothing strength; ``0`` disables smoothing.
+        reduction: ``"mean"`` to average over the batch, otherwise the per-example loss is summed
+            over classes and returned unreduced across the batch.
 
     *Source:* Emanuel Ben Baruch, Tal Ridnik, Nadav Zamir, Asaf Noy, Itamar Friedman, Matan Protter, and Lihi Zelnik-Manor.
     (2020). **Asymmetric Loss For Multi-Label Classification.** CoRR, vol. abs/2009.14119. <https://arxiv.org/abs/2009.14119>
@@ -286,7 +351,19 @@ class AsymmetricLoss(AbstractHFLoss):
 
 
 class RobustAsymmetricLoss(AbstractHFLoss):
-    """Robust Asymmetric Loss (RAL)
+    """Robust Asymmetric Loss (RAL) for long-tailed multi-label learning.
+
+    A robustified variant of :class:`AsymmetricLoss` that reshapes the positive and negative
+    weighting with Taylor-style correction terms (``epsilon_pos``, ``epsilon_pos_pow``,
+    ``epsilon_neg``) and a ``lamb`` factor, making the loss less sensitive to noisy/uncertain
+    predictions on the long tail.
+
+    Args:
+        gamma_pos: Focusing exponent for positive classes.
+        gamma_neg: Focusing exponent for negative classes.
+        eps: Label-smoothing strength and probability floor used when clamping log-probabilities.
+        epsilon_pos_pow: Coefficient of the second-order (squared) positive correction term.
+        reduction: ``"mean"`` to average over the batch, otherwise summed over classes per example.
 
     *Source:* Wongi Park, Inhyuk Park, Sungeun Kim, and Jongbin Ryu. (2023). **Robust Asymmetric Loss
     for Multi-Label Long-Tailed Learning.** arXiv preprint arXiv:2308.05542.
@@ -366,7 +443,20 @@ class RobustAsymmetricLoss(AbstractHFLoss):
 
 
 class BalancedMetaSoftmaxLoss(AbstractHFLoss):
-    """Balanced Meta-Softmax (BALMS) loss."""
+    """Balanced Meta-Softmax (BALMS) loss.
+
+    Corrects the train/test label-distribution shift of long-tailed data by adding the log of
+    each class's training frequency to its logit before softmax cross-entropy. This logit
+    adjustment makes the softmax an unbiased estimator under a balanced test distribution,
+    favoring rare classes without explicit resampling.
+
+    Args:
+        cls_num_list: Number of training examples per class; its log is used as the prior offset.
+
+    *Source:* Jiawei Ren, Cunjun Yu, Shunan Sheng, Xiao Ma, Haiyu Zhao, Shuai Yi, and Hongsheng Li.
+    (2020). **Balanced Meta-Softmax for Long-Tailed Visual Recognition.** NeurIPS 2020.
+    <https://arxiv.org/abs/2007.10740>
+    """
 
     def __init__(self, cls_num_list: list[int]):
         super().__init__()
@@ -384,9 +474,20 @@ class BalancedMetaSoftmaxLoss(AbstractHFLoss):
 
 
 class CrossEntropyLossHF(AbstractHFLoss):
+    """Standard cross-entropy loss wrapped for the Hugging Face ``Trainer``.
+
+    Baseline loss with no imbalance correction beyond the optional per-class ``weight``. It
+    exists so plain cross-entropy can be selected through the same config/dispatch path as the
+    imbalance-aware losses.
+
+    Args:
+        weight: Optional per-class rescaling weights passed to ``cross_entropy``.
+    """
+
     def __init__(self, weight=None):
         super().__init__()
         self.weight = weight
 
     def forward(self, output, target, **kwargs):
+        """Compute weighted cross-entropy over ``output.logits`` against ``target``."""
         return F.cross_entropy(output.logits, target, weight=self.weight)

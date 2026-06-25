@@ -1,5 +1,13 @@
 """
 (c) Inria
+
+``pz_import_dataset`` entry point.
+
+Hydra-driven CLI that instantiates a :class:`DatasetImporter` from
+``cfg.dataset_import`` and dispatches on ``cfg.action`` (``import``,
+``update-metadata``, or ``show``). ``pyrootutils.setup_root`` runs at module top
+level — before the other imports — to set ``sys.path``, find ``configs/``, and load
+``.env``.
 """
 
 import pyrootutils
@@ -26,12 +34,20 @@ log = get_pylogger(__name__)
 
 @task_wrapper
 def import_dataset(cfg: DictConfig) -> None:
-    """
-    Import a dataset as a HuggingFace
+    """Instantiate the configured importer and dispatch on ``cfg.action``.
+
+    Builds the ``DatasetImporter`` from ``cfg.dataset_import`` and runs one action:
+    ``import`` (download/normalize/push the dataset), ``update-metadata`` (refresh the
+    Hub dataset card), or ``show`` (print the Hub dataset details). An unknown action is
+    logged as an error and performs no work. Wrapped by :func:`task_wrapper` for timing,
+    exception logging, and logger teardown.
 
     Args:
-        cfg (DictConfig): Configuration composed by Hydra.
+        cfg: Configuration composed by Hydra.
 
+    Returns:
+        ``(None, None)`` — the ``(metrics, objects)`` pair the Hydra ``task_wrapper``
+        contract expects; this task produces neither.
     """
 
     log.info(f"Instantiating dataset importer «{cfg.dataset_import._target_}».")
@@ -59,6 +75,7 @@ def import_dataset(cfg: DictConfig) -> None:
     config_name="import_dataset.yaml",
 )
 def main(cfg: DictConfig) -> Optional[float]:
+    """Hydra ``pz_import_dataset`` entry point; runs :func:`import_dataset` and returns 0."""
     import_dataset(cfg)
     return 0
 

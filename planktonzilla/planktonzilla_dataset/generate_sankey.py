@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Generate an interactive Sankey diagram from a taxonomy-mapping CSV.
+"""
+(c) Inria
+
+Generate an interactive Sankey diagram from a taxonomy-mapping CSV.
 
 Reads a CSV whose columns describe a multi-stage mapping — e.g. the planktonzilla
 taxonomy crosswalk that routes each source ``Dataset``/``Raw_Labels`` row through the
@@ -12,16 +15,18 @@ and flow width equals the number of label rows.
 Examples
 --------
     # Defaults: read the bundled taxonomy CSV, write planktonzilla_taxonomy_sankey.html
-    python tools/generate_sankey.py
+    pz_generate_sankey
 
     # Custom input/output and open it when done
-    python tools/generate_sankey.py --csv data.csv --out flow.html --open
+    pz_generate_sankey --csv data.csv --out flow.html --open
 
     # Pick the stages shown on first load
-    python tools/generate_sankey.py --stages Dataset,Kingdom,Phylum,Class,Order
+    pz_generate_sankey --stages Dataset,Kingdom,Phylum,Class,Order
 
     # Expose every column in the CSV as a selectable stage
-    python tools/generate_sankey.py --all-columns
+    pz_generate_sankey --all-columns
+
+The same CLI is available via ``python -m planktonzilla.planktonzilla_dataset.generate_sankey``.
 """
 
 from __future__ import annotations
@@ -32,6 +37,8 @@ import json
 import sys
 import webbrowser
 from pathlib import Path
+
+from planktonzilla.planktonzilla_dataset import constants
 
 # Curated stage order + friendly labels for the planktonzilla taxonomy crosswalk.
 # Columns not listed here still work via --all-columns / --columns (label = column name).
@@ -53,12 +60,6 @@ PREFERRED: list[tuple[str, str]] = [
 
 DEFAULT_STAGES = ["Dataset", "Kingdom", "Phylum", "Class"]
 DEFAULT_TITLE = "planktonzilla taxonomy — interactive Sankey"
-
-
-def default_csv() -> Path:
-    """Locate the bundled taxonomy CSV relative to this script (repo/tools/)."""
-    repo = Path(__file__).resolve().parent.parent
-    return repo / "planktonzilla" / "planktonzilla_dataset" / "planktonzilla_taxonomy.csv"
 
 
 def resolve_dims(header: list[str], columns: str | None, all_columns: bool) -> list[dict[str, str]]:
@@ -94,20 +95,18 @@ def build_html(csv_path: Path, dims: list[dict[str, str]], stages: list[str], ti
     payload = json.dumps({"dims": dims, "records": records}, separators=(",", ":"))
     # Defang any literal </script> in data so it can't break out of the JSON island.
     payload = payload.replace("</", "<\\/")
-    return (
-        TEMPLATE.replace("__TITLE__", title)
-        .replace("__PAYLOAD__", payload)
-        .replace("__DEFAULT__", json.dumps(stages))
-    )
+    return TEMPLATE.replace("__TITLE__", title).replace("__PAYLOAD__", payload).replace("__DEFAULT__", json.dumps(stages))
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
-        prog="generate_sankey.py",
+        prog="pz_generate_sankey",
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    ap.add_argument("--csv", type=Path, default=default_csv(), help="input CSV (default: bundled taxonomy CSV)")
+    ap.add_argument(
+        "--csv", type=Path, default=constants.DEFAULT_TAXONOMY_CSV_FILENAME, help="input CSV (default: bundled taxonomy CSV)"
+    )
     ap.add_argument("--out", type=Path, default=Path("planktonzilla_taxonomy_sankey.html"), help="output HTML path")
     ap.add_argument("--stages", default=",".join(DEFAULT_STAGES), help="comma-separated stages shown on first load")
     ap.add_argument("--columns", default=None, help="comma-separated columns to expose as selectable stages")

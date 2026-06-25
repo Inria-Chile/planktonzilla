@@ -1,5 +1,15 @@
 """
 (c) Inria
+
+Re-sync the taxonomy and external IDs of the published planktonzilla dataset.
+
+Loads the frozen consolidated dataset from the HuggingFace Hub, overwrites its
+taxonomy ranks, label/classification extras and external-database ID columns from
+the taxonomy CSV (matched per example on ``(dataset, original_label)``), then saves
+the result back to disk and, when ``push_to_hub`` is set, pushes it to the Hub.
+
+Only columns that already exist in the dataset are updated; no rows are added or
+removed.
 """
 
 import math
@@ -114,27 +124,20 @@ def sync_columns(ds: Dataset, sync_dict: dict, num_proc: int) -> Dataset:
     )
 
 
-def _maybe_push_to_hub(dataset: Dataset, repo_id: str, push: bool) -> None:
-    """Opt-in, additive Hub push of ``dataset`` to ``repo_id``.
-
-    Gated on ``push``: when True the dataset is pushed to the Hub IN ADDITION to
-    the unconditional ``save_to_disk`` performed by the caller; when False (the
-    default) nothing is pushed, preserving zero behavioral drift. The token is
-    read from the ``HF_TOKEN`` env var by ``Dataset.push_to_hub`` automatically.
-    """
-    if push:
-        logger.info(f"Pushing updated Planktonzilla dataset to HuggingFace Hub as «{repo_id}».")
-        dataset.push_to_hub(repo_id)
-    else:
-        logger.warning("Skipping pushing dataset to HuggingFace Hub, set push_to_hub=True to change this.")
-
-
 @hydra.main(
     version_base="1.3",
     config_path=str(root / "configs"),
     config_name="update_planktonzilla.yaml",
 )
 def main(cfg: DictConfig) -> None:
+    """Hydra entry point: load, re-sync from the taxonomy CSV, save and optionally push.
+
+    Loads ``cfg.repo_id`` from the Hub, rebuilds the ``(dataset, label) -> values``
+    lookup from the taxonomy CSV, re-syncs the taxonomy/ID columns onto every
+    example, saves the result to ``cfg.data_dir`` and, when ``cfg.push_to_hub`` is
+    true, also pushes it to ``cfg.repo_id`` (visibility from ``push_as_private``,
+    token from ``hf_token`` / the ``HF_TOKEN`` env var).
+    """
     repo_id = cfg.repo_id
     taxo_csv_path = cfg.taxonomy_csv_path if cfg.get("taxonomy_csv_path") is not None else DEFAULT_TAXONOMY_CSV_FILENAME
     num_proc = cfg.num_proc if cfg.get("num_proc") is not None else default_num_proc()
@@ -151,9 +154,11 @@ def main(cfg: DictConfig) -> None:
     logger.info(f"Saving dataset to disk ({output_dir})...")
     dataset_final.save_to_disk(output_dir)
 
-    # Additive, opt-in Hub push: happens AFTER the unconditional save_to_disk above,
-    # never instead of it. Default (flag absent/False) is a no-op for zero drift.
-    _maybe_push_to_hub(dataset_final, repo_id, cfg.get("push_to_hub", False))
+    if cfg.get("push_to_hub", False):
+        logger.info(f"Pushing updated Planktonzilla dataset to HuggingFace Hub as «{cfg.repo_id}».")
+        dataset_final.push_to_hub(cfg.repo_id, private=cfg.get("push_as_private", True), token=cfg.get("hf_token", None))
+    else:
+        logger.warning("Skipping pushing dataset to HuggingFace Hub, set push_to_hub=True to change this.")
 
     logger.info("Process finished!")
 

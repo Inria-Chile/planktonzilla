@@ -7,6 +7,12 @@ Importing this module is the single side-effect that registers all
 custom OmegaConf resolvers.  Both entry-point modules (``train.py`` and
 ``import_dataset.py``) import this module explicitly so that resolvers
 are available before Hydra composes any config.
+
+The registration call is guarded by ``try/except ValueError: pass`` because
+``OmegaConf.register_new_resolver`` raises ``ValueError`` on a duplicate name.
+Tolerating that lets the module be re-imported (e.g. by both entry points, or
+across test runs in one process) without crashing on the already-registered
+resolver, while keeping registration idempotent.
 """
 
 from omegaconf import OmegaConf

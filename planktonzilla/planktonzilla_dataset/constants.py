@@ -7,7 +7,7 @@ Centralizes values that were previously copy-pasted across the generation
 scripts. Values and ordering are preserved EXACTLY — this module only removes
 the duplication, it does not change any of the constants.
 
-Intentionally NOT centralized: the filesystem base directory. ``gen_planktonzilla``
+Intentionally NOT centralized: the filesystem base directory. ``generate_planktonzilla``
 resolves ``data/`` via pyrootutils (the repository root), while the other scripts
 resolve it relative to the package (``dirname(dirname(__file__))``). Those are
 different locations on disk, so each script keeps its own base-dir resolution and

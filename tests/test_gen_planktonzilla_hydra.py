@@ -13,8 +13,11 @@ NCBI/Wikidata/WHOI/EcoTaxa); instead we pin:
       defaults (the default-run zero-drift guarantee),
   (c) the config-driven `datasets` table + `repo_id` are exactly the frozen values,
   (d) the per-dataset hydra.compose override blocks + redefiner classes built in
-      _run() are byte-identical and in declaration order,
-  (e) the module-level ``num_proc`` global stays independent of cfg.num_proc.
+      main() are byte-identical and in declaration order,
+  (e) the module-level ``num_proc`` global stays independent of cfg.num_proc,
+  (f) the opt-in Hub push is additive — the default (push_to_hub false) never
+      pushes (zero-drift), while push_to_hub=true pushes once to cfg.repo_id after
+      the unconditional save.
 
 Every test PINS current behavior; none "improves" it. All network is mocked.
 """
@@ -82,6 +85,53 @@ def _expected_overrides(data_dir, import_name, cleanup):
         "dataset_import.push_to_hub=False",
         f"dataset_import.data_dir={data_dir}",
     ]
+
+
+def _drive_main_with_mocked_pipeline(monkeypatch, cfg, tmp_path, push_mock=None):
+    """Run ``gp.main(cfg)`` end-to-end network-free with the heavy pipeline mocked.
+
+    Mocks the inner per-dataset loop body (hydra.compose / instantiate / os.listdir /
+    load_dataset / RedefineDataset.redefine) plus the final clean + save_to_disk so
+    ``main`` runs to completion on a tiny in-memory dataset. ``main`` is the
+    @hydra.main entry point, driven here via Hydra's cfg-passthrough (``main(cfg)``
+    calls the task body directly — the former ``_run`` seam no longer exists).
+
+    Returns ``(captured_overrides, captured_redefiners)``. When ``push_mock`` is
+    given it is installed as ``Dataset.push_to_hub`` so the opt-in push can be
+    asserted; otherwise the (default-false) push branch is a no-op and never fires.
+    """
+    captured_overrides = []  # one entry per dataset, in iteration order.
+
+    def _fake_compose(*args, **kwargs):
+        captured_overrides.append(list(kwargs["overrides"]))
+        return MagicMock()
+
+    monkeypatch.setattr(gp.hydra, "compose", _fake_compose)
+
+    # Mock importer whose imagefolder is "present" and non-empty so no real import /
+    # load happens; redefine() returns a trivial dataset so concatenate / clean /
+    # save still work.
+    importer = MagicMock()
+    importer.imagefolder_dir = tmp_path
+    monkeypatch.setattr(gp.hydra.utils, "instantiate", lambda *a, **k: importer)
+    monkeypatch.setattr(gp.os, "listdir", lambda p: ["dummy_category"])
+    monkeypatch.setattr(gp, "load_dataset", lambda *a, **k: MagicMock())
+
+    captured_redefiners = {}
+    tiny = Dataset.from_dict({"x": [1]})
+
+    def _fake_redefine(self, hf_dataset, dataset_name, num_proc):
+        captured_redefiners[dataset_name] = type(self)
+        return tiny
+
+    monkeypatch.setattr(gp.RedefineDataset, "redefine", _fake_redefine)
+    monkeypatch.setattr(gp, "clean_corrupt_examples_optimized", lambda ds, **k: ds)
+    monkeypatch.setattr(gp.Dataset, "save_to_disk", lambda self, path: None)
+    if push_mock is not None:
+        monkeypatch.setattr(gp.Dataset, "push_to_hub", push_mock)
+
+    gp.main(cfg)
+    return captured_overrides, captured_redefiners
 
 
 def test_config_composes_with_expected_keys():
@@ -158,15 +208,14 @@ def test_datasets_and_repo_id_pinned_in_config():
     assert {key for _, _, _, key in EXPECTED_TABLE} <= set(gp.REDEFINERS)
 
 
-def test_run_pins_override_blocks_and_redefiners(monkeypatch, tmp_path):
-    """Pin the per-dataset override blocks + redefiner classes built in _run().
+def test_main_pins_override_blocks_and_redefiners(monkeypatch, tmp_path):
+    """Pin the per-dataset override blocks + redefiner classes built in main().
 
-    Drives the ported body (gp._run) with a composed config whose
-    taxonomy_csv_path points at a real tiny CSV, and mocks the whole per-dataset
-    loop body (hydra.compose / instantiate / load_dataset / redefiner.redefine /
-    clean / save) so the loop runs to completion. Captures, in iteration order, the
-    exact `overrides` list passed to hydra.compose and the redefiner type bound to
-    each dataset_name, then asserts they match the frozen table EXACTLY.
+    Drives ``gp.main(cfg)`` (the @hydra.main body, via cfg-passthrough) with a
+    composed config whose taxonomy_csv_path points at a real tiny CSV, mocking the
+    whole per-dataset loop body so it runs to completion. Captures, in iteration
+    order, the exact ``overrides`` list passed to hydra.compose and the redefiner
+    type bound to each dataset_name, then asserts they match the frozen table.
     """
     # Real CSV so the redefiner constructors (run while building datasets_configs)
     # succeed; taxonomy_csv_path routes every redefiner here.
@@ -174,52 +223,18 @@ def test_run_pins_override_blocks_and_redefiners(monkeypatch, tmp_path):
     _write_taxonomy_csv(str(csv_path), "x", "y")
 
     # Compose the REAL gen config first (taxonomy_csv_path pointed at the tiny CSV)
-    # BEFORE patching hydra.compose. `gp.hydra is hydra` (same module object), so the
-    # patch below replaces the inner per-dataset import_dataset compose too — exactly
-    # what we want to capture. The @hydra.main main() is not directly callable with a
-    # cfg, so we drive the ported _run(cfg) seam.
+    # BEFORE the helper patches hydra.compose. `gp.hydra is hydra` (same module
+    # object), so the helper's patch replaces the inner per-dataset import_dataset
+    # compose too — exactly what we capture here.
     GlobalHydra.instance().clear()
     hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_gen_override")
     cfg = hydra.compose(config_name="generate_planktonzilla", overrides=[f"taxonomy_csv_path={csv_path}"])
 
     # build_overrides uses cfg.data_dir; capture its resolved value for the expected
-    # block (the user's refactor routes data_dir through ${paths.data_dir}).
+    # block (data_dir is routed through ${paths.data_dir}).
     expected_data_dir = str(cfg.data_dir)
 
-    captured_overrides = []  # one entry per dataset, in iteration order.
-
-    def _fake_compose(*args, **kwargs):
-        captured_overrides.append(list(kwargs["overrides"]))
-        return MagicMock()
-
-    # Patch only AFTER the real gen compose above; this captures the inner
-    # per-dataset import_dataset compose calls inside _run.
-    monkeypatch.setattr(gp.hydra, "compose", _fake_compose)
-
-    # Make the loop body a no-op: a mock importer whose imagefolder is "present"
-    # and non-empty (os.listdir returns a dummy category) so no real import / load
-    # happens, and a redefine() that returns a trivial dataset so concatenate /
-    # clean / save still work.
-    importer = MagicMock()
-    importer.imagefolder_dir = tmp_path  # a Path; exists, force has_content below
-    monkeypatch.setattr(gp.hydra.utils, "instantiate", lambda *a, **k: importer)
-    monkeypatch.setattr(gp.os, "listdir", lambda p: ["dummy_category"])
-    monkeypatch.setattr(gp, "load_dataset", lambda *a, **k: MagicMock())
-
-    # Record (dataset_name -> redefiner type) and short-circuit the heavy work.
-    captured_redefiners = {}
-    tiny = Dataset.from_dict({"x": [1]})
-
-    def _fake_redefine(self, hf_dataset, dataset_name, num_proc):
-        captured_redefiners[dataset_name] = type(self)
-        return tiny
-
-    monkeypatch.setattr(gp.RedefineDataset, "redefine", _fake_redefine)
-    # Skip corrupt-cleaning and disk save (both would choke on the tiny dataset).
-    monkeypatch.setattr(gp, "clean_corrupt_examples_optimized", lambda ds, **k: ds)
-    monkeypatch.setattr(gp.Dataset, "save_to_disk", lambda self, path: None)
-
-    gp._run(cfg)
+    captured_overrides, captured_redefiners = _drive_main_with_mocked_pipeline(monkeypatch, cfg, tmp_path)
 
     GlobalHydra.instance().clear()
 
@@ -241,42 +256,58 @@ def test_run_pins_override_blocks_and_redefiners(monkeypatch, tmp_path):
         assert captured_redefiners[name] is key_to_class[redefiner_key]
 
 
+def test_main_skips_push_by_default(monkeypatch, tmp_path):
+    """PIN zero-drift: the default run (push_to_hub absent/false) never pushes to the Hub.
+
+    Drives main() to completion with the pipeline mocked and a recording mock on
+    ``Dataset.push_to_hub``; the default config leaves push_to_hub false, so the
+    push branch must be skipped and the frozen artifact left untouched. All network
+    is mocked; this PINS current behavior, it does not "improve" it.
+    """
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "x", "y")
+
+    GlobalHydra.instance().clear()
+    hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_gen_nopush")
+    cfg = hydra.compose(config_name="generate_planktonzilla", overrides=[f"taxonomy_csv_path={csv_path}"])
+
+    push = MagicMock()
+    _drive_main_with_mocked_pipeline(monkeypatch, cfg, tmp_path, push_mock=push)
+
+    GlobalHydra.instance().clear()
+
+    push.assert_not_called()
+
+
+def test_main_pushes_to_hub_when_enabled(monkeypatch, tmp_path):
+    """PIN the opt-in push: push_to_hub=true pushes exactly once to cfg.repo_id.
+
+    The push is additive (it runs after the unconditional save_to_disk in main) and
+    forwards the configured ``private`` (push_as_private) flag. All network is
+    mocked; this PINS current behavior, it does not "improve" it.
+    """
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "x", "y")
+
+    GlobalHydra.instance().clear()
+    hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_gen_push")
+    cfg = hydra.compose(
+        config_name="generate_planktonzilla",
+        overrides=[f"taxonomy_csv_path={csv_path}", "push_to_hub=true"],
+    )
+
+    push = MagicMock()
+    _drive_main_with_mocked_pipeline(monkeypatch, cfg, tmp_path, push_mock=push)
+
+    GlobalHydra.instance().clear()
+
+    push.assert_called_once()
+    assert push.call_args.args[0] == cfg.repo_id
+    assert push.call_args.kwargs.get("private") == cfg.push_as_private
+
+
 def test_module_level_num_proc_independent_of_cfg():
     """Pin: the module-level num_proc global is set from default_num_proc() at
     import time and is intentionally NOT driven by cfg.num_proc (only redefine()
     receives the configurable value)."""
     assert gp.num_proc == constants.default_num_proc()
-
-
-def test_maybe_push_to_hub_skips_by_default(monkeypatch):
-    """PIN: the default (push=False) path NEVER pushes to the Hub.
-
-    This is the zero-drift pin — with the flag absent/False, _maybe_push_to_hub
-    must leave the frozen project-oceania artifact untouched (no Hub call). The
-    save_to_disk that precedes it in _run stays unconditional and is unaffected.
-    All network is mocked; this PINS current behavior, it does not "improve" it.
-    """
-    push = MagicMock()
-    monkeypatch.setattr(gp.Dataset, "push_to_hub", push)
-
-    ds = Dataset.from_dict({"x": [1]})
-    gp._maybe_push_to_hub(ds, "project-oceania/planktonzilla-17M", False)
-
-    push.assert_not_called()
-
-
-def test_maybe_push_to_hub_pushes_once_when_enabled(monkeypatch):
-    """PIN: the push=True path pushes exactly once to cfg.repo_id.
-
-    The push is additive (it runs after the unconditional save_to_disk in _run)
-    and targets the frozen repo id as the first positional arg. All network is
-    mocked; this PINS current behavior, it does not "improve" it.
-    """
-    push = MagicMock()
-    monkeypatch.setattr(gp.Dataset, "push_to_hub", push)
-
-    ds = Dataset.from_dict({"x": [1]})
-    gp._maybe_push_to_hub(ds, "project-oceania/planktonzilla-17M", True)
-
-    push.assert_called_once()
-    assert push.call_args.args[0] == "project-oceania/planktonzilla-17M"

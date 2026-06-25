@@ -123,7 +123,9 @@ def test_lensless_only_e2e_generation_is_offline_and_pins_behavior(monkeypatch, 
     # instantiate (push_to_hub forced False -> no token needed), load_dataset
     # imagefolder, NoMetadataRedefiner.redefine, the real
     # clean_corrupt_examples_optimized (all valid PNGs kept), then save_to_disk.
-    gp._run(cfg)
+    # main is the @hydra.main entry point; call the body directly via cfg-passthrough
+    # (the former _run seam was merged into main).
+    gp.main(cfg)
     GlobalHydra.instance().clear()
 
     # (finding 8) Reload + assert against the consolidated dataset on disk.

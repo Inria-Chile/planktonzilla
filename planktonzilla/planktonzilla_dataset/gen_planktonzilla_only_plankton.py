@@ -1,5 +1,26 @@
 """
 (c) Inria
+
+Build the "only plankton" classification dataset from the published planktonzilla dataset.
+
+Loads the consolidated planktonzilla dataset from the HuggingFace Hub, keeps only
+the examples flagged as plankton (with a Kingdom assigned), encodes the full
+taxonomy path as an integer ``ClassLabel``, splits the data into train/validation/test
+stratified by source dataset and by label, and saves the resulting ``DatasetDict``
+to disk.
+
+Prerequisites:
+  - Internet access to download the source dataset from the HuggingFace Hub.
+  - The source dataset must expose ``plankton``, the ``TAXONOMY_RANKS`` columns,
+    ``image`` and ``dataset`` fields.
+
+Side effects:
+  - Network: downloads the dataset via ``datasets.load_dataset``.
+  - Disk: writes a ``DatasetDict`` to ``--output-dir`` via ``save_to_disk``.
+
+Usage:
+    python gen_planktonzilla_only_plankton.py
+    python gen_planktonzilla_only_plankton.py --repo-id <repo> --output-dir <dir> --num-proc 8
 """
 
 import argparse
@@ -40,7 +61,22 @@ TAXONOMY_COLS = list(TAXONOMY_RANKS)
 
 
 def build_only_plankton(ds: Dataset, num_proc: int = 1) -> Dataset:
-    """Keep only plankton with taxonomy and encode the taxonomy label."""
+    """Keep only plankton with taxonomy and encode the taxonomy label.
+
+    Filters to examples flagged as plankton with a non-empty Kingdom, builds a
+    ``tax_label`` string by joining the non-empty taxonomy ranks, encodes each
+    unique string into an integer ``ClassLabel``, and trims the dataset to just
+    the ``image``, ``label`` and ``dataset`` columns.
+
+    Args:
+        ds: Source dataset exposing the ``plankton``, taxonomy-rank, ``image``
+            and ``dataset`` columns.
+        num_proc: Number of processes passed to the ``filter``/``map`` calls.
+
+    Returns:
+        A dataset with ``image``, ``label`` (the encoded ``ClassLabel``) and
+        ``dataset`` columns.
+    """
 
     # Plankton mask: marked as plankton and with a Kingdom assigned.
     ds = ds.filter(
@@ -91,7 +127,19 @@ def stratified_split_by_dataset(
 
     The split is done independently within each source dataset, and within each
     one it is stratified by label. Classes with fewer than MIN_CLASS_FREQ examples
-    are sent whole to train.
+    are sent whole to train. When the stratified split fails (e.g. a class is too
+    rare to stratify), it falls back to an unstratified shuffle split.
+
+    Args:
+        ds: Dataset with ``label`` and ``dataset`` columns to split.
+        num_proc: Number of processes passed to the per-dataset ``filter`` call.
+        seed: Random seed for the shuffled splits.
+        test_frac: Fraction of each source dataset reserved for the test split.
+        val_frac: Fraction of each source dataset reserved for the validation split.
+
+    Returns:
+        A ``(train_ds, val_ds, test_ds)`` tuple; ``val_ds``/``test_ds`` are
+        ``None`` if no source dataset produced a validation/test split.
     """
     train_splits = []
     val_splits = []
@@ -172,7 +220,12 @@ def stratified_split_by_dataset(
 
 
 def main() -> None:
-    """Load the dataset, keep plankton, stratify-split, and save the DatasetDict."""
+    """Load the dataset, keep plankton, stratify-split, and save the DatasetDict.
+
+    CLI entry point. Parses arguments, downloads the source dataset from the Hub
+    (network), builds the only-plankton splits and writes the resulting
+    ``DatasetDict`` to ``--output-dir`` (disk).
+    """
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
     parser = argparse.ArgumentParser(description=__doc__)

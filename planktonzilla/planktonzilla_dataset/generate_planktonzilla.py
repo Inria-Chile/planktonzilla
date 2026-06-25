@@ -7,7 +7,8 @@ For each source dataset it builds the imagefolder with Hydra, assigns the
 taxonomy and external IDs from the taxonomy CSV, fetches the metadata through the
 APIs (latitude, longitude, depth, temperature, humidity and date) and, at the
 end, concatenates everything, drops the corrupt examples and saves the result to
-disk.
+disk. When ``push_to_hub`` is set it then also pushes the consolidated dataset to
+the HuggingFace Hub.
 
 Prerequisites:
 
@@ -225,7 +226,14 @@ def _taxonomy_row(example, *, class_names, n_splits, dataset_name, lookup, looku
 
 
 class RedefineDataset:
-    """Base class to assign taxonomy, external IDs and metadata to a dataset."""
+    """Assign taxonomy, external IDs and metadata to a source dataset.
+
+    Template-method base class: ``redefine`` drives the shared pipeline (map the
+    taxonomy from the CSV lookup, attach and flatten the metadata, cast to the
+    common schema and concatenate the splits), while each subclass implements
+    ``_add_metadata`` to supply its source-specific metadata (EcoTaxa/WHOI API
+    lookups, a fixed dict, or none).
+    """
 
     TAXONOMY_COLS = constants.TAXONOMY_RANKS
     EXTRA_COLS = constants.EXTRA_COLS
@@ -263,6 +271,12 @@ class RedefineDataset:
         return v
 
     def _build_lookup(self, csv_path):
+        """Build the ``(Dataset, Raw_Labels) -> {column: value}`` lookup from the CSV.
+
+        Numeric ID columns are normalised to decimal-free strings and blank values
+        to ``None`` so every example resolves to a consistent set of taxonomy/ID
+        fields in ``_taxonomy_row``.
+        """
         df = pl.read_csv(csv_path)
 
         # Numeric IDs are stored as text without decimals (135336.0 -> "135336").
@@ -481,8 +495,9 @@ class WHOIRedefiner(RedefineDataset):
 class JediRedefiner(RedefineDataset):
     """JEDI Oceans dataset: fixed metadata for all the examples.
 
-    Kept for reference: JEDI Oceans is a manual-download dataset, so its config
-    in ``main`` stays commented out below.
+    Kept for reference: JEDI Oceans needs a manual ``.zip`` download, so it has no
+    active entry in ``cfg.datasets`` — its config stays commented out in
+    ``configs/generate_planktonzilla.yaml``.
     """
 
     def __init__(self, csv_taxonomies_path):
@@ -502,7 +517,7 @@ class JediRedefiner(RedefineDataset):
 
 # Redefiner key -> class. Keys match the `redefiner` field of each entry in
 # cfg.datasets (configs/generate_planktonzilla.yaml). Each class is constructed with the
-# taxonomy CSV path inside _run().
+# taxonomy CSV path inside main().
 REDEFINERS = {
     "none": NoMetadataRedefiner,
     "whoi": WHOIRedefiner,
@@ -511,20 +526,21 @@ REDEFINERS = {
 }
 
 
-def _run(cfg: DictConfig) -> None:
+@hydra.main(
+    version_base="1.3",
+    config_path=str(root / "configs"),
+    config_name="generate_planktonzilla.yaml",
+)
+def main(cfg: DictConfig) -> None:
     """Build, redefine, concatenate and save the full planktonzilla dataset.
 
-    Holds the ported body of ``main`` so it can be driven with an explicit ``cfg``
-    (a ``@hydra.main``-decorated function is not directly callable with a cfg
-    argument). The decorated ``main`` simply delegates here. This is purely a seam
-    for testability and changes no behavior.
+    Hydra entry point. For each source dataset in ``cfg.datasets`` it builds the
+    imagefolder, assigns the taxonomy, external IDs and API metadata, then
+    concatenates everything, drops the corrupt examples and saves the result to
+    disk. When ``cfg.push_to_hub`` is set it also pushes the consolidated dataset
+    to ``cfg.repo_id`` after the (unconditional) save.
     """
-    # In-code null fallbacks reproduce the legacy argparse defaults byte for byte
-    # so the DEFAULT (no-override) run has ZERO behavioral drift.
-    # why: the old --taxo-csv default was `str(DATA_ROOT / constants.DEFAULT_TAXONOMY_CSV_FILENAME)`,
-    # but DEFAULT_TAXONOMY_CSV_FILENAME is an ABSOLUTE Path, so the `/` join is a
-    # no-op (the absolute RHS discards DATA_ROOT). `str(constants.DEFAULT_TAXONOMY_CSV_FILENAME)`
-    # is the identical resolved string — do NOT "fix" this back to a DATA_ROOT join.
+
     taxo_csv_path = (
         cfg.taxonomy_csv_path if cfg.get("taxonomy_csv_path") is not None else str(constants.DEFAULT_TAXONOMY_CSV_FILENAME)
     )
@@ -534,12 +550,13 @@ def _run(cfg: DictConfig) -> None:
     def build_overrides(import_name, cleanup, extra_overrides=()):
         """Build the per-dataset Hydra override block for the import_dataset config.
 
-        Only `dataset_import` and `cleanup_after_processing` vary between the
-        standard datasets; `push_to_hub` and `data_dir` are the same everywhere.
-        `extra_overrides`` carries per-dataset extras straight from the config
-        (e.g. a manual-download `manual_download_local_file_names` path). For the
-        standard datasets it is empty, reproducing — byte for byte — the 4-element
-        override list that was previously inlined for each dataset.
+        Only ``dataset_import`` and ``cleanup_after_processing`` vary between the
+        standard datasets; the importer's ``push_to_hub`` (always ``False`` here —
+        the per-source imports are never pushed) and ``data_dir`` are the same
+        everywhere. ``extra_overrides`` carries per-dataset extras straight from the
+        config (e.g. a manual-download ``manual_download_local_file_names`` path) and
+        is empty for the standard datasets, reproducing the override list that was
+        previously inlined per dataset.
         """
         return [
             f"dataset_import={import_name}",
@@ -624,36 +641,13 @@ def _run(cfg: DictConfig) -> None:
     logger.info(f"Saving consolidated Planktonzilla dataset to {output_path} (HF repo id: {cfg.repo_id}).")
     ds.save_to_disk(output_path)
 
-    # Additive, opt-in Hub push: happens AFTER the unconditional save_to_disk above,
-    # never instead of it. Default (flag absent/False) is a no-op for zero drift.
-    _maybe_push_to_hub(ds, cfg.repo_id, cfg.get("push_to_hub", False))
-
-    logger.info("Process completed!")
-
-
-def _maybe_push_to_hub(ds: Dataset, repo_id: str, push: bool) -> None:
-    """Opt-in, additive Hub push of ``ds`` to ``repo_id``.
-
-    Gated on ``push``: when True the dataset is pushed to the Hub IN ADDITION to
-    the unconditional ``save_to_disk`` performed by the caller; when False (the
-    default) nothing is pushed, preserving zero behavioral drift. The token is
-    read from the ``HF_TOKEN`` env var by ``Dataset.push_to_hub`` automatically.
-    """
-    if push:
-        logger.info(f"Pushing consolidated Planktonzilla dataset to HuggingFace Hub as «{repo_id}».")
-        ds.push_to_hub(repo_id)
+    if cfg.get("push_to_hub", False):
+        logger.info(f"Pushing consolidated Planktonzilla dataset to HuggingFace Hub as «{cfg.repo_id}».")
+        ds.push_to_hub(cfg.repo_id, private=cfg.get("push_as_private", True), token=cfg.get("hf_token", None))
     else:
         logger.warning("Skipping pushing dataset to HuggingFace Hub, set push_to_hub=True to change this.")
 
-
-@hydra.main(
-    version_base="1.3",
-    config_path=str(root / "configs"),
-    config_name="generate_planktonzilla.yaml",
-)
-def main(cfg: DictConfig) -> None:
-    """Hydra entry point: delegates to ``_run`` with the composed config."""
-    _run(cfg)
+    logger.info("Process completed!")
 
 
 if __name__ == "__main__":

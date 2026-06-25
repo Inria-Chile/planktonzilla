@@ -1,5 +1,11 @@
 """
 (c) Inria
+
+Dataset loading, splitting and transform attachment for the training pipeline.
+
+Centers on `DatasetWrapper`, a stateful wrapper over a Hugging Face `DatasetDict`
+that loads a dataset from the Hub, derives missing validation/test splits, and
+attaches per-batch augmentation/transform pipelines used by the HF `Trainer`.
 """
 
 from dataclasses import dataclass
@@ -16,7 +22,24 @@ logger = get_pylogger(__name__)
 
 
 def augment_and_transform_batch(examples, transform, augmentation, input_column_name, label_column_name):
-    """Apply augmentations and transformations"""
+    """Apply the base transform (and optional augmentation) to a batch of examples.
+
+    Each input image is converted to RGB, passed through `transform`, then through
+    `augmentation` when one is supplied (training) and skipped otherwise (eval/predict).
+    The resulting per-image tensors are stacked into a single `pixel_values` tensor.
+
+    Args:
+        examples: Batch dict mapping column names to lists, as delivered by
+            `datasets.Dataset.with_transform`.
+        transform: Callable applied to each RGB PIL image (e.g. resize/normalize).
+        augmentation: Optional callable applied after `transform`; pass `None` to skip
+            (used for the validation/test pipelines).
+        input_column_name: Column holding the PIL images.
+        label_column_name: Column holding the integer labels.
+
+    Returns:
+        dict: `{"pixel_values": stacked tensor, label_column_name: list of labels}`.
+    """
 
     images = []
     annotations = []
@@ -48,7 +71,7 @@ def compute_mean_and_std_dev(huggingface_dataset: Dataset, input_column_name: st
     Args:
         huggingface_dataset (Dataset): Iterable Hugging Face dataset yielding
             dicts with an `input_column_name` PIL object.
-        input_column_name (str): Name of the column containing the images. Deafault is "image".
+        input_column_name (str): Name of the column containing the images. Default is "image".
 
     Returns:
         tuple: (mean, std_dev) where each is a sequence of floats per channel.
@@ -94,9 +117,18 @@ def compute_mean_and_std_dev(huggingface_dataset: Dataset, input_column_name: st
 
 @dataclass
 class DatasetWrapper:
-    """Lightweight wrapper around a Hugging Face Dataset. Provides utilities for
-    preparing splits, applying transforms and maintaining mappings between label
-    ids and names.
+    """Stateful wrapper around a Hugging Face dataset for the training pipeline.
+
+    Owns the load → split → transform lifecycle: it loads the dataset named by
+    `name` from the Hub, derives any missing validation/test splits, computes the
+    label mappings and per-class counts, and attaches the augmentation/transform
+    pipelines consumed by the HF `Trainer`.
+
+    The dataclass fields are the configuration knobs (split names, ratios, seed,
+    transform, etc.). State produced at runtime — `dataset`, `id2label`,
+    `label2id`, `num_classes`, and `cls_num_list` — is initialized in
+    `__post_init__` and populated by `prepare_datasets`; the `*_dataset`
+    properties are only valid once `prepare_datasets` has run.
     """
 
     name: str
@@ -119,29 +151,49 @@ class DatasetWrapper:
 
     @property
     def training_dataset(self):
+        """The transform-attached `train` split (requires `prepare_datasets` to have run)."""
         return self.dataset["train"]
 
     @property
     def validation_dataset(self):
+        """The transform-attached validation split named by `val_split_name`."""
         return self.dataset[self.val_split_name]
 
     @property
     def test_dataset(self):
+        """The transform-attached test split named by `test_split_name`."""
         return self.dataset[self.test_split_name]
 
     def __post_init__(self):
+        """Initialize runtime state to its empty/sentinel values.
+
+        Sets `dataset` to `None`, `id2label`/`label2id` to `None`, and
+        `num_classes` to `-1`; these are populated later by `prepare_datasets`.
+        """
         super().__init__()
         self.dataset = None
         self.id2label = self.label2id = None
         self.num_classes = -1
 
     def prepare_datasets(self, augmentation) -> None:
-        """Load dataset, create splits and attach transform pipelines.
+        """Load the dataset, derive missing splits and attach transform pipelines.
 
-        This will load the dataset identified by `self.name` using
-        `datasets.load_dataset`, create validation/test splits if missing,
-        compute class counts, and attach `with_transform` callables that apply
-        augmentation and preprocessing to batches.
+        Loads the dataset identified by `self.name` via `datasets.load_dataset`,
+        then, when the test and/or validation splits are absent, carves them out
+        of `train` with a stratified `train_test_split` (seeded by `split_seed`,
+        shuffled per `shuffle`). The training split receives a transform that
+        applies `augmentation`; the validation/test splits receive an
+        augmentation-free transform.
+
+        This method mutates `self` in place and is the only place the runtime
+        state is populated. Side effects:
+
+        - `self.dataset`: the loaded `DatasetDict`, with derived splits added and
+            `with_transform` callables attached to each split.
+        - `self.id2label` / `self.label2id`: label-id ↔ name mappings.
+        - `self.num_classes`: number of distinct labels.
+        - `self.cls_num_list`: per-class example counts over the (post-split) train
+            split, used by imbalance-aware losses.
 
         Args:
             augmentation: a callable (or hydra-instantiate result) applied to
