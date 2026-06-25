@@ -624,7 +624,26 @@ def _run(cfg: DictConfig) -> None:
     logger.info(f"Saving consolidated Planktonzilla dataset to {output_path} (HF repo id: {cfg.repo_id}).")
     ds.save_to_disk(output_path)
 
+    # Additive, opt-in Hub push: happens AFTER the unconditional save_to_disk above,
+    # never instead of it. Default (flag absent/False) is a no-op for zero drift.
+    _maybe_push_to_hub(ds, cfg.repo_id, cfg.get("push_to_hub", False))
+
     logger.info("Process completed!")
+
+
+def _maybe_push_to_hub(ds: Dataset, repo_id: str, push: bool) -> None:
+    """Opt-in, additive Hub push of ``ds`` to ``repo_id``.
+
+    Gated on ``push``: when True the dataset is pushed to the Hub IN ADDITION to
+    the unconditional ``save_to_disk`` performed by the caller; when False (the
+    default) nothing is pushed, preserving zero behavioral drift. The token is
+    read from the ``HF_TOKEN`` env var by ``Dataset.push_to_hub`` automatically.
+    """
+    if push:
+        logger.info(f"Pushing consolidated Planktonzilla dataset to HuggingFace Hub as «{repo_id}».")
+        ds.push_to_hub(repo_id)
+    else:
+        logger.warning("Skipping pushing dataset to HuggingFace Hub, set push_to_hub=True to change this.")
 
 
 @hydra.main(

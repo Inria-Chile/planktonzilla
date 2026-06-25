@@ -15,6 +15,11 @@ tags: ["dev"]
 # the dataset's published identity (used in logging; see gen_planktonzilla._run).
 repo_id: project-oceania/planktonzilla-17M
 
+# Opt-in, additive Hub push. When true the dataset is pushed to repo_id AFTER the
+# unconditional save_to_disk (never instead of it); default false preserves zero
+# behavioral drift. The HF_TOKEN env var is used automatically for authentication.
+push_to_hub: false
+
 # Null defaults: the in-code fallbacks in gen_planktonzilla._run() resolve these
 # to byte-identical values vs. the legacy argparse defaults. Override on the CLI,
 # e.g. `pz_gen_planktonzilla num_proc=4`.

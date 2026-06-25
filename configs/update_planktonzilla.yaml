@@ -15,6 +15,11 @@ tags: ["dev"]
 repo_id: project-oceania/planktonzilla-17M
 data_dir: ${paths.data_dir}
 
+# Opt-in, additive Hub push. When true the updated dataset is pushed to repo_id
+# AFTER the unconditional save_to_disk (never instead of it); default false
+# preserves zero behavioral drift. HF_TOKEN env var is used for authentication.
+push_to_hub: false
+
 # Override on the
 # CLI, e.g. `pz_update_planktonzilla num_proc=4`.
 #   - taxonomy_csv_path -> constants.DEFAULT_TAXONOMY_CSV_FILENAME (a raw Path).
