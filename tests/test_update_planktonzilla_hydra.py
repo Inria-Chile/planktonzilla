@@ -11,10 +11,11 @@ update run. A full golden-output dataset diff is not runnable here (it needs the
   (a) the config composes with the expected key contract,
   (b) the in-code null fallbacks resolve byte-identically to the legacy CLI
       defaults — including the INTENTIONAL raw-Path taxonomy_csv_path divergence
-      from generate_planktonzilla (which str()-wraps), and the package-relative
-      underscore OUTPUT_DIR (no rename),
-  (c) _run() wires cfg.repo_id -> load_dataset, the resolved package-relative
-      output_dir -> save_to_disk, and the resolved num_proc -> sync_columns.
+      from generate_planktonzilla (which str()-wraps); the save target now comes
+      from cfg.data_dir (the package-relative OUTPUT_DIR seam was dropped in the
+      @hydra.main port),
+  (c) main() wires cfg.repo_id -> load_dataset, the resolved cfg.data_dir ->
+      save_to_disk, and the resolved num_proc -> sync_columns.
 
 Every test PINS current behavior; none "improves" it. All network is mocked.
 """
@@ -68,9 +69,16 @@ def test_config_composes_with_expected_keys():
     assert cfg.repo_id == "project-oceania/planktonzilla-17M"
 
     # Null-default contract: these resolve to legacy defaults via in-code fallbacks.
-    for key in ("taxonomy_csv_path", "num_proc", "output_dir"):
+    for key in ("taxonomy_csv_path", "num_proc"):
         assert key in cfg, f"missing key {key}"
         assert cfg.get(key) is None, f"{key} should default to null"
+
+    # data_dir is the save target (resolved from the paths config, never null).
+    assert "data_dir" in cfg
+    assert cfg.data_dir is not None
+
+    # push_to_hub is opt-in and defaults to False (the zero-drift default).
+    assert cfg.get("push_to_hub") is False
 
     GlobalHydra.instance().clear()
 
@@ -92,21 +100,22 @@ def test_null_fallback_defaults_match_legacy():
     # num_proc: constants.default_num_proc() (a positive int, >= 1).
     assert constants.default_num_proc() >= 1
 
-    # output_dir: the module-level package-relative OUTPUT_DIR. Pin the underscore
-    # form ("planktonzilla_17M_updated") and the no-rename guarantee (no hyphen form).
-    assert up.OUTPUT_DIR.endswith("data/planktonzilla_17M_updated")
-    assert "17M-updated" not in up.OUTPUT_DIR
+    # output dir: the package-relative OUTPUT_DIR seam was dropped in the
+    # @hydra.main port — the save target now comes from cfg.data_dir. Pin the
+    # removal so the old underscore module-constant path cannot silently return.
+    assert not hasattr(up, "OUTPUT_DIR")
 
     # repo_id frozen identity (shared with generate_planktonzilla).
     assert constants.DEFAULT_PLANKTONZILLA_DATASET_REPO_ID == "project-oceania/planktonzilla-17M"
 
 
-def test_run_wires_repo_id_output_dir_and_num_proc(monkeypatch, tmp_path):
-    """Drive up._run(cfg) network-free and pin the three wiring points.
+def test_main_wires_repo_id_data_dir_and_num_proc(monkeypatch, tmp_path):
+    """Drive the @hydra.main-wrapped main(cfg) network-free and pin the wiring.
 
-    Asserts that _run wires cfg.repo_id -> load_dataset, the resolved num_proc
-    (null -> default_num_proc()) -> sync_columns, and the resolved output_dir ->
-    save_to_disk. The transform itself is short-circuited (we test wiring).
+    The @hydra.main port dropped the _run seam, so we call the undecorated body
+    via main.__wrapped__. Asserts main wires cfg.repo_id -> load_dataset, the
+    resolved num_proc (null -> default_num_proc()) -> sync_columns, and the
+    resolved cfg.data_dir -> save_to_disk. The transform itself is short-circuited.
     """
     # Real tiny CSV so build_sync_dict succeeds; routed via the override below.
     csv_path = tmp_path / "taxo.csv"
@@ -114,12 +123,12 @@ def test_run_wires_repo_id_output_dir_and_num_proc(monkeypatch, tmp_path):
     _write_taxonomy_csv(str(csv_path), "x", "y")
 
     # Compose the REAL update config, overriding taxonomy_csv_path (so the raw read
-    # works) and output_dir (a writable target the save_to_disk capture records).
+    # works) and data_dir (a writable target the save_to_disk capture records).
     GlobalHydra.instance().clear()
     hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_update_wiring")
     cfg = hydra.compose(
         config_name="update_planktonzilla",
-        overrides=[f"taxonomy_csv_path={csv_path}", f"output_dir={out_dir}"],
+        overrides=[f"taxonomy_csv_path={csv_path}", f"data_dir={out_dir}"],
     )
 
     # Tiny in-memory dataset whose columns include dataset, original_label, and every
@@ -149,7 +158,8 @@ def test_run_wires_repo_id_output_dir_and_num_proc(monkeypatch, tmp_path):
     monkeypatch.setattr(up, "sync_columns", _fake_sync_columns)
     monkeypatch.setattr(up.Dataset, "save_to_disk", _fake_save_to_disk)
 
-    up._run(cfg)
+    # main is @hydra.main-decorated; call the undecorated body with our composed cfg.
+    up.main.__wrapped__(cfg)
 
     GlobalHydra.instance().clear()
 
