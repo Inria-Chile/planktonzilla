@@ -1,5 +1,12 @@
 """
 (c) Inria
+
+Hydra entry point for importing plankton datasets.
+
+Composes a dataset-import configuration with Hydra, instantiates the matching
+:class:`~planktonzilla.dataset_import.dataset_importer.DatasetImporter`
+subclass, and dispatches on the requested ``action`` (``import``,
+``update-metadata`` or ``show``). Run as a script via the ``main`` entry point.
 """
 
 import pyrootutils
@@ -26,12 +33,20 @@ log = get_pylogger(__name__)
 
 @task_wrapper
 def import_dataset(cfg: DictConfig) -> None:
-    """
-    Import a dataset as a HuggingFace
+    """Run a dataset-import action from a Hydra configuration.
+
+    Instantiates the ``cfg.dataset_import`` target as a
+    :class:`~planktonzilla.dataset_import.dataset_importer.DatasetImporter` and
+    dispatches on ``cfg.action``: ``import`` builds and loads (and optionally
+    pushes) the dataset, ``update-metadata`` refreshes its Hub card, and
+    ``show`` prints its details. Any other action is logged as an error.
 
     Args:
         cfg (DictConfig): Configuration composed by Hydra.
 
+    Returns:
+        tuple: ``(None, None)``, the metric/object pair expected by the Hydra
+        ``task_wrapper`` decorator.
     """
 
     log.info(f"Instantiating dataset importer «{cfg.dataset_import._target_}».")
@@ -59,6 +74,15 @@ def import_dataset(cfg: DictConfig) -> None:
     config_name="import_dataset.yaml",
 )
 def main(cfg: DictConfig) -> Optional[float]:
+    """Hydra-decorated CLI entry point that runs :func:`import_dataset`.
+
+    Args:
+        cfg (DictConfig): Configuration composed by Hydra from
+            ``configs/import_dataset.yaml``.
+
+    Returns:
+        Optional[float]: ``0`` on completion.
+    """
     import_dataset(cfg)
     return 0
 

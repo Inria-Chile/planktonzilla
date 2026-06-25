@@ -25,6 +25,14 @@ from open_clip.transform import image_transform as _UPSTREAM_IMAGE_TRANSFORM
 
 @dataclass
 class AugmentationCfg:
+    """Augmentation config extending upstream open_clip's `AugmentationCfg`.
+
+    Mirrors the upstream fields and adds the planktonzilla-specific
+    ``trivial_augment`` flag, which injects `TrivialAugmentWide` into the
+    training pipeline (see `image_transform`). The remaining fields are passed
+    through to upstream after the custom keys are stripped.
+    """
+
     scale: Tuple[float, float] = (0.9, 1.0)
     ratio: Optional[Tuple[float, float]] = None
     color_jitter: Optional[Union[float, Tuple[float, float, float], Tuple[float, float, float, float]]] = None

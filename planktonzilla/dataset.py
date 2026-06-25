@@ -1,5 +1,14 @@
 """
 (c) Inria
+
+Dataset loading and preprocessing utilities for planktonzilla.
+
+Provides `DatasetWrapper`, a thin wrapper around a Hugging Face `Dataset` that
+loads a dataset, derives train/validation/test splits when they are missing,
+tracks the class-count distribution (used by the imbalance-aware losses), and
+attaches the augmentation/preprocessing transforms each split needs. The
+module-level helpers handle per-batch augmentation and per-channel
+normalization statistics.
 """
 
 from dataclasses import dataclass
@@ -16,7 +25,30 @@ logger = get_pylogger(__name__)
 
 
 def augment_and_transform_batch(examples, transform, augmentation, input_column_name, label_column_name):
-    """Apply augmentations and transformations"""
+    """Apply the base transform and optional augmentation to a batch of examples.
+
+    Each image is converted to RGB, passed through ``transform`` (resize,
+    rescale, normalize), then through ``augmentation`` when one is provided. The
+    processed images are stacked into a single tensor suitable for model input.
+
+    Intended for use with `datasets.Dataset.with_transform`, which calls it
+    lazily on each accessed batch.
+
+    Args:
+        examples: A batch mapping column names to lists, holding at least the
+            ``input_column_name`` (PIL images) and ``label_column_name`` columns.
+        transform: Callable applied to every RGB image (the base preprocessing
+            pipeline).
+        augmentation: Optional callable applied after ``transform`` to each
+            training image; pass ``None`` for validation/test batches.
+        input_column_name: Name of the column holding the input images.
+        label_column_name: Name of the column holding the integer labels.
+
+    Returns:
+        dict: ``{"pixel_values": Tensor, label_column_name: list}`` where
+        ``pixel_values`` is the stacked image batch and the labels are carried
+        through unchanged.
+    """
 
     images = []
     annotations = []
@@ -97,6 +129,21 @@ class DatasetWrapper:
     """Lightweight wrapper around a Hugging Face Dataset. Provides utilities for
     preparing splits, applying transforms and maintaining mappings between label
     ids and names.
+
+    Attributes:
+        name: Hugging Face dataset identifier passed to `datasets.load_dataset`.
+        input_column_name: Name of the column holding the input images.
+        label_column_name: Name of the column holding the integer labels.
+        streaming: Whether to load the dataset in streaming mode.
+        split_seed: Seed used when generating missing splits, for reproducibility.
+        shuffle: Whether to shuffle before splitting.
+        val_split: Fraction of the train split to carve out for validation when
+            no validation split already exists.
+        test_split: Fraction of the train split to carve out for testing when no
+            test split already exists.
+        val_split_name: Key under which the validation split is stored/looked up.
+        test_split_name: Key under which the test split is stored/looked up.
+        transform: Base preprocessing callable applied to every image.
     """
 
     name: str
@@ -119,17 +166,25 @@ class DatasetWrapper:
 
     @property
     def training_dataset(self):
+        """The training split (available after `prepare_datasets`)."""
         return self.dataset["train"]
 
     @property
     def validation_dataset(self):
+        """The validation split (available after `prepare_datasets`)."""
         return self.dataset[self.val_split_name]
 
     @property
     def test_dataset(self):
+        """The test split (available after `prepare_datasets`)."""
         return self.dataset[self.test_split_name]
 
     def __post_init__(self):
+        """Initialize lazily-populated state; the dataset itself is loaded later.
+
+        Sets `dataset`, the `id2label`/`label2id` mappings and `num_classes` to
+        empty/sentinel values. They are filled in by `prepare_datasets`.
+        """
         super().__init__()
         self.dataset = None
         self.id2label = self.label2id = None

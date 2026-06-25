@@ -1,5 +1,14 @@
 """
 (c) Inria
+
+Image-classification head on top of a CLIP visual tower.
+
+`ClipClassifier` adapts a pretrained CLIP model (loaded through the
+`planktonzilla.open_clip_ext` seam) into a plain image classifier: it keeps the
+visual encoder, drops the CLIP projection, and attaches a linear classification
+head sized to the dataset's number of classes. The forward pass returns a
+Hugging Face `ImageClassifierOutput` so the model is a drop-in for the
+`transformers` `Trainer` used elsewhere in planktonzilla.
 """
 
 import torch.nn as nn
@@ -9,6 +18,14 @@ from planktonzilla import open_clip_ext
 
 
 class ClipClassifier(nn.Module):
+    """CLIP visual tower repurposed as an image classifier.
+
+    Loads a CLIP model, strips its contrastive projection, and replaces it with a
+    linear head that maps visual features to class logits. Both ViT-style towers
+    (open_clip `VisionTransformer`) and timm-trunk towers are supported; the
+    appropriate head wiring is selected automatically from the tower kind.
+    """
+
     def __init__(
         self,
         name: str,
@@ -20,6 +37,23 @@ class ClipClassifier(nn.Module):
         id2label: dict | None = None,
         label2id: dict | None = None,
     ):
+        """Build the classifier from a pretrained CLIP visual tower.
+
+        Args:
+            name: open_clip model name (e.g. ``"ViT-B-16"``). Ignored when
+                ``repo_path`` is given.
+            pretrained: open_clip pretrained tag (e.g. ``"openai"``). When the
+                tag contains ``"openai"``, QuickGELU is forced to match the
+                activation the original OpenAI weights were trained with.
+            repo_path: Optional path/identifier to load the model from directly
+                instead of the ``name``/``pretrained`` pair.
+            num_features: Dimensionality of the visual features feeding the
+                linear head (must match the tower's output width).
+            num_labels: Number of target classes; sets the head's output size.
+            id2label: Optional mapping from class index to class name, stored for
+                downstream use (e.g. inference and model cards).
+            label2id: Optional inverse mapping from class name to class index.
+        """
         super().__init__()
 
         # Compat shim: open-clip-torch >= 3.x dropped the implicit
@@ -59,6 +93,24 @@ class ClipClassifier(nn.Module):
             self.model = visual
 
     def forward(self, pixel_values, labels=None, output_attentions=None, output_hidden_states=None, return_dict=True):
+        """Classify a batch of images and return logits.
+
+        Args:
+            pixel_values: Batch of preprocessed image tensors, shape
+                ``(B, C, H, W)``.
+            labels: Accepted for `transformers` API compatibility; unused here
+                (loss is computed by the `Trainer`'s loss function, not the model).
+            output_attentions: Accepted for API compatibility; ignored.
+            output_hidden_states: Accepted for API compatibility; ignored.
+            return_dict: When ``True`` (default) return an
+                `ImageClassifierOutput`; when ``False`` return a tuple
+                ``(loss, logits, hidden_states, attentions)`` with everything but
+                the logits set to ``None``.
+
+        Returns:
+            ImageClassifierOutput | tuple: The class logits of shape
+            ``(B, num_labels)``, wrapped per ``return_dict``.
+        """
         if isinstance(self.model, nn.Sequential):
             features = self.model[0](pixel_values)
             logits = self.model[1](features)

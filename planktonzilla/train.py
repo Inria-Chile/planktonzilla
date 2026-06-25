@@ -1,5 +1,13 @@
 """
 (c) Inria
+
+Hydra-driven training entry point for planktonzilla.
+
+Composes the dataset, model (Hugging Face or CLIP), augmentations, loss and
+training arguments from the Hydra config, runs the `transformers` `Trainer`, and
+optionally evaluates on validation/test splits and pushes the trained model to
+the Hugging Face hub. `main` is the console entry point (`pz_train`) and returns
+the optimized metric so Hydra can drive hyperparameter sweeps.
 """
 
 import pyrootutils
@@ -105,8 +113,21 @@ def validate_environment(cfg: DictConfig | None = None):
 
 
 def compute_metrics(eval_pred):
-    """
-    requires training_args.eval_do_concat_batches = True
+    """Compute classification metrics from a Trainer evaluation prediction.
+
+    Takes the per-class prediction scores, reduces them to predicted labels via
+    argmax, and returns accuracy plus macro-averaged F1, precision and recall.
+
+    Note:
+        Requires ``training_args.eval_do_concat_batches = True`` so that the full
+        set of predictions and labels is available at once.
+
+    Args:
+        eval_pred: A `transformers.EvalPrediction` with ``predictions`` (logits)
+            and ``label_ids`` (ground-truth labels).
+
+    Returns:
+        dict: ``{"accuracy", "f1", "precision", "recall"}`` mapped to floats.
     """
 
     predictions = np.argmax(eval_pred.predictions, axis=-1)
@@ -323,6 +344,19 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
 
 @hydra.main(version_base="1.3", config_path=str(root / "configs"), config_name="train.yaml")
 def main(cfg: DictConfig) -> float | None:
+    """Console entry point (`pz_train`): run training and return the swept metric.
+
+    Composes the config with Hydra, calls `train`, and extracts the value of
+    ``cfg.optimized_metric`` from the resulting metrics so Hydra-based
+    hyperparameter optimization has an objective to optimize.
+
+    Args:
+        cfg (DictConfig): Configuration composed by Hydra.
+
+    Returns:
+        float | None: The optimized metric value, or ``None`` when no
+        ``optimized_metric`` is configured.
+    """
     # train the model
     metric_dict, _ = train(cfg)
 

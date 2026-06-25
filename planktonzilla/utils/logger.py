@@ -1,5 +1,10 @@
 """
 (c) Inria
+
+Logging helper for planktonzilla.
+
+Exposes `get_pylogger`, a small factory returning a standard `logging.Logger`
+intended to stay usable in multi-GPU runs.
 """
 
 import logging

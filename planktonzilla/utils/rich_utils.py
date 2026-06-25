@@ -1,5 +1,11 @@
 """
 (c) Inria
+
+Rich-based pretty-printing helpers for planktonzilla.
+
+Utilities for rendering Hydra configs as a `rich` tree, prompting for and
+persisting run tags, and rendering an object's docstring as Markdown in the
+terminal.
 """
 
 import sys
@@ -99,6 +105,15 @@ def enforce_tags(cfg: DictConfig, save_to_file: bool = False) -> None:
 
 # @rank_zero_only
 def print_docstr_as_markdown(instance: Any) -> None:
+    """Render an object's docstring as Markdown in the terminal via Rich.
+
+    Prints a level-1 heading with the instance's class name followed by its
+    (PEP 257-trimmed) docstring, formatted with `rich.markdown.Markdown`.
+
+    Args:
+        instance (Any): Object whose class name and ``__doc__`` are displayed.
+    """
+
     def trim(docstring):
         """Code based on https://peps.python.org/pep-0257/#handling-docstring-indentation"""
         if not docstring:

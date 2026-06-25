@@ -1,5 +1,12 @@
 """
 (c) Inria
+
+Hydra task utilities for planktonzilla.
+
+Helpers that wrap a Hydra task with optional extras (the `task_wrapper`
+decorator, warning suppression, tag enforcement, Rich config printing),
+hyperparameter logging, safe metric retrieval and logger teardown so that
+multiruns degrade gracefully on failure.
 """
 
 import time
@@ -33,6 +40,13 @@ def task_wrapper(task_func: Callable) -> Callable:
     """
 
     def wrap(cfg: DictConfig):
+        """Run the wrapped task with extras, exception logging and timing.
+
+        Applies `extras`, executes the task, logs any exception to the run's
+        ``.log`` file, and always records execution time and closes loggers
+        (even on failure) before returning the task's ``(metric_dict,
+        object_dict)``.
+        """
         # apply extra utilities
         extras(cfg)
 

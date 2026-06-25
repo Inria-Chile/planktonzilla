@@ -1,5 +1,15 @@
 """
 (c) Inria
+
+Dataset import machinery for planktonzilla.
+
+Defines the :class:`DatasetImporter` base class and one subclass per supported
+plankton dataset (ZooLake, ZooScanNet, WHOI-Plankton, etc.). Each importer
+downloads and extracts its raw archives, rearranges the images into a
+torchvision-style ImageFolder layout via ``_prepare_imagefolder``, loads the
+result as a Hugging Face dataset, and optionally pushes it to the Hub together
+with a generated dataset card. A few module-level helpers cover archive
+extraction, ImageFolder cleanup, image validation, and dataset reporting.
 """
 
 import concurrent.futures
@@ -76,6 +86,15 @@ dataset = load_dataset("{{hf_org_name}}/{{hf_dataset_name}}")
 
 
 def is_dir_empty(dir: Path) -> bool:
+    """Return whether a directory is empty (or absent).
+
+    Args:
+        dir (Path): Directory to inspect.
+
+    Returns:
+        bool: ``False`` if the directory exists and contains entries, ``True``
+        otherwise (including when ``dir`` is falsy or does not exist).
+    """
     if dir and dir.exists() and os.listdir(dir):
         return False
     return True
@@ -90,6 +109,16 @@ def strip_ansi_codes(text):
 
 
 def copytree_filtered(src: Path, dst: Path):
+    """Recursively copy ``src`` into ``dst``, skipping macOS metadata files.
+
+    Wraps :func:`shutil.copytree` with ``dirs_exist_ok=True`` and ignores
+    AppleDouble (``._*``) and ``.DS_Store`` files so they do not pollute the
+    resulting ImageFolder.
+
+    Args:
+        src (Path): Source directory to copy from.
+        dst (Path): Destination directory to copy into.
+    """
     copytree(
         src,
         dst,
@@ -99,6 +128,20 @@ def copytree_filtered(src: Path, dst: Path):
 
 
 def report_dataset_content(huggingface_dataset: Dataset | DatasetDict) -> str:
+    """Build a Markdown per-class sample histogram for a dataset.
+
+    For a :class:`DatasetDict`, a labelled histogram is produced for every
+    split; for a single :class:`Dataset`, one histogram is produced. ANSI
+    escape codes from the ``plotext`` bar chart are stripped so the result can
+    be embedded in a dataset card.
+
+    Args:
+        huggingface_dataset (Dataset | DatasetDict): Dataset(s) to summarise.
+
+    Returns:
+        str: Markdown text with one fenced label histogram per split.
+    """
+
     def report_split(dataset: Dataset, split_name: str) -> str:
         class_idxs, class_counts = np.unique(dataset["label"], return_counts=True)
 
@@ -150,6 +193,18 @@ def cleanup_imagefolder_empty_dirs(imagefolder_dir: Path) -> None:
 
 
 def is_valid_image_file(image_filename):
+    """Check whether a file can be opened and decoded as an image.
+
+    Opens the file with PIL and crops a tiny region to force decoding, which
+    catches truncated or corrupt files that ``Image.verify`` alone may miss.
+
+    Args:
+        image_filename: Path to the candidate image file.
+
+    Returns:
+        bool: ``True`` if the file decodes as a valid image, ``False`` if it
+        raises ``IOError`` or ``SyntaxError``.
+    """
     try:
         with Image.open(image_filename) as img:
             # img.verify() seems not to be enough to check all cases,
@@ -162,6 +217,23 @@ def is_valid_image_file(image_filename):
 
 @dataclass
 class DatasetImporter:
+    """Base class that turns a raw plankton dataset into a Hugging Face dataset.
+
+    Drives the full import pipeline: download and extract the configured
+    archives into ``raw_dir``, rearrange the images into a torchvision-style
+    ImageFolder under ``imagefolder_dir`` (via the dataset-specific
+    ``_prepare_imagefolder`` override), load that folder as a Hugging Face
+    dataset, and optionally push it to the Hub with a generated dataset card.
+    Subclasses customise only ``_prepare_imagefolder`` (and occasionally
+    ``_download_and_extract``); the base class raises
+    :class:`NotImplementedError` for the former.
+
+    Configuration is supplied as dataclass fields covering the data location,
+    Hub credentials and target name, download behaviour (retries, timeout,
+    force/resume), parallelism, image-integrity checking, and the metadata used
+    to populate the dataset card (description, license, citations, source URL).
+    """
+
     data_dir: Path
 
     human_readable_name: str = None
@@ -241,9 +313,27 @@ class DatasetImporter:
         self.extracted_dirs = self.download_manager.extract(downloaded_paths)
 
     def _prepare_imagefolder(self):
+        """Arrange the extracted raw data into an ImageFolder layout.
+
+        Abstract hook; each dataset subclass overrides this to move or copy the
+        extracted images into ``self.imagefolder_dir`` as ``class/*.png``
+        subfolders (optionally split into ``train``/``validation``/``test``).
+
+        Raises:
+            NotImplementedError: Always, on the base class.
+        """
         raise NotImplementedError()
 
     def update_dataset_metadata(self):
+        """Regenerate and push the Hub dataset card for this dataset.
+
+        Loads the existing card, refreshes its metadata (description, name,
+        citations, homepage, license, task category) and computed fields (a
+        per-class sample report plus per-channel train-split means and standard
+        deviations), renders a new card from :data:`DATACARD_TEMPLATE`, and
+        pushes it to the Hub. Loads the dataset first if it is not already in
+        memory.
+        """
         logger.info(f"Updating «{self.hf_org_name}/{self.hf_dataset_name}» card metadata.")
         card = DatasetCard.load(self.hf_org_name + "/" + self.hf_dataset_name)
 
@@ -282,6 +372,12 @@ class DatasetImporter:
         new_card.push_to_hub(self.hf_org_name + "/" + self.hf_dataset_name)
 
     def show_details(self):
+        """Print the Hub dataset's builder info and rendered card to the console.
+
+        Loads the dataset builder for ``hf_org_name/hf_dataset_name`` and its
+        dataset card, then pretty-prints the builder info and the card body as
+        rendered Markdown using ``rich``.
+        """
         builder = load_dataset_builder(self.hf_org_name + "/" + self.hf_dataset_name)
         rich_print(builder.info)
 
@@ -289,6 +385,13 @@ class DatasetImporter:
         rich_print(Markdown(card.text))
 
     def _push_to_hub(self):
+        """Push the in-memory dataset to the Hub, then refresh its card.
+
+        Only acts when ``push_to_hub`` is enabled and a dataset has been
+        loaded. Retries the push up to ``push_to_hub_retries`` times on failure,
+        and on success calls :meth:`update_dataset_metadata`. Logs and skips
+        when pushing is disabled or no dataset is available.
+        """
         if self.push_to_hub:
             if self.hf_dataset:
                 logger.info(
@@ -313,6 +416,12 @@ class DatasetImporter:
             logger.warning("Skipping pushing dataset to HuggingFace Hub, set push_to_hub=True to change this.")
 
     def cleanup(self):
+        """Remove downloaded and intermediate files when configured to do so.
+
+        When ``cleanup_after_processing`` is enabled, deletes the download
+        manager's extracted files and the raw download directory (the prepared
+        ImageFolder is intentionally kept). Does nothing otherwise.
+        """
         if self.cleanup_after_processing:
             logger.info("Removing downloaded and intermediate files.")
             if self.download_manager:
@@ -327,6 +436,27 @@ class DatasetImporter:
             logger.info("Keeping downloaded and intermediate files, set cleanup_after_processing=True to change this.")
 
     def import_dataset(self) -> Union[Dataset, DatasetDict]:
+        """Run the full import pipeline for this dataset.
+
+        Builds the ImageFolder when it is missing or when
+        ``force_imagefolder_preparation`` is set (downloading/extracting the raw
+        data and calling :meth:`_prepare_imagefolder`), optionally validates and
+        prunes corrupt images, then loads the folder as a Hugging Face dataset.
+        Splits named ``train``/``validation`` (or ``val``)/``test`` are detected
+        automatically, falling back to a single ``train`` split otherwise. The
+        loaded dataset is stored on ``self.hf_dataset`` and then pushed to the
+        Hub and cleaned up according to configuration.
+
+        Returns:
+            Union[Dataset, DatasetDict]: The declared return type; note the
+            method does not explicitly return the loaded dataset, so the
+            effective return value is ``None`` while the result is available on
+            ``self.hf_dataset``.
+
+        Raises:
+            RuntimeError: If extraction fails and no extracted paths are
+                available to build the ImageFolder.
+        """
         imagefolder_exists = not is_dir_empty(self.imagefolder_dir)
         raw_exists = self.raw_dir.exists() and bool(os.listdir(self.raw_dir))
 
@@ -406,9 +536,16 @@ class DatasetImporter:
 
 
 class LenslessDatasetImporter(DatasetImporter):
+    """Importer for the bundled lensless-microscopy plankton dataset.
+
+    Unlike the other importers it reads its archive from the packaged
+    ``public_data`` directory rather than downloading it.
+    """
+
     DATASET_FILENAME: Final[str] = "lensless_dataset"
 
     def _download_and_extract(self):
+        """Unzip the packaged lensless dataset archive into ``raw_dir``."""
         dataset_path = Path(public_data.__path__[0])
 
         logger.info(f"Unzipping lensless zip {dataset_path / (self.DATASET_FILENAME + '.zip')}.")
@@ -421,6 +558,12 @@ class LenslessDatasetImporter(DatasetImporter):
         self.extracted_dirs = self.raw_dir / self.DATASET_FILENAME
 
     def _prepare_imagefolder(self):
+        """Copy the extracted tree and rename its TRAIN/TEST split folders.
+
+        Resets the ImageFolder, copies the extracted data in, then renames
+        ``TRAIN_IMAGE``/``TEST_IMAGE`` to the canonical ``train``/``test``
+        split names.
+        """
         if self.imagefolder_dir.exists():
             rmtree(self.imagefolder_dir, ignore_errors=True)
         self.imagefolder_dir.mkdir(exist_ok=True, parents=True)
@@ -430,6 +573,13 @@ class LenslessDatasetImporter(DatasetImporter):
 
 
 class ZooLakeDatasetImporter(DatasetImporter):
+    """Importer for the ZooLake lake-plankton dataset.
+
+    Reconstructs the official train/val/test splits by reading the dataset's
+    filename lists and copying each referenced image into the matching split
+    and class folder, skipping missing files and duplicates.
+    """
+
     SPLIT_NAMES: ClassVar[Dict[str, str]] = {
         "train_split": "train_filenames.txt",
         "val_split": "val_filenames.txt",
@@ -437,6 +587,7 @@ class ZooLakeDatasetImporter(DatasetImporter):
     }
 
     def _prepare_imagefolder(self):
+        """Copy images into per-split, per-class folders from the split lists."""
         for split_name in tqdm(
             list(self.SPLIT_NAMES),
             desc="Processing original split",
@@ -477,7 +628,10 @@ class ZooLakeDatasetImporter(DatasetImporter):
 
 
 class ZooScanNetDatasetImporter(DatasetImporter):
+    """Importer for the ZooScanNet dataset (ZooScan-imaged zooplankton)."""
+
     def _prepare_imagefolder(self):
+        """Copy each per-class folder under ``ZooScanNet/imgs`` into the ImageFolder."""
         for plankton_class_dir in tqdm(
             (Path(self.extracted_dirs) / "ZooScanNet" / "imgs").glob("*"),
             desc="Progress",
@@ -488,7 +642,15 @@ class ZooScanNetDatasetImporter(DatasetImporter):
 
 
 class WHOIPlanktonDatasetImporter(DatasetImporter):
+    """Importer for the WHOI-Plankton IFCB dataset.
+
+    Merges the dataset's per-release folders into a single set of class
+    folders, copying the PNG images and removing each release directory as it
+    is processed.
+    """
+
     def _prepare_imagefolder(self):
+        """Copy PNGs from each release's class folders into merged class folders."""
         for release_folder in tqdm(
             self.extracted_dirs,
             desc="ImageFolder move progress",
@@ -513,7 +675,15 @@ class WHOIPlanktonDatasetImporter(DatasetImporter):
 
 
 class JEDISystemsOceansCPICSDatasetImporter(DatasetImporter):
+    """Importer for the JEDI Systems Oceans CPICS validated plankton dataset.
+
+    Extracts the nested per-release zip archives (deleting them and fixing
+    their file permissions afterwards), then merges the per-release class
+    folders into the shared ImageFolder by moving the PNG images.
+    """
+
     def _prepare_imagefolder(self) -> None:
+        """Unpack nested release zips and move their PNGs into merged class folders."""
         for zip_file in tqdm(
             sorted((Path(self.extracted_dirs) / "CPICS_Validated").glob("*.zip")),
             desc="Unzip progress",
@@ -560,7 +730,10 @@ class JEDISystemsOceansCPICSDatasetImporter(DatasetImporter):
 
 
 class UVP6NetDatasetImporter(DatasetImporter):
+    """Importer for the UVP6Net dataset (Underwater Vision Profiler 6 imagery)."""
+
     def _prepare_imagefolder(self):
+        """Copy each per-class folder under ``imgs`` into the ImageFolder."""
         for plankton_class_dir in tqdm(
             (Path(self.extracted_dirs) / "imgs").glob("*"),
             desc="Progress",
@@ -571,7 +744,10 @@ class UVP6NetDatasetImporter(DatasetImporter):
 
 
 class ZooCAMNetDatasetImporter(DatasetImporter):
+    """Importer for the ZooCamNet dataset (ZooCAM-imaged plankton)."""
+
     def _prepare_imagefolder(self):
+        """Copy each per-class folder under ``ZooCamNet/imgs`` into the ImageFolder."""
         for plankton_class_dir in tqdm(
             (Path(self.extracted_dirs) / "ZooCamNet" / "imgs").glob("*"),
             desc="Progress",
@@ -582,7 +758,10 @@ class ZooCAMNetDatasetImporter(DatasetImporter):
 
 
 class FlowCAMNetDatasetImporter(DatasetImporter):
+    """Importer for the FlowCamNet dataset (FlowCam-imaged plankton)."""
+
     def _prepare_imagefolder(self):
+        """Copy each per-class folder under ``FlowCamNet/imgs`` into the ImageFolder."""
         for plankton_class_dir in tqdm(
             (Path(self.extracted_dirs) / "FlowCamNet" / "imgs").glob("*"),
             desc="Progress",
@@ -593,7 +772,10 @@ class FlowCAMNetDatasetImporter(DatasetImporter):
 
 
 class ISIISNetDatasetImporter(DatasetImporter):
+    """Importer for the ISIISNet dataset (In Situ Ichthyoplankton Imaging System)."""
+
     def _prepare_imagefolder(self):
+        """Copy each per-class folder under ``ISIISNet/imgs`` into the ImageFolder."""
         for plankton_class_dir in tqdm(
             (Path(self.extracted_dirs) / "ISIISNet" / "imgs").glob("*"),
             desc="Progress",
@@ -604,7 +786,14 @@ class ISIISNetDatasetImporter(DatasetImporter):
 
 
 class PlanktoScopeDatasetImporter(DatasetImporter):
+    """Importer for the PlanktoScope reference dataset.
+
+    Copies each per-class folder while skipping non-directories and macOS
+    metadata entries (``._*`` and ``.DS_Store``).
+    """
+
     def _prepare_imagefolder(self):
+        """Copy each real per-class folder under ``Planktoscope_reference/imgs``."""
         for plankton_class_dir in tqdm(
             (Path(self.extracted_dirs) / "Planktoscope_reference" / "imgs").iterdir(),
             desc="Progress",
@@ -622,9 +811,18 @@ class PlanktoScopeDatasetImporter(DatasetImporter):
 
 
 class GlobalUVP5NetDatasetImporter(DatasetImporter):
+    """Importer for the Global UVP5 dataset (UVP5 imagery with separate taxonomy).
+
+    Downloads an auxiliary objects archive, parses its gzipped ``objects.tsv``
+    to map each ``object_id`` to its ``taxon``, creates one class folder per
+    taxon, and copies every extracted image into the folder for its taxon using
+    a thread pool.
+    """
+
     OBJECTS_URL = "https://www.seanoe.org/data/00964/107583/data/120871.zip"
 
     def _prepare_imagefolder(self):
+        """Map images to taxon folders via the objects metadata and copy them in parallel."""
         aux_dir = self.data_dir / "global_uvp5_aux"
         aux_dir.mkdir(parents=True, exist_ok=True)
 
@@ -723,7 +921,14 @@ class GlobalUVP5NetDatasetImporter(DatasetImporter):
 
 
 class PlanktonSet1DatasetImporter(DatasetImporter):
+    """Importer for the PlanktonSet-1 dataset (final segmented plankton images).
+
+    Copies each per-class folder while skipping hidden and macOS metadata
+    entries (names starting with ``.`` or ``._``, and ``.DS_Store``).
+    """
+
     def _prepare_imagefolder(self):
+        """Copy each real per-class folder from the FINAL_Plankton_Segments tree."""
         for plankton_class_dir in tqdm(
             (Path(self.extracted_dirs) / "0127422" / "2.3" / "data" / "0-data" / "FINAL_Plankton_Segments_12082014").glob("*"),
             desc="Progress",
@@ -742,7 +947,10 @@ class PlanktonSet1DatasetImporter(DatasetImporter):
 
 
 class SYKEIFCB2022DatasetImporter(DatasetImporter):
+    """Importer for the SYKE-plankton IFCB 2022 dataset (Finnish Environment Institute)."""
+
     def _prepare_imagefolder(self):
+        """Copy each per-class folder under ``labeled_20201020`` into the ImageFolder."""
         for plankton_class_dir in tqdm(
             (Path(self.extracted_dirs) / "labeled_20201020").glob("*"),
             desc="Progress",
@@ -753,7 +961,10 @@ class SYKEIFCB2022DatasetImporter(DatasetImporter):
 
 
 class SYKEZooScan2024DatasetImporter(DatasetImporter):
+    """Importer for the SYKE-plankton ZooScan 2024 dataset (Finnish Environment Institute)."""
+
     def _prepare_imagefolder(self):
+        """Copy each per-class folder from the FINAL_Plankton_Segments tree into the ImageFolder."""
         for plankton_class_dir in tqdm(
             (Path(self.extracted_dirs) / "0127422" / "2.3" / "data" / "FINAL_Plankton_Segments_12082014").glob("*"),
             desc="Progress",

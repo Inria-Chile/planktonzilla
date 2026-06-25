@@ -1,5 +1,14 @@
 """
 (c) Inria
+
+Imbalance-aware loss functions for plankton image classification.
+
+Collects loss functions tailored to long-tailed / class-imbalanced datasets
+(focal, LDAM, maximum-margin, asymmetric, robust-asymmetric, balanced
+meta-softmax) plus a plain cross-entropy baseline. Every loss derives from
+`AbstractHFLoss` and exposes a `forward(output, target)` signature compatible
+with the Hugging Face `Trainer` custom-loss hook, where ``output`` is an
+`ImageClassifierOutputWithNoAttention` carrying the model logits.
 """
 
 import numpy as np
@@ -10,7 +19,11 @@ from transformers.modeling_outputs import ImageClassifierOutputWithNoAttention
 
 
 class AbstractHFLoss(nn.Module):
-    """Abstract loss function for Hugging Face transformers Trainer. a"""
+    """Base class for losses compatible with the Hugging Face transformers Trainer.
+
+    Subclasses implement `forward`, taking the model output and target labels and
+    returning a scalar loss tensor.
+    """
 
     def __init__(self):
         super().__init__()
@@ -34,6 +47,17 @@ class FocalLoss(AbstractHFLoss):
     """
 
     def __init__(self, alpha: float | int | list | torch.Tensor, gamma: float = 3, size_average: bool = True):
+        """Configure the focal loss.
+
+        Args:
+            alpha: Class-balancing weight(s). A scalar is expanded to the
+                two-class form ``[alpha, 1 - alpha]``; a list/tensor is used as a
+                per-class weight vector.
+            gamma: Focusing parameter; higher values down-weight easy, well-
+                classified examples more strongly.
+            size_average: When ``True`` return the mean loss over the batch,
+                otherwise the sum.
+        """
         super().__init__()
         self.gamma = gamma
         self.size_average = size_average
@@ -89,6 +113,17 @@ class LDAMLoss(AbstractHFLoss):
     """
 
     def __init__(self, cls_num_list: list[int], max_m: float = 0.5, weight=None, s: int = 30):
+        """Configure the LDAM loss.
+
+        Args:
+            cls_num_list: Number of training samples per class; used to derive
+                the per-class margins (rarer classes get larger margins).
+            max_m: Maximum margin; the per-class margins are scaled so the
+                largest equals this value.
+            weight: Optional per-class weight tensor passed to the underlying
+                cross-entropy.
+            s: Positive logit scaling factor applied before cross-entropy.
+        """
         super().__init__()
         assert cls_num_list is not None
         assert s > 0
@@ -137,6 +172,18 @@ class MaximumMarginLoss(nn.Module):
     def __init__(
         self, cls_num_list: list[int], max_m: float = 0.5, weight=None, s: int = 30, gamma: float = 1.1, ldam: bool = False
     ):
+        """Configure the maximum-margin loss.
+
+        Args:
+            cls_num_list: Number of training samples per class; used to derive the
+                per-class margins.
+            max_m: Base maximum margin.
+            weight: Optional per-class weight tensor passed to cross-entropy.
+            s: Positive logit scaling factor applied before cross-entropy.
+            gamma: Exponential decay factor controlling the object-margin term.
+            ldam: When ``True`` combine the maximum margin with the
+                LDAM-style per-class margin instead of using a fixed ``max_m``.
+        """
         super().__init__()
 
         m_list = 1.0 / np.sqrt(np.sqrt(cls_num_list))
@@ -239,6 +286,16 @@ class AsymmetricLoss(AbstractHFLoss):
     """
 
     def __init__(self, gamma_pos=0, gamma_neg=4, eps: float = 0.1, reduction="mean"):
+        """Configure the asymmetric loss.
+
+        Args:
+            gamma_pos: Focusing parameter applied to positive (target) classes.
+            gamma_neg: Focusing parameter applied to negative classes; typically
+                larger than ``gamma_pos`` to down-weight easy negatives more.
+            eps: Label-smoothing factor; ``0`` disables smoothing.
+            reduction: ``"mean"`` to average over the batch, anything else leaves
+                the per-sample summed loss unreduced.
+        """
         super().__init__()
 
         self.eps = eps
@@ -303,6 +360,18 @@ class RobustAsymmetricLoss(AbstractHFLoss):
         epsilon_pos_pow=-2.5,
         reduction="mean",
     ):
+        """Configure the robust asymmetric loss.
+
+        Args:
+            gamma_pos: Focusing parameter applied to positive (target) classes.
+            gamma_neg: Focusing parameter applied to negative classes.
+            eps: Clamp/label-smoothing floor used for numerical stability and
+                smoothing.
+            epsilon_pos_pow: Coefficient of the second-order robustness term on
+                the positive branch.
+            reduction: ``"mean"`` to average over the batch, anything else leaves
+                the per-sample summed loss unreduced.
+        """
         super().__init__()
 
         self.eps = eps
@@ -369,6 +438,12 @@ class BalancedMetaSoftmaxLoss(AbstractHFLoss):
     """Balanced Meta-Softmax (BALMS) loss."""
 
     def __init__(self, cls_num_list: list[int]):
+        """Configure the balanced meta-softmax loss.
+
+        Args:
+            cls_num_list: Number of training samples per class; their log values
+                are added to the logits as priors to counteract class imbalance.
+        """
         super().__init__()
         self.cls_num_list = torch.tensor(cls_num_list).float()
 
@@ -384,9 +459,22 @@ class BalancedMetaSoftmaxLoss(AbstractHFLoss):
 
 
 class CrossEntropyLossHF(AbstractHFLoss):
+    """Plain cross-entropy loss, as a Hugging Face Trainer-compatible baseline.
+
+    Wraps `torch.nn.functional.cross_entropy` so it can be dropped into the same
+    custom-loss hook as the imbalance-aware losses in this module.
+    """
+
     def __init__(self, weight=None):
+        """Configure the cross-entropy loss.
+
+        Args:
+            weight: Optional per-class weight tensor passed straight through to
+                `F.cross_entropy`.
+        """
         super().__init__()
         self.weight = weight
 
     def forward(self, output, target, **kwargs):
+        """Compute weighted cross-entropy over the model logits and targets."""
         return F.cross_entropy(output.logits, target, weight=self.weight)
