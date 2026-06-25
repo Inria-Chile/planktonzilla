@@ -31,6 +31,8 @@ root = pyrootutils.setup_root(
 )
 
 
+from unittest.mock import MagicMock
+
 import hydra
 from datasets import Dataset
 from hydra.core.global_hydra import GlobalHydra
@@ -160,3 +162,37 @@ def test_run_wires_repo_id_output_dir_and_num_proc(monkeypatch, tmp_path):
 
     # save_to_disk received the resolved (overridden) output_dir.
     assert captured["save_path"] == str(out_dir)
+
+
+def test_maybe_push_to_hub_skips_by_default(monkeypatch):
+    """PIN: the default (push=False) path NEVER pushes to the Hub.
+
+    This is the zero-drift pin — with the flag absent/False, _maybe_push_to_hub
+    must leave the frozen project-oceania artifact untouched (no Hub call). The
+    save_to_disk that precedes it in main stays unconditional and is unaffected.
+    All network is mocked; this PINS current behavior, it does not "improve" it.
+    """
+    push = MagicMock()
+    monkeypatch.setattr(up.Dataset, "push_to_hub", push)
+
+    dataset = Dataset.from_dict({"x": [1]})
+    up._maybe_push_to_hub(dataset, "project-oceania/planktonzilla-17M", False)
+
+    push.assert_not_called()
+
+
+def test_maybe_push_to_hub_pushes_once_when_enabled(monkeypatch):
+    """PIN: the push=True path pushes exactly once to cfg.repo_id.
+
+    The push is additive (it runs after the unconditional save_to_disk in main)
+    and targets the frozen repo id as the first positional arg. All network is
+    mocked; this PINS current behavior, it does not "improve" it.
+    """
+    push = MagicMock()
+    monkeypatch.setattr(up.Dataset, "push_to_hub", push)
+
+    dataset = Dataset.from_dict({"x": [1]})
+    up._maybe_push_to_hub(dataset, "project-oceania/planktonzilla-17M", True)
+
+    push.assert_called_once()
+    assert push.call_args.args[0] == "project-oceania/planktonzilla-17M"
