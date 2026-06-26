@@ -1,8 +1,12 @@
 """
+(c) Inria
+
+Introspection helper for the open_clip visual-tower seam.
+
 Overrides:
-    The bare-except discriminator at planktonzilla/clip_model.py:33-40
-    (replaced via Phase 3 FIX-01; Phase 2 builds the helper, Phase 3
-    wires it in).
+    The former bare-except ViT-vs-timm discriminator in
+    planktonzilla/clip_model.py (replaced via FIX-01; the helper is now
+    wired in — see clip_model.ClipClassifier.__init__).
 
 Why:
     Centralizes ViT-vs-timm dispatch in one explicit isinstance check.
@@ -39,9 +43,9 @@ def visual_tower_kind(visual: nn.Module) -> Literal["vit", "timm"]:
 
     Raises:
         TypeError: If ``visual`` is neither a ``VisionTransformer`` nor a
-            ``TimmModel``. The bare ``except:`` at the current
-            ``clip_model.py:38`` would silently misclassify this case;
-            we raise explicitly so the failure is diagnosable.
+            ``TimmModel``. The former bare ``except:`` discriminator in
+            ``clip_model.py`` silently misclassified this case; we raise
+            explicitly so the failure is diagnosable.
     """
     if isinstance(visual, VisionTransformer):
         return "vit"

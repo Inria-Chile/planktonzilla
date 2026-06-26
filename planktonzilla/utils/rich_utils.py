@@ -1,5 +1,8 @@
 """
 (c) Inria
+
+Rich-based helpers for pretty-printing the Hydra config tree, enforcing run tags, and
+rendering docstrings as Markdown in the terminal.
 """
 
 import sys
@@ -27,13 +30,13 @@ def print_config_tree(
     resolve: bool = False,
     save_to_file: bool = False,
 ) -> None:
-    """Prints content of DictConfig using Rich library and its tree structure.
+    """Print a DictConfig as a Rich tree, with fields ordered alphabetically by key.
 
     Args:
         cfg (DictConfig): Configuration composed by Hydra.
-        print_order (Sequence[str], optional): Determines in what order config components are printed.
-        resolve (bool, optional): Whether to resolve reference fields of DictConfig.
-        save_to_file (bool, optional): Whether to export config to the hydra output folder.
+        resolve (bool, optional): Whether to resolve interpolated reference fields of the DictConfig.
+        save_to_file (bool, optional): Whether to also export the tree to ``config_tree.log`` in
+            ``cfg.paths.output_dir``.
     """
 
     style = "dim"
@@ -41,7 +44,7 @@ def print_config_tree(
 
     queue = []
 
-    # add fields from `print_order` to queue
+    # add fields to queue in sorted (alphabetical) order
     for field in sorted(cfg.keys()):
         (
             queue.append(field)
@@ -49,7 +52,7 @@ def print_config_tree(
             else log.warning(f"Field '{field}' not found in config. Skipping '{field}' config printing...")
         )
 
-    # add all the other fields to queue (not specified in `print_order`)
+    # add any remaining fields not already queued (defensive; sorted pass above covers all keys)
     for field in cfg:
         if field not in queue:
             queue.append(field)
@@ -99,6 +102,8 @@ def enforce_tags(cfg: DictConfig, save_to_file: bool = False) -> None:
 
 # @rank_zero_only
 def print_docstr_as_markdown(instance: Any) -> None:
+    """Render ``instance``'s class name and dedented docstring as Markdown to the terminal."""
+
     def trim(docstring):
         """Code based on https://peps.python.org/pep-0257/#handling-docstring-indentation"""
         if not docstring:

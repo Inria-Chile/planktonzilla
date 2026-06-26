@@ -1,5 +1,14 @@
 """
 (c) Inria
+
+Hydra entry point for plankton image-classification training and evaluation.
+
+Composes the full experiment from the ``configs/`` tree, instantiates the dataset wrapper,
+model (Hugging Face ``AutoModelForImageClassification`` or the CLIP-based
+:class:`~planktonzilla.clip_model.ClipClassifier`), optional PEFT/LoRA adapters, and an
+optional imbalance-aware loss, then drives the Hugging Face ``Trainer`` through training,
+validation, test evaluation, and optional push-to-hub. ``main`` is the ``pz_train`` console
+script; it returns the optimized metric so Hydra hyperparameter sweeps can read it.
 """
 
 import pyrootutils
@@ -105,8 +114,14 @@ def validate_environment(cfg: DictConfig | None = None):
 
 
 def compute_metrics(eval_pred):
-    """
-    requires training_args.eval_do_concat_batches = True
+    """Compute classification metrics for the Hugging Face ``Trainer``.
+
+    Takes the argmax over predicted logits and compares against the reference labels, returning
+    a dict with ``accuracy`` plus macro-averaged ``f1``, ``precision`` and ``recall`` (macro
+    averaging weights every class equally, which matters for the long-tailed plankton classes).
+
+    Note:
+        requires training_args.eval_do_concat_batches = True
     """
 
     predictions = np.argmax(eval_pred.predictions, axis=-1)
@@ -267,7 +282,7 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
         os.environ["TRACKIO_DATASET_ID"] = cfg.tracking.trackio_dataset_id
 
     log.info(f"Logging metrics and/or models to: {report_to}.")
-    training_args.report_to = report_to if report_to else "none"
+    training_args.report_to = report_to or "none"
     training_args.run_name = model.name_or_path.replace("/", "_") + "__" + cfg.dataset.name.replace("/", "_")
 
     log.info("Instantiating trainer.")
@@ -323,6 +338,18 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
 
 @hydra.main(version_base="1.3", config_path=str(root / "configs"), config_name="train.yaml")
 def main(cfg: DictConfig) -> float | None:
+    """``pz_train`` entry point: run training/eval and return the optimized metric.
+
+    Hydra composes ``cfg`` from ``configs/train.yaml`` (plus CLI overrides), then this delegates
+    to :func:`train`. Returns the value of ``cfg.optimized_metric`` (or ``None`` if unset) so
+    Hydra hyperparameter-optimization sweeps have a scalar objective to optimize.
+
+    Args:
+        cfg (DictConfig): Configuration composed by Hydra.
+
+    Returns:
+        float | None: The selected optimized metric value, or ``None`` when no metric is configured.
+    """
     # train the model
     metric_dict, _ = train(cfg)
 
@@ -333,4 +360,4 @@ def main(cfg: DictConfig) -> float | None:
 
 
 if __name__ == "__main__":
-    main()
+    main()  # type: ignore

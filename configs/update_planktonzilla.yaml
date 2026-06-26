@@ -1,0 +1,30 @@
+# @package _global_
+
+# specify here default configuration
+# order of defaults determines the order in which configs override each other
+defaults:
+  - _self_
+  - paths: default.yaml
+  - extras: default.yaml
+  - hydra: default.yaml
+
+task_name: "update_planktonzilla"
+tags: ["dev"]
+
+# HuggingFace Hub repo id of the dataset to re-sync.
+repo_id: project-oceania/planktonzilla-17M
+data_dir: ${paths.data_dir}
+
+# Opt-in Hub push, performed after the unconditional save_to_disk. When push_to_hub
+# is true the re-synced dataset is pushed to repo_id; push_as_private sets the repo
+# visibility and hf_token supplies the auth token (defaults to the HF_TOKEN env var).
+push_to_hub: false
+push_as_private: true
+hf_token: ${oc.env:HF_TOKEN, null}
+
+# Null defaults resolved by the in-code fallbacks. Override on the CLI,
+# e.g. `pz_update_planktonzilla num_proc=4`.
+#   - taxonomy_csv_path -> constants.DEFAULT_TAXONOMY_CSV_FILENAME (a raw Path).
+#   - num_proc          -> constants.default_num_proc().
+taxonomy_csv_path: null
+num_proc: null

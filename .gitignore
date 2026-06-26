@@ -272,3 +272,5 @@ research/
 prototypes/            
 evidence/              
 wheat-manifest.json
+uv.lock
+.understand-anything/

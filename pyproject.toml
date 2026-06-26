@@ -36,6 +36,12 @@ dependencies = [
     "pandas",
     "fsspec",
     "polars>=1.41.2",
+    "requests>=2.34.2",
+    "joblib>=1.5.3",
+    "biopython>=1.87",
+    "orjson>=3.11.9",
+    "numpy>=2.4.6",
+    "pillow>=12.2.0",
 ]
 
 [project.urls]
@@ -45,9 +51,10 @@ repository = "https://github.com/Inria-Chile/deep_plankton"
 
 [project.scripts]
 pz_import_dataset = 'planktonzilla.dataset_import.import_dataset:main'
-pz_prepare_train = 'planktonzilla.prepare_train:main'
 pz_train = 'planktonzilla.train:main'
-pz_push_model = 'planktonzilla.push_model:main'
+pz_generate_planktonzilla = 'planktonzilla.planktonzilla_dataset.generate_planktonzilla:main'
+pz_update_planktonzilla = 'planktonzilla.planktonzilla_dataset.update_planktonzilla:main'
+pz_generate_sankey = 'planktonzilla.planktonzilla_dataset.generate_sankey:main'
 
 [dependency-groups]
 dev = ["pytest", "notebook", "ipywidgets", "pytest-cov", "ipykernel"]
@@ -77,6 +84,9 @@ lint.select = [
     "RUF",  # Ruff-specific rules
 ]
 lint.ignore = ["E402", "N806"]
+# generate_sankey.py embeds a self-contained HTML/CSS/JS page as a raw-string template;
+# its long style/script lines are not Python and cannot carry a line-level noqa.
+lint.per-file-ignores = { "planktonzilla/planktonzilla_dataset/generate_sankey.py" = ["E501"] }
 exclude = [
     "notebooks/", # do not check notebooks
 ]

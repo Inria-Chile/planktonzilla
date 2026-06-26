@@ -1,0 +1,253 @@
+"""
+(c) Inria
+
+Network-free tests for the @hydra.main port of
+``planktonzilla.planktonzilla_dataset.update_planktonzilla``.
+
+These are the testable PROXY for zero behavioral drift on the DEFAULT (no-override)
+update run. A full golden-output dataset diff is not runnable here (it needs the
+17M-image dataset frozen on the HuggingFace Hub); instead we pin:
+
+  (a) the config composes with the expected key contract,
+  (b) the in-code null fallbacks resolve byte-identically to the legacy CLI
+      defaults — including the INTENTIONAL raw-Path taxonomy_csv_path divergence
+      from generate_planktonzilla (which str()-wraps); the save target now comes
+      from cfg.data_dir (the package-relative OUTPUT_DIR seam was dropped in the
+      @hydra.main port),
+  (c) main() wires cfg.repo_id -> load_dataset, the resolved cfg.data_dir ->
+      save_to_disk, and the resolved num_proc -> sync_columns,
+  (d) the opt-in Hub push is additive — the default (push_to_hub false) never
+      pushes (zero-drift), while push_to_hub=true pushes once to cfg.repo_id after
+      the unconditional save.
+
+Every test PINS current behavior; none "improves" it. All network is mocked.
+"""
+
+import pathlib
+
+import pyrootutils
+
+root = pyrootutils.setup_root(
+    search_from=__file__,
+    indicator=[".git", "pyproject.toml"],
+    pythonpath=True,
+    dotenv=True,
+)
+
+
+from unittest.mock import MagicMock
+
+import hydra
+from datasets import Dataset
+from hydra.core.global_hydra import GlobalHydra
+
+from planktonzilla.planktonzilla_dataset import constants
+from planktonzilla.planktonzilla_dataset import update_planktonzilla as up
+
+
+def _write_taxonomy_csv(path, dataset_name, raw_label):
+    """Write a tiny taxonomy CSV that build_sync_dict can resolve.
+
+    Columns mirror the real planktonzilla_taxonomy.csv: Dataset, Raw_Labels plus
+    the sync columns (taxonomy ranks, extras, str IDs and numeric IDs).
+    """
+    header = (
+        "Dataset,Raw_Labels,Kingdom,Phylum,Class,Order,Family,Genus,Species,"
+        "proposed_label,plankton,root_class,qualifier,"
+        "wikidata_ID,ecotaxa_ID,aphia_ID,NCBI_ID,BOLD_ID"
+    )
+    # aphia_ID / NCBI_ID / BOLD_ID are numeric in the CSV (float) -> text w/o decimals.
+    row = f"{dataset_name},{raw_label},Animalia,Arthropoda,,,,,,Copepoda,True,zoo,,Q3386609,274;1231,135336.0,6854.0,"
+    with open(path, "w") as f:
+        f.write(header + "\n" + row + "\n")
+
+
+def _drive_update_main(monkeypatch, cfg, push_mock=None):
+    """Run ``up.main(cfg)`` network-free (load / sync / save mocked) on a tiny dataset.
+
+    ``main`` is the @hydra.main entry point, driven via Hydra's cfg-passthrough
+    (``main(cfg)`` runs the task body directly — there is no separate ``_run`` seam).
+    When ``push_mock`` is given it is installed as ``Dataset.push_to_hub`` so the
+    opt-in push can be asserted.
+    """
+    columns = {"dataset": ["x"], "original_label": ["y"]}
+    for col in up.SYNC_COLS:
+        # plankton is a bool; everything else is a (nullable) string column.
+        columns[col] = [True] if col == "plankton" else [""]
+    tiny = Dataset.from_dict(columns)
+
+    monkeypatch.setattr(up, "load_dataset", lambda *a, **k: tiny)
+    monkeypatch.setattr(up, "sync_columns", lambda ds, sync_dict, num_proc: ds)
+    monkeypatch.setattr(up.Dataset, "save_to_disk", lambda self, path: None)
+    if push_mock is not None:
+        monkeypatch.setattr(up.Dataset, "push_to_hub", push_mock)
+
+    up.main(cfg)
+
+
+def test_config_composes_with_expected_keys():
+    """The config composes and exposes the expected key contract."""
+    GlobalHydra.instance().clear()
+    hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_update_compose")
+    cfg = hydra.compose(config_name="update_planktonzilla")
+
+    # repo_id is the concrete frozen INPUT dataset identity.
+    assert cfg.repo_id == "project-oceania/planktonzilla-17M"
+
+    # Null-default contract: these resolve to legacy defaults via in-code fallbacks.
+    for key in ("taxonomy_csv_path", "num_proc"):
+        assert key in cfg, f"missing key {key}"
+        assert cfg.get(key) is None, f"{key} should default to null"
+
+    # data_dir is the save target (resolved from the paths config, never null).
+    assert "data_dir" in cfg
+    assert cfg.data_dir is not None
+
+    # push_to_hub is opt-in and defaults to False (the zero-drift default).
+    assert cfg.get("push_to_hub") is False
+
+    GlobalHydra.instance().clear()
+
+
+def test_null_fallback_defaults_match_legacy():
+    """The in-code null fallbacks equal the documented legacy CLI defaults.
+
+    This is the byte-identity assertion that guarantees a default (no-override)
+    run resolves the exact same (taxonomy_csv_path, num_proc, output_dir) as the
+    argparse era — the testable proxy for zero behavioral drift.
+    """
+    # taxonomy_csv_path: the legacy --csv-path default was the RAW
+    # DEFAULT_TAXONOMY_CSV_FILENAME Path, passed straight into pd.read_csv. The
+    # in-code fallback must keep it a raw Path (NOT str()-wrapped) — this is the
+    # INTENTIONAL divergence from generate_planktonzilla, which str()-wraps.
+    assert isinstance(constants.DEFAULT_TAXONOMY_CSV_FILENAME, pathlib.Path)
+    assert not isinstance(constants.DEFAULT_TAXONOMY_CSV_FILENAME, str)
+
+    # num_proc: constants.default_num_proc() (a positive int, >= 1).
+    assert constants.default_num_proc() >= 1
+
+    # output dir: the package-relative OUTPUT_DIR seam was dropped in the
+    # @hydra.main port — the save target now comes from cfg.data_dir. Pin the
+    # removal so the old underscore module-constant path cannot silently return.
+    assert not hasattr(up, "OUTPUT_DIR")
+
+    # repo_id frozen identity (shared with generate_planktonzilla).
+    assert constants.DEFAULT_PLANKTONZILLA_DATASET_REPO_ID == "project-oceania/planktonzilla-17M"
+
+
+def test_main_wires_repo_id_data_dir_and_num_proc(monkeypatch, tmp_path):
+    """Drive the @hydra.main-wrapped main(cfg) network-free and pin the wiring.
+
+    The @hydra.main port dropped the _run seam, so we call the undecorated body
+    via main.__wrapped__. Asserts main wires cfg.repo_id -> load_dataset, the
+    resolved num_proc (null -> default_num_proc()) -> sync_columns, and the
+    resolved cfg.data_dir -> save_to_disk. The transform itself is short-circuited.
+    """
+    # Real tiny CSV so build_sync_dict succeeds; routed via the override below.
+    csv_path = tmp_path / "taxo.csv"
+    out_dir = tmp_path / "out"
+    _write_taxonomy_csv(str(csv_path), "x", "y")
+
+    # Compose the REAL update config, overriding taxonomy_csv_path (so the raw read
+    # works) and data_dir (a writable target the save_to_disk capture records).
+    GlobalHydra.instance().clear()
+    hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_update_wiring")
+    cfg = hydra.compose(
+        config_name="update_planktonzilla",
+        overrides=[f"taxonomy_csv_path={csv_path}", f"data_dir={out_dir}"],
+    )
+
+    # Tiny in-memory dataset whose columns include dataset, original_label, and every
+    # SYNC_COL, so update_example / new_features succeed inside sync_columns.
+    columns = {"dataset": ["x"], "original_label": ["y"]}
+    for col in up.SYNC_COLS:
+        # plankton is a bool; everything else is a (nullable) string column.
+        columns[col] = [True] if col == "plankton" else [""]
+    tiny = Dataset.from_dict(columns)
+
+    captured = {}
+
+    def _fake_load_dataset(repo_id, split=None):
+        captured["repo_id"] = repo_id
+        captured["split"] = split
+        return tiny
+
+    def _fake_sync_columns(ds, sync_dict, num_proc):
+        # Capture the wired num_proc; return ds unchanged (wiring test, not transform).
+        captured["num_proc"] = num_proc
+        return ds
+
+    def _fake_save_to_disk(self, path):
+        captured["save_path"] = path
+
+    monkeypatch.setattr(up, "load_dataset", _fake_load_dataset)
+    monkeypatch.setattr(up, "sync_columns", _fake_sync_columns)
+    monkeypatch.setattr(up.Dataset, "save_to_disk", _fake_save_to_disk)
+
+    # main is @hydra.main-decorated; call the undecorated body with our composed cfg.
+    up.main.__wrapped__(cfg)
+
+    GlobalHydra.instance().clear()
+
+    # load_dataset received cfg.repo_id and the "train" split.
+    assert captured["repo_id"] == cfg.repo_id
+    assert captured["split"] == "train"
+
+    # num_proc null -> resolved to default_num_proc().
+    assert captured["num_proc"] == constants.default_num_proc()
+
+    # save_to_disk received the resolved (overridden) output_dir.
+    assert captured["save_path"] == str(out_dir)
+
+
+def test_main_skips_push_by_default(monkeypatch, tmp_path):
+    """PIN zero-drift: the default update run (push_to_hub absent/false) never pushes.
+
+    Drives main() with load / sync / save mocked and a recording mock on
+    Dataset.push_to_hub; the default config leaves push_to_hub false, so the push
+    branch is skipped and the frozen artifact is left untouched. All network is
+    mocked; this PINS current behavior, it does not "improve" it.
+    """
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "x", "y")
+
+    GlobalHydra.instance().clear()
+    hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_update_nopush")
+    cfg = hydra.compose(
+        config_name="update_planktonzilla",
+        overrides=[f"taxonomy_csv_path={csv_path}", f"data_dir={tmp_path / 'out'}"],
+    )
+
+    push = MagicMock()
+    _drive_update_main(monkeypatch, cfg, push_mock=push)
+
+    GlobalHydra.instance().clear()
+
+    push.assert_not_called()
+
+
+def test_main_pushes_to_hub_when_enabled(monkeypatch, tmp_path):
+    """PIN the opt-in push: push_to_hub=true pushes exactly once to cfg.repo_id.
+
+    The push is additive (it runs after the unconditional save_to_disk in main) and
+    forwards the configured ``private`` (push_as_private) flag. All network is
+    mocked; this PINS current behavior, it does not "improve" it.
+    """
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "x", "y")
+
+    GlobalHydra.instance().clear()
+    hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_update_push")
+    cfg = hydra.compose(
+        config_name="update_planktonzilla",
+        overrides=[f"taxonomy_csv_path={csv_path}", f"data_dir={tmp_path / 'out'}", "push_to_hub=true"],
+    )
+
+    push = MagicMock()
+    _drive_update_main(monkeypatch, cfg, push_mock=push)
+
+    GlobalHydra.instance().clear()
+
+    push.assert_called_once()
+    assert push.call_args.args[0] == cfg.repo_id
+    assert push.call_args.kwargs.get("private") == cfg.push_as_private

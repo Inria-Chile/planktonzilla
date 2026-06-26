@@ -1,4 +1,6 @@
 """
+(c) Inria
+
 Overrides:
     open_clip_train.main entry point — thin pre-launch hook wrapper.
 
@@ -54,10 +56,12 @@ def _patch_upstream() -> None:
     import open_clip_train.train as _oct
 
     from planktonzilla.clip_train.train import evaluate
+
     _oct.evaluate = evaluate
     _ocm.evaluate = evaluate  # already imported at module level in _ocm, patch in place
 
     from planktonzilla.open_clip_ext.transform import image_transform
+
     _oc_transform.image_transform = image_transform
 
 

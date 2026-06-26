@@ -7,11 +7,11 @@ defaults:
   - paths: default.yaml
   - extras: default.yaml
   - hydra: default.yaml
-  - dataset_import: isiisnet.yaml
+  - dataset_import: default.yaml
   - tracking: default.yaml
-
 
 task_name: "import_dataset"
 tags: ["dev"]
 
+# Valid action values are import, show, update-metadata
 action: show

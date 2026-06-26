@@ -1,4 +1,6 @@
 """
+(c) Inria
+
 Download COX1 gene sequences from NCBI for plankton species.
 
 Steps per species:
@@ -25,7 +27,7 @@ Usage (batch from a CSV):
     python extract_cox.py --csv data/taxonomy_wiki_and_ids.csv --nb_rows 10 --clean
 
 Requirements:
-    pip install biopython polars requests tqdm
+    pip install biopython polars tqdm
 """
 
 import argparse
@@ -37,6 +39,8 @@ from pathlib import Path
 
 import polars as pl
 from tqdm import tqdm
+
+from planktonzilla.utils.logger import get_pylogger
 
 try:
     from Bio import Entrez, SeqIO
@@ -53,7 +57,10 @@ ENTREZ_API_KEY = os.environ.get("NCBI_API_KEY")
 
 # COX terms (match the title, gene name and product fields).
 COX_TERMS = [
-    "COI", "CO1", "COX1", "COXI",
+    "COI",
+    "CO1",
+    "COX1",
+    "COXI",
     "cytochrome c oxidase subunit I",
     "cytochrome c oxidase subunit 1",
     "cytochrome oxidase subunit I",
@@ -62,25 +69,36 @@ COX_TERMS = [
 # Query fragment with the COX filters joined by OR.
 COX_FILTER = " OR ".join(f'"{t}"[All Fields]' for t in COX_TERMS)
 
-MAX_SEQS_PER_SPECIES = 500   # Safety cap per species; raise it if needed.
-BATCH_SIZE = 50              # Records downloaded per Entrez request.
-SLEEP_BETWEEN_CALLS = 0.4    # seconds; respects the NCBI rate limit (~3/s without an API key).
+MAX_SEQS_PER_SPECIES = 500  # Safety cap per species; raise it if needed.
+BATCH_SIZE = 50  # Records downloaded per Entrez request.
+SLEEP_BETWEEN_CALLS = 0.4  # seconds; respects the NCBI rate limit (~3/s without an API key).
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%H:%M:%S",
-)
-log = logging.getLogger(__name__)
+log = get_pylogger(__name__)
+
+
+class EntrezConfigError(RuntimeError):
+    """Raised when Entrez cannot be configured (e.g. missing NCBI email)."""
 
 
 # ── NCBI helpers ─────────────────────────────────────────────────────────────────
 
+
 def configure_entrez(email: str | None = None):
-    """Set up Entrez with the email (required) and the API key (optional)."""
+    """Set up Entrez with the email (required) and the API key (optional).
+
+    Mutates the global ``Bio.Entrez`` module state (``Entrez.email`` and, when
+    available, ``Entrez.api_key``).
+
+    Args:
+        email: Email to identify the NCBI requests; falls back to the
+            ``NCBI_EMAIL`` environment variable when ``None``.
+
+    Raises:
+        EntrezConfigError: If no email is resolved from the argument or the env var.
+    """
     resolved_email = email or ENTREZ_EMAIL
     if not resolved_email:
-        raise SystemExit(
+        raise EntrezConfigError(
             "Missing NCBI email. Set NCBI_EMAIL in the environment or pass it with --email.\n"
             '  export NCBI_EMAIL="your_email@example.com"'
         )
@@ -103,7 +121,19 @@ def build_query(ncbi_tax_id: int | str, expand_to_children: bool = True) -> str:
 
 
 def search_nuccore(query: str, max_results: int = MAX_SEQS_PER_SPECIES) -> list[str]:
-    """Return the list of GenBank accession IDs that match the query."""
+    """Return the list of GenBank accession IDs that match the query.
+
+    Issues an Entrez ``esearch`` against the ``nuccore`` database (network), after
+    sleeping ``SLEEP_BETWEEN_CALLS`` to respect the NCBI rate limit. Any failure is
+    logged and swallowed, returning an empty list.
+
+    Args:
+        query: Entrez query string (see ``build_query``).
+        max_results: Maximum number of accession IDs to retrieve.
+
+    Returns:
+        The matching GenBank accession IDs, or an empty list on failure.
+    """
     time.sleep(SLEEP_BETWEEN_CALLS)
     try:
         handle = Entrez.esearch(
@@ -119,18 +149,31 @@ def search_nuccore(query: str, max_results: int = MAX_SEQS_PER_SPECIES) -> list[
         log.info(f"  Found {count} total matches, retrieving up to {max_results}.")
         return ids
     except Exception as e:
+        log.warning(f"  esearch failed for query {query!r}, returning no IDs: {e}")
         log.error(f"  esearch failed: {e}")
         return []
 
 
 def fetch_sequences(id_list: list[str], label: str = "") -> list[SeqRecord]:
-    """Download GenBank records in batches and return SeqRecord objects."""
+    """Download GenBank records in batches and return SeqRecord objects.
+
+    Issues Entrez ``efetch`` requests of ``BATCH_SIZE`` IDs each (network), sleeping
+    ``SLEEP_BETWEEN_CALLS`` between batches. A failed batch is logged and skipped
+    rather than aborting the whole download.
+
+    Args:
+        id_list: GenBank accession IDs to fetch.
+        label: Human-readable tag used only in the progress log lines.
+
+    Returns:
+        The parsed FASTA ``SeqRecord`` objects (empty if ``id_list`` is empty).
+    """
     records = []
     if not id_list:
         return records
 
     for start in range(0, len(id_list), BATCH_SIZE):
-        batch = id_list[start: start + BATCH_SIZE]
+        batch = id_list[start : start + BATCH_SIZE]
         time.sleep(SLEEP_BETWEEN_CALLS)
         try:
             handle = Entrez.efetch(
@@ -144,6 +187,7 @@ def fetch_sequences(id_list: list[str], label: str = "") -> list[SeqRecord]:
             records.extend(batch_records)
             log.info(f"  [{label}] Fetched {len(records)}/{len(id_list)} sequences…")
         except Exception as e:
+            log.warning(f"  efetch batch {start}-{start + BATCH_SIZE} failed for [{label}], skipping batch: {e}")
             log.error(f"  efetch batch {start}-{start + BATCH_SIZE} failed: {e}")
 
     return records
@@ -154,9 +198,19 @@ def get_cox_sequences(
     expand_to_children: bool = True,
     max_results: int = MAX_SEQS_PER_SPECIES,
 ) -> list[SeqRecord]:
-    """
-    Given a taxonomy ID, return the COX SeqRecords.
-    Tries the expanded search first; if there are no results, retries with noexp.
+    """Given a taxonomy ID, return the COX SeqRecords.
+
+    Tries the expanded search first (includes child taxa); if there are no results
+    and ``expand_to_children`` was set, retries once with ``noexp`` (exact taxon).
+    Performs ``esearch`` + ``efetch`` requests (network).
+
+    Args:
+        ncbi_tax_id: NCBI Taxonomy ID to search.
+        expand_to_children: Whether the first search includes descendant taxa.
+        max_results: Maximum number of sequences to retrieve.
+
+    Returns:
+        The COX ``SeqRecord`` objects (empty if nothing matched).
     """
     query = build_query(ncbi_tax_id, expand_to_children=expand_to_children)
     log.info(f"Query: {query}")
@@ -172,8 +226,9 @@ def get_cox_sequences(
 
 # ── Output helpers ───────────────────────────────────────────────────────────────
 
+
 def save_fasta(records: list[SeqRecord], filepath: str | Path):
-    """Write the sequences to a FASTA file."""
+    """Write the sequences to a FASTA file (creates parent directories)."""
     filepath = Path(filepath)
     filepath.parent.mkdir(parents=True, exist_ok=True)
     with open(filepath, "w") as f:
@@ -181,25 +236,8 @@ def save_fasta(records: list[SeqRecord], filepath: str | Path):
     log.info(f"  Saved {len(records)} sequences → {filepath}")
 
 
-def records_to_dataframe(records: list[SeqRecord], ncbi_tax_id=None) -> pl.DataFrame:
-    """Turn a list of SeqRecords into a tidy DataFrame."""
-    rows = []
-    for rec in records:
-        # Parse the accession and description from the FASTA header.
-        parts = rec.description.split(" ", 1)
-        accession = parts[0]
-        description = parts[1] if len(parts) > 1 else ""
-        rows.append({
-            "ncbi_tax_id": ncbi_tax_id,
-            "accession": accession,
-            "description": description,
-            "length_bp": len(rec.seq),
-            "sequence": str(rec.seq),
-        })
-    return pl.DataFrame(rows)
-
-
 # ── Batch processing ─────────────────────────────────────────────────────────────
+
 
 def process_csv(
     csv_path: str,
@@ -210,12 +248,29 @@ def process_csv(
     skip_empty: bool = True,
     nb_rows: int | None = None,
 ):
-    """
-    Read the plankton CSV, loop over the rows, download the COX sequences
-    for every species with a valid NCBI_ID and write the outputs.
+    """Read the plankton CSV, download COX sequences per species, and write outputs.
 
-    Output per species:   out_dir/{label}_{ncbi_id}.fasta
-    Summary:              out_dir/summary.csv
+    Loops over the rows of a semicolon-separated CSV; for each species with a
+    valid NCBI ID it runs the COX search (network) and saves the sequences. Rows
+    without an ID are recorded with ``status="no_id"`` (when ``skip_empty``) and
+    skipped.
+
+    Args:
+        csv_path: Path to the semicolon-separated plankton CSV.
+        out_dir: Directory where the per-species FASTA files and ``summary.csv``
+            are written.
+        ncbi_col: Column holding the NCBI Taxonomy ID.
+        label_col: Column used to name the output files.
+        max_results: Maximum number of sequences to retrieve per species.
+        skip_empty: When ``True``, rows without an ID are logged and recorded.
+        nb_rows: If set, only the first ``nb_rows`` CSV rows are read.
+
+    Side effects:
+        Writes ``out_dir/{label}_{ncbi_id}.fasta`` per species (only when
+        sequences were found) and a ``out_dir/summary.csv`` overview.
+
+    Returns:
+        The summary ``polars.DataFrame`` (one row per processed species).
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -233,20 +288,22 @@ def process_csv(
         ncbi_id = row.get(ncbi_col)
         label = str(row.get(label_col, "unknown")).strip().replace(" ", "_")
 
-        # Decide which ID to use.
+        # Only NCBI IDs are currently used to drive the COX search.
         if ncbi_id is not None and str(ncbi_id).strip() not in ("", "nan", "NaN"):
             tax_id = str(int(float(ncbi_id)))
             source = "ncbi"
         else:
             if skip_empty:
                 log.debug(f"Skipping {label}: no ID found.")
-                summary_rows.append({
-                    "label": label,
-                    "ncbi_tax_id": None,
-                    "source": None,
-                    "n_sequences": 0,
-                    "status": "no_id",
-                })
+                summary_rows.append(
+                    {
+                        "label": label,
+                        "ncbi_tax_id": None,
+                        "source": None,
+                        "n_sequences": 0,
+                        "status": "no_id",
+                    }
+                )
             continue
 
         log.info(f"[{label}] NCBI tax ID: {tax_id} (source: {source})")
@@ -264,13 +321,15 @@ def process_csv(
             fasta_path = out_dir / f"{label}_{tax_id}.fasta"
             save_fasta(records, fasta_path)
 
-        summary_rows.append({
-            "label": label,
-            "ncbi_tax_id": tax_id,
-            "source": source,
-            "n_sequences": n,
-            "status": status,
-        })
+        summary_rows.append(
+            {
+                "label": label,
+                "ncbi_tax_id": tax_id,
+                "source": source,
+                "n_sequences": n,
+                "status": status,
+            }
+        )
 
     summary_df = pl.DataFrame(summary_rows)
     summary_path = out_dir / "summary.csv"
@@ -283,9 +342,54 @@ def process_csv(
     return summary_df
 
 
+# ── Single-ID processing ───────────────────────────────────────────────────────
+
+
+def process_single(
+    ncbi_id: int | str,
+    out_dir: str | Path,
+    expand_to_children: bool = True,
+    max_results: int = MAX_SEQS_PER_SPECIES,
+):
+    """Fetch the COX sequences for a single NCBI Taxonomy ID and save them.
+
+    Runs the COX search (network) and writes ``out_dir/{ncbi_id}.fasta``, but only
+    when at least one sequence was found.
+
+    Args:
+        ncbi_id: NCBI Taxonomy ID to fetch.
+        out_dir: Directory the FASTA file is written to (created if missing).
+        expand_to_children: Whether the search includes descendant taxa.
+        max_results: Maximum number of sequences to retrieve.
+
+    Faithful extraction of the former inline single-``--ncbi_id`` branch of
+    ``main`` — same logging, same expand_to_children/max_results semantics, same
+    "save only when records exist" guard.
+    """
+    log.info(f"Fetching COX sequences for NCBI Taxonomy ID: {ncbi_id}")
+    records = get_cox_sequences(
+        ncbi_id,
+        expand_to_children=expand_to_children,
+        max_results=max_results,
+    )
+    log.info(f"\nFound {len(records)} COX sequences for taxid {ncbi_id}\n")
+    for r in records:
+        log.info(f"  {r.id}  len={len(r.seq)} bp  {r.description[:100]}")
+
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    fasta_out = out_dir / f"{ncbi_id}.fasta"
+    if records:
+        save_fasta(records, fasta_out)
+
+
 # ── CLI ──────────────────────────────────────────────────────────────────────────
 
-def main():
+
+def main() -> None:
+    """Parse CLI args and fetch COX1 sequences for a single ID or a CSV batch."""
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     parser = argparse.ArgumentParser(
         description="Fetch COX1 sequences from NCBI for plankton species.",
     )
@@ -310,22 +414,12 @@ def main():
 
     if args.ncbi_id:
         # ── Single NCBI ID mode ──
-        log.info(f"Fetching COX sequences for NCBI Taxonomy ID: {args.ncbi_id}")
-        records = get_cox_sequences(
+        process_single(
             args.ncbi_id,
+            out_dir=args.out_dir_s,
             expand_to_children=not args.noexp,
             max_results=args.max_seqs,
         )
-        print(f"\nFound {len(records)} COX sequences for taxid {args.ncbi_id}\n")
-        for r in records:
-            print(f"  {r.id}  len={len(r.seq)} bp  {r.description[:100]}")
-
-        out_dir = Path(args.out_dir_s)
-        out_dir.mkdir(parents=True, exist_ok=True)
-
-        fasta_out = out_dir / f"{args.ncbi_id}.fasta"
-        if records:
-            save_fasta(records, fasta_out)
 
     elif args.csv:
         # ── Batch CSV mode ──

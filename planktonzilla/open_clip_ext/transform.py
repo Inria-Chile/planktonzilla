@@ -1,4 +1,6 @@
 """
+(c) Inria
+
 Overrides:
     open_clip.transform.image_transform, image_transform_v2, AugmentationCfg.
 
@@ -13,9 +15,8 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from typing import Any, Optional, Tuple, Union
 
-import open_clip
 from open_clip.transform import PreprocessCfg
-from open_clip.transform import image_transform as _UPSTREAM_IMAGE_TRANSFORM
+from open_clip.transform import image_transform as _upstream_image_transform
 
 # Captured at module import time, BEFORE clip_train/main.py::_patch_upstream
 # rebinds open_clip.transform.image_transform to the wrapper below. Re-importing
@@ -25,6 +26,15 @@ from open_clip.transform import image_transform as _UPSTREAM_IMAGE_TRANSFORM
 
 @dataclass
 class AugmentationCfg:
+    """Augmentation config mirroring upstream ``open_clip.transform.AugmentationCfg``.
+
+    Adds the project-specific ``trivial_augment`` flag (consumed by ``image_transform``
+    below to inject ``torchvision.transforms.TrivialAugmentWide`` into the training
+    pipeline) alongside the upstream fields. ``color_jitter_prob`` and
+    ``gray_scale_prob`` are carried for upstream compatibility so that an instance can
+    be round-tripped back into the genuine upstream dataclass without losing fields.
+    """
+
     scale: Tuple[float, float] = (0.9, 1.0)
     ratio: Optional[Tuple[float, float]] = None
     color_jitter: Optional[Union[float, Tuple[float, float, float], Tuple[float, float, float, float]]] = None
@@ -42,7 +52,17 @@ def image_transform(
     is_train: bool,
     **kwargs: Any,
 ) -> Callable:
-    """Like open_clip.transform.image_transform but with trivial_augment support."""
+    """Like open_clip.transform.image_transform but with trivial_augment support.
+
+    Strips the project-specific ``trivial_augment`` key from ``aug_cfg`` (whether
+    passed as a dict or an ``AugmentationCfg``) before delegating to the genuine
+    upstream callable captured at import time, then — for training transforms with
+    ``trivial_augment`` enabled — inserts ``TrivialAugmentWide`` into the returned
+    ``Compose`` just before the tensor-conversion step so it operates on PIL images.
+
+    Returns:
+        A callable transform. Asserts the result is callable before returning.
+    """
     trivial_augment = False
     aug_cfg = kwargs.get("aug_cfg")
 
@@ -53,15 +73,17 @@ def image_transform(
     elif isinstance(aug_cfg, AugmentationCfg):
         trivial_augment = aug_cfg.trivial_augment
         from open_clip.transform import AugmentationCfg as _UpstreamCfg
+
         upstream_fields = set(_UpstreamCfg.__dataclass_fields__)
         kwargs = {**kwargs, "aug_cfg": _UpstreamCfg(**{k: v for k, v in asdict(aug_cfg).items() if k in upstream_fields})}
 
     # Use the handle captured at import time; re-importing here would resolve to
     # this wrapper (after _patch_upstream rebinds the name) and recurse.
-    result = _UPSTREAM_IMAGE_TRANSFORM(image_size, is_train, **kwargs)
+    result = _upstream_image_transform(image_size, is_train, **kwargs)
 
     if is_train and trivial_augment:
         from torchvision.transforms import Compose, TrivialAugmentWide
+
         if hasattr(result, "transforms"):
             transforms_list = list(result.transforms)
             # insert before MaybeToTensor so it operates on PIL images
