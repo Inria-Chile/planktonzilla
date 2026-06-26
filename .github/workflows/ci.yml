@@ -21,18 +21,18 @@ jobs:
   lint:
     name: Lint (ruff)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # timeout-minutes: 15
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Setup uv (with cache)
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
         with:
           enable-cache: true
           # Python is pinned by .python-version / pyproject.toml requires-python.
           # uv will resolve to 3.12 (the current devcontainer + HPC runtime).
-          version: "3.12"
+          python-version: "3.13"
 
       - name: Install project deps (uv sync)
         run: uv sync
@@ -46,16 +46,16 @@ jobs:
   test:
     name: Test (pytest)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # timeout-minutes: 15
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Setup uv (with cache)
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
         with:
           enable-cache: true
-          version: "3.12"
+          pythin-version: "3.13"
 
       - name: Install project deps (uv sync)
         run: uv sync
@@ -76,10 +76,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup uv (with cache)
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
         with:
           enable-cache: true
-          version: "3.12"
+          version: "3.13"
 
       - name: Install project deps (uv sync)
         run: uv sync
