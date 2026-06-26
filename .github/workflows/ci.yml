@@ -33,10 +33,10 @@ jobs:
           # Python is pinned by .python-version / pyproject.toml requires-python.
           # uv will resolve to 3.12 (the current devcontainer + HPC runtime).
           python-version: "3.13"
-      
+
       - name: Installing ruff
         run: uv tool install ruff
-        
+
       - name: Install project deps (uv sync)
         run: uv sync
 
@@ -58,7 +58,7 @@ jobs:
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
         with:
           enable-cache: true
-          pythin-version: "3.13"
+          python-version: "3.13"
 
       - name: Install project deps (uv sync)
         run: uv sync
