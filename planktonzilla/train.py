@@ -282,7 +282,7 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
         os.environ["TRACKIO_DATASET_ID"] = cfg.tracking.trackio_dataset_id
 
     log.info(f"Logging metrics and/or models to: {report_to}.")
-    training_args.report_to = report_to if report_to else "none"
+    training_args.report_to = report_to or "none"
     training_args.run_name = model.name_or_path.replace("/", "_") + "__" + cfg.dataset.name.replace("/", "_")
 
     log.info("Instantiating trainer.")
