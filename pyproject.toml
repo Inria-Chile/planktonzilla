@@ -42,6 +42,7 @@ dependencies = [
     "orjson>=3.11.9",
     "numpy>=2.4.6",
     "pillow>=12.2.0",
+    "seaborn>=0.13.2",
 ]
 
 [project.urls]
@@ -57,7 +58,15 @@ pz_update_planktonzilla = 'planktonzilla.planktonzilla_dataset.update_planktonzi
 pz_generate_sankey = 'planktonzilla.planktonzilla_dataset.generate_sankey:main'
 
 [dependency-groups]
-dev = ["pytest", "notebook", "ipywidgets", "pytest-cov", "ipykernel"]
+dev = [
+    "pytest",
+    "notebook",
+    "ipywidgets",
+    "pytest-cov",
+    "ipykernel",
+    "matplotlib>=3.11.0",
+    "cartopy>=0.25.0",
+]
 
 [build-system]
 requires = ["hatchling"]

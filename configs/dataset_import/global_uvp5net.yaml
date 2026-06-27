@@ -39,30 +39,13 @@ citation_apa: |
   and detritus from in situ imaging by the Underwater Vision Profiler 5. SEANOE. https://doi.org/10.17882/107583
 
 citation_bibtex: |
-  @article{dataset:globaluvp5net,
-    title      = {A global consistent database of plankton and detritus from in situ imaging by the Underwater Vision Profiler 5},
-    author     = {Nocera Ariadna and Stemmann Lars and Babin Marcel and Biard Tristan
-                  and Coustenoble Julie and Carlotti François and Coppola Laurent
-                  and Courchet Lucas and Drago Laetitia and Elineau Amanda
-                  and Guidi Lionel and Hauss Helena and Jalabert Laëtitia
-                  and Karp-Boss Lee and Kiko Rainer and Laget Marion
-                  and Lombard Fabien and McDonnell Andrew and Merland Camille
-                  and Motreuil Solène and Panaïotis Thelma and Picheral Marc
-                  and Rogge Andreas and Waite Anya and Irisson Jean-Olivier},
-    year       = 2025,
-    journal    = {SEANOE},
-    doi        = {10.17882/107583},
-    affiliation = {Centro para el Estudio de Sistemas Marinos, CCT-CENPAT-CONICET, U9120ACD, Puerto Madryn, Chubut, Argentina.
-    Sorbonne Université, CNRS, Laboratoire d'Océanographie de Villefranche, LOV, F-06230 Villefranche-sur-Mer, France.
-    Département de Biologie, Université Laval, Québec, Canada.
-    Laboratoire d'Océanologie et de Géosciences (LOG), Université du Littoral Côte d'Opale, Université Lille, CNRS, IRD, UMR 8187, Wimereux, France.
-    Mediterranean Institute of Oceanography, Aix-Marseille Université, Université de Toulon, CNRS, IRD, UMR 7294, Marseille, France.
-    Sorbonne Université, CNRS, OSU STAMAR, UAR2017, 4 Place Jussieu, 75252 Paris CEDEX 05, France.
-    Sorbonne Université, CNRS, Institut de la Mer de Villefranche, IMEV, F-06230 Villefranche-sur-Mer, France.
-    GEOMAR Helmholtz Centre for Ocean Research Kiel, Kiel, Germany.
-    NORCE Norwegian Research Centre, Bergen, Norway.
-    School of Marine Sciences, University of Maine, Orono, ME, USA.
-    College of Fisheries and Ocean Sciences, University of Alaska Fairbanks, Fairbanks, Alaska, USA.
-    Alfred-Wegener-Institut, Helmholtz-Zentrum für Polar- und Meeresforschung, Bremerhaven, Germany.
-    Department of Oceanography, Dalhousie University, Halifax, Nova Scotia, Canada.}
+  @article{essd-2025-522,
+    author = {Nocera, A. C. and Stemmann, L. and Babin, M. and Biard, T. and Coustenoble, J. and Carlotti, F. and Coppola, L. and Courchet, L. and Drago, L. and Elineau, A. and Guidi, L. and Hauss, H. and Jalabert, L. and Karp-Boss, L. and Kiko, R. and Laget, M. and Lombard, F. and McDonnell, A. and Merland, C. and Motreuil, S. and Pana\"{\i}otis, T. and Picheral, M. and Rogge, A. and Waite, A. and Irisson, J.-O.},
+    doi = {10.5194/essd-2025-522},
+    journal = {Earth System Science Data Discussions},
+    pages = {1--37},
+    title = {A global consistent database of plankton and detritus from in situ imaging by the Underwater Vision Profiler 5},
+    url = {https://essd.copernicus.org/preprints/essd-2025-522/},
+    volume = {2025},
+    year = {2025}
   }

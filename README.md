@@ -19,12 +19,38 @@ Multimodal deep learning framework, datasets, and models for plankton identifica
 
 `planktonzilla` is a framework for managing datasets, training computer vision models, and evaluating performance on various plankton image identification tasks. Built on top of Hugging Face Transformers and Hydra for configuration management, it offers specialized tools for handling imbalanced plankton datasets and state-of-the-art imbalance learning loss functions.
 
-*Highlights:*
+## Online Resources
 
 - `planktonzilla-17M` dataset: 17 million plankton images from 9 different datasets, all standardized and preprocessed for deep learning applications. Available: <https://huggingface.co/datasets/project-oceania/planktonzilla-17m>.
-
 - OcéanIA project website: <https://oceania.inria.cl>.
 - OcéanIA on Hugging Face Hub (datasets, trained models, and demos): <https://huggingface.co/project-oceania>.
+
+## Citation
+
+If you use Planktonzilla in your research, please cite as:
+
+> A. G. Contreras Montanares, L. Valenzuela, L. Martí, and N. Sanchez‑Pi, **Planktonzilla: Multimodal dataset and models
+for understanding plankton ecosystems,** Inria Chile Research Center, Tech. Rep., May 2026,
+doi: [10.48550/arXiv.2606.00080](https://doi.org/10.48550/arXiv.2606.00080), arXiv: 2606.00080 [cs.CV]. url: <https://arxiv.org/abs/2606.00080>
+
+```bibtex
+@techreport{contrerasmontanares:hal-05621003,
+  title         = {Planktonzilla: {M}ultimodal dataset and models for understanding plankton ecosystems},
+  author        = {Contreras Montanares, Alan Gerson and Valenzuela, Luis and Mart{\'i}, Luis and Sanchez-Pi, Nayat},
+  year          = 2026,
+  month         = {May},
+  keywords      = {Explainable AI; XAI ; Plankton Classification ; CLIPS ; Multimodal Classification},
+  eprinttype    = {arxiv},
+  hal_id        = {hal-05621003},
+  hal_version   = {v1},
+  eprint        = {2606.00080},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CV},
+  url           = {https://arxiv.org/abs/2606.00080},
+  doi           = {10.48550/arXiv.2606.00080},
+  institution   = {Inria Chile Research Center},
+}
+```
 
 ## Load a pre-trained model
 
@@ -45,118 +71,52 @@ predicted_idx = outputs.logits.argmax(-1).item()
 print(model.config.id2label[predicted_idx])
 ```
 
-- Browse published models: <https://huggingface.co/project-oceania>
-- No clone of this repo is required — `pip install transformers pillow` is the consumer dependency surface.
-- v1 status: pre-trained models are being prepared for release; see [project status](https://oceania.inria.cl/) and the HF org page above for current availability.
-
-## Features
-
-- **Modular Configuration**: Hydra-based hierarchical configuration.
-- **Multiple Plankton Dataset Support**: Built-in support for all (afawk) plankton image datasets.
-- **Specialized Loss Functions to handle class imbalance**: Advanced loss functions for imbalanced classification (Focal, LDAM, Asymmetric, etc.)
-- **Model Hub Integration**: Seamless integration with Hugging Face Hub for model sharing
-- **Experiment Tracking**: Built-in support for Weights & Biases, MLFlow, and Trackio.
-- **Flexible Training Pipeline**: Based on Hugging Face Transformers Trainer with custom enhancements.
-- **Easy CLI Interface**: Simple command-line tools for all operations.
-
-```mermaid
-flowchart LR
-  %% ── Configuration (shared across both pipelines) ─────────────────
-  subgraph CFG_GRP["⚙️ Hydra Config Tree (configs/)"]
-    direction TB
-    CFG_TRAIN[train.yaml]
-    CFG_IMPORT[import_dataset.yaml]
-    CFG_MODEL[model/]
-    CFG_DATA[dataset/]
-    CFG_AUG[augmentation/]
-    CFG_LOSS[custom_loss/]
-    CFG_PEFT[peft/ — LoRA]
-    CFG_HPARAM[hparams_search/ — Optuna]
-    CFG_TRACK[tracking/]
-    CFG_TRAIN_ARGS[training_arguments/]
-  end
-
-  %% ── Stage 1: Data Ingestion ──────────────────────────────────────
-  subgraph INGEST["📥 Data Ingestion · pz_import_dataset"]
-    direction LR
-    RAW[Raw plankton sources<br/>WHOI / EcoTaxa / public]
-    IMPORTER[dataset_import/<br/>dataset_importer.py]
-    PUSH_DS[push to HF Hub]
-    RAW --> IMPORTER --> PUSH_DS
-  end
-
-  %% ── Stage 2: Training & Evaluation ───────────────────────────────
-  subgraph TRAIN["🏋️ Training · pz_train"]
-    direction TB
-    DATA[dataset.py<br/>+ augmentation pipeline]
-    MODEL_HF[HF / timm classifier]
-    MODEL_CLIP[clip_model.py<br/>OpenCLIP backbone]
-    LOSS[loss.py · custom losses]
-    PEFT_ADAPT[PEFT / LoRA adapters]
-    TRAINER[HF Trainer loop]
-    HPARAM[Optuna sweep<br/>optional]
-    DATA --> TRAINER
-    MODEL_HF --> TRAINER
-    MODEL_CLIP --> TRAINER
-    LOSS --> TRAINER
-    PEFT_ADAPT --> TRAINER
-    HPARAM -.->|trials| TRAINER
-  end
-
-  %% ── Outputs ──────────────────────────────────────────────────────
-  HF_HUB[(🤗 HF Hub<br/>datasets · checkpoints)]
-  TRACK_BE[W&B · MLflow · Trackio]
-  LOGS[logs/ · checkpoints/<br/>wandb/]
-
-  %% ── Orchestration ────────────────────────────────────────────────
-  subgraph ORCH["🛰️ Orchestration"]
-    direction TB
-    SLURM[scripts/*.sh<br/>SLURM · torchrun multi-node]
-    DEVCT[.devcontainer/<br/>CUDA 12.5 · Python 3.12]
-    TESTS[tests/ · pytest]
-  end
-
-  %% ── Wiring ───────────────────────────────────────────────────────
-  CFG_GRP -. merged config .-> INGEST
-  CFG_GRP -. merged config .-> TRAIN
-
-  PUSH_DS --> HF_HUB
-  HF_HUB -->|load_dataset| DATA
-
-  TRAINER -->|metrics| TRACK_BE
-  TRAINER -->|checkpoints + logs| LOGS
-  TRAINER -.->|push_to_hub| HF_HUB
-
-  SLURM -->|launch| INGEST
-  SLURM -->|launch| TRAIN
-  DEVCT -.->|env for| TRAIN
-  TESTS -.->|validate| TRAIN
-
-  classDef hub fill:#fef3c7,stroke:#d97706,stroke-width:2px
-  classDef cfg fill:#e0e7ff,stroke:#4338ca
-  class HF_HUB hub
-  class CFG_GRP cfg
-```
-
-### 📁 Project Structure
+### Project Structure
 
 ```
-planktonzilla/
-├── configs/                    # Hydra configuration files
-│   ├── dataset/               # Dataset-specific configs
-│   ├── model/                 # Model architecture configs  
-│   ├── training_arguments/    # Training hyperparameters
-│   ├── augmentation/          # Data augmentation strategies
-│   ├── custom_loss/           # Loss function configurations
-│   └── tracking/              # Experiment tracking setup
-├── planktonzilla/             # Main package
-│   ├── dataset.py             # Dataset loading and preprocessing
-│   ├── train.py               # Training pipeline
-│   ├── loss.py                # Custom loss functions
-│   ├── clip_model.py          # CLIP-based model wrapper
-│   ├── dataset_import/        # Dataset import utilities
-│   └── utils/                 # Logging, Hydra helpers
-└── tests/                     # Test suite
+planktonzilla/                          # repo root
+├── configs/                            # Hydra configuration tree (bundled into wheel)
+│   ├── train.yaml                      # root config for pz_train
+│   ├── import_dataset.yaml             # root config for pz_import_dataset
+│   ├── generate_planktonzilla.yaml     # root config for dataset generation
+│   ├── update_planktonzilla.yaml       # root config for dataset update
+│   ├── augmentation/                   # data augmentation strategies
+│   ├── custom_loss/                    # imbalance-aware loss configs
+│   ├── dataset/                        # dataset-specific configs
+│   ├── dataset_import/                 # per-source import configs
+│   ├── debug/                          # debug-run configs
+│   ├── experiment/                     # composed experiment configs
+│   ├── extras/                         # misc extras (e.g. print config tree)
+│   ├── hparams_search/                 # hyperparameter-search configs
+│   ├── hydra/                          # Hydra runtime (help/, launcher/ for SLURM)
+│   ├── local/                          # machine-local overrides
+│   ├── model/                          # model architecture configs
+│   ├── paths/                          # path configs (PROJECT_ROOT etc.)
+│   ├── peft/                           # LoRA / PEFT adapter configs
+│   ├── tracking/                       # experiment tracking (W&B, MLflow, trackio)
+│   └── training_arguments/             # HF TrainingArguments configs
+├── planktonzilla/                      # main package
+│   ├── train.py                        # pz_train entry point (HF Trainer pipeline)
+│   ├── dataset.py                      # DatasetWrapper: load/split/transform
+│   ├── loss.py                         # imbalance-aware loss functions
+│   ├── clip_model.py                   # ClipClassifier (open_clip encoder + head)
+│   ├── dataset_import/                 # pz_import_dataset entry point + DatasetImporter subclasses
+│   │   └── public_data/                # bundled source-dataset metadata
+│   ├── clip_train/                     # SLURM contrastive CLIP pretraining (main.py, train.py)
+│   ├── open_clip_ext/                  # forward-compat seam around open_clip factory/transform
+│   │   └── model_configs/              # open_clip model JSON configs
+│   ├── planktonzilla_dataset/          # builds the master composite dataset from external sources
+│   │   ├── generate_planktonzilla.py        # main dataset build (Hydra entry)
+│   │   ├── gen_planktonzilla_only_plankton.py
+│   │   ├── update_planktonzilla.py          # incremental dataset update (Hydra entry)
+│   │   ├── save_planktonzilla_for_clip.py   # export to WebDataset for CLIP
+│   │   ├── generate_sankey.py               # taxonomy Sankey diagram
+│   │   ├── constants.py                     # shared constants
+│   │   ├── planktonzilla_taxonomy.csv       # taxonomy mapping table
+│   │   └── utils/                            # extract_cox.py, extract_taxon_ids.py, KNOWN_ISSUES.md
+│   └── utils/                           # hydra.py, resolvers.py, logger.py, rich_utils.py
+├── scripts/                            # train.sh, train_clip.sh, push_dataset.sh (SLURM launchers)
+└── tests/                              # pytest suite (mocks all network)
 ```
 
 ## Quick Start
@@ -279,7 +239,7 @@ flowchart TB
 - **Lensless**: Lensless plankton microscopy dataset
 - **UVP6Net**: Underwater Vision Profiler 6 dataset
 - **WHOI-Plankton**: Woods Hole Oceanographic Institution plankton dataset
-- **ZooLake**: Lake Zurich zooplankton dataset
+- **ZooLake**: Lake Greifensee (Switzerland) zooplankton dataset
 - **ZooScanNet**: ZooScan plankton dataset
 - **JEDI-Oceans**: JEDI oceanic plankton dataset
 - **CIFAR-10**: Generic image classification benchmark (sanity-check / smoke-test runs)
@@ -348,39 +308,6 @@ uv run ruff format
 3. Loss functions must handle `ImageClassifierOutputWithNoAttention` input format
 4. Test with: `uv run pz_train custom_loss=your_loss`
 
-## 🤝 Contributing
-
-We welcome contributions to Planktonzilla! Please feel free to:
-
-- Report bugs and request features via [GitHub Issues](https://github.com/Inria-Chile/deep_plankton/issues)
-- Submit pull requests for improvements
-- Add new datasets or model architectures
-- Improve documentation
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🏛️ Citation
-
-If you use Planktonzilla in your research, please cite:
-
-```bibtex
-@report{contrerasmontanares:hal-05621003,
-  title      = {Planktonzilla: Multimodal dataset and models for understanding plankton ecosystems},
-  author     = {Contreras Montanares, Alan Gerson and Valenzuela, Luis and Mart{\'i}, Luis and Sanchez-Pi, Nayat},
-  year       = 2026,
-  month      = {May},
-  url        = {https://hal.science/hal-05621003},
-  note       = {Submitted to NeurIPS 2026.},
-  keywords   = {Explainable AI; XAI ; Plankton Classification ; CLIPS ; Multimodal Classification},
-  pdf        = {https://hal.science/hal-05621003v1/file/neurips\_2026.pdf},
-  eprint     = {hal-05621003},
-  eprinttype = {hal},
-  hal_id     = {hal-05621003},
-  hal_version = {v1}
-}
-```
 
 <div align="center">
   <strong>Built with ❤️ by <a href="https://inria.cl/">Inria</a>.</strong>
