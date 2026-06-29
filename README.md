@@ -6,14 +6,15 @@ Multimodal deep learning framework, datasets, and models for plankton identifica
 
 **Part of [Inria Challenge OcéanIA](https://oceania.inria.cl/).**
 
-[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.*-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/get-started/locally/)
-![transformers](https://img.shields.io/badge/HuggingFace_transformers-1.0-FF9D00?logo=huggingface&logoColor=white&label=transformers&link=https%3A%2F%2Fgithub.com%2Fhuggingface%2F)
-![timm](https://img.shields.io/badge/HuggingFace_datasets-1.0-FF9D00?logo=huggingface&logoColor=white&label=datasets&link=https%3A%2F%2Fgithub.com%2Fhuggingface%2Fpytorch-image-models)
-![huggingface_hub](https://img.shields.io/badge/HuggingFace_Hub-0.23-FF9D00?logo=huggingface&logoColor=white&label=hub&link=https%3A%2F%2Fhuggingface.co%2Fdocs%2Fhuggingface_hub)
-[![Hydra](https://img.shields.io/badge/Hydra-1.3-89b8cd?logo=hexo&logoColor=white)](https://hydra.cc/)
-[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
-![Discord](https://img.shields.io/discord/956298015335927839?logo=Discord&logoColor=white&color=%235865F2&link=https%3A%2F%2Fdiscord.gg%2FkksV2htk)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white&style=for-the-badge)](https://www.python.org)
+![Hugging Face Models](https://img.shields.io/badge/Hugging_Face-Models-FF9D00?logo=huggingface&logoColor=white&link=https://huggingface.co/project-oceania/models&style=for-the-badge)
+![Hugging Face Datasets](https://img.shields.io/badge/Hugging_Face-Datasets-FF9D00?logo=huggingface&logoColor=white&link=https://huggingface.co/project-oceania/models&style=for-the-badge)
+[![Hydra](https://img.shields.io/badge/Hydra-1.3-89b8cd?logo=hexo&logoColor=white&style=for-the-badge&label=Hydra)](https://hydra.cc/)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json&style=for-the-badge&logo=uv)](https://github.com/astral-sh/uv)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&style=for-the-badge&logo=ruff)](https://github.com/astral-sh/ruff)
+![Discord](https://img.shields.io/discord/956298015335927839?style=for-the-badge&logo=Discord&logoColor=white&color=%235865F2&link=https%3A%2F%2Fdiscord.gg%2FkksV2htk)
+[![Paper DOI](https://img.shields.io/badge/DOI-10.48550/arXiv.2606.00080-FAB70C?style=for-the-badge&logo=doi)](https://doi.org/10.48550/arXiv.2606.00080)
+[![License: MIT](https://img.shields.io/github/license/Inria-Chile/planktonzilla?style=for-the-badge)](LICENSE)
 
 </div>
 
@@ -54,8 +55,6 @@ doi: [10.48550/arXiv.2606.00080](https://doi.org/10.48550/arXiv.2606.00080), arX
 
 ## Load a pre-trained model
 
-The published planktonzilla models are landing in the v1 release. The snippet below is the target API every v1 model will conform to — a single universal `from_pretrained` call that works for the entire model collection, no clone of this repository required.
-
 ```python
 from transformers import AutoModelForImageClassification, AutoImageProcessor
 from PIL import Image
@@ -71,7 +70,7 @@ predicted_idx = outputs.logits.argmax(-1).item()
 print(model.config.id2label[predicted_idx])
 ```
 
-### Project Structure
+## Project Structure
 
 ```
 planktonzilla/                          # repo root
@@ -119,8 +118,6 @@ planktonzilla/                          # repo root
 └── tests/                              # pytest suite (mocks all network)
 ```
 
-## Quick Start
-
 ### Prerequisites
 
 - Python 3.11-3.14
@@ -148,7 +145,7 @@ source .venv/bin/activate
 to activate it manually. If you prefer an activated shell, run
 `source .venv/bin/activate`.
 
-### Import a dataset
+### Import a public dataset as a Hugging Face dataset
 
 ```bash
 # Import ISIISNET dataset
