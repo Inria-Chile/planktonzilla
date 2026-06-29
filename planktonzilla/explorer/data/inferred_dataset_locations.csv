@@ -1,0 +1,10 @@
+dataset,latitude,longitude,region,confidence,citation,note
+zoocamnet,45.5,-2.5,"Bay of Biscay continental shelf (NE Atlantic); PELGAS spring survey, R/V Thalassa",high,10.17882/101928,Dataset-level centroid; per-sample GPS not published
+isiisnet,43.5,7.55,"Ligurian Sea off Nice (NW Mediterranean); VISUFRONT cruise, ISIIS",high,10.17882/101950,Dataset-level centroid; SEANOE box 43.29-43.69N 7.32-7.79E
+medplanktonset,40.82,14.25,"Gulf of Naples (Tyrrhenian/W Mediterranean); LTER-MareChiara, SZN Naples, IFCB",high,10.5281/zenodo.15471023,Anchor = LTER-MC; 6 stations across the Gulf of Naples
+syke_ifcb_2022,59.78,21.37,"Baltic Sea; Uto station + Alg@line ferrybox transects, IFCB",high,10.23728/b2share.abf913e5a6ad47e6baa273ae0ed6617a,Anchor = Uto; ferrybox samples diffuse across the Baltic
+planktonset1.0,25.15,-80.55,"Straits of Florida (subtropical NW Atlantic); R/V F.G. Walton Smith, ISIIS-2",high,10.7289/v5d21vjd,Cruise-area center; NCEI box 24.3-26.0N 81.9-79.2W
+zoolake,47.35,8.68,"Lake Greifensee, Switzerland; Eawag Dual Scripps Plankton Camera",high,10.3389/fmicb.2021.746297,README mislabels this as 'Lake Zurich'; actual site is Greifensee
+sykezooscan2024,59.5,21.4,"Baltic Sea (sub-basin unspecified); SYKE, ZooScan",low,10.23729/fa115087-2698-4aa5-aedd-11e260b9694d,INFERRED proxy near SYKE northern-Baltic monitoring; source documents only 'Baltic Sea'
+planktoscope,,,"Diffuse / global multi-campaign reference set (GreenFjord, APERO, MOOSE-GE, Plankton Planet)",na,10.17882/110078,No single location; taxonomic reference library across many cruises
+lensless,,,"Lab/cultured - purchased Carolina Biological protozoa culture (Item #131020), imaged at IBM Almaden",na,10.1038/s41598-020-68662-3,NOT field-collected; no real-world sampling locality - do not plot as a collection site

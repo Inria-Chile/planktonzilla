@@ -215,8 +215,9 @@ logs/
 # vscode configs are particular to each one
 .vscode/
 
-# data folder shoould not be versioned
-data/
+# top-level data folder should not be versioned (anchored to repo root so
+# committed package data such as planktonzilla/explorer/data/ stays tracked)
+/data/
 .github/copilot-instructions.md
 
 # ── GSD baseline (auto-generated) ──
