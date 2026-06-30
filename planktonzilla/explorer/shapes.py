@@ -194,6 +194,63 @@ def build_hierarchy_table(df: pl.DataFrame, *, ranks: tuple[str, ...] = TAXONOMY
     }
 
 
+def hierarchy_root_class(df: pl.DataFrame, *, ranks: tuple[str, ...] = TAXONOMY_RANKS) -> dict[str, str]:
+    """Per-node majority ``root_class`` for the sunburst/icicle, via FULL-distribution argmax.
+
+    Walks each row left-to-right over the present ``ranks`` EXACTLY as
+    ``build_hierarchy_table`` does (stop at the first blank rank; node id is the "/"-joined
+    prefix, e.g. ``"animalia/cnidaria/hydrozoa"``), so the returned keys align 1:1 with that
+    function's ``ids``. For every visited node it accumulates the row's ``root_class`` into a
+    per-node ``{root_class: count}`` tally over ALL rows passing through that prefix, THEN
+    argmaxes ONCE.
+
+    ⚠️ Correctness guardrail (the Sankey bug fixed in commit b92d7d0): the majority is the
+    argmax of the node's FULL merged distribution — it is NOT computed by pre-argmaxing each
+    child/row-group then merging (that lossy path credits all of a group's rows to one class
+    and flips the winner when ≥2 sub-distributions merge, e.g. ``{X:5,Y:4}`` + ``{Y:3}`` would
+    wrongly yield ``X`` instead of the merged ``{X:5,Y:7}`` -> ``Y``). The first-seen tie-break
+    and the ``Unknown`` empty-map sentinel are delegated to ``sankey._argmax_key`` /
+    ``LINEAGE_UNKNOWN`` (imported FUNCTION-LOCALLY so this pure layer keeps its viz-free,
+    cycle-free module scope — the Phase 9 dependency-isolation guard stays green).
+
+    Args:
+        df: The taxonomy frame (typically from ``load_taxonomy``).
+        ranks: Ordered taxonomic ranks to walk. Defaults to ``TAXONOMY_RANKS``.
+
+    Returns:
+        ``{node_id: majority_root_class}`` keyed identically to ``build_hierarchy_table``'s
+        ``ids``. Blank/missing ``root_class`` cells fold into the ``Unknown`` sentinel. If the
+        ``"root_class"`` column is absent from ``df`` the result is ``{}`` (the caller then
+        falls back to rank/depth coloring).
+    """
+    from planktonzilla.explorer.sankey import LINEAGE_UNKNOWN, _argmax_key
+
+    if "root_class" not in df.columns:
+        return {}
+
+    present = [r for r in ranks if r in df.columns]
+    # Per-node {root_class: count} tally; plain dicts preserve first-seen insertion order so
+    # _argmax_key's first-seen tie-break matches the Sankey semantics exactly.
+    tallies: dict[str, dict[str, int]] = {}
+
+    columns = [df.get_column(r).to_list() for r in present]
+    rc_col = df.get_column("root_class").to_list()
+    n_rows = df.height
+    for row_i in range(n_rows):
+        rc = (rc_col[row_i] or "").strip() or LINEAGE_UNKNOWN
+        prefix_parts: list[str] = []
+        for col_i in range(len(present)):
+            value = (columns[col_i][row_i] or "").strip()
+            if not value:
+                break  # ragged: stop at first blank rank (parity with build_hierarchy_table)
+            prefix_parts.append(value)
+            node_id = "/".join(prefix_parts)
+            tally = tallies.setdefault(node_id, {})
+            tally[rc] = tally.get(rc, 0) + 1
+
+    return {node_id: _argmax_key(tally) for node_id, tally in tallies.items()}
+
+
 def _to_float_or_null(expr: pl.Expr) -> pl.Expr:
     """Cast a (possibly string, possibly blank) lat/lon column to Float64 or null.
 
