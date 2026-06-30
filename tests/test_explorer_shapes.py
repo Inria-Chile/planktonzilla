@@ -308,3 +308,35 @@ def test_aggregate_geo_merges_inferred_and_reconciles_casing():
     assert set(out.get_column("category").to_list()) == {"measured", "inferred-high", "inferred-low"}
     assert "inferred-high" in out.filter(pl.col("dataset") == "i1").get_column("category").to_list()
     assert "inferred-low" in out.filter(pl.col("dataset") == "i2").get_column("category").to_list()
+
+
+def test_aggregate_geo_measured_wins_over_inferred_for_same_dataset():
+    """A dataset present in BOTH measured and inferred keeps ONLY its measured (KNOWN) point.
+
+    The inferred CSV exists only for datasets lacking per-sample GPS; if a dataset has real
+    measured coordinates, the inferred entry must not also appear (no double-plot, no
+    conflicting category at a different location). Non-overlapping inferred datasets are
+    untouched (no over-deletion).
+    """
+    measured = pl.DataFrame({"Latitude": [10.0], "Longitude": [20.0], "dataset": ["dup"]})
+    # "dup" also appears in the inferred frame at DIFFERENT coords -> must be dropped.
+    # "solo" is inferred-only -> must survive.
+    inferred = pl.DataFrame(
+        {
+            "dataset": ["dup", "solo"],
+            "latitude": ["45.5", "59.78"],
+            "longitude": ["-2.5", "21.37"],
+            "confidence": ["high", "high"],
+        }
+    )
+    out = shapes.aggregate_geo(measured, inferred)
+    dup_rows = out.filter(pl.col("dataset") == "dup")
+    # "dup" appears ONLY once, as the measured KNOWN point — the inferred "dup" row is dropped.
+    assert dup_rows.height == 1
+    assert dup_rows.get_column("category").to_list() == ["measured"]
+    assert dup_rows.get_column("source").to_list() == ["measured"]
+    assert dup_rows.get_column("Latitude").to_list() == [10.0]
+    # No over-deletion: the non-overlapping inferred dataset still appears.
+    solo_rows = out.filter(pl.col("dataset") == "solo")
+    assert solo_rows.height == 1
+    assert solo_rows.get_column("category").to_list() == ["inferred-high"]

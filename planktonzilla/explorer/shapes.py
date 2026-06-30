@@ -292,6 +292,14 @@ def aggregate_geo(
     (``"measured"`` vs ``"inferred"``) and a ``count`` column carries the row count
     (inferred rows count as 1 per point). Neither input is mutated.
 
+    Measured wins (dedup belt-and-suspenders): any inferred dataset that ALSO has
+    measured coordinates is dropped from the inferred frame before concatenation. The
+    inferred CSV exists only for datasets that LACK per-sample GPS; if a dataset turns
+    up with real measured coordinates, the KNOWN measured location is authoritative and
+    the inferred entry must not also appear (no double-plot, no conflicting category at
+    two locations). In the current committed-data case there is NO overlap (the 9
+    inferred datasets have no live GPS), so this is a no-op there.
+
     A 6th ``category`` column carries the confidence grade for legending (D4): measured
     rows -> ``"measured"``; inferred rows -> ``"inferred-high"`` / ``"inferred-low"``
     from their ``confidence``. The first five columns
@@ -358,6 +366,12 @@ def aggregate_geo(
         )
         .select(schema)
     )
+
+    # Measured wins: drop inferred rows for any dataset that already has measured
+    # coordinates, so a dataset never plots twice at two locations with conflicting
+    # categories. No-op when there is no overlap (the current committed-data case).
+    measured_datasets = measured_agg.get_column(GEO_DATASET_COL).unique().to_list()
+    inferred_norm = inferred_norm.filter(~pl.col(GEO_DATASET_COL).is_in(measured_datasets))
 
     merged = pl.concat([measured_agg, inferred_norm], how="vertical_relaxed")
     return merged.sort([GEO_DATASET_COL, "source", GEO_LAT_COL, GEO_LON_COL])
