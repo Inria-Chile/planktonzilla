@@ -41,6 +41,15 @@ GEO_DATASET_COL = "dataset"
 GEO_LAT_COL = "Latitude"
 GEO_LON_COL = "Longitude"
 
+# The three confidence-graded geo categories carried by ``aggregate_geo`` (D4): measured rows
+# (live per-sample GPS) are "measured"; inferred-CSV rows become "inferred-" + their confidence
+# grade (high/low). The inferred ``confidence == "na"`` grade (planktoscope, lensless) is NOT a
+# category — those rows are EXCLUDED entirely (they have no real collection site).
+CATEGORY_MEASURED = "measured"
+CATEGORY_INFERRED_HIGH = "inferred-high"
+CATEGORY_INFERRED_LOW = "inferred-low"
+GEO_CATEGORIES = (CATEGORY_MEASURED, CATEGORY_INFERRED_HIGH, CATEGORY_INFERRED_LOW)
+
 
 def load_taxonomy(csv_path: str | Path = DEFAULT_TAXONOMY_CSV_FILENAME) -> pl.DataFrame:
     """Read the frozen taxonomy CSV as all-string columns with blanks normalized to "".
@@ -275,26 +284,37 @@ def aggregate_geo(
     ``(dataset, Latitude, Longitude)``.
 
     If ``inferred`` is given (the committed CSV with LOWERCASE
-    ``dataset,latitude,longitude,...``), its casing is normalized to match measured,
-    its blank/na lat/lon rows (e.g. ``planktoscope``/``lensless``) are dropped, and
-    it is concatenated under the same schema. A ``source`` column distinguishes the
-    origin (``"measured"`` vs ``"inferred"``) and a ``count`` column carries the row
-    count (inferred rows count as 1 per point). Neither input is mutated.
+    ``dataset,latitude,longitude,...,confidence``), its casing is normalized to match
+    measured, its blank/na lat/lon rows are dropped, AND its ``confidence == "na"``
+    rows (e.g. ``planktoscope``/``lensless`` — no real collection site) are EXCLUDED
+    explicitly as belt-and-suspenders (D3/D4). The surviving inferred rows are
+    concatenated under the same schema. A ``source`` column distinguishes the origin
+    (``"measured"`` vs ``"inferred"``) and a ``count`` column carries the row count
+    (inferred rows count as 1 per point). Neither input is mutated.
 
-    Rendering/legending (styling inferred points distinctly) is Phase 13; here we
-    only produce the merged aggregated frame.
+    A 6th ``category`` column carries the confidence grade for legending (D4): measured
+    rows -> ``"measured"``; inferred rows -> ``"inferred-high"`` / ``"inferred-low"``
+    from their ``confidence``. The first five columns
+    ``{dataset, Latitude, Longitude, count, source}`` keep their name/order so callers
+    that select the legacy five by name are unaffected; ``category`` is appended last.
+
+    Rendering/legending (styling the graded categories distinctly) is Phase 13; here we
+    only produce the merged, category-graded aggregated frame.
 
     Args:
         measured: Live-HF geo frame with columns ``{Latitude, Longitude, dataset}``.
-        inferred: Optional committed inferred-locations frame (lowercase columns).
+        inferred: Optional committed inferred-locations frame (lowercase columns,
+            including a ``confidence`` grade of high/low/na).
         round_decimals: Decimal places for collapsing near-duplicate points.
 
     Returns:
         A polars DataFrame with columns
-        ``{dataset, Latitude, Longitude, count, source}``, one row per distinct
-        (dataset, rounded-lat, rounded-lon, source) point.
+        ``{dataset, Latitude, Longitude, count, source, category}``, one row per
+        distinct (dataset, rounded-lat, rounded-lon, source) point. ``category`` is
+        one of ``GEO_CATEGORIES`` (measured | inferred-high | inferred-low);
+        ``confidence == "na"`` and no-coord rows are excluded.
     """
-    schema = [GEO_DATASET_COL, GEO_LAT_COL, GEO_LON_COL, "count", "source"]
+    schema = [GEO_DATASET_COL, GEO_LAT_COL, GEO_LON_COL, "count", "source", "category"]
 
     measured_agg = (
         measured.select(
@@ -305,24 +325,36 @@ def aggregate_geo(
         .drop_nulls([GEO_LAT_COL, GEO_LON_COL])
         .group_by([GEO_DATASET_COL, GEO_LAT_COL, GEO_LON_COL])
         .agg(pl.len().alias("count"))
-        .with_columns(pl.lit("measured").alias("source"))
+        .with_columns(
+            pl.lit("measured").alias("source"),
+            pl.lit(CATEGORY_MEASURED).alias("category"),
+        )
         .select(schema)
     )
 
     if inferred is None:
         return measured_agg.sort([GEO_DATASET_COL, GEO_LAT_COL, GEO_LON_COL])
 
-    # Normalize the inferred CSV's lowercase casing to match the measured schema.
+    # Normalize the inferred CSV's lowercase casing to match the measured schema, and
+    # derive the confidence grade. Strip + lowercase ``confidence`` for robustness, then
+    # EXCLUDE the "na" grade explicitly (belt-and-suspenders alongside the null-coord drop).
     inferred_norm = (
-        inferred.select(
+        inferred.with_columns(pl.col("confidence").cast(pl.Utf8).str.strip_chars().str.to_lowercase().alias("confidence"))
+        .filter(pl.col("confidence").is_in(["high", "low"]))
+        .select(
             pl.col("dataset").cast(pl.Utf8).alias(GEO_DATASET_COL),
             _to_float_or_null(pl.col("latitude")).round(round_decimals).alias(GEO_LAT_COL),
             _to_float_or_null(pl.col("longitude")).round(round_decimals).alias(GEO_LON_COL),
+            pl.col("confidence"),
         )
         .drop_nulls([GEO_LAT_COL, GEO_LON_COL])
         .with_columns(
             pl.lit(1, dtype=pl.UInt32).alias("count"),
             pl.lit("inferred").alias("source"),
+            pl.when(pl.col("confidence") == "high")
+            .then(pl.lit(CATEGORY_INFERRED_HIGH))
+            .otherwise(pl.lit(CATEGORY_INFERRED_LOW))
+            .alias("category"),
         )
         .select(schema)
     )
