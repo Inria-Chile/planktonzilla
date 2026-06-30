@@ -31,7 +31,11 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 _PYPROJECT = _REPO_ROOT / "pyproject.toml"
 
 # The viz distributions / top-level modules forbidden in core.
-FORBIDDEN_NAMES = frozenset({"gradio", "plotly"})
+# kaleido (Phase 11, SANKEY-04 PNG-export backend) joins the boundary: it is added to
+# the ISOLATED explorer group ONLY and is imported function-locally in
+# planktonzilla/explorer/sankey.py (D4), so BOTH the manifest assertion (absent from core
+# + dev, present only in explorer) AND the AST module-scope scan now cover it.
+FORBIDDEN_NAMES = frozenset({"gradio", "plotly", "kaleido"})
 
 # Core packages whose import-time graph must stay viz-free.
 CORE_PACKAGE_DIRS = ("planktonzilla", "tools")
