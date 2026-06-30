@@ -272,13 +272,16 @@ def test_aggregate_geo_measured_only_collapses_and_drops_null():
         }
     )
     out = shapes.aggregate_geo(measured)
-    assert out.columns == ["dataset", "Latitude", "Longitude", "count", "source"]
+    # The five legacy columns keep their name/order; `category` is appended 6th (D4).
+    assert out.columns == ["dataset", "Latitude", "Longitude", "count", "source", "category"]
     # Near-duplicate (a, 1.0, 3.0) collapses to one row with count 2.
     a_row = out.filter(pl.col("dataset") == "a")
     assert a_row.height == 1 and a_row.get_column("count").to_list()[0] == 2
     # The null-lat row (dataset c) is dropped.
     assert "c" not in out.get_column("dataset").to_list()
     assert set(out.get_column("source").to_list()) == {"measured"}
+    # Measured-only -> every row's category is "measured".
+    assert set(out.get_column("category").to_list()) == {"measured"}
 
 
 def test_aggregate_geo_merges_inferred_and_reconciles_casing():
@@ -293,11 +296,15 @@ def test_aggregate_geo_merges_inferred_and_reconciles_casing():
         }
     )
     out = shapes.aggregate_geo(measured, inferred)
-    # Casing reconciled: output uses uppercase Latitude/Longitude.
-    assert out.columns == ["dataset", "Latitude", "Longitude", "count", "source"]
+    # Casing reconciled: output uses uppercase Latitude/Longitude; `category` appended 6th (D4).
+    assert out.columns == ["dataset", "Latitude", "Longitude", "count", "source", "category"]
     sources = set(out.get_column("source").to_list())
     assert sources == {"measured", "inferred"}
     # na row dropped; two inferred + one measured survive.
     assert out.filter(pl.col("source") == "inferred").height == 2
     assert out.filter(pl.col("source") == "measured").height == 1
     assert "na_ds" not in out.get_column("dataset").to_list()
+    # Graded category: i1=high -> inferred-high, i2=low -> inferred-low, m -> measured; na excluded.
+    assert set(out.get_column("category").to_list()) == {"measured", "inferred-high", "inferred-low"}
+    assert "inferred-high" in out.filter(pl.col("dataset") == "i1").get_column("category").to_list()
+    assert "inferred-low" in out.filter(pl.col("dataset") == "i2").get_column("category").to_list()
