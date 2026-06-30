@@ -67,6 +67,10 @@ dev = [
     "matplotlib>=3.11.0",
     "cartopy>=0.25.0",
 ]
+explorer = [
+    "gradio>=6.0,<7",
+    "plotly>=6.0,<7",
+]
 
 [build-system]
 requires = ["hatchling"]
