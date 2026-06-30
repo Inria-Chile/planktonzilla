@@ -1,5 +1,6 @@
 # planktonzilla CI — runs on every push to main and every PR targeting main.
-# 3 parallel jobs (lint, test, smoke). Stand-up artifact of v1.1 Phase 8.
+# 3 parallel jobs (lint, test, dep-isolation). Stand-up artifact of v1.1 Phase 8;
+# dep-isolation guard added in Phase 9 (FND-04).
 
 name: CI
 
@@ -69,3 +70,39 @@ jobs:
       # fixtures (which self-skip via skip_if_vendored_deleted).
       - name: Run pytest (excluding slow integration matrix)
         run: uv run pytest tests/ --ignore=tests/test_train.py --ignore=tests/test_datasets.py -v
+
+  dep-isolation:
+    name: Dependency isolation (gradio/plotly guard)
+    runs-on: ubuntu-latest
+    # timeout-minutes: 15
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup uv (with cache)
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          enable-cache: true
+          python-version: "3.13"
+
+      # Core env ONLY — plain `uv sync` does not install the explorer dependency
+      # group, so gradio/plotly must be absent here. Do not sync the explorer
+      # group in this job; that is the boundary this guard protects.
+      - name: Install project deps (core env, uv sync)
+        run: uv sync
+
+      # 1. The committed network-free guard: manifest + AST module-scope scan.
+      - name: Run dependency-isolation guard test
+        run: uv run pytest tests/test_dependency_isolation.py -q
+
+      # 2. Belt-and-suspenders: the core env itself must NOT be able to import the
+      #    viz deps. If either import succeeds, the boundary leaked — fail the build.
+      - name: Assert viz deps are unimportable in core
+        run: |
+          if uv run python -c "import gradio" 2>/dev/null; then
+            echo "LEAK: gradio importable in the core env"; exit 1
+          fi
+          if uv run python -c "import plotly" 2>/dev/null; then
+            echo "LEAK: plotly importable in the core env"; exit 1
+          fi
+          echo "OK: gradio and plotly are both unimportable in core"
