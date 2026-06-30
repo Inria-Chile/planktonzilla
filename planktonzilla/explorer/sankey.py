@@ -126,15 +126,39 @@ def filter_by_dataset(df: pl.DataFrame, dataset: str | None, *, column: str = DA
     return df.filter(pl.col(column).str.strip_chars() == dataset)
 
 
-def link_lineage(df: pl.DataFrame, stages: list[str], *, drop_blank: bool = False) -> dict[tuple[int, int], str]:
-    """Compute the majority ``root_class`` of the records flowing through each raw link.
+def _argmax_key(counts: dict[str, int]) -> str:
+    """Return the argmax key of a ``{root_class: count}`` map (mirrors JS ``argmaxKey``).
 
-    Mirrors generate_sankey.py's ``build()`` ``linkLineage``: walk every row's
-    consecutive-stage transitions, tally ``root_class`` per ``(source_node, target_node)``
-    link (blank/missing root_class -> ``"Unknown"``), then return the argmax class per
-    link. Link node identity matches ``build_sankey_index`` exactly (``(stage_index,
-    value)`` with blanks as ``"(blank)"``), so the returned keys align with the index's
-    raw ``(source, target)`` node-id pairs.
+    Walks ``counts`` in insertion order, keeping the first key whose value is STRICTLY
+    greater than the running best. On a tie the FIRST-seen key wins, exactly matching
+    generate_sankey.py's ``argmaxKey`` (``if(v>bv)``) — because Python dicts preserve
+    insertion order, the first-seen key is the first taxon encountered in the row-walk
+    (or the first folded into a merged link). Empty maps yield ``LINEAGE_UNKNOWN``.
+    """
+    best_key = LINEAGE_UNKNOWN
+    best_val = -1
+    for key, val in counts.items():
+        if val > best_val:
+            best_val = val
+            best_key = key
+    return best_key
+
+
+def link_lineage(df: pl.DataFrame, stages: list[str], *, drop_blank: bool = False) -> dict[tuple[int, int], dict[str, int]]:
+    """Tally the FULL ``root_class`` distribution of the records flowing through each raw link.
+
+    Mirrors generate_sankey.py's ``build()`` ``linkLineage`` (a ``Map(root_class ->
+    count)`` per ``"s>t"`` link): walk every row's consecutive-stage transitions and tally
+    ``root_class`` per ``(source_node, target_node)`` link (blank/missing root_class ->
+    ``"Unknown"``). The FULL per-link distribution is returned — NOT a pre-argmax'd
+    majority — so the caller can merge distributions across links that collapse together
+    and argmax ONCE over the merged map (matching the JS ``mergeTally`` + ``argmaxKey``
+    order, which the old pre-argmax discarded). Link node identity matches
+    ``build_sankey_index`` exactly (``(stage_index, value)`` with blanks as ``"(blank)"``),
+    so the returned keys align with the index's raw ``(source, target)`` node-id pairs.
+
+    Each per-link ``{root_class: count}`` dict preserves insertion order = first-seen order
+    in the row-walk, so the downstream argmax tie-break matches the JS exactly.
 
     Args:
         df: The (already dataset-filtered) taxonomy frame.
@@ -143,7 +167,7 @@ def link_lineage(df: pl.DataFrame, stages: list[str], *, drop_blank: bool = Fals
             tally walks exactly the same rows.
 
     Returns:
-        ``{(source_node_id, target_node_id): majority_root_class}``. Empty if
+        ``{(source_node_id, target_node_id): {root_class: count}}``. Empty if
         ``root_class`` is absent (callers fall back to per-stage node tint).
     """
     if "root_class" not in df.columns or len(stages) < 2:
@@ -177,10 +201,7 @@ def link_lineage(df: pl.DataFrame, stages: list[str], *, drop_blank: bool = Fals
             per_link = tally.setdefault((s, t), {})
             per_link[rc] = per_link.get(rc, 0) + 1
 
-    majority: dict[tuple[int, int], str] = {}
-    for link_key, counts in tally.items():
-        majority[link_key] = max(counts.items(), key=lambda kv: kv[1])[0]
-    return majority
+    return tally
 
 
 def aggregate_other(index: dict, *, min_flow: int = 1, root_class_by_link: dict | None = None) -> dict:
@@ -197,11 +218,20 @@ def aggregate_other(index: dict, *, min_flow: int = 1, root_class_by_link: dict 
     and a per-link ``link_class`` list (majority root_class) when ``root_class_by_link`` is
     given. ``used_rows`` is carried through unchanged.
 
+    Lineage coloring mirrors generate_sankey.py's ``build()`` EXACTLY: the FULL
+    ``{root_class: count}`` distribution of every raw link (from ``link_lineage``) is
+    MERGED (``mergeTally`` — sum counts per root_class) across all raw links that collapse
+    into the same final link, and each final link's color is the argmax of its MERGED
+    distribution (``argmaxKey``, first-seen tie-break). This is computed once per final
+    link, NOT by pre-argmaxing each raw link and crediting all its rows to one class — so
+    when ≥2 raw links with differing distributions merge, the color matches the JS.
+
     Args:
         index: A ``shapes.build_sankey_index`` result (nodes/source/target/value/used_rows).
         min_flow: Nodes whose incident flow is below this collapse into Other. ``<= 1`` keeps all.
-        root_class_by_link: Optional ``{(raw_source, raw_target): root_class}`` from
-            ``link_lineage`` used to color the aggregated links by majority lineage.
+        root_class_by_link: Optional ``{(raw_source, raw_target): {root_class: count}}`` from
+            ``link_lineage`` (the FULL per-link distribution) used to color the aggregated
+            links by their MERGED majority lineage.
 
     Returns:
         ``{"nodes": [{"stage", "label", "other"}...], "source", "target", "value",
@@ -246,17 +276,19 @@ def aggregate_other(index: dict, *, min_flow: int = 1, root_class_by_link: dict 
     def final_id(raw_id: int) -> int:
         return other_node[raw_nodes[raw_id]["stage"]] if collapse[raw_id] else remap[raw_id]
 
-    # Reroute every link through final_id, summing values and merging lineage tallies.
+    # Reroute every link through final_id, summing values and MERGING the full per-link
+    # root_class distributions (mirrors JS mergeTally — sum counts per root_class across all
+    # raw links folded into one final link; never pre-argmax then credit all rows to one class).
     agg_val: dict[tuple[int, int], int] = {}
     agg_lineage: dict[tuple[int, int], dict[str, int]] = {}
-    for idx, (rs, rt, v) in enumerate(zip(raw_source, raw_target, raw_value, strict=True)):
+    for rs, rt, v in zip(raw_source, raw_target, raw_value, strict=True):
         fs, ft = final_id(rs), final_id(rt)
         fk = (fs, ft)
         agg_val[fk] = agg_val.get(fk, 0) + v
         if root_class_by_link is not None:
-            rc = root_class_by_link.get((rs, rt), LINEAGE_UNKNOWN)
             dst = agg_lineage.setdefault(fk, {})
-            dst[rc] = dst.get(rc, 0) + v
+            for rc, count in root_class_by_link.get((rs, rt), {}).items():
+                dst[rc] = dst.get(rc, 0) + count
 
     source: list[int] = []
     target: list[int] = []
@@ -267,8 +299,8 @@ def aggregate_other(index: dict, *, min_flow: int = 1, root_class_by_link: dict 
         target.append(ft)
         value.append(v)
         if root_class_by_link is not None:
-            counts = agg_lineage.get((fs, ft), {})
-            link_class.append(max(counts.items(), key=lambda kv: kv[1])[0] if counts else LINEAGE_UNKNOWN)
+            # argmax ONCE over the merged distribution (mirrors JS argmaxKey, first-seen tie-break).
+            link_class.append(_argmax_key(agg_lineage.get((fs, ft), {})))
         else:
             link_class.append(LINEAGE_UNKNOWN)
 

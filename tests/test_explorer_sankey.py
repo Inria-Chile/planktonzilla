@@ -265,8 +265,14 @@ def test_aggregate_other_collapses_long_tail_and_conserves_flow(df):
         assert 0 <= t < n
 
 
-def test_link_lineage_majority_root_class(df):
-    """Per-link majority root_class matches the records flowing through each edge."""
+def test_link_lineage_full_distribution(df):
+    """link_lineage returns the FULL {root_class: count} distribution per raw link.
+
+    It must NOT pre-argmax (the old contract returned a majority string and discarded the
+    distribution — which broke merged-link coloring). The full per-link map is what lets
+    aggregate_other merge distributions across collapsed links and argmax once, matching
+    generate_sankey.py's JS linkLineage/mergeTally/argmaxKey.
+    """
     stages = ["Dataset", "Kingdom"]
     lineage = sankey.link_lineage(df, stages)
     # Rebuild raw node ids the same way build_sankey_index does, to locate links.
@@ -277,13 +283,201 @@ def test_link_lineage_majority_root_class(df):
 
     dsa = node_id(0, "dsA")
     animalia = node_id(1, "animalia")
-    # dsA -> animalia carries raw1(living), raw2(living), raw3(detritus) -> majority "living".
-    assert lineage[(dsa, animalia)] == "living"
+    # dsA -> animalia carries raw1(living), raw2(living), raw3(detritus) -> {living:2, detritus:1}.
+    assert lineage[(dsa, animalia)] == {"living": 2, "detritus": 1}
 
     dsb = node_id(0, "dsB")
-    # dsB -> animalia carries raw5(living), raw6(inert) -> tie broken by max() (first max key);
-    # both appear once so the result is one of {"living","inert"} — assert it is a real class.
-    assert lineage[(dsb, animalia)] in {"living", "inert"}
+    # dsB -> animalia carries raw5(living), raw6(inert) -> {living:1, inert:1} (each once).
+    assert lineage[(dsb, animalia)] == {"living": 1, "inert": 1}
+
+    # The whole structure is dicts of {root_class: count}, never pre-argmax'd strings.
+    assert all(isinstance(v, dict) for v in lineage.values())
+
+
+def test_argmax_key_first_seen_tie_break():
+    """_argmax_key mirrors JS argmaxKey: strict > comparison, first-seen key wins on ties."""
+    assert sankey._argmax_key({"X": 5, "Y": 4}) == "X"
+    assert sankey._argmax_key({"X": 5, "Y": 7}) == "Y"
+    # Tie -> first-seen key (dicts preserve insertion order, JS uses `if(v>bv)`).
+    assert sankey._argmax_key({"artefact": 4, "living": 4}) == "artefact"
+    assert sankey._argmax_key({"living": 4, "artefact": 4}) == "living"
+    # Empty map -> Unknown.
+    assert sankey._argmax_key({}) == sankey.LINEAGE_UNKNOWN
+
+
+def test_aggregate_other_merges_distributions_on_merged_links():
+    """The MERGE case the old tests missed: ≥2 raw links with differing root_class
+    distributions collapse into ONE final link; the color must be the argmax of their
+    MERGED distribution (mirrors JS mergeTally + argmaxKey), NOT a per-link pre-argmax.
+
+    Fixture: two raw links a1->b1 {X:5, Y:4} and a2->b2 {Y:3}, both below the min_flow
+    threshold so a1/a2 collapse into one stage-0 Other and b1/b2 into one stage-1 Other,
+    routing both into the single Other->Other final link. Merged = {X:5, Y:3+4=7} -> 'Y'.
+    The OLD port pre-argmax'd each raw link (a1->'X', a2->'Y') then credited each link's
+    full value to its majority -> X:9, Y:3 -> wrongly returned 'X'.
+    """
+    # Node ids: a1=0,b1=1,a2=2,b2=3 (stage 0 = a*, stage 1 = b*); all four flow below 9.
+    raw_index = {
+        "nodes": [
+            {"stage": 0, "label": "a1"},
+            {"stage": 1, "label": "b1"},
+            {"stage": 0, "label": "a2"},
+            {"stage": 1, "label": "b2"},
+        ],
+        "source": [0, 2],
+        "target": [1, 3],
+        "value": [9, 3],  # link a1->b1 has 9 rows (X:5,Y:4); a2->b2 has 3 rows (Y:3)
+        "used_rows": 12,
+    }
+    lineage = {
+        (0, 1): {"X": 5, "Y": 4},  # full distribution of a1->b1
+        (2, 3): {"Y": 3},  # full distribution of a2->b2
+    }
+    agg = sankey.aggregate_other(raw_index, min_flow=10, root_class_by_link=lineage)
+
+    # Both stage-0 nodes collapse into one Other, both stage-1 into one Other -> 1 final link.
+    assert len(agg["source"]) == 1
+    assert agg["value"][0] == 12  # flow conserved (9 + 3), unchanged behavior
+    # Merged distribution {X:5, Y:7} -> argmax 'Y'. The old port returned 'X' (the bug).
+    assert agg["link_class"][0] == "Y"
+
+
+def test_aggregate_other_merge_tie_break_matches_js_first_seen():
+    """A merged tie resolves to the FIRST-seen root_class in row-walk/merge order (JS parity).
+
+    Two raw links {artefact:1, living:1} and {living:1, detritus:1, artefact:2} merge into
+    {artefact:3, living:2, detritus:1}; argmax is the unique max 'artefact'. To exercise the
+    tie path specifically, also merge {artefact:2} + {living:2} -> {artefact:2, living:2} ->
+    'artefact' wins (first-seen), matching JS argmaxKey's `if(v>bv)`.
+    """
+    raw_index = {
+        "nodes": [
+            {"stage": 0, "label": "a1"},
+            {"stage": 1, "label": "b1"},
+            {"stage": 0, "label": "a2"},
+            {"stage": 1, "label": "b2"},
+        ],
+        "source": [0, 2],
+        "target": [1, 3],
+        "value": [2, 2],
+        "used_rows": 4,
+    }
+    lineage = {
+        (0, 1): {"artefact": 2},  # seen first in the merge walk
+        (2, 3): {"living": 2},
+    }
+    agg = sankey.aggregate_other(raw_index, min_flow=3, root_class_by_link=lineage)
+    assert len(agg["source"]) == 1
+    assert agg["value"][0] == 4
+    assert agg["link_class"][0] == "artefact"  # tie -> first-seen, not 'living'
+
+
+def test_sankey_lineage_parity_with_generate_sankey_on_frozen_csv():
+    """Regression: the previously-divergent frozen-CSV link now matches the JS semantics.
+
+    Default stages (Dataset, Kingdom, Phylum, Class). For min_flow in the merging range
+    (33..40) two raw links with differing distributions collapse into the Other->(blank)
+    final link at the Class stage. The faithful full-distribution argmax (a direct,
+    independent reference for generate_sankey.py's build()) yields 'artefact' at min_flow=40
+    (true merged dist {artefact:4, living:4, detritus:2, inert:1}, tie broken first-seen).
+    The OLD port returned 'living'. Assert the fixed port now equals the reference.
+    """
+    frozen = shapes.load_taxonomy()
+    stages = ["Dataset", "Kingdom", "Phylum", "Class"]
+    blank = shapes.BLANK
+
+    # --- Independent JS-faithful reference: full per-raw-link distributions, merged through
+    #     the same collapse, argmax'd once (no plotly; pure dict math). ---
+    node_index: dict[tuple[int, str], int] = {}
+
+    def nid(stage_i, value):
+        key = (stage_i, value)
+        idx = node_index.get(key)
+        if idx is None:
+            idx = len(node_index)
+            node_index[key] = idx
+        return idx
+
+    cols = [frozen.get_column(s).to_list() for s in stages]
+    rc_col = frozen.get_column("root_class").to_list()
+    full: dict[tuple[int, int], dict[str, int]] = {}
+    for ri in range(frozen.height):
+        vals = [cols[si][ri] or blank for si in range(len(stages))]
+        rc = (rc_col[ri] or "").strip() or sankey.LINEAGE_UNKNOWN
+        for i in range(len(stages) - 1):
+            s = nid(i, vals[i])
+            t = nid(i + 1, vals[i + 1])
+            full.setdefault((s, t), {})
+            full[(s, t)][rc] = full[(s, t)].get(rc, 0) + 1
+
+    index = shapes.build_sankey_index(frozen, stages)
+    lineage = sankey.link_lineage(frozen, stages)
+    # The fixed link_lineage must equal the independent full-distribution reference.
+    assert lineage == full
+
+    for min_flow in range(33, 41):
+        agg = sankey.aggregate_other(index, min_flow=min_flow, root_class_by_link=lineage)
+        nodes = agg["nodes"]
+
+        # Reference: merge full distributions through the same final-id collapse, argmax once.
+        in_flow = [0] * len(index["nodes"])
+        out_flow = [0] * len(index["nodes"])
+        for s, t, v in zip(index["source"], index["target"], index["value"], strict=True):
+            out_flow[s] += v
+            in_flow[t] += v
+        node_flow = [max(in_flow[i], out_flow[i]) for i in range(len(index["nodes"]))]
+        collapse = [min_flow > 1 and node_flow[i] < min_flow for i in range(len(index["nodes"]))]
+        remap = [-1] * len(index["nodes"])
+        ref_nodes = []
+        for i in range(len(index["nodes"])):
+            if collapse[i]:
+                continue
+            remap[i] = len(ref_nodes)
+            ref_nodes.append(dict(index["nodes"][i], other=False))
+        other_node: dict[int, int] = {}
+        other_taxa: dict[int, int] = {}
+        for i in range(len(index["nodes"])):
+            if collapse[i]:
+                other_taxa[index["nodes"][i]["stage"]] = other_taxa.get(index["nodes"][i]["stage"], 0) + 1
+        for stage, n in other_taxa.items():
+            other_node[stage] = len(ref_nodes)
+            ref_nodes.append({"stage": stage, "label": f"Other ({n} taxa)", "other": True})
+
+        def fid(r, _col=collapse, _on=other_node, _rm=remap, _nodes=index["nodes"]):
+            return _on[_nodes[r]["stage"]] if _col[r] else _rm[r]
+
+        ref_lineage: dict[tuple[int, int], dict[str, int]] = {}
+        for s, t in zip(index["source"], index["target"], strict=True):
+            fk = (fid(s), fid(t))
+            dst = ref_lineage.setdefault(fk, {})
+            for k, c in full.get((s, t), {}).items():
+                dst[k] = dst.get(k, 0) + c
+
+        # Locate every Other->(blank) final link in BOTH the port and the reference; assert parity.
+        port_links = {
+            (s, t): lc
+            for s, t, lc in zip(agg["source"], agg["target"], agg["link_class"], strict=True)
+            if nodes[s].get("other") and nodes[t]["label"] == blank
+        }
+        assert port_links, f"min_flow={min_flow}: expected an Other->(blank) link to exist"
+        for (s, t), lc in port_links.items():
+            expected = sankey._argmax_key(ref_lineage.get((s, t), {}))
+            assert lc == expected, f"min_flow={min_flow}: link {(s, t)} port={lc!r} != ref={expected!r}"
+
+    # Pin the specific previously-divergent case: at min_flow=40 the stage-0 Other -> stage-1
+    # (blank) link merges to {artefact:4, living:4, detritus:2, inert:1}; argmax (first-seen
+    # tie-break, artefact before living) = 'artefact'. The OLD port returned 'living' here.
+    agg40 = sankey.aggregate_other(index, min_flow=40, root_class_by_link=lineage)
+    nodes40 = agg40["nodes"]
+    kingdom_blank = [
+        lc
+        for s, t, lc in zip(agg40["source"], agg40["target"], agg40["link_class"], strict=True)
+        if nodes40[s].get("other") and nodes40[t]["label"] == blank and nodes40[s]["stage"] == 0 and nodes40[t]["stage"] == 1
+    ]
+    assert kingdom_blank == ["artefact"], (
+        f"expected the stage0-Other -> stage1-(blank) link colored 'artefact' (the previously-divergent "
+        f"merged case), got {kingdom_blank}"
+    )
 
 
 def test_aggregate_other_carries_link_class(df):
