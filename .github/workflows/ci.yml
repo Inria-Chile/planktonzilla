@@ -131,6 +131,7 @@ jobs:
         run: uv sync --group explorer
 
       # Run the explorer-group view tests (figure/render/export actually execute
-      # here). Add later view-phase test files (12/13) to this command as they land.
+      # here). Phase 12 (hierarchy) has landed; add the Phase 13 (map) test file to
+      # this explicit list as it lands.
       - name: Run explorer view tests
-        run: uv run --group explorer pytest tests/test_explorer_sankey.py -q
+        run: uv run --group explorer pytest tests/test_explorer_sankey.py tests/test_explorer_hierarchy.py -q
