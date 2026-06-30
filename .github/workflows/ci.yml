@@ -1,6 +1,7 @@
 # planktonzilla CI — runs on every push to main and every PR targeting main.
-# 3 parallel jobs (lint, test, dep-isolation). Stand-up artifact of v1.1 Phase 8;
-# dep-isolation guard added in Phase 9 (FND-04).
+# 4 parallel jobs (lint, test, dep-isolation, test-explorer). Stand-up artifact of
+# v1.1 Phase 8; dep-isolation guard added in Phase 9 (FND-04); the explorer-group
+# view job added in Phase 11 (SANKEY-01..05).
 
 name: CI
 
@@ -106,3 +107,30 @@ jobs:
             echo "LEAK: plotly importable in the core env"; exit 1
           fi
           echo "OK: gradio and plotly are both unimportable in core"
+
+  test-explorer:
+    name: Test explorer views (gradio/plotly/kaleido group)
+    runs-on: ubuntu-latest
+    # timeout-minutes: 15
+    # This is the ONLY job allowed to install the isolated viz deps
+    # (gradio/plotly/kaleido). It exercises the in-Space view modules whose
+    # figure/render/export tests importorskip those deps (so they SKIP in the
+    # core `test` job). The core `test` and `dep-isolation` jobs above stay
+    # viz-free on purpose and must NOT sync the explorer group.
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup uv (with cache)
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          enable-cache: true
+          python-version: "3.13"
+
+      - name: Install project deps + explorer group (uv sync --group explorer)
+        run: uv sync --group explorer
+
+      # Run the explorer-group view tests (figure/render/export actually execute
+      # here). Add later view-phase test files (12/13) to this command as they land.
+      - name: Run explorer view tests
+        run: uv run --group explorer pytest tests/test_explorer_sankey.py -q
