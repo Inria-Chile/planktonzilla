@@ -375,3 +375,63 @@ def aggregate_geo(
 
     merged = pl.concat([measured_agg, inferred_norm], how="vertical_relaxed")
     return merged.sort([GEO_DATASET_COL, "source", GEO_LAT_COL, GEO_LON_COL])
+
+
+def dataset_centroids(points: pl.DataFrame, *, weight_col: str = "count") -> pl.DataFrame:
+    """Collapse each MEASURED dataset to ONE count-weighted centroid marker (D4); inferred pass-through.
+
+    A single MEASURED dataset can carry tens of thousands of distinct per-(dataset, rounded-site)
+    points (a cruise track). Plotting one marker per site would push the rendered point set to the
+    17M-row cardinality on the free ``cpu-basic`` Space (T-14-04, DoS-of-self). This PURE helper
+    collapses every measured dataset to exactly ONE representative point — the COUNT-WEIGHTED mean
+    of that dataset's sites — so the plotted measured point set is bounded by the number of
+    measured datasets, never the raw site cardinality.
+
+    Weighting is by ``weight_col`` (``count``), NOT a plain arithmetic mean of the coords::
+
+        centroid_lat = sum(lat_i * count_i) / sum(count_i)
+        centroid_lon = sum(lon_i * count_i) / sum(count_i)
+        centroid_count = sum(count_i)
+
+    INFERRED rows (``category != CATEGORY_MEASURED`` — i.e. inferred-high / inferred-low) PASS
+    THROUGH UNCHANGED: they are already one dataset-level point each, so the centroid logic never
+    touches them. The output schema is IDENTICAL to the input's canonical 6-column shape
+    ``{dataset, Latitude, Longitude, count, source, category}``; the collapsed measured rows keep
+    ``source="measured"`` and ``category=CATEGORY_MEASURED``. The input is never mutated.
+
+    Divide-by-zero note: a dataset with summed ``count`` == 0 cannot occur downstream of
+    ``aggregate_geo`` (its ``drop_nulls`` + ``pl.len()``/``lit(1)`` counts are always >= 1), so no
+    guard is applied; if such a frame were ever passed the weighted-mean would be null (never a
+    raised exception).
+
+    Args:
+        points: A canonical geo points frame (typically an ``aggregate_geo`` result) with columns
+            ``{dataset, Latitude, Longitude, count, source, category}``.
+        weight_col: The per-row weight column for the weighted mean. Defaults to ``"count"``.
+
+    Returns:
+        A polars DataFrame with the same 6-column schema: measured rows collapsed to one
+        count-weighted centroid per dataset (summed count), inferred rows untouched. Sorted by
+        ``[dataset, source, Latitude, Longitude]`` to mirror ``aggregate_geo``.
+    """
+    schema = [GEO_DATASET_COL, GEO_LAT_COL, GEO_LON_COL, "count", "source", "category"]
+
+    measured_rows = points.filter(pl.col("category") == CATEGORY_MEASURED)
+    non_measured_rows = points.filter(pl.col("category") != CATEGORY_MEASURED).select(schema)
+
+    collapsed_measured = (
+        measured_rows.group_by(GEO_DATASET_COL)
+        .agg(
+            (pl.col(GEO_LAT_COL) * pl.col(weight_col)).sum() / pl.col(weight_col).sum(),
+            (pl.col(GEO_LON_COL) * pl.col(weight_col)).sum() / pl.col(weight_col).sum(),
+            pl.col(weight_col).sum().alias("count"),
+        )
+        .with_columns(
+            pl.lit("measured").alias("source"),
+            pl.lit(CATEGORY_MEASURED).alias("category"),
+        )
+        .select(schema)
+    )
+
+    merged = pl.concat([collapsed_measured, non_measured_rows], how="vertical_relaxed")
+    return merged.sort([GEO_DATASET_COL, "source", GEO_LAT_COL, GEO_LON_COL])
