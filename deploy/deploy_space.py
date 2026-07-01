@@ -19,13 +19,16 @@ Design / safety:
 - The public HF dataset needs no token at runtime; the deploy uses the caller's
   cached HF login (write access to the target org required).
 
+Everyday redeploy (existing, already-public space) — one command:
+    uv run --group explorer python deploy/deploy_space.py --update       # smoke -> upload -> wait for RUNNING
+
 Stepwise usage (run from the repo root):
     uv run --group explorer python deploy/deploy_space.py --stage        # build + audit staging dir
     uv run --group explorer python deploy/deploy_space.py --smoke-local  # build_demo() offline
-    uv run --group explorer python deploy/deploy_space.py --create       # create PRIVATE space
+    uv run --group explorer python deploy/deploy_space.py --create       # create PRIVATE space (first-time)
     uv run --group explorer python deploy/deploy_space.py --upload       # upload curated tree
     uv run --group explorer python deploy/deploy_space.py --status       # runtime stage
-    uv run --group explorer python deploy/deploy_space.py --make-public --confirm-public
+    uv run --group explorer python deploy/deploy_space.py --make-public --confirm-public  # first-time publish
 """
 
 from __future__ import annotations
@@ -170,6 +173,44 @@ def make_public(confirm: bool) -> None:
     print(f"space {REPO_ID} is now PUBLIC")
 
 
+def _poll_until_running(deadline_s: int = 600, interval_s: int = 20) -> None:
+    """Block until the Space reaches a terminal runtime stage; exit non-zero on anything but RUNNING."""
+    import time
+
+    from huggingface_hub import HfApi
+
+    api = HfApi()
+    terminal = {"RUNNING", "RUNTIME_ERROR", "BUILD_ERROR", "PAUSED", "STOPPED"}
+    waited = 0
+    last = None
+    while waited < deadline_s:
+        info = api.space_info(REPO_ID)
+        runtime = getattr(info, "runtime", None)
+        stage_ = getattr(runtime, "stage", None) if runtime else None
+        if stage_ != last:
+            print(f"[{waited}s] stage={stage_}", flush=True)
+            last = stage_
+        if stage_ in terminal:
+            if stage_ != "RUNNING":
+                sys.exit(f"Space did NOT reach RUNNING (stage={stage_}). Logs: https://huggingface.co/spaces/{REPO_ID}")
+            print(f"updated OK -> https://huggingface.co/spaces/{REPO_ID}")
+            return
+        time.sleep(interval_s)
+        waited += interval_s
+    sys.exit(f"TIMEOUT after {waited}s (last stage={last}). Logs: https://huggingface.co/spaces/{REPO_ID}")
+
+
+def update() -> None:
+    """One-shot redeploy of an EXISTING space: offline smoke -> curated upload -> wait for RUNNING.
+
+    Does NOT create the space or flip visibility (an already-public space stays public). Use the
+    individual --create / --make-public flags for first-time provisioning.
+    """
+    smoke_local()
+    upload()
+    _poll_until_running()
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--stage", action="store_true", help="build + audit the curated staging dir")
@@ -177,11 +218,15 @@ def main() -> None:
     ap.add_argument("--create", action="store_true", help="create the PRIVATE space")
     ap.add_argument("--upload", action="store_true", help="upload the curated tree")
     ap.add_argument("--status", action="store_true", help="print the space runtime stage")
+    ap.add_argument("--update", action="store_true", help="one-shot redeploy: smoke-local -> upload -> wait for RUNNING")
     ap.add_argument("--make-public", action="store_true", help="flip the space public (needs --confirm-public)")
     ap.add_argument("--confirm-public", action="store_true", help="explicit confirmation for the public flip")
     args = ap.parse_args()
 
     did = False
+    if args.update:
+        update()
+        did = True
     if args.stage:
         stage()
         did = True

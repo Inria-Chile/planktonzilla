@@ -1,0 +1,59 @@
+# Auto-redeploy the planktonzilla explorer HF Space on push to main.
+#
+# Re-uploads the CURATED subset (see deploy/deploy_space.py) whenever a file that
+# the Space actually ships changes. Runs `--update` (offline smoke -> curated
+# secret-audited upload -> wait for RUNNING), so a broken app fails the workflow.
+#
+# PREREQUISITES (one-time):
+#   1. Push this repo to a GitHub remote.
+#   2. Add a repo secret named HF_TOKEN — a Hugging Face token with WRITE access to
+#      the project-oceania org (Settings > Secrets and variables > Actions > New secret).
+# The Space must already exist + be public (created via `deploy_space.py --create`
+# + `--make-public --confirm-public`). This workflow only UPDATES it.
+
+name: Deploy Space
+
+"on":
+  push:
+    branches: [main]
+    paths:
+      # Only the files that make up the curated Space upload (deploy_space.py CURATED
+      # + the Space README). Unrelated changes (training code, docs, notebooks) do NOT redeploy.
+      - "planktonzilla/app.py"
+      - "planktonzilla/explorer/**"
+      - "planktonzilla/planktonzilla_dataset/constants.py"
+      - "planktonzilla/planktonzilla_dataset/planktonzilla_taxonomy.csv"
+      - "planktonzilla/utils/**"
+      - "requirements.txt"
+      - "deploy/README.md"
+      - "deploy/deploy_space.py"
+  workflow_dispatch: {}
+
+concurrency:
+  # One deploy at a time per ref; cancel a superseded in-flight deploy.
+  group: deploy-space-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Redeploy HF Space
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup uv (with cache)
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          enable-cache: true
+          python-version: "3.13"
+
+      - name: Install deps (explorer group — needed for the offline build smoke)
+        run: uv sync --group explorer
+
+      - name: Redeploy (smoke -> upload -> wait for RUNNING)
+        env:
+          # HfApi picks the write token up from HF_TOKEN automatically.
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run --group explorer python deploy/deploy_space.py --update
