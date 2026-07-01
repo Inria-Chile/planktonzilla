@@ -1,0 +1,19 @@
+# Hugging Face Space install manifest (the Space installs from THIS file, NOT uv.lock).
+# This is NOT the dev/training environment — that lives in pyproject.toml + uv.lock.
+# Scope: only what the tabbed explorer app.py needs at runtime. The heavy training stack
+# (torch/transformers/timm/peft/etc.) is deliberately EXCLUDED to shrink the install surface
+# (T-14-01). Version ranges mirror the audited pyproject.toml ranges; gradio is aligned with
+# the Space README sdk_version (deploy/README.md).
+
+# --- Explorer view stack (isolated [dependency-groups].explorer in pyproject.toml) ---
+gradio>=6.0,<7
+plotly>=6.0,<7
+kaleido>=0.2.1
+
+# --- Core app runtime deps the explorer imports (from [project.dependencies]) ---
+polars>=1.41.2
+huggingface_hub
+datasets>=4.4.0
+# pyarrow: the data_access.py lazy parquet read backend. Transitive in the dev env, but pinned
+# explicitly here because requirements.txt is the Space's ONLY resolver source (no uv.lock).
+pyarrow
