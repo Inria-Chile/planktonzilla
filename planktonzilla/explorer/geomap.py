@@ -144,8 +144,9 @@ def make_geo_figure(points: pl.DataFrame, *, datasets: str | list[str] | None = 
     The figure's ONLY traces are ``go.Scattergeo`` (type ``"scattergeo"``) on the built-in
     natural-earth basemap — NEVER ``go.Scattermapbox``/``scatter_mapbox``, no tiles, no token
     (D2). For each category PRESENT in ``points`` (in ``CATEGORY_ORDER``) exactly ONE legended,
-    distinctly-styled trace is added (Measured / Inferred — high / Inferred — low, D3): one
-    marker per (dataset, rounded site), hover shows the dataset name + sample count (MAP-01).
+    distinctly-styled trace is added (Measured / Inferred — high / Inferred — low, D3): one marker
+    per measured dataset (count-weighted centroid); inferred stays one point per dataset. Hover
+    shows the dataset name + summed sample count (MAP-01).
     Empty/na/no-coord input yields zero markers across all traces (SC4 — ``aggregate_geo``
     already excludes na + no-coord rows). ``datasets`` (a single dataset or a list) narrows the
     plotted markers to that dataset only (MAP-03); ``None``/``"All"`` plots everything.
@@ -169,6 +170,13 @@ def make_geo_figure(points: pl.DataFrame, *, datasets: str | list[str] | None = 
         wanted = [d for d in datasets if d and d != ALL_DATASETS]
         if wanted:
             selected = points.filter(pl.col(DATASET_COLUMN).cast(pl.Utf8).str.strip_chars().is_in(wanted))
+
+    # Collapse the MEASURED rows to ONE count-weighted centroid per dataset (D4, T-14-04) so a
+    # cruise track plots a single marker, not tens of thousands. Applied AFTER the dataset
+    # narrowing so a single-dataset view still collapses that dataset's sites to one centroid.
+    # dataset_centroids leaves the inferred categories untouched (one point per inferred dataset).
+    if "category" in selected.columns:
+        selected = shapes.dataset_centroids(selected)
 
     traces = []
     has_category = "category" in selected.columns
