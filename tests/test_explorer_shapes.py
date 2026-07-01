@@ -310,6 +310,182 @@ def test_aggregate_geo_merges_inferred_and_reconciles_casing():
     assert "inferred-low" in out.filter(pl.col("dataset") == "i2").get_column("category").to_list()
 
 
+def _centroid_frame(rows: list[dict]) -> pl.DataFrame:
+    """Build a canonical 6-column geo points frame (mirrors aggregate_geo output) for centroids."""
+    return pl.DataFrame(
+        rows,
+        schema={
+            shapes.GEO_DATASET_COL: pl.Utf8,
+            shapes.GEO_LAT_COL: pl.Float64,
+            shapes.GEO_LON_COL: pl.Float64,
+            "count": pl.Int64,
+            "source": pl.Utf8,
+            "category": pl.Utf8,
+        },
+    )
+
+
+def test_dataset_centroids_collapses_cruise_track():
+    """A MEASURED dataset with many distinct sites collapses to 1 weighted-mean marker (D4)."""
+    # cruiseA at 3 distinct sites with counts 10/20/70 -> exactly 1 output row.
+    points = _centroid_frame(
+        [
+            {
+                shapes.GEO_DATASET_COL: "cruiseA",
+                shapes.GEO_LAT_COL: 10.0,
+                shapes.GEO_LON_COL: 100.0,
+                "count": 10,
+                "source": "measured",
+                "category": shapes.CATEGORY_MEASURED,
+            },
+            {
+                shapes.GEO_DATASET_COL: "cruiseA",
+                shapes.GEO_LAT_COL: 20.0,
+                shapes.GEO_LON_COL: 200.0,
+                "count": 20,
+                "source": "measured",
+                "category": shapes.CATEGORY_MEASURED,
+            },
+            {
+                shapes.GEO_DATASET_COL: "cruiseA",
+                shapes.GEO_LAT_COL: 30.0,
+                shapes.GEO_LON_COL: 300.0,
+                "count": 70,
+                "source": "measured",
+                "category": shapes.CATEGORY_MEASURED,
+            },
+        ]
+    )
+    out = shapes.dataset_centroids(points)
+    # Schema is preserved (canonical 6-column order).
+    assert out.columns == [shapes.GEO_DATASET_COL, shapes.GEO_LAT_COL, shapes.GEO_LON_COL, "count", "source", "category"]
+    cruise = out.filter(pl.col(shapes.GEO_DATASET_COL) == "cruiseA")
+    assert cruise.height == 1  # exactly ONE marker per measured dataset
+    # Count-weighted mean (NOT plain arithmetic mean of the coords).
+    expected_lat = (10.0 * 10 + 20.0 * 20 + 30.0 * 70) / 100
+    expected_lon = (100.0 * 10 + 200.0 * 20 + 300.0 * 70) / 100
+    assert cruise.get_column(shapes.GEO_LAT_COL).to_list()[0] == pytest.approx(expected_lat)
+    assert cruise.get_column(shapes.GEO_LON_COL).to_list()[0] == pytest.approx(expected_lon)
+    assert cruise.get_column("count").to_list()[0] == 100  # summed count
+    assert cruise.get_column("source").to_list()[0] == "measured"
+    assert cruise.get_column("category").to_list()[0] == shapes.CATEGORY_MEASURED
+
+
+def test_dataset_centroids_inferred_passthrough():
+    """INFERRED rows pass through unchanged; measured rows collapse to one per dataset (D4)."""
+    points = _centroid_frame(
+        [
+            # Measured dataset "m" at 2 sites -> collapses to 1.
+            {
+                shapes.GEO_DATASET_COL: "m",
+                shapes.GEO_LAT_COL: 0.0,
+                shapes.GEO_LON_COL: 0.0,
+                "count": 1,
+                "source": "measured",
+                "category": shapes.CATEGORY_MEASURED,
+            },
+            {
+                shapes.GEO_DATASET_COL: "m",
+                shapes.GEO_LAT_COL: 2.0,
+                shapes.GEO_LON_COL: 4.0,
+                "count": 3,
+                "source": "measured",
+                "category": shapes.CATEGORY_MEASURED,
+            },
+            # Inferred-high row -> untouched.
+            {
+                shapes.GEO_DATASET_COL: "ih",
+                shapes.GEO_LAT_COL: 47.35,
+                shapes.GEO_LON_COL: 8.68,
+                "count": 1,
+                "source": "inferred",
+                "category": shapes.CATEGORY_INFERRED_HIGH,
+            },
+            # Inferred-low row -> untouched.
+            {
+                shapes.GEO_DATASET_COL: "il",
+                shapes.GEO_LAT_COL: 59.5,
+                shapes.GEO_LON_COL: 21.4,
+                "count": 1,
+                "source": "inferred",
+                "category": shapes.CATEGORY_INFERRED_LOW,
+            },
+        ]
+    )
+    out = shapes.dataset_centroids(points)
+    # Measured "m" collapsed to one weighted-mean row.
+    m = out.filter(pl.col(shapes.GEO_DATASET_COL) == "m")
+    assert m.height == 1
+    assert m.get_column(shapes.GEO_LAT_COL).to_list()[0] == pytest.approx((0.0 * 1 + 2.0 * 3) / 4)
+    assert m.get_column(shapes.GEO_LON_COL).to_list()[0] == pytest.approx((0.0 * 1 + 4.0 * 3) / 4)
+    assert m.get_column("count").to_list()[0] == 4
+    # Inferred rows pass through unchanged (same coords, count, category).
+    ih = out.filter(pl.col(shapes.GEO_DATASET_COL) == "ih")
+    assert ih.height == 1
+    assert ih.get_column(shapes.GEO_LAT_COL).to_list()[0] == pytest.approx(47.35)
+    assert ih.get_column(shapes.GEO_LON_COL).to_list()[0] == pytest.approx(8.68)
+    assert ih.get_column("count").to_list()[0] == 1
+    assert ih.get_column("category").to_list()[0] == shapes.CATEGORY_INFERRED_HIGH
+    il = out.filter(pl.col(shapes.GEO_DATASET_COL) == "il")
+    assert il.get_column("category").to_list()[0] == shapes.CATEGORY_INFERRED_LOW
+
+
+def test_dataset_centroids_two_measured_datasets():
+    """Two measured datasets -> 2 output rows, one per dataset, each at its own weighted centroid."""
+    points = _centroid_frame(
+        [
+            {
+                shapes.GEO_DATASET_COL: "d1",
+                shapes.GEO_LAT_COL: 10.0,
+                shapes.GEO_LON_COL: 20.0,
+                "count": 1,
+                "source": "measured",
+                "category": shapes.CATEGORY_MEASURED,
+            },
+            {
+                shapes.GEO_DATASET_COL: "d1",
+                shapes.GEO_LAT_COL: 30.0,
+                shapes.GEO_LON_COL: 60.0,
+                "count": 1,
+                "source": "measured",
+                "category": shapes.CATEGORY_MEASURED,
+            },
+            {
+                shapes.GEO_DATASET_COL: "d2",
+                shapes.GEO_LAT_COL: -5.0,
+                shapes.GEO_LON_COL: -10.0,
+                "count": 4,
+                "source": "measured",
+                "category": shapes.CATEGORY_MEASURED,
+            },
+            {
+                shapes.GEO_DATASET_COL: "d2",
+                shapes.GEO_LAT_COL: 5.0,
+                shapes.GEO_LON_COL: 10.0,
+                "count": 1,
+                "source": "measured",
+                "category": shapes.CATEGORY_MEASURED,
+            },
+        ]
+    )
+    out = shapes.dataset_centroids(points)
+    assert out.height == 2  # exactly one row per measured dataset
+    d1 = out.filter(pl.col(shapes.GEO_DATASET_COL) == "d1")
+    assert d1.get_column(shapes.GEO_LAT_COL).to_list()[0] == pytest.approx((10.0 + 30.0) / 2)
+    assert d1.get_column("count").to_list()[0] == 2
+    d2 = out.filter(pl.col(shapes.GEO_DATASET_COL) == "d2")
+    assert d2.get_column(shapes.GEO_LAT_COL).to_list()[0] == pytest.approx((-5.0 * 4 + 5.0 * 1) / 5)
+    assert d2.get_column("count").to_list()[0] == 5
+
+
+def test_dataset_centroids_empty():
+    """Empty input (correct schema) -> empty output, schema preserved."""
+    points = _centroid_frame([])
+    out = shapes.dataset_centroids(points)
+    assert out.height == 0
+    assert out.columns == [shapes.GEO_DATASET_COL, shapes.GEO_LAT_COL, shapes.GEO_LON_COL, "count", "source", "category"]
+
+
 def test_aggregate_geo_measured_wins_over_inferred_for_same_dataset():
     """A dataset present in BOTH measured and inferred keeps ONLY its measured (KNOWN) point.
 
