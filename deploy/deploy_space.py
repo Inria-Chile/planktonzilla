@@ -4,8 +4,8 @@
 Deploy the planktonzilla explorer as a Hugging Face Gradio Space.
 
 This is the Phase-14 (SPACE-03) deploy helper. It uploads a CURATED, secret-free
-subset of the repo — only what ``app.py`` imports at runtime — to a Gradio Space,
-then (behind an explicit ``--confirm-public`` gate) flips it public.
+subset of the repo — only what ``planktonzilla/app.py`` imports at runtime — to a
+Gradio Space, then (behind an explicit ``--confirm-public`` gate) flips it public.
 
 Design / safety:
 - **Explicit allowlist** (``CURATED``): we upload exactly the files the app needs,
@@ -41,9 +41,9 @@ REPO_ID = "project-oceania/planktonzilla-explorer"
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # --- The curated allowlist: repo-relative paths uploaded to the Space -----------------
-# Only what app.py imports at runtime (verified import graph + Path(__file__) CSV resolution).
+# Only what planktonzilla/app.py imports at runtime (verified import graph + Path(__file__) CSV resolution).
 CURATED: list[str] = [
-    "app.py",
+    "planktonzilla/app.py",
     "requirements.txt",
     "planktonzilla/__init__.py",
     "planktonzilla/explorer/__init__.py",
@@ -121,7 +121,7 @@ def _audit(staging: Path) -> None:
 def smoke_local() -> None:
     """Build the Gradio Blocks offline (imports resolve, 4 tabs) — no launch, no network."""
     sys.path.insert(0, str(REPO_ROOT))
-    import app
+    import planktonzilla.app as app
 
     demo = app.build_demo()
     # Blocks built without launching or hitting the network (geomap read is deferred).

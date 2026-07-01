@@ -85,7 +85,7 @@ def _all_markdown_text(demo) -> str:
 def test_app_builds_four_tabs():
     """app.build_demo() builds a gr.Blocks with exactly 4 tabs: Sankey/Hierarchy/Map/About (SPACE-01)."""
     pytest.importorskip("gradio")
-    import app
+    import planktonzilla.app as app
 
     demo = app.build_demo()  # no .launch(), no fragment.load -> network-free
     labels = _tab_labels(demo)
@@ -97,7 +97,7 @@ def test_app_builds_four_tabs():
 def test_about_panel_has_inferred_caveat():
     """The About panel carries the inferred-location caveat so inferred != ground truth (SPACE-02)."""
     pytest.importorskip("gradio")
-    import app
+    import planktonzilla.app as app
 
     # Assert against the built Blocks' Markdown text (falls back to module source if empty).
     demo = app.build_demo()
@@ -110,7 +110,7 @@ def test_about_panel_has_inferred_caveat():
 def test_map_tab_has_loading_affordance():
     """A loading affordance exists under the Map tab (D3) — a refactor can't silently drop it."""
     pytest.importorskip("gradio")
-    import app
+    import planktonzilla.app as app
 
     demo = app.build_demo()
     text = (_all_markdown_text(demo) + "\n" + app.MAP_LOADING_NOTE).lower()
