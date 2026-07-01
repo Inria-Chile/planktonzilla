@@ -270,11 +270,16 @@ def render(points: pl.DataFrame | None = None, *, loader=None):
     * a ``gr.Plot`` output rendering the token-free natural-earth ``go.Scattergeo`` map.
 
     gradio is imported INSIDE this function (D5). When ``points`` is not supplied the
-    category-graded points are built via the injectable ``data_access.load_geo`` seam (D1) +
-    the committed inferred CSV (network-free when ``loader`` is injected).
+    category-graded points are built LAZILY via the injectable ``data_access.load_geo`` seam (D1)
+    + the committed inferred CSV — the live read is DEFERRED to ``fragment.load`` (the first-load
+    callback), NOT run while the ``gr.Blocks`` is being constructed. This keeps Blocks
+    construction network-free (the composition smoke test in Phase 14 builds the app without
+    triggering the read) and lets the Space show a loading state during the cold-start read (D3).
+    When ``points`` IS supplied (or ``loader`` is injected in tests), that frame is used directly.
 
     Args:
-        points: Optional pre-built category-graded points frame. Built via the seam when ``None``.
+        points: Optional pre-built category-graded points frame. Built lazily via the seam when
+            ``None`` (deferred to ``fragment.load``).
         loader: Optional injected measured loader ``(repo_id) -> pl.DataFrame`` (network-free).
 
     Returns:
@@ -283,13 +288,28 @@ def render(points: pl.DataFrame | None = None, *, loader=None):
     """
     import gradio as gr
 
-    if points is None:
-        points = _points(loader=loader)
+    # Cache the points across callbacks WITHOUT reading at build time. The first _update call
+    # (fired by fragment.load) resolves the frame via the seam; subsequent dropdown changes reuse
+    # it. Pre-supplied ``points`` short-circuit the read entirely (network-free tests).
+    state: dict[str, pl.DataFrame | None] = {"points": points}
 
-    choices = distinct_datasets(points)
+    def _resolve() -> pl.DataFrame:
+        if state["points"] is None:
+            state["points"] = _points(loader=loader)
+        return state["points"]
+
+    # Build the dropdown choices lazily too: if points are pre-supplied use them; otherwise start
+    # with just "All" and refresh the choices on first load (so build stays network-free).
+    initial_choices = distinct_datasets(points) if points is not None else [ALL_DATASETS]
 
     def _update(dataset):
-        return make_geo_figure(points, datasets=dataset)
+        return make_geo_figure(_resolve(), datasets=dataset)
+
+    def _first_load(dataset):
+        # Runs on fragment.load: resolve the (cached) live read, populate the plot AND refresh the
+        # dropdown choices. Returning a gr.Dropdown update keeps the filter usable after cold start.
+        resolved = _resolve()
+        return make_geo_figure(resolved, datasets=dataset), gr.update(choices=distinct_datasets(resolved))
 
     with gr.Blocks() as fragment:
         gr.Markdown(
@@ -299,12 +319,13 @@ def render(points: pl.DataFrame | None = None, *, loader=None):
         )
         with gr.Row():
             with gr.Column(scale=1):
-                dataset_in = gr.Dropdown(choices=choices, value=ALL_DATASETS, label="Source dataset filter")
+                dataset_in = gr.Dropdown(choices=initial_choices, value=ALL_DATASETS, label="Source dataset filter")
             with gr.Column(scale=4):
                 plot = gr.Plot(label="Sampling locations")
 
         dataset_in.change(_update, inputs=[dataset_in], outputs=[plot])
-        fragment.load(_update, inputs=[dataset_in], outputs=[plot])
+        # show_progress makes the cold-start live read a visible loading state (D3).
+        fragment.load(_first_load, inputs=[dataset_in], outputs=[plot, dataset_in], show_progress="full")
 
     return fragment
 
