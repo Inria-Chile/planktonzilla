@@ -8,7 +8,7 @@ sdk_version: "6.19.0"
 app_file: app.py
 python_version: "3.12"
 pinned: false
-short_description: "Interactive Sankey / Hierarchy / Map explorer over the planktonzilla taxonomy & sampling data. The map distinguishes Measured from Inferred locations — inferred points are dataset-level estimates, NOT ground truth."
+short_description: "planktonzilla taxonomy & sampling explorer"
 ---
 
 # planktonzilla explorer
