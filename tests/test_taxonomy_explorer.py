@@ -1,13 +1,14 @@
 """
 (c) Inria
 
-Network-free tests for the pure polars data layer of tools/taxonomy_explorer.py.
+Network-free tests for the pure polars data layer of planktonzilla/explorer/taxonomy_explorer.py.
 
 These tests import ONLY the pure helpers (no gradio, no plotly) so they run in the
-project test env, which ships polars but not gradio/plotly. The taxonomy explorer
-lives in tools/ (not an importable package), so we load it by file path with
-importlib. A tiny hand-built CSV fixture written to tmp_path exercises every
-transform with predictable, hand-computed expectations.
+project test env, which ships polars but not gradio/plotly. We load the module by
+file path with importlib (rather than a package import) so this test never triggers
+the module's function-local gradio/plotly imports. A tiny hand-built CSV fixture
+written to tmp_path exercises every transform with predictable, hand-computed
+expectations.
 """
 
 import importlib.util
@@ -16,8 +17,8 @@ from pathlib import Path
 
 import pytest
 
-# Load the tool module by absolute path (tools/ is not a package).
-_TOOL_PATH = Path(__file__).resolve().parent.parent / "tools" / "taxonomy_explorer.py"
+# Load the explorer tool module by absolute path (avoids triggering its lazy viz imports).
+_TOOL_PATH = Path(__file__).resolve().parent.parent / "planktonzilla" / "explorer" / "taxonomy_explorer.py"
 _spec = importlib.util.spec_from_file_location("taxonomy_explorer", _TOOL_PATH)
 taxonomy_explorer = importlib.util.module_from_spec(_spec)
 sys.modules["taxonomy_explorer"] = taxonomy_explorer

@@ -27,12 +27,12 @@ the pure layer directly.
 
 Run the full app (resolves gradio/plotly via PEP 723 inline metadata)::
 
-    uv run tools/taxonomy_explorer.py
+    uv run planktonzilla/explorer/taxonomy_explorer.py
 
 CI-style verification without launching a server::
 
-    uv run tools/taxonomy_explorer.py --smoke
-    uv run tools/taxonomy_explorer.py --smoke --csv path/to/other.csv
+    uv run planktonzilla/explorer/taxonomy_explorer.py --smoke
+    uv run planktonzilla/explorer/taxonomy_explorer.py --smoke --csv path/to/other.csv
 """
 
 from __future__ import annotations
@@ -464,11 +464,12 @@ def build_app(df: pl.DataFrame):
 # CLI
 # --------------------------------------------------------------------------- #
 def default_csv() -> Path:
-    """Locate the bundled taxonomy CSV relative to this script (repo/tools/).
+    """Locate the bundled taxonomy CSV relative to this script (repo/planktonzilla/explorer/).
 
-    Mirrors tools/generate_sankey.py's resolution (do NOT import that module).
+    Mirrors tools/generate_sankey.py's resolution (do NOT import that module). This file lives at
+    ``planktonzilla/explorer/`` so the repo root is three levels up (explorer -> planktonzilla -> repo).
     """
-    repo = Path(__file__).resolve().parent.parent
+    repo = Path(__file__).resolve().parent.parent.parent
     return repo / "planktonzilla" / "planktonzilla_dataset" / "planktonzilla_taxonomy.csv"
 
 

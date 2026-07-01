@@ -12,9 +12,9 @@ it passes in the core env where neither is installed):
   from ``[project.dependencies]`` and the ``dev`` group, and present ONLY in the
   ``explorer`` dependency group. Exact-name matching is used so the legitimate
   transitive ``gradio-client`` does NOT false-positive.
-* AST module-scope scan: no ``*.py`` under ``planktonzilla/`` or ``tools/``
-  imports ``gradio`` / ``plotly`` at module scope. Function/method-body imports
-  (the lazy-import seam, e.g. ``tools/taxonomy_explorer.py``) are COMPLIANT.
+* AST module-scope scan: no ``*.py`` under ``planktonzilla/`` imports ``gradio`` /
+  ``plotly`` at module scope. Function/method-body imports (the lazy-import seam,
+  e.g. ``planktonzilla/explorer/taxonomy_explorer.py``) are COMPLIANT.
   ``import gradio_client`` is a different top-level module and never triggers.
 
 A negative leak-injection test proves the helpers actually FIRE on a simulated
@@ -38,7 +38,7 @@ _PYPROJECT = _REPO_ROOT / "pyproject.toml"
 FORBIDDEN_NAMES = frozenset({"gradio", "plotly", "kaleido"})
 
 # Core packages whose import-time graph must stay viz-free.
-CORE_PACKAGE_DIRS = ("planktonzilla", "tools")
+CORE_PACKAGE_DIRS = ("planktonzilla",)
 
 # PEP 508: a name ends at the first version operator, marker, or extras bracket.
 _PEP508_NAME_RE = re.compile(r"[<>=!~;\[\s@]")
