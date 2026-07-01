@@ -102,8 +102,13 @@ def build_demo():
     """
     import gradio as gr
 
-    with gr.Blocks(title="planktonzilla explorer") as demo:
-        gr.Markdown("# planktonzilla explorer")
+    with gr.Blocks(title="Planktonzilla dataset explorer", analytics_enabled=False) as demo:
+        with gr.Row():
+            with gr.Column(scale=1):
+                gr.HTML("<img alt='Inria logo' src='https://inria.fr/themes/custom/inria/logo/logo.svg'/>", container=False)
+            with gr.Column(scale=11):
+                gr.Markdown("# Planktonzilla dataset explorer")
+                gr.Markdown("### Part of [Project OcéanIA 🌊](https://oceania.inria.cl).")
         with gr.Tabs():
             with gr.Tab("Sankey"):
                 sankey.render()
@@ -124,9 +129,16 @@ def main() -> None:
     root Space runtime imports ``planktonzilla.app`` and calls ``build_demo()`` directly, so this
     launch path is only exercised for local ``python -m planktonzilla.app`` runs.
     """
-    import gradio as gr  # noqa: F401  -- keep the launch path's viz import function-local (D1)
+    import gradio as gr  # function-local viz import (D1) — used by the theme + launch below
 
-    build_demo().launch()
+    theme = gr.themes.Ocean(
+        primary_hue="rose",
+        secondary_hue="fuchsia",
+        radius_size="md",
+        font=[gr.themes.GoogleFont("Inria Sans"), "ui-sans-serif", "system-ui", "sans-serif"],
+    )
+
+    build_demo().launch(theme=theme)
 
 
 if __name__ == "__main__":
