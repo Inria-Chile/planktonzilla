@@ -1,5 +1,5 @@
 <div align="center">
-<img src="https://raw.githubusercontent.com/Inria-Chile/planktonzilla/main/docs/banner.jpg" width="92%" alt="planktonzilla banner"/><br/>
+<img src="https://raw.githubusercontent.com/Inria-Chile/planktonzilla/main/docs/banner.jpg" width="100%" alt="planktonzilla banner"/><br/>
 
 # 🪸 🦠 🪼 🦐 🦖 🐙 🫧 🌊<br/>`planktonzilla`
 
@@ -18,8 +18,6 @@ Multimodal deep learning framework, datasets, and models for plankton identifica
 [![License: MIT](https://img.shields.io/github/license/Inria-Chile/planktonzilla?style=for-the-badge)](LICENSE)
 
 </div>
-
-
 
 `planktonzilla` is a framework for managing datasets, training computer vision models, and evaluating performance on various plankton image identification tasks. Built on top of Hugging Face Transformers and Hydra for configuration management, it offers specialized tools for handling imbalanced plankton datasets and state-of-the-art imbalance learning loss functions.
 
