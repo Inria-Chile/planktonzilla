@@ -23,9 +23,16 @@ Multimodal deep learning framework, datasets, and models for plankton identifica
 
 ## Online Resources
 
-- `planktonzilla-17M` dataset: 17 million plankton images from 9 different datasets, all standardized and preprocessed for deep learning applications. Available: <https://huggingface.co/datasets/project-oceania/planktonzilla-17m>.
-- OcéanIA project website: <https://oceania.inria.cl>.
-- OcéanIA on Hugging Face Hub (datasets, trained models, and demos): <https://huggingface.co/project-oceania>.
+- `planktonzilla-17M` dataset: 17 million plankton images from 9 different datasets, all standardized and preprocessed for deep learning applications: [`project-oceania/planktonzilla-17M`](https://huggingface.co/datasets/project-oceania/planktonzilla-17m).
+- Planktonzilla taxonomy mapping explorer: [`project-oceania/planktonzilla-explorer`](https://huggingface.co/spaces/project-oceania/planktonzilla-explorer)
+- Models trained on [`project-oceania/planktonzilla-17M`](https://huggingface.co/datasets/project-oceania/planktonzilla-17m):
+  - [`project-oceania/CLIP-ViT-B-16.openai-pt.planktonzilla-pt`](https://huggingface.co/project-oceania/CLIP-ViT-B-16.openai-pt.planktonzilla-pt)
+  - [`project-oceania/CLIP-ViT-B-16.bioclip-pt.planktonzilla-pt`](https://huggingface.co/project-oceania/CLIP-ViT-B-16.bioclip-pt.planktonzilla-pt)
+  - [`project-oceania/CLIP-ViT-L-14.bioclip2-pt.planktonzilla-pt`](https://huggingface.co/project-oceania/CLIP-ViT-L-14.bioclip2-pt.planktonzilla-pt)
+  - [`project-oceania/CLIP-ViT-L-14.laion2b-pt.planktonzilla-pt`](https://huggingface.co/project-oceania/CLIP-ViT-L-14.laion2b-pt.planktonzilla-pt)
+- Planktonzilla Hugging Face Collection: <https://huggingface.co/collections/project-oceania/planktonzilla>
+- Project OcéanIA project website: <https://oceania.inria.cl>.
+- Project OcéanIA on Hugging Face Hub (more datasets, trained models, and demos): <https://huggingface.co/project-oceania>.
 
 ## Citation
 
