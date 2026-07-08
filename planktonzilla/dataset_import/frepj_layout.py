@@ -142,7 +142,10 @@ def merge_two_magnification_roots(images_40_dir, images_100_dir, dest_dir) -> in
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     copied = 0
-    roots = ((Path(images_40_dir), "40_"), (Path(images_100_dir), "100_"))
+    roots = (
+        (Path(images_40_dir), MAGNIFICATION_PREFIXES[0][1]),
+        (Path(images_100_dir), MAGNIFICATION_PREFIXES[1][1]),
+    )
     for root, prefix in roots:
         if not root.is_dir():
             logger.info(f"Magnification root «{root}» absent; skipping.")
