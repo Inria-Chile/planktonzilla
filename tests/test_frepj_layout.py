@@ -134,3 +134,32 @@ def test_merge_collision_safe(tmp_path):
     # No per-magnification suffixed sibling classes were created.
     assert not (dest / f"{taxon}@40x").exists()
     assert not (dest / f"{taxon}@100x").exists()
+
+
+def test_merge_refuses_overwrite(tmp_path, caplog):
+    """IMP-01: a pre-existing target is never overwritten; the else: logger.warning refusal
+    branch (frepj_layout.py) is actually hit, not just theoretically collision-free."""
+    taxon = "Taxon"
+
+    images_40 = tmp_path / "images_40"
+    _write_jpg(images_40 / taxon / "0.jpg")
+
+    # Pre-seed the destination with the exact magnification-prefixed target filename that
+    # merging images_40/Taxon/0.jpg would produce, so target.exists() is True and the merge
+    # must take the refusal branch instead of the normal copy branch.
+    dest = tmp_path / "dest"
+    (dest / taxon).mkdir(parents=True)
+    sentinel = dest / taxon / "40_0.jpg"
+    sentinel.write_bytes(b"sentinel")
+
+    with caplog.at_level("WARNING"):
+        copied = frepj_layout.merge_two_magnification_roots(images_40, tmp_path / "images_100", dest)
+
+    # Nothing was copied — the sole candidate file collided with the pre-seeded target.
+    assert copied == 0
+
+    # The pre-existing file survived byte-for-byte; it was never silently overwritten.
+    assert sentinel.read_bytes() == b"sentinel"
+
+    # The refusal branch actually logged a warning naming the collided target.
+    assert "Refusing to overwrite" in caplog.text
