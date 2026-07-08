@@ -116,7 +116,7 @@ def frepj_merge_filename(prefix: str, original_name: str) -> str:
     return f"{prefix}{original_name}"
 
 
-def merge_two_magnification_roots(images_40_dir, images_100_dir, dest_dir) -> int:
+def merge_two_magnification_roots(images_40_dir: str | Path, images_100_dir: str | Path, dest_dir: str | Path) -> int:
     """Flatten the two magnification roots into one class dir per taxon (ACQ-05).
 
     For each magnification root (``images_40`` → ``"40_"``, ``images_100`` → ``"100_"``),
