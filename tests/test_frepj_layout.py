@@ -13,9 +13,6 @@ Zero behavioral drift: these tests PIN the recorded reconnaissance facts, they d
 not "fix" them.
 """
 
-import json
-from pathlib import Path
-
 import pyrootutils
 
 root = pyrootutils.setup_root(
@@ -25,6 +22,9 @@ root = pyrootutils.setup_root(
     dotenv=True,
 )
 
+
+import json
+from pathlib import Path
 
 from PIL import Image
 
