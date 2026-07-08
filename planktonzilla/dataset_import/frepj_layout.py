@@ -92,10 +92,13 @@ EXPECTED_IMAGE_FORMAT = "JPEG"
 EXPECTED_IMAGE_MODE = "RGB"
 EXPECTED_IMAGE_BIT_DEPTH = 8
 
-# Import-time normalization: the 18-image reconnaissance sample was uniformly baseline
-# SOF0 / 8-bit / 3-channel RGB, so no conversion is recorded here. Set to "RGB" ONLY if
-# Plan 15-02's full-archive mode/format histogram finds any non-RGB images (ACQ-03).
-IMPORT_NORMALIZATION = None
+# Import-time normalization (ACQ-03, LOCKED by Plan 15-02's full-archive scan):
+# The 18-image reconnaissance sample was uniformly baseline RGB JPEG, BUT the full
+# 88,686-image scan found 5 outliers that are PNG-content / RGBA-mode files carrying a
+# ``.jpg`` extension (all under images_40/; exact paths recorded in 15-02-SUMMARY.md).
+# Because non-RGB modes are present, Phase 16's importer MUST ``.convert("RGB")`` every
+# image before writing the imagefolder so the composite stays uniformly 3-channel.
+IMPORT_NORMALIZATION = "RGB"
 
 
 # --- Collision-safe both-magnification merge helper (ACQ-05 / seeds IMP-04) -----------
