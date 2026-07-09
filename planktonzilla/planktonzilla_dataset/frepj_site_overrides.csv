@@ -1,0 +1,10 @@
+site_token,resolved_site
+# Hand-curated romanized sampling-site token -> Table_S1 site-name overrides.
+# Only tokens that neither trivially normalize NOR auto-fuzzy match (difflib, high
+# confidence) belong here. build_crosswalk applies these AFTER the fuzzy pass, so an
+# override only fires when no confident automatic match exists. Curated rows are
+# authored in Plan 17-01 Task 3 once the fuzzy residual is known. GENUINELY ambiguous
+# tokens are intentionally LEFT OUT so they stay null — never guess a coordinate.
+# Format (one per line, no quoting needed): <raw_token>,<exact Table_S1 site name>
+# Example (commented, inactive):
+# iwaodam,Iwao Dam
