@@ -51,6 +51,13 @@ from omegaconf import DictConfig
 from tqdm import tqdm
 
 from planktonzilla.planktonzilla_dataset import constants
+from planktonzilla.planktonzilla_dataset.frepj_crosswalk import load_crosswalk
+from planktonzilla.planktonzilla_dataset.frepj_tables import (
+    DEFAULT_CROSSWALK_PATH,
+    DEFAULT_TABLES_DIR,
+    parse_frepj_filename,
+    read_per_image_site_index,
+)
 from planktonzilla.utils.logger import get_pylogger
 
 root = pyrootutils.setup_root(
@@ -515,6 +522,90 @@ class JediRedefiner(RedefineDataset):
         return self._serialize_metadata(ds)
 
 
+class FrepjRedefiner(RedefineDataset):
+    """FREPJ-Z dataset: per-image geodata joined OFFLINE from the shipped sidecar tables.
+
+    Unlike the API-backed redefiners, this one is fully offline. It reads the per-image
+    ``(magnification, ID) -> (site_token, Sampling date)`` index from the md5-pinned
+    Table_S3/S4 CSVs (fetched once into the gitignored ``data/frepj_tables/`` by
+    ``python -m planktonzilla.planktonzilla_dataset.frepj_crosswalk``) and resolves each
+    token to ``Latitude``/``Longitude`` through the committed site crosswalk (Plan 17-01).
+    The join key is the Phase-16 merge-prefix filename (``40_<ID>.jpg`` / ``100_<ID>.jpg``).
+
+    ``Latitude``/``Longitude`` flow through the EXISTING base flatten path unchanged;
+    ``date``/``magnification``/``site`` are attached ADDITIVELY via a ``_flatten_metadata``
+    override that leaves every other source's output byte-identical (the Phase-20 golden
+    diff verifies this additive discipline). Surface net tows carry NO depth.
+    """
+
+    def __init__(self, csv_taxonomies_path, crosswalk_path=DEFAULT_CROSSWALK_PATH, tables_dir=DEFAULT_TABLES_DIR):
+        super().__init__(csv_taxonomies_path)
+        s3_path = Path(tables_dir) / "Table_S3.csv"
+        s4_path = Path(tables_dir) / "Table_S4.csv"
+        for required in (s3_path, s4_path, Path(crosswalk_path)):
+            if not required.exists():
+                raise FileNotFoundError(
+                    f"Required FREPJ CSV «{required}» is absent. FrepjRedefiner NEVER downloads; "
+                    "run `python -m planktonzilla.planktonzilla_dataset.frepj_crosswalk` to fetch the "
+                    "md5-pinned sidecar tables and (re)generate the committed crosswalk."
+                )
+        # (mag, id) -> (site_token, date) and site_token -> (lat, lon); both read from local
+        # CSVs only, so redefine-time is zero-network.
+        self.site_index = read_per_image_site_index(s3_path, s4_path)
+        self.crosswalk = load_crosswalk(crosswalk_path)
+
+    def _add_metadata(self, ds):
+        # Mirror the EcoTaxaRedefiner filename-from-original_path idiom; a defensive .get on
+        # every lookup means an unparseable name / missing index row / unresolved token yields
+        # None fields, never a raise (T-17-04 — tokens are opaque metadata strings).
+        metadata = []
+        for path in ds["original_path"]:
+            parsed = parse_frepj_filename(path.split("/")[-1])
+            entry = {"magnification": None, "site": None, "date": None}
+            if parsed is not None:
+                magnification, image_id = parsed
+                entry["magnification"] = str(magnification)
+                site_token, date = self.site_index.get((magnification, image_id), (None, None))
+                entry["site"] = site_token or None
+                entry["date"] = date or None
+                if site_token:
+                    latitude, longitude = self.crosswalk.get(site_token, (None, None))
+                    # Emit coords as strings so they flow through the base flatten path exactly
+                    # like the other redefiners (np.float32(str) downstream); only when resolved.
+                    if latitude is not None:
+                        entry["Latitude"] = str(latitude)
+                    if longitude is not None:
+                        entry["Longitude"] = str(longitude)
+            metadata.append(entry)
+
+        ds = ds.add_column("metadata", metadata)
+        return self._serialize_metadata(ds)
+
+    def _flatten_metadata(self, ds):
+        # ADDITIVE override: pull the FREPJ-only magnification/site/date out of the JSON into
+        # three NEW columns BEFORE delegating to the shared base flatten, which handles
+        # Latitude/Longitude/timestamp/Depth and removes "metadata" UNCHANGED — so existing
+        # sources stay byte-identical (Phase-20 golden diff guards this; T-17-05).
+        def extract_frepj(example):
+            try:
+                md = orjson.loads(example["metadata"]) if example["metadata"] else {}
+            except Exception as e:
+                logger.warning(f"Failed to parse FREPJ metadata JSON, using empty metadata: {e}")
+                md = {}
+            example["magnification"] = self._norm(md.get("magnification"))
+            example["site"] = self._norm(md.get("site"))
+            example["date"] = self._norm(md.get("date"))
+            return example
+
+        ds = ds.map(extract_frepj, desc="Extracting FREPJ site/date/magnification", num_proc=num_proc)
+        ds = super()._flatten_metadata(ds)
+
+        features = ds.features.copy()
+        for col in ("magnification", "site", "date"):
+            features[col] = Value("string")
+        return ds.cast(features)
+
+
 # Redefiner key -> class. Keys match the `redefiner` field of each entry in
 # cfg.datasets (configs/generate_planktonzilla.yaml). Each class is constructed with the
 # taxonomy CSV path inside main().
@@ -523,6 +614,7 @@ REDEFINERS = {
     "whoi": WHOIRedefiner,
     "ecotaxa": EcoTaxaRedefiner,
     "jedi": JediRedefiner,  # manual-download only; see the commented block in the config
+    "frepj": FrepjRedefiner,  # offline geodata join; not yet wired into cfg.datasets (Phase 20)
 }
 
 
