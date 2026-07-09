@@ -143,3 +143,51 @@ def test_load_overrides_skips_comments_and_blanks(tmp_path):
 
     p.write_text("site_token,resolved_site\niwaodam,Iwao Dam\n# trailing comment\n")
     assert frepj_crosswalk.load_overrides(p) == {"iwaodam": "Iwao Dam"}
+
+
+# --- committed crosswalk coverage (reads ONLY the committed CSV — network-free) --------
+
+
+def _committed_crosswalk_rows():
+    """Load the committed crosswalk. Reads ONLY the committed CSV, never the raw tables."""
+    import polars as pl
+
+    df = pl.read_csv(frepj_tables.DEFAULT_CROSSWALK_PATH, infer_schema_length=0)
+    return df.to_dicts()
+
+
+def _is_blank(value) -> bool:
+    return value is None or str(value).strip() == ""
+
+
+def test_committed_crosswalk_coverage():
+    """The committed crosswalk meets the >=55-token / >=72%-image baseline with valid
+    coordinate ranges and ambiguous tokens left null — asserted from the CSV alone."""
+    rows = _committed_crosswalk_rows()
+    assert rows, "committed crosswalk is empty"
+
+    resolved = [r for r in rows if not _is_blank(r["Latitude"])]
+
+    # (a) resolved-token count must not regress below the trivial baseline.
+    assert len(resolved) >= 55, f"only {len(resolved)} resolved tokens (need >= 55)"
+
+    # (b) resolved images cover at least 72% of all images.
+    total_images = sum(int(r["n_images"]) for r in rows)
+    resolved_images = sum(int(r["n_images"]) for r in resolved)
+    assert total_images > 0
+    assert resolved_images / total_images >= 0.72, (
+        f"image coverage {resolved_images}/{total_images} = {resolved_images / total_images:.3f} < 0.72"
+    )
+
+    for r in rows:
+        method = r["method"]
+        if method == "null":
+            # (d) null rows carry NO coordinate.
+            assert _is_blank(r["Latitude"]) and _is_blank(r["Longitude"]), f"null row has coords: {r['site_token']}"
+        else:
+            # (c) every non-null coordinate is within valid geographic ranges.
+            latitude, longitude = float(r["Latitude"]), float(r["Longitude"])
+            assert -90.0 <= latitude <= 90.0, f"latitude out of range for {r['site_token']}: {latitude}"
+            assert -180.0 <= longitude <= 180.0, f"longitude out of range for {r['site_token']}: {longitude}"
+            # (e) a resolved row always names its Table_S1 site.
+            assert not _is_blank(r["resolved_site"]), f"resolved row missing resolved_site: {r['site_token']}"
