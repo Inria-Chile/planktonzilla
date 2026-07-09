@@ -27,6 +27,13 @@ from planktonzilla.utils.logger import get_pylogger
 
 logger = get_pylogger(__name__)
 
+# Explicit re-encode quality for the RGB-by-content normalization pass (WR-02). Pinned
+# here (rather than in the frozen frepj_layout.py seam, out of Phase 16's file scope) so
+# the re-encoded bytes of the handful of non-JPEG outliers don't silently drift across
+# Pillow/libjpeg versions by depending on Pillow's implicit default (currently 75). 95 is
+# Pillow's own commonly-recommended "visually lossless" ceiling for re-encodes.
+IMPORT_JPEG_QUALITY = 95
+
 
 class FREPJDatasetImporter(DatasetImporter):
     """Importer for the FREPJ-Z freshwater zooplankton dataset (two magnifications).
@@ -83,7 +90,7 @@ class FREPJDatasetImporter(DatasetImporter):
                         if img.mode == frepj_layout.IMPORT_NORMALIZATION and img.format == "JPEG":
                             continue
                         converted = img.convert(frepj_layout.IMPORT_NORMALIZATION)
-                    converted.save(image_path, format="JPEG")
+                    converted.save(image_path, format="JPEG", quality=IMPORT_JPEG_QUALITY)
                 except (OSError, SyntaxError, Image.DecompressionBombError, UnidentifiedImageError):
                     # DecompressionBombError is a direct Exception subclass (NOT OSError), raised
                     # by Image.open()/img.load() when a file's declared pixel dimensions exceed
