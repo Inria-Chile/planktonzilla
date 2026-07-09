@@ -23,7 +23,9 @@ root = pyrootutils.setup_root(
 )
 
 
+import shutil
 import struct
+from pathlib import Path
 
 import yaml
 from PIL import Image
@@ -163,13 +165,77 @@ def test_rgb_mode_png_content_jpg_is_still_reencoded_to_real_jpeg(tmp_path):
         assert img.format == "JPEG"  # was PNG-content before normalization; must be re-encoded
 
 
-def test_layout_is_deterministic(tmp_path):
-    """IMP-03: the SAME fixture built into two independent importers yields byte-identical
-    class layouts (sorted enumeration in both the merge seam and the normalization pass)."""
-    imp1 = _make_importer(tmp_path / "run1")
-    imp2 = _make_importer(tmp_path / "run2")
+def test_layout_is_deterministic(tmp_path, monkeypatch):
+    """WR-03 regression: proves the ``sorted(...)`` enumeration in BOTH the merge seam
+    (``frepj_layout.merge_two_magnification_roots``) and the normalization pass
+    (``_normalize_images_to_rgb``) is load-bearing, not incidental.
 
-    assert _layout(imp1.imagefolder_dir) == _layout(imp2.imagefolder_dir)
+    ``Path.iterdir``/``Path.glob`` are monkeypatched to deterministically return entries
+    in DESCENDING order -- guaranteed to differ from the ``sorted()`` (ascending) order
+    the production code is supposed to impose, regardless of the real filesystem's native
+    enumeration order. We spy on the calls that do the actual file-level work
+    (``shutil.copy2`` for the merge, ``Image.open`` for the normalization pass) to record
+    the ORDER they were invoked in. If either ``sorted()`` call were removed from the
+    production code, processing would follow our injected descending order instead of
+    ascending/alphabetical order, and the assertions below would fail."""
+    extracted = _build_extracted(tmp_path)
+
+    original_iterdir = Path.iterdir
+    original_glob = Path.glob
+
+    def descending_iterdir(self):
+        return iter(sorted(original_iterdir(self), reverse=True))
+
+    def descending_glob(self, pattern):
+        return iter(sorted(original_glob(self, pattern), reverse=True))
+
+    monkeypatch.setattr(Path, "iterdir", descending_iterdir)
+    monkeypatch.setattr(Path, "glob", descending_glob)
+
+    copy_calls = []
+    original_copy2 = shutil.copy2
+
+    def spy_copy2(src, dst, *args, **kwargs):
+        dst = Path(dst)
+        copy_calls.append((dst.parent.name, dst.name))
+        return original_copy2(src, dst, *args, **kwargs)
+
+    monkeypatch.setattr(frepj_layout.shutil, "copy2", spy_copy2)
+
+    open_calls = []
+    original_open = Image.open
+
+    def spy_open(fp, *args, **kwargs):
+        p = Path(fp)
+        open_calls.append((p.parent.name, p.name))
+        return original_open(fp, *args, **kwargs)
+
+    monkeypatch.setattr(Image, "open", spy_open)
+
+    imp = FREPJDatasetImporter(data_dir=tmp_path, hf_dataset_name="frepj")
+    imp.extracted_dirs = str(extracted)
+    imp._prepare_imagefolder()  # runs with raw Path.iterdir/glob forced into descending order
+
+    # Merge seam: within each magnification root, copies happened in (taxon, filename)
+    # ascending order despite the injected descending raw iteration order.
+    calls_40 = [c for c in copy_calls if c[1].startswith("40_")]
+    calls_100 = [c for c in copy_calls if c[1].startswith("100_")]
+    assert calls_40 and calls_40 == sorted(calls_40)
+    assert calls_100 and calls_100 == sorted(calls_100)
+
+    # Normalization pass: class dirs and files within them were opened in ascending
+    # (class_dir_name, file_name) order despite the same injected descending iteration.
+    assert open_calls and open_calls == sorted(open_calls)
+
+    # And the resulting layout is still correct/complete (nothing lost or duplicated).
+    assert _layout(imp.imagefolder_dir) == sorted(
+        [
+            (TAXON_A, "40_0.jpg"),
+            (TAXON_A, "100_0.jpg"),
+            (TAXON_B, "40_1.jpg"),
+            (TAXON_B, "40_5.jpg"),
+        ]
+    )
 
 
 def test_corrupt_image_is_left_for_integrity_filter(tmp_path):
