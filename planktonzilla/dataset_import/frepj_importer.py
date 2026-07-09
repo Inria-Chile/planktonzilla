@@ -19,7 +19,7 @@ PNG/RGBA files carrying a ``.jpg`` name become genuine RGB JPEGs.
 
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 from planktonzilla.dataset_import import frepj_layout
 from planktonzilla.dataset_import.dataset_importer import DatasetImporter
@@ -82,6 +82,13 @@ class FREPJDatasetImporter(DatasetImporter):
                             continue
                         converted = img.convert(frepj_layout.IMPORT_NORMALIZATION)
                     converted.save(image_path, format="JPEG")
-                except (OSError, SyntaxError):
+                except (OSError, SyntaxError, Image.DecompressionBombError, UnidentifiedImageError):
+                    # DecompressionBombError is a direct Exception subclass (NOT OSError), raised
+                    # by Image.open()/img.load() when a file's declared pixel dimensions exceed
+                    # Image.MAX_IMAGE_PIXELS -- a realistic corrupt/bit-flipped-header failure mode
+                    # for this externally-sourced ~88k-image archive. UnidentifiedImageError is
+                    # already an OSError subclass; naming it documents intent. This except clause
+                    # must never let a single bad file abort the whole import (module contract
+                    # above): log and skip, leaving the file for the integrity filter.
                     logger.warning(f"Could not decode «{image_path}»; leaving it for the integrity filter.")
                     continue

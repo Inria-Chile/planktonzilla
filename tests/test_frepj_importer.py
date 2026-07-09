@@ -23,6 +23,8 @@ root = pyrootutils.setup_root(
 )
 
 
+import struct
+
 import yaml
 from PIL import Image
 
@@ -47,6 +49,21 @@ def _write_png_as_jpg(path, size=8):
     saved as PNG format under a ``.jpg`` filename."""
     path.parent.mkdir(parents=True, exist_ok=True)
     Image.new("RGBA", (size, size), (10, 20, 30, 40)).save(path, format="PNG")
+
+
+def _write_decompression_bomb_jpg(path, width=40000, height=40000):
+    """Write a malformed ``.jpg``: a valid BMP header claiming ``width``x``height`` pixels
+    (no real pixel data follows). ``PIL.Image.open()`` sniffs the real BMP header content
+    (never the extension), parses the declared size, and raises
+    ``PIL.Image.DecompressionBombError`` because it exceeds ``Image.MAX_IMAGE_PIXELS`` --
+    a realistic corrupt/bit-flipped-header failure mode for an externally-sourced archive
+    (CR-01)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    header_size = 40
+    pixel_offset = 14 + header_size
+    file_header = struct.pack("<2sIHHI", b"BM", pixel_offset, 0, 0, pixel_offset)
+    dib_header = struct.pack("<IiiHHIIiiII", header_size, width, height, 1, 24, 0, 0, 0, 0, 0, 0)
+    path.write_bytes(file_header + dib_header)
 
 
 def _build_extracted(base):
@@ -144,6 +161,31 @@ def test_corrupt_image_is_left_for_integrity_filter(tmp_path):
     assert (imagefolder_dir / TAXON_B / "40_bad.jpg").exists()
     assert is_valid_image_file(imagefolder_dir / TAXON_B / "40_bad.jpg") is False
     # A valid neighbor still passes the integrity gate.
+    assert is_valid_image_file(imagefolder_dir / TAXON_B / "40_1.jpg") is True
+
+
+def test_decompression_bomb_header_is_left_for_integrity_filter(tmp_path):
+    """CR-01 regression: a malformed file whose header claims a pixel count exceeding
+    ``Image.MAX_IMAGE_PIXELS`` raises ``PIL.Image.DecompressionBombError`` -- a subclass of
+    ``Exception``, NOT ``OSError`` -- when opened. ``_prepare_imagefolder`` must NOT
+    propagate this (or any decode failure); it must log and leave the file in place for
+    the base class's ``check_image_file_integrity`` gate, exactly like any other
+    undecodable file. (Note: unlike the plain-corrupt-bytes case, we don't additionally
+    assert ``is_valid_image_file() is False`` here -- that base-class helper has its own
+    unrelated, out-of-Phase-16-scope gap on this exact exception type; asserting only what
+    this phase owns keeps the test honest about what it covers.)"""
+    extracted = _build_extracted(tmp_path)
+    bomb = extracted / frepj_layout.ARCHIVE_ROOT / "images_40" / TAXON_B / "bomb.jpg"
+    _write_decompression_bomb_jpg(bomb)
+
+    imp = FREPJDatasetImporter(data_dir=tmp_path, hf_dataset_name="frepj")
+    imp.extracted_dirs = str(extracted)
+    imp._prepare_imagefolder()  # must NOT raise DecompressionBombError
+
+    imagefolder_dir = imp.imagefolder_dir
+    # The malformed file was copied+kept, untouched, for the integrity filter to inspect.
+    assert (imagefolder_dir / TAXON_B / "40_bomb.jpg").exists()
+    # A valid neighbor was still normalized/kept correctly.
     assert is_valid_image_file(imagefolder_dir / TAXON_B / "40_1.jpg") is True
 
 
