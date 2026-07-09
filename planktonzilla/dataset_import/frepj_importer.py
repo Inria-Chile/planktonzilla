@@ -68,17 +68,19 @@ class FREPJDatasetImporter(DatasetImporter):
 
         Enumerates class dirs and files in ``sorted`` order. Each file is decoded with
         PIL (which sniffs the real format regardless of the ``.jpg`` extension); files
-        already in :data:`frepj_layout.IMPORT_NORMALIZATION` mode are left byte-untouched
-        to avoid needless re-encoding, while non-RGB content is converted and re-saved as
-        a genuine RGB JPEG under the same filename. Undecodable/corrupt files are logged
-        and skipped (never raised) so the base class's integrity filter can remove them.
+        already a genuine :data:`frepj_layout.IMPORT_NORMALIZATION`-mode JPEG are left
+        byte-untouched to avoid needless re-encoding, while anything else (non-RGB mode,
+        OR RGB-mode-but-non-JPEG content such as a PNG-container file wearing a ``.jpg``
+        name) is converted and re-saved as a genuine RGB JPEG under the same filename.
+        Undecodable/corrupt files are logged and skipped (never raised) so the base
+        class's integrity filter can remove them.
         """
         for class_dir in sorted(p for p in self.imagefolder_dir.iterdir() if p.is_dir()):
             for image_path in sorted(class_dir.iterdir()):
                 try:
                     with Image.open(image_path) as img:
                         img.load()
-                        if img.mode == frepj_layout.IMPORT_NORMALIZATION:
+                        if img.mode == frepj_layout.IMPORT_NORMALIZATION and img.format == "JPEG":
                             continue
                         converted = img.convert(frepj_layout.IMPORT_NORMALIZATION)
                     converted.save(image_path, format="JPEG")

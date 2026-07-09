@@ -51,6 +51,15 @@ def _write_png_as_jpg(path, size=8):
     Image.new("RGBA", (size, size), (10, 20, 30, 40)).save(path, format="PNG")
 
 
+def _write_rgb_png_as_jpg(path, size=8):
+    """Write an RGB-mode file whose container is PNG (not JPEG) under a ``.jpg`` name
+    (WR-01). PIL correctly decodes it as ``mode == "RGB"``, but ``format == "PNG"``; the
+    "already normalized" fast path must check BOTH before skipping, or this file would be
+    left byte-untouched -- still a PNG wearing a ``.jpg`` extension."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    Image.new("RGB", (size, size), (50, 60, 70)).save(path, format="PNG")
+
+
 def _write_decompression_bomb_jpg(path, width=40000, height=40000):
     """Write a malformed ``.jpg``: a valid BMP header claiming ``width``x``height`` pixels
     (no real pixel data follows). ``PIL.Image.open()`` sniffs the real BMP header content
@@ -134,6 +143,24 @@ def test_non_rgb_jpg_normalized_by_content(tmp_path):
     # A genuinely-RGB neighbor is left as a valid RGB image too.
     with Image.open(imagefolder_dir / TAXON_B / "40_1.jpg") as img:
         assert img.mode == "RGB"
+
+
+def test_rgb_mode_png_content_jpg_is_still_reencoded_to_real_jpeg(tmp_path):
+    """WR-01 regression: an RGB-mode file whose container is PNG (not JPEG) must NOT hit
+    the "already normalized" skip fast-path -- which used to check only ``img.mode`` -- or
+    it would be left byte-untouched as a PNG wearing a ``.jpg`` name. It must be re-encoded
+    so the on-disk bytes become a genuine RGB JPEG, matching the module's contract."""
+    extracted = tmp_path / "extracted"
+    images_40 = extracted / frepj_layout.ARCHIVE_ROOT / "images_40"
+    _write_rgb_png_as_jpg(images_40 / TAXON_B / "9.jpg")
+
+    imp = FREPJDatasetImporter(data_dir=tmp_path, hf_dataset_name="frepj")
+    imp.extracted_dirs = str(extracted)
+    imp._prepare_imagefolder()
+
+    with Image.open(imp.imagefolder_dir / TAXON_B / "40_9.jpg") as img:
+        assert img.mode == "RGB"
+        assert img.format == "JPEG"  # was PNG-content before normalization; must be re-encoded
 
 
 def test_layout_is_deterministic(tmp_path):
