@@ -23,30 +23,38 @@ Draft (network, one-time):
     BLOCKING human-verify checkpoint in Plan 18-03 (auto-accept is Out-of-Scope).
     Freshwater taxa with no marine WoRMS hit keep a blank ``aphia_ID`` (expected).
 
-Optional corroboration:
-    For a small sample of drafted ``NCBI_ID`` values, ``extract_cox.get_cox_sequences``
-    is queried; a non-empty COX1 result is weak positive evidence the id is plausible.
-    Skipped gracefully when ``NCBI_EMAIL`` is unset (it is only corroboration).
+Finalization (``--finalize``, network — needs NCBI_EMAIL):
+    (1) BLANKS the draft rows that resolved ABOVE genus (Order/Class/Phylum) — a
+    whole higher-taxon stamped onto a species/genus row is a KI-6 error, so no such
+    ID ships. (2) CORROBORATES every distinct shipping ``NCBI_ID`` against NCBI via
+    ``extract_cox.get_cox_sequences`` (COX1 presence) + a taxonomy-id validity check;
+    an ``NCBI_ID`` that does not resolve at NCBI is FLAGGED as a potential wrong id.
+    Corroboration is advisory only (a taxon legitimately lacking COX1 is fine) and is
+    resilient to rate limits (log + continue).
 
 This module is a CURATION script, exactly like the Phase-15 download and Phase-17
-crosswalk — the committed tests stay network-free. Two entry modes keep the
-network step and the CSV write separate and auditable:
+crosswalk — the committed tests stay network-free. Three entry modes keep the
+network steps and the CSV write separate and auditable:
 
-    # Resolve + write the drafted-ID summary (network; no CSV write):
+    # Resolve + write the drafted-ID summary (Wikidata network; no CSV write):
     python -m planktonzilla.planktonzilla_dataset.utils.resolve_frepj_ids
+
+    # Blank too-coarse KI-6 matches + NCBI COX1 corroboration, rewrite summary (NCBI network):
+    python -m planktonzilla.planktonzilla_dataset.utils.resolve_frepj_ids --finalize
 
     # Backfill the frepj rows from the committed summary (network-free, idempotent):
     python -m planktonzilla.planktonzilla_dataset.utils.resolve_frepj_ids --backfill
 
 Requirements:
-    polars, requests (Wikidata) — biopython only for the optional COX cross-check.
+    polars, requests (Wikidata); biopython (NCBI COX1 corroboration). NCBI_EMAIL
+    (+ optional NCBI_API_KEY) required for --finalize.
 """
 
 import argparse
 import csv
 import io
 import logging
-import os
+import time
 from pathlib import Path
 
 import polars as pl
@@ -79,6 +87,10 @@ TSV_HEADER = ("raw_label", *ID_FIELDS, "provenance", "matched_rank", "cox")
 
 PROV_UNRESOLVED = "unresolved"
 PROV_DRAFT = "draft:wikidata"
+# A draft match at these ranks is too coarse to ship (KI-6 rank drift): a whole
+# order/class/phylum ID stamped onto a species/genus row. Finalization blanks them.
+PROV_BLANKED = "blanked:too-coarse-KI6"
+BLANK_COARSE_RANKS = frozenset({"Order", "Class", "Phylum", "Kingdom"})
 
 
 # ── CSV helpers ──────────────────────────────────────────────────────────────────
@@ -250,48 +262,126 @@ def resolve_drafts(draft_rows: list[dict]) -> dict:
     return mapping
 
 
-def cox_crosscheck(mapping: dict, sample: int) -> None:
-    """Annotate a sample of drafted NCBI_IDs with a weak COX1 plausibility signal.
+def blank_coarse_matches(mapping: dict) -> list[str]:
+    """Blank the external IDs of draft rows that resolved above genus (KI-6).
 
-    Corroboration only: sets ``cox`` to ``cox:<n>`` (n COX1 records found),
-    ``cox:0`` (none), or ``cox:skipped`` when ``NCBI_EMAIL`` is unset / the query
-    errors. Never raises — a failed cross-check must not fail the curation run.
+    A ``draft:wikidata`` row whose ``matched_rank`` is Order/Class/Phylum/Kingdom
+    carries a misleadingly-coarse ID (a whole higher-taxon stamped onto a
+    species/genus row). Blank all four ID cells so no such ID ships; the taxonomy
+    rank columns + proposed_label are left untouched by this (backfill edits only
+    the ID cells). Returns the blanked ``raw_label`` list (CSV row order preserved
+    by the caller). Idempotent: an already-blanked row stays blanked.
     """
-    if sample <= 0:
-        return
-    if not os.environ.get("NCBI_EMAIL"):
-        logger.warning("[cox] NCBI_EMAIL unset; skipping COX1 corroboration (Wikidata NCBI_IDs kept as-is).")
-        return
+    blanked: list[str] = []
+    for rec in mapping.values():
+        if rec["provenance"] in (PROV_DRAFT, PROV_BLANKED) and rec["matched_rank"] in BLANK_COARSE_RANKS:
+            if rec["provenance"] != PROV_BLANKED:
+                rec["_former_ids"] = (
+                    f"wd={rec[WIKIDATA_ID]} aphia={rec['aphia_ID']} NCBI={rec['NCBI_ID']} BOLD={rec['BOLD_ID']}"
+                )
+            for col in ID_FIELDS:
+                rec[col] = ""
+            rec["provenance"] = PROV_BLANKED
+            rec["cox"] = ""
+            blanked.append(rec["raw_label"])
+    return blanked
 
+
+def _taxid_resolves(tax_id: str) -> bool | None:
+    """Return True if NCBI Taxonomy knows ``tax_id``, False if unknown, None if unsure.
+
+    ``efetch(db=taxonomy)`` returns an empty record for an unknown taxid (it does
+    not raise), so validity is ``len(record) > 0``. Retries on rate limit; returns
+    None only when the lookup could not be completed (so a transient error is never
+    mislabelled as a wrong ID).
+    """
+    from Bio import Entrez
+
+    for attempt in range(3):
+        try:
+            handle = Entrez.efetch(db="taxonomy", id=str(tax_id), retmode="xml")
+            record = Entrez.read(handle)
+            handle.close()
+            return len(record) > 0
+        except Exception as e:  # network / rate limit — retry then give up as "unsure"
+            if "429" in str(e) or "Too Many" in str(e):
+                time.sleep(2**attempt)
+                continue
+            logger.warning(f"[cox] taxonomy lookup failed for {tax_id}: {e}")
+            return None
+    return None
+
+
+def corroborate_ncbi_ids(ncbi_ids: list[str]) -> dict[str, str]:
+    """Cross-check NCBI_IDs against NCBI: COX1 presence + taxid validity.
+
+    Corroboration only. Per distinct NCBI_ID the status is one of:
+        ``cox:<n>``         n>=1 COX1 records found -> corroborated
+        ``cox:0``           taxid valid at NCBI, no COX1 record (fine, not a defect)
+        ``cox:invalid-id``  taxid does NOT resolve at NCBI -> FLAG (potential wrong id)
+        ``cox:inconclusive`` lookup could not complete (rate limit / error)
+    Resilient to rate limits (extract_cox sleeps + retries; failures log + continue).
+    Requires ``NCBI_EMAIL`` (raises if unset — the finalize caller has verified it).
+    """
     from planktonzilla.planktonzilla_dataset.utils import extract_cox
 
-    try:
-        extract_cox.configure_entrez()
-    except Exception as e:  # corroboration only, never fatal
-        logger.warning(f"[cox] could not configure Entrez, skipping: {e}")
-        return
-
-    drafted = [rec for rec in mapping.values() if rec["provenance"] == PROV_DRAFT and rec["NCBI_ID"]]
-    for rec in drafted[:sample]:
-        tax_id = str(int(float(rec["NCBI_ID"])))
+    extract_cox.configure_entrez()
+    out: dict[str, str] = {}
+    total = len(ncbi_ids)
+    for idx, raw in enumerate(ncbi_ids, start=1):
+        tax_id = str(int(float(raw)))
+        logger.info(f"[cox] {idx}/{total} NCBI_ID {tax_id}")
         try:
             records = extract_cox.get_cox_sequences(tax_id, expand_to_children=True, max_results=5)
-            rec["cox"] = f"cox:{len(records)}"
+            n = len(records)
         except Exception as e:  # corroboration only, never fatal
-            logger.warning(f"[cox] lookup failed for NCBI_ID {tax_id}: {e}")
-            rec["cox"] = "cox:error"
+            logger.warning(f"[cox] COX1 lookup failed for {tax_id}: {e}")
+            n = 0
+        if n > 0:
+            out[raw] = f"cox:{n}"
+            continue
+        valid = _taxid_resolves(tax_id)
+        out[raw] = {True: "cox:0", False: "cox:invalid-id", None: "cox:inconclusive"}[valid]
+    return out
+
+
+def apply_corroboration(mapping: dict, statuses: dict[str, str]) -> None:
+    """Stamp each taxon's ``cox`` field from its NCBI_ID's corroboration status."""
+    for rec in mapping.values():
+        rec["cox"] = statuses.get(rec["NCBI_ID"], "") if rec["NCBI_ID"] else ""
 
 
 # ── Summary emission + machine-readable mapping ──────────────────────────────────
 
 
+def _is_corroborated(cox: str) -> bool:
+    """True when the cox status records at least one COX1 record (``cox:<n>``, n>=1)."""
+    return cox.startswith("cox:") and cox[4:].isdigit() and int(cox[4:]) > 0
+
+
 def _counts(mapping: dict) -> dict:
-    """Compute per-source resolved/blank tallies for the summary header."""
+    """Compute per-source, per-fill and COX1-corroboration tallies for the summary."""
     reused = sum(1 for r in mapping.values() if r["provenance"].startswith("reused:"))
     draft = sum(1 for r in mapping.values() if r["provenance"] == PROV_DRAFT)
     unresolved = sum(1 for r in mapping.values() if r["provenance"] == PROV_UNRESOLVED)
+    blanked = sum(1 for r in mapping.values() if r["provenance"] == PROV_BLANKED)
     filled = {c: sum(1 for r in mapping.values() if r[c]) for c in ID_FIELDS}
-    return {"reused": reused, "draft": draft, "unresolved": unresolved, "filled": filled}
+    cox_vals = [r["cox"] for r in mapping.values() if r["NCBI_ID"]]
+    cox = {
+        "checked": sum(1 for v in cox_vals if v),
+        "corroborated": sum(1 for v in cox_vals if _is_corroborated(v)),
+        "no_cox": sum(1 for v in cox_vals if v == "cox:0"),
+        "flagged": sum(1 for v in cox_vals if v == "cox:invalid-id"),
+        "inconclusive": sum(1 for v in cox_vals if v == "cox:inconclusive"),
+    }
+    return {
+        "reused": reused,
+        "draft": draft,
+        "unresolved": unresolved,
+        "blanked": blanked,
+        "filled": filled,
+        "cox": cox,
+    }
 
 
 def _machine_block(mapping: dict, order: list[str]) -> str:
@@ -326,13 +416,18 @@ def write_summary(mapping: dict, order: list[str]) -> None:
     lines.append("")
     lines.append("- `reused:<source>` — copied VERBATIM from an existing verified non-frepj row (no network, trusted).")
     lines.append("- `draft:wikidata` — DRAFT, resolved live from Wikidata this run (UNTRUSTED; needs sign-off).")
+    lines.append(
+        "- `blanked:too-coarse-KI6` — a draft that resolved ABOVE genus (Order/Class/Phylum); IDs BLANKED "
+        "at finalization so no misleadingly-coarse whole-higher-taxon ID ships."
+    )
     lines.append("- `unresolved` — Wikidata returned no biological match; all four IDs left blank.")
     lines.append("")
     lines.append("## Counts")
     lines.append("")
     lines.append(f"- Taxa total: **{len(mapping)}** (must equal 229).")
     lines.append(f"- Reused verbatim (overlap): **{c['reused']}**.")
-    lines.append(f"- Draft-resolved via Wikidata: **{c['draft']}**.")
+    lines.append(f"- Draft-resolved via Wikidata (shipping): **{c['draft']}**.")
+    lines.append(f"- Blanked too-coarse (KI-6, removed at finalization): **{c['blanked']}**.")
     lines.append(f"- Unresolved (all IDs blank): **{c['unresolved']}**.")
     lines.append(
         f"- Filled cells — wikidata_ID: **{c['filled'][WIKIDATA_ID]}**, "
@@ -340,6 +435,34 @@ def write_summary(mapping: dict, order: list[str]) -> None:
         f"NCBI_ID: **{c['filled']['NCBI_ID']}**, "
         f"BOLD_ID: **{c['filled']['BOLD_ID']}**."
     )
+    lines.append("")
+    lines.append("## NCBI COX1 corroboration (finalization cross-check)")
+    lines.append("")
+    lines.append(
+        "Each distinct shipping `NCBI_ID` was cross-checked against NCBI (COX1 presence + taxid validity). "
+        "This is CORROBORATION ONLY — a taxon legitimately lacking a COX1 record is fine. Status codes: "
+        "`cox:<n>` = n COX1 records found (corroborated); `cox:0` = valid taxid, no COX1 (fine); "
+        "`cox:invalid-id` = taxid does NOT resolve at NCBI (**FLAG — potential wrong id**); "
+        "`cox:inconclusive` = lookup could not complete."
+    )
+    lines.append("")
+    lines.append(f"- NCBI_IDs checked (per-row): **{c['cox']['checked']}**.")
+    lines.append(f"- Corroborated (>=1 COX1 record): **{c['cox']['corroborated']}**.")
+    lines.append(f"- Valid taxid, no COX1 (fine): **{c['cox']['no_cox']}**.")
+    lines.append(f"- **FLAGGED invalid taxid (verify): {c['cox']['flagged']}**.")
+    lines.append(f"- Inconclusive (retry at review): **{c['cox']['inconclusive']}**.")
+    lines.append("")
+    flagged = [mapping[r] for r in order if mapping[r]["NCBI_ID"] and mapping[r]["cox"] == "cox:invalid-id"]
+    if flagged:
+        lines.append("**Flagged NCBI_IDs (taxid did not resolve at NCBI — likely wrong id):**")
+        lines.append("")
+        lines.append("| proposed_label | NCBI_ID | provenance | raw_label |")
+        lines.append("| --- | --- | --- | --- |")
+        lines.extend(
+            f"| {rec['proposed_label']} | {rec['NCBI_ID']} | {rec['provenance']} | {rec['raw_label']} |" for rec in flagged
+        )
+    else:
+        lines.append("No NCBI_ID failed to resolve at NCBI — every shipping NCBI_ID is a valid NCBI taxid.")
     lines.append("")
     lines.append("## Caveats — KI-3 / KI-5 / KI-6 (what to spot-check at 18-03)")
     lines.append("")
@@ -360,36 +483,47 @@ def write_summary(mapping: dict, order: list[str]) -> None:
     lines.append("")
 
     reused = [mapping[r] for r in order if mapping[r]["provenance"].startswith("reused:")]
-    drafts = [mapping[r] for r in order if not mapping[r]["provenance"].startswith("reused:")]
+    drafts = [mapping[r] for r in order if mapping[r]["provenance"] == PROV_DRAFT]
+    blanked = [mapping[r] for r in order if mapping[r]["provenance"] == PROV_BLANKED]
 
-    # The coarsest draft matches (resolved above genus) are the highest KI-6 risk —
-    # surface them first so the 18-03 reviewer checks these before anything else.
-    coarse_ranks = ("Family", "Order", "Class", "Phylum", "Kingdom", "")
-    priority = [rec for rec in drafts if rec["matched_rank"] in coarse_ranks]
-    lines.append("## Priority spot-checks (coarsest draft matches — verify first)")
+    lines.append("## Blanked too-coarse matches (KI-6 — removed at finalization)")
     lines.append("")
     lines.append(
-        f"{len(priority)} draft taxa resolved ABOVE genus level (Wikidata fell back up the ranks); "
-        "each ID below is a coarse DRAFT approximation for a species/genus row and is the most likely "
-        "KI-6 error. Verify or blank these first at 18-03."
+        f"{len(blanked)} draft taxa resolved ABOVE genus (Order/Class/Phylum) — a whole higher-taxon "
+        "stamped onto a species/genus row — so all four ID cells were BLANKED (they do NOT ship). "
+        "Taxonomy rank columns + proposed_label are unchanged. Listed for the 18-03 record:"
     )
     lines.append("")
-    lines.append("| raw_label | matched_rank | wikidata_ID | aphia_ID | NCBI_ID | BOLD_ID |")
-    lines.append("| --- | --- | --- | --- | --- | --- |")
+    lines.append("| raw_label | former matched_rank | former IDs (removed) |")
+    lines.append("| --- | --- | --- |")
+    lines.extend(f"| {rec['raw_label']} | {rec['matched_rank']} | {rec.get('_former_ids', '(blanked)')} |" for rec in blanked)
+    lines.append("")
+
+    # Any remaining draft matches still above genus (Family-level) are the next KI-6 risk.
+    priority = [rec for rec in drafts if rec["matched_rank"] in ("Family", "Order", "Class", "Phylum", "Kingdom", "")]
+    lines.append("## Priority spot-checks (remaining above-genus draft matches — verify first)")
+    lines.append("")
+    lines.append(
+        f"{len(priority)} SHIPPING draft taxa still resolved above genus (family-level and below the "
+        "blanked ranks); each ID is a coarse DRAFT approximation — verify or blank these first at 18-03."
+    )
+    lines.append("")
+    lines.append("| raw_label | matched_rank | wikidata_ID | aphia_ID | NCBI_ID | BOLD_ID | cox |")
+    lines.append("| --- | --- | --- | --- | --- | --- | --- |")
     lines.extend(
         f"| {rec['raw_label']} | {rec['matched_rank']} | "
-        f"{rec[WIKIDATA_ID]} | {rec['aphia_ID']} | {rec['NCBI_ID']} | {rec['BOLD_ID']} |"
+        f"{rec[WIKIDATA_ID]} | {rec['aphia_ID']} | {rec['NCBI_ID']} | {rec['BOLD_ID']} | {rec['cox']} |"
         for rec in priority
     )
     lines.append("")
 
     lines.append("## Overlap reuse (verbatim existing IDs)")
     lines.append("")
-    lines.append("| proposed_label | provenance | matched_rank | wikidata_ID | aphia_ID | NCBI_ID | BOLD_ID |")
-    lines.append("| --- | --- | --- | --- | --- | --- | --- |")
+    lines.append("| proposed_label | provenance | matched_rank | wikidata_ID | aphia_ID | NCBI_ID | BOLD_ID | cox |")
+    lines.append("| --- | --- | --- | --- | --- | --- | --- | --- |")
     lines.extend(
         f"| {rec['proposed_label']} | {rec['provenance']} | {rec['matched_rank']} | "
-        f"{rec[WIKIDATA_ID]} | {rec['aphia_ID']} | {rec['NCBI_ID']} | {rec['BOLD_ID']} |"
+        f"{rec[WIKIDATA_ID]} | {rec['aphia_ID']} | {rec['NCBI_ID']} | {rec['BOLD_ID']} | {rec['cox']} |"
         for rec in reused
     )
     lines.append("")
@@ -486,8 +620,17 @@ def backfill_csv(csv_path: Path, mapping: dict) -> int:
 # ── Orchestration ────────────────────────────────────────────────────────────────
 
 
-def resolve(cox_sample: int) -> dict:
-    """Run the full resolution (overlap reuse + Wikidata draft + COX) -> mapping."""
+def frepj_order() -> list[str]:
+    """The frepj Raw_Labels in CSV row order (mapping/summary ordering)."""
+    return [r["Raw_Labels"] for r in read_csv_rows(CSV_PATH) if r["Dataset"] == DATASET]
+
+
+def resolve() -> dict:
+    """Run the resolution (overlap reuse + Wikidata draft) -> mapping in CSV order.
+
+    COX1 corroboration is deliberately NOT done here — it is a separate ``--finalize``
+    step that needs ``NCBI_EMAIL`` and must not gate the network-free draft.
+    """
     rows = read_csv_rows(CSV_PATH)
     frepj_rows = [r for r in rows if r["Dataset"] == DATASET]
     logger.info(f"{len(frepj_rows)} frepj rows to resolve.")
@@ -497,9 +640,7 @@ def resolve(cox_sample: int) -> dict:
     logger.info(f"Overlap reuse: {len(mapping)} rows; draft: {len(draft_rows)} rows.")
 
     mapping.update(resolve_drafts(draft_rows))
-    cox_crosscheck(mapping, cox_sample)
 
-    # Preserve CSV row order in the summary/mapping.
     order = [r["Raw_Labels"] for r in frepj_rows]
     missing = [raw for raw in order if raw not in mapping]
     if missing:
@@ -507,16 +648,55 @@ def resolve(cox_sample: int) -> dict:
     return {raw: mapping[raw] for raw in order}
 
 
+def load_mapping_from_summary() -> dict:
+    """Load the committed mapping, re-attaching proposed_label from the CSV (CSV order)."""
+    parsed = parse_summary()
+    proposed = {r["Raw_Labels"]: r["proposed_label"] for r in read_csv_rows(CSV_PATH) if r["Dataset"] == DATASET}
+    order = frepj_order()
+    missing = [raw for raw in order if raw not in parsed]
+    if missing:
+        raise ValueError(f"{len(missing)} frepj rows absent from the summary (first: {missing[0]!r})")
+    for raw, rec in parsed.items():
+        rec["proposed_label"] = proposed.get(raw, "")
+    return {raw: parsed[raw] for raw in order}
+
+
+def finalize() -> tuple[list[str], dict[str, str]]:
+    """Blank the too-coarse KI-6 matches + run NCBI COX1 corroboration, rewrite summary.
+
+    Network step (NCBI Entrez). Returns ``(blanked_raw_labels, ncbi_statuses)`` so the
+    caller can report. The CSV write itself stays a separate network-free ``--backfill``.
+    """
+    mapping = load_mapping_from_summary()
+
+    blanked = blank_coarse_matches(mapping)
+    logger.info(f"Blanked {len(blanked)} too-coarse (Order/Class/Phylum) draft rows.")
+
+    # Corroborate every distinct NCBI_ID that survives the blanking.
+    surviving = sorted({rec["NCBI_ID"] for rec in mapping.values() if rec["NCBI_ID"]})
+    logger.info(f"Corroborating {len(surviving)} distinct surviving NCBI_IDs against NCBI.")
+    statuses = corroborate_ncbi_ids(surviving)
+    apply_corroboration(mapping, statuses)
+
+    write_summary(mapping, frepj_order())
+    return blanked, statuses
+
+
 def main() -> None:
-    """CLI: resolve+summarize (default, network) or backfill the CSV (--backfill)."""
+    """CLI: resolve (default) | --finalize (COX + blank) | --backfill (CSV write)."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         "--backfill",
         action="store_true",
         help="Network-free: backfill the frepj CSV rows from the committed FREPJ_DRAFTED_IDS.md.",
     )
-    parser.add_argument("--cox-sample", type=int, default=5, help="Sample size for the optional COX1 cross-check.")
+    mode.add_argument(
+        "--finalize",
+        action="store_true",
+        help="Network (NCBI): blank the too-coarse KI-6 matches + run COX1 corroboration, rewrite the summary.",
+    )
     args = parser.parse_args()
 
     if args.backfill:
@@ -525,10 +705,14 @@ def main() -> None:
         backfill_csv(CSV_PATH, mapping)
         return
 
-    order = read_csv_rows(CSV_PATH)
-    order = [r["Raw_Labels"] for r in order if r["Dataset"] == DATASET]
-    mapping = resolve(args.cox_sample)
-    write_summary(mapping, order)
+    if args.finalize:
+        blanked, statuses = finalize()
+        flagged = [k for k, v in statuses.items() if v == "cox:invalid-id"]
+        logger.info(f"Finalize done: {len(blanked)} blanked; {len(flagged)} NCBI_IDs flagged invalid.")
+        return
+
+    mapping = resolve()
+    write_summary(mapping, frepj_order())
 
 
 if __name__ == "__main__":
