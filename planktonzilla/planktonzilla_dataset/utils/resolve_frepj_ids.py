@@ -18,19 +18,26 @@ Overlap (network-free):
 Draft (network, one-time):
     The remaining new-to-FREPJ taxa are DRAFT-resolved by re-running the existing
     ``extract_taxon_ids`` resolver (Wikidata Qcode -> WoRMS/NCBI/BOLD from the
-    deepest known rank). Every network-derived ID is DRAFT and carries the
-    KI-3/5/6 substring-match / marine-bias weakness, so it is gated by the
-    BLOCKING human-verify checkpoint in Plan 18-03 (auto-accept is Out-of-Scope).
-    Freshwater taxa with no marine WoRMS hit keep a blank ``aphia_ID`` (expected).
+    deepest known rank). Species rows are searched on the FULL binomial
+    (``"Genus species"``), not the bare CSV epithet, so a bare epithet can no longer
+    collide with an unrelated genus (CR-01). A Wikidata-label-vs-Genus guard BLANKS
+    any Species/Genus hit whose label disagrees with the row's genus, and a
+    cross-row guard BLANKS any ``wikidata_ID`` shared across differing genera. Every
+    surviving network-derived ID is still DRAFT (marine-bias / rank-drift caveats),
+    gated by the BLOCKING human-verify checkpoint in Plan 18-03. Freshwater taxa with
+    no marine WoRMS hit keep a blank ``aphia_ID`` (expected).
 
 Finalization (``--finalize``, network — needs NCBI_EMAIL):
     (1) BLANKS the draft rows that resolved ABOVE genus (Order/Class/Phylum) — a
     whole higher-taxon stamped onto a species/genus row is a KI-6 error, so no such
-    ID ships. (2) CORROBORATES every distinct shipping ``NCBI_ID`` against NCBI via
+    ID ships. (2) LINEAGE-GUARDS every draft ``NCBI_ID``: it fetches the taxid's
+    scientific name + lineage and BLANKS the row if the taxid's genus/phylum
+    contradicts the row (a wrong-taxon substitution — the corroboration now confirms
+    the taxid is the RIGHT one, not merely that a taxid exists — WR-01). (3)
+    CORROBORATES every distinct surviving ``NCBI_ID`` against NCBI via
     ``extract_cox.get_cox_sequences`` (COX1 presence) + a taxonomy-id validity check;
-    an ``NCBI_ID`` that does not resolve at NCBI is FLAGGED as a potential wrong id.
-    Corroboration is advisory only (a taxon legitimately lacking COX1 is fine) and is
-    resilient to rate limits (log + continue).
+    an ``NCBI_ID`` that does not resolve at NCBI is FLAGGED. Corroboration is advisory
+    only (a taxon legitimately lacking COX1 is fine) and is resilient to rate limits.
 
 This module is a CURATION script, exactly like the Phase-15 download and Phase-17
 crosswalk — the committed tests stay network-free. Three entry modes keep the
@@ -91,6 +98,16 @@ PROV_DRAFT = "draft:wikidata"
 # order/class/phylum ID stamped onto a species/genus row. Finalization blanks them.
 PROV_BLANKED = "blanked:too-coarse-KI6"
 BLANK_COARSE_RANKS = frozenset({"Order", "Class", "Phylum", "Kingdom"})
+# A draft match whose resolved Wikidata/NCBI entity contradicts the row's parsed
+# lineage — a wrong-taxon substitution (CR-01 / WR-01). The canonical example is the
+# bare epithet ``"sarsi"`` colliding with the unrelated hydrozoan genus ``Sarsia``.
+# All four IDs are BLANKED rather than ship a known-wrong id: this milestone never
+# ships wrong data, so a conservative blank beats a confident wrong answer.
+PROV_GUARD_BLANKED = "blanked:lineage-guard"
+
+# Positions of Genus/Species in RANK_COLS — used to build the full-binomial query.
+GENUS_IDX = RANK_COLS.index("Genus")
+SPECIES_IDX = RANK_COLS.index("Species")
 
 
 # ── CSV helpers ──────────────────────────────────────────────────────────────────
@@ -124,6 +141,28 @@ def format_numeric_id(value) -> str:
 # ── Overlap path (network-free reuse of existing verified IDs) ────────────────────
 
 
+def _register_existing(index: dict, key, ids: tuple[str, ...], source: str) -> None:
+    """Record an existing (verified) id set for reuse, failing LOUD on a conflict.
+
+    WR-02: two sources that disagree on the IDs for the same species/genus key must
+    not be silently tie-broken by insertion order. The first-seen set is kept (it is
+    a trusted, already-published value), but any DIFFERENT later set is logged as a
+    loud warning so the conflict surfaces at the 18-03 checkpoint instead of being
+    swallowed. No current overlap key triggers this; it guards the next import that
+    shares a genus with FREPJ.
+    """
+    prev = index.get(key)
+    if prev is None:
+        index[key] = (ids, source)
+        return
+    prev_ids, prev_source = prev
+    if prev_ids != ids:
+        logger.warning(
+            f"[overlap] conflicting existing IDs for {key!r}: «{prev_source}» has {prev_ids}, "
+            f"«{source}» has {ids}. Keeping «{prev_source}» (first seen); verify at 18-03."
+        )
+
+
 def build_existing_lookups(rows: list[dict]) -> tuple[dict, dict]:
     """Index the non-frepj rows by species-binomial and by genus-level id.
 
@@ -133,7 +172,9 @@ def build_existing_lookups(rows: list[dict]) -> tuple[dict, dict]:
         Genus and a Species, and ``ex_genus[genus] = (ids, source)`` for
         genus-level rows (Species blank). ``ids`` is the ``ID_FIELDS`` tuple copied
         verbatim (``.0`` floats untouched). First occurrence wins; the overlap
-        sources are known to agree byte-for-byte (18-01 reconciliation Section A).
+        sources are known to agree byte-for-byte (18-01 reconciliation Section A),
+        and any later source that DISAGREES is logged loudly rather than silently
+        tie-broken (WR-02, via ``_register_existing``).
     """
     ex_species: dict[tuple[str, str], tuple[tuple[str, ...], str]] = {}
     ex_genus: dict[str, tuple[tuple[str, ...], str]] = {}
@@ -146,9 +187,9 @@ def build_existing_lookups(rows: list[dict]) -> tuple[dict, dict]:
         if not any(ids):
             continue
         if genus and species:
-            ex_species.setdefault((genus, species), (ids, r["Dataset"]))
+            _register_existing(ex_species, (genus, species), ids, r["Dataset"])
         elif genus:
-            ex_genus.setdefault(genus, (ids, r["Dataset"]))
+            _register_existing(ex_genus, genus, ids, r["Dataset"])
     return ex_species, ex_genus
 
 
@@ -195,12 +236,78 @@ def resolve_overlaps(frepj_rows: list[dict], ex_species: dict, ex_genus: dict) -
 # ── Draft path (one-time Wikidata resolution via extract_taxon_ids) ───────────────
 
 
+def _blank_record(rec: dict, reason: str) -> None:
+    """Blank a draft record's four external-ID cells and mark it lineage-guard-blanked.
+
+    Used by both the Wikidata-label guard (``resolve_drafts``) and the NCBI
+    lineage/name guard (``verify_ncbi_lineage``). Records the removed IDs and the
+    reason for the 18-03 audit table. Idempotent: re-blanking keeps the first reason.
+    """
+    if rec["provenance"] != PROV_GUARD_BLANKED:
+        rec["_former_ids"] = f"wd={rec[WIKIDATA_ID]} aphia={rec['aphia_ID']} NCBI={rec['NCBI_ID']} BOLD={rec['BOLD_ID']}"
+        rec["_guard_reason"] = reason
+    for col in ID_FIELDS:
+        rec[col] = ""
+    rec["provenance"] = PROV_GUARD_BLANKED
+    rec["cox"] = ""
+
+
+def _query_species(genus: str, species: str) -> str:
+    """Return the Wikidata *search string* for a Species cell — the full binomial.
+
+    ROOT-CAUSE FIX for CR-01. In this schema the Species column stores the BARE
+    epithet only (``"sarsi"``, ``"affinis"``), which textually collides with
+    unrelated genus names (``"sarsi"`` -> the hydrozoan genus ``Sarsia``) and with
+    each other (three unrelated genera all searching ``"affinis"`` share one cached
+    hit). Searching the ``"Genus species"`` binomial makes the query unambiguous, so
+    the resolver can no longer pick a homonymous taxon. Genus-only rows (no species)
+    are unchanged.
+    """
+    genus = (genus or "").strip()
+    species = (species or "").strip()
+    return f"{genus} {species}" if genus and species else species
+
+
+def _rank_key(row: dict) -> tuple[str, ...]:
+    """Unique-taxon key: lowercased rank columns, Species as the full binomial.
+
+    The identical transform is applied when building the resolver's input frame and
+    when mapping the resolved IDs back onto each draft row, so the two always agree.
+    """
+    vals = [(row[c] or "").strip().lower() for c in RANK_COLS]
+    vals[SPECIES_IDX] = _query_species(vals[GENUS_IDX], vals[SPECIES_IDX])
+    return tuple(vals)
+
+
+def _label_matches_genus(matched_label: str, matched_rank: str, genus: str) -> bool:
+    """True if a Species/Genus-rank Wikidata hit's label is consistent with the genus.
+
+    LINEAGE GUARD (name layer). A Species/Genus-rank match whose Wikidata label does
+    not begin with the row's Genus is a wrong-taxon hit (e.g. row genus
+    ``sinodiaptomus`` resolving to a label ``Sarsia``). Coarser matches
+    (Family/Order/…) are legitimately labelled with the higher taxon and are tracked
+    by ``matched_rank`` (KI-6), not by this guard, so they pass. An absent label or
+    genus also passes here (the NCBI lineage guard is the second line of defence).
+    """
+    if matched_rank not in ("Species", "Genus"):
+        return True
+    genus = (genus or "").strip().lower()
+    label = (matched_label or "").strip().lower()
+    if not genus or not label:
+        return True
+    return label.split()[0] == genus
+
+
 def _unique_rank_frame(rows: list[dict]) -> pl.DataFrame:
-    """Build the unique (Kingdom..Species) frame the Wikidata resolver consumes."""
+    """Build the unique (Kingdom..Species) frame the Wikidata resolver consumes.
+
+    The Species cell carries the FULL binomial (``"Genus species"``) rather than the
+    bare CSV epithet, so the Wikidata search cannot collide a bare epithet with an
+    unrelated genus (CR-01). See ``_query_species``.
+    """
     seen: dict[tuple[str, ...], None] = {}
     for r in rows:
-        key = tuple((r[c] or "").strip().lower() for c in RANK_COLS)
-        seen.setdefault(key, None)
+        seen.setdefault(_rank_key(r), None)
     data = {c: [key[i] for key in seen] for i, c in enumerate(RANK_COLS)}
     return pl.DataFrame(data, schema={c: pl.String for c in RANK_COLS})
 
@@ -232,7 +339,7 @@ def resolve_drafts(draft_rows: list[dict]) -> dict:
         for col in NUMERIC_ID_FIELDS:
             resolved = resolved.with_columns(pl.lit(None).alias(col))
 
-    # Index the resolved unique taxa by their rank tuple.
+    # Index the resolved unique taxa by their rank tuple (Species = full binomial).
     by_rank: dict[tuple[str, ...], dict] = {}
     for row in resolved.iter_rows(named=True):
         key = tuple((row[c] or "") for c in RANK_COLS)
@@ -242,16 +349,21 @@ def resolve_drafts(draft_rows: list[dict]) -> dict:
             "NCBI_ID": format_numeric_id(row.get("NCBI_ID")),
             "BOLD_ID": format_numeric_id(row.get("BOLD_ID")),
             "matched_rank": row.get("Matched Rank") or "",
+            "matched_label": row.get("Matched Label") or "",
         }
 
+    guard_blanked = 0
     for r in draft_rows:
-        key = tuple((r[c] or "").strip().lower() for c in RANK_COLS)
-        res = by_rank.get(key, {})
+        res = by_rank.get(_rank_key(r), {})
         wikidata = res.get(WIKIDATA_ID, "")
-        mapping[r["Raw_Labels"]] = {
+        matched_rank = res.get("matched_rank", "")
+        matched_label = res.get("matched_label", "")
+        genus = (r["Genus"] or "").strip().lower()
+
+        rec = {
             "raw_label": r["Raw_Labels"],
             "proposed_label": r["proposed_label"],
-            "matched_rank": res.get("matched_rank", ""),
+            "matched_rank": matched_rank,
             WIKIDATA_ID: wikidata,
             "aphia_ID": res.get("aphia_ID", ""),
             "NCBI_ID": res.get("NCBI_ID", ""),
@@ -259,7 +371,53 @@ def resolve_drafts(draft_rows: list[dict]) -> dict:
             "provenance": PROV_DRAFT if wikidata else PROV_UNRESOLVED,
             "cox": "",
         }
+
+        # LINEAGE GUARD (name layer): a Species/Genus hit whose Wikidata label
+        # disagrees with the row's Genus is a wrong-taxon substitution — blank it
+        # rather than ship a confident wrong id (CR-01).
+        if wikidata and not _label_matches_genus(matched_label, matched_rank, genus):
+            logger.warning(
+                f"[guard] {r['Raw_Labels']!r}: Wikidata label {matched_label!r} "
+                f"({matched_rank or 'no-rank'}) is not consistent with genus {genus!r}; blanking IDs."
+            )
+            _blank_record(rec, reason=f"wikidata label {matched_label!r} != genus {genus!r}")
+            guard_blanked += 1
+
+        mapping[r["Raw_Labels"]] = rec
+
+    if guard_blanked:
+        logger.warning(f"[guard] blanked {guard_blanked} draft rows on Wikidata-label/genus mismatch.")
     return mapping
+
+
+def blank_cross_genus_shared_ids(mapping: dict, frepj_rows: list[dict]) -> list[str]:
+    """Blank draft rows that share one ``wikidata_ID`` across DIFFERENT genera (CR-01).
+
+    Two distinct genera cannot legitimately be the same Wikidata taxon, so a
+    ``wikidata_ID`` shared by draft rows whose Genus differs is a bare-epithet
+    collision — the original ``affinis`` bug, where three unrelated genera inherited
+    one cached hit. Every draft row in such a group is BLANKED (conservative). Reused
+    overlap rows legitimately share a genus-level id WITHIN a single genus and are
+    never considered here. Network-free. Returns the blanked raw_labels.
+    """
+    genus_of = {r["Raw_Labels"]: (r["Genus"] or "").strip().lower() for r in frepj_rows}
+    by_qid: dict[str, set[str]] = {}
+    for rec in mapping.values():
+        if rec["provenance"] == PROV_DRAFT and rec[WIKIDATA_ID]:
+            by_qid.setdefault(rec[WIKIDATA_ID], set()).add(genus_of.get(rec["raw_label"], ""))
+
+    conflicting = {qid for qid, genera in by_qid.items() if len({g for g in genera if g}) > 1}
+    blanked: list[str] = []
+    for rec in mapping.values():
+        if rec["provenance"] == PROV_DRAFT and rec[WIKIDATA_ID] in conflicting:
+            shared_genera = sorted(g for g in by_qid[rec[WIKIDATA_ID]] if g)
+            logger.warning(
+                f"[guard] {rec['raw_label']!r}: wikidata_ID {rec[WIKIDATA_ID]} shared across "
+                f"differing genera {shared_genera}; blanking IDs."
+            )
+            _blank_record(rec, reason=f"wikidata_ID {rec[WIKIDATA_ID]} shared across genera {shared_genera}")
+            blanked.append(rec["raw_label"])
+    return blanked
 
 
 def blank_coarse_matches(mapping: dict) -> list[str]:
@@ -310,6 +468,114 @@ def _taxid_resolves(tax_id: str) -> bool | None:
             logger.warning(f"[cox] taxonomy lookup failed for {tax_id}: {e}")
             return None
     return None
+
+
+def _lineage_names(node: dict) -> set[str]:
+    """Lowercased set of every scientific name in an NCBI taxonomy record's lineage."""
+    names: set[str] = set()
+    for entry in node.get("LineageEx", []) or []:
+        name = str(entry.get("ScientificName", "")).strip().lower()
+        if name:
+            names.add(name)
+    for name in str(node.get("Lineage", "")).split(";"):
+        name = name.strip().lower()
+        if name:
+            names.add(name)
+    return names
+
+
+_TAXID_INFO_CACHE: dict[str, dict | None] = {}
+
+
+def fetch_taxid_info(tax_id: str) -> dict | None:
+    """Fetch an NCBI taxid's scientific name + rank + lineage names (cached).
+
+    Returns ``{"name", "rank", "lineage"}`` (all lowercased; ``lineage`` a set) or
+    ``None`` when the taxid is unknown or the lookup could not complete. Retries on
+    rate limit; a transient failure returns ``None`` so it is never read as a wrong
+    id. Feeds the WR-01 lineage guard.
+    """
+    if tax_id in _TAXID_INFO_CACHE:
+        return _TAXID_INFO_CACHE[tax_id]
+
+    from Bio import Entrez
+
+    info = None
+    for attempt in range(3):
+        try:
+            handle = Entrez.efetch(db="taxonomy", id=str(tax_id), retmode="xml")
+            record = Entrez.read(handle)
+            handle.close()
+            if record:
+                node = record[0]
+                info = {
+                    "name": str(node.get("ScientificName", "")).strip().lower(),
+                    "rank": str(node.get("Rank", "")).strip().lower(),
+                    "lineage": _lineage_names(node),
+                }
+            break
+        except Exception as e:  # network / rate limit — retry then give up as "unsure"
+            if "429" in str(e) or "Too Many" in str(e):
+                time.sleep(2**attempt)
+                continue
+            logger.warning(f"[guard] taxid info lookup failed for {tax_id}: {e}")
+            break
+
+    _TAXID_INFO_CACHE[tax_id] = info
+    return info
+
+
+def _ncbi_lineage_consistent(info: dict, genus: str, phylum: str) -> bool:
+    """True if an NCBI taxid's name/lineage is consistent with the row's Genus+Phylum.
+
+    The taxid must agree on BOTH the genus (its scientific-name first word equals the
+    row genus, or the genus appears anywhere in its lineage) AND the phylum (the row
+    phylum appears in its lineage, or equals its name). Empty row values are not
+    checked. This is what turns "a taxid exists" into "it is the RIGHT taxid" (WR-01):
+    the wrong copepod→hydrozoan taxid (Sinodiaptomus→Sarsia) fails the phylum test.
+    """
+    name = info["name"]
+    lineage = info["lineage"]
+    genus_ok = True
+    if genus:
+        first_word = name.split()[0] if name else ""
+        genus_ok = (genus == first_word) or (genus in lineage)
+    phylum_ok = True
+    if phylum:
+        phylum_ok = (phylum in lineage) or (phylum == name)
+    return genus_ok and phylum_ok
+
+
+def verify_ncbi_lineage(mapping: dict) -> list[str]:
+    """Blank draft rows whose NCBI taxid contradicts the row's Genus/Phylum (WR-01).
+
+    For every DRAFT row carrying an NCBI_ID, fetch the taxid's scientific name +
+    lineage and check it against the row's parsed Genus and Phylum. A contradiction
+    (wrong-taxon substitution) BLANKS all four IDs — the taxid, and the Wikidata
+    entity it was derived from, are the wrong organism. Rows whose lookup is
+    inconclusive are left untouched (a transient error must never be read as a wrong
+    id). Only ``draft:wikidata`` rows are checked; reused-overlap IDs are trusted and
+    never blanked. Network step (NCBI Entrez). Returns the blanked raw_labels.
+    """
+    draft = [rec for rec in mapping.values() if rec["provenance"] == PROV_DRAFT and rec["NCBI_ID"]]
+    logger.info(f"[guard] verifying NCBI lineage for {len(draft)} draft rows with an NCBI_ID.")
+    blanked: list[str] = []
+    for rec in draft:
+        tax_id = str(int(float(rec["NCBI_ID"])))
+        genus = rec.get("_genus", "")
+        phylum = rec.get("_phylum", "")
+        info = fetch_taxid_info(tax_id)
+        if info is None:
+            logger.warning(f"[guard] {rec['raw_label']!r}: taxid {tax_id} lineage inconclusive; leaving as-is.")
+            continue
+        if not _ncbi_lineage_consistent(info, genus, phylum):
+            logger.warning(
+                f"[guard] {rec['raw_label']!r}: NCBI taxid {tax_id} ({info['name']!r}, rank {info['rank']!r}) "
+                f"contradicts row genus={genus!r}/phylum={phylum!r}; blanking IDs."
+            )
+            _blank_record(rec, reason=f"NCBI taxid {tax_id} ({info['name']}) contradicts genus {genus}/phylum {phylum}")
+            blanked.append(rec["raw_label"])
+    return blanked
 
 
 def corroborate_ncbi_ids(ncbi_ids: list[str]) -> dict[str, str]:
@@ -365,6 +631,7 @@ def _counts(mapping: dict) -> dict:
     draft = sum(1 for r in mapping.values() if r["provenance"] == PROV_DRAFT)
     unresolved = sum(1 for r in mapping.values() if r["provenance"] == PROV_UNRESOLVED)
     blanked = sum(1 for r in mapping.values() if r["provenance"] == PROV_BLANKED)
+    guard_blanked = sum(1 for r in mapping.values() if r["provenance"] == PROV_GUARD_BLANKED)
     filled = {c: sum(1 for r in mapping.values() if r[c]) for c in ID_FIELDS}
     cox_vals = [r["cox"] for r in mapping.values() if r["NCBI_ID"]]
     cox = {
@@ -379,6 +646,7 @@ def _counts(mapping: dict) -> dict:
         "draft": draft,
         "unresolved": unresolved,
         "blanked": blanked,
+        "guard_blanked": guard_blanked,
         "filled": filled,
         "cox": cox,
     }
@@ -420,6 +688,11 @@ def write_summary(mapping: dict, order: list[str]) -> None:
         "- `blanked:too-coarse-KI6` — a draft that resolved ABOVE genus (Order/Class/Phylum); IDs BLANKED "
         "at finalization so no misleadingly-coarse whole-higher-taxon ID ships."
     )
+    lines.append(
+        "- `blanked:lineage-guard` — a draft whose resolved Wikidata/NCBI entity CONTRADICTS the row's "
+        "genus/phylum (a wrong-taxon substitution, e.g. `sarsi`→hydrozoan `Sarsia`); all four IDs BLANKED "
+        "rather than ship a confident wrong id (CR-01 / WR-01)."
+    )
     lines.append("- `unresolved` — Wikidata returned no biological match; all four IDs left blank.")
     lines.append("")
     lines.append("## Counts")
@@ -428,6 +701,7 @@ def write_summary(mapping: dict, order: list[str]) -> None:
     lines.append(f"- Reused verbatim (overlap): **{c['reused']}**.")
     lines.append(f"- Draft-resolved via Wikidata (shipping): **{c['draft']}**.")
     lines.append(f"- Blanked too-coarse (KI-6, removed at finalization): **{c['blanked']}**.")
+    lines.append(f"- Blanked lineage-guard (wrong-taxon, CR-01 / WR-01): **{c['guard_blanked']}**.")
     lines.append(f"- Unresolved (all IDs blank): **{c['unresolved']}**.")
     lines.append(
         f"- Filled cells — wikidata_ID: **{c['filled'][WIKIDATA_ID]}**, "
@@ -467,9 +741,13 @@ def write_summary(mapping: dict, order: list[str]) -> None:
     lines.append("## Caveats — KI-3 / KI-5 / KI-6 (what to spot-check at 18-03)")
     lines.append("")
     lines.append(
-        "- **KI-3 (substring / fuzzy match):** the Wikidata search matches the first "
-        "biological hit for the deepest known rank; a same-spelling homonym in another "
-        "kingdom can be picked. Verify each `draft:wikidata` genus/species is the intended taxon."
+        "- **KI-3 (bare-epithet / homonym collision):** species rows are now searched on the FULL "
+        "binomial (`Genus species`), not the bare epithet, so a bare epithet (`sarsi`) can no longer "
+        "collide with an unrelated genus (`Sarsia`). Two guards back this up: a Wikidata-label vs Genus "
+        "check and an NCBI taxid genus+phylum lineage check; a resolved entity that contradicts the row's "
+        "lineage is BLANKED (`blanked:lineage-guard`), never shipped. At 18-03 still spot-check every "
+        "`draft:wikidata` row's Wikidata label against its Genus (not only cross-kingdom homonyms) — the "
+        "demonstrated failure was a same-kingdom bare-epithet collision."
     )
     lines.append(
         "- **KI-5 (marine bias):** `aphia_ID` (WoRMS) is a marine register. Freshwater "
@@ -485,6 +763,24 @@ def write_summary(mapping: dict, order: list[str]) -> None:
     reused = [mapping[r] for r in order if mapping[r]["provenance"].startswith("reused:")]
     drafts = [mapping[r] for r in order if mapping[r]["provenance"] == PROV_DRAFT]
     blanked = [mapping[r] for r in order if mapping[r]["provenance"] == PROV_BLANKED]
+    guard_blanked = [mapping[r] for r in order if mapping[r]["provenance"] == PROV_GUARD_BLANKED]
+
+    lines.append("## Blanked lineage-guard matches (CR-01 / WR-01 — wrong-taxon, removed)")
+    lines.append("")
+    lines.append(
+        f"{len(guard_blanked)} draft taxa resolved to an entity whose genus/phylum CONTRADICTS the row "
+        "(a bare-epithet homonym collision or a wrong NCBI taxid), so all four ID cells were BLANKED — no "
+        "known-wrong id ships. Taxonomy rank columns + proposed_label are unchanged. Listed for the 18-03 record:"
+    )
+    lines.append("")
+    lines.append("| raw_label | proposed_label | former IDs (removed) | reason |")
+    lines.append("| --- | --- | --- | --- |")
+    lines.extend(
+        f"| {rec['raw_label']} | {rec['proposed_label']} | {rec.get('_former_ids', '(blanked)')} "
+        f"| {rec.get('_guard_reason', '')} |"
+        for rec in guard_blanked
+    )
+    lines.append("")
 
     lines.append("## Blanked too-coarse matches (KI-6 — removed at finalization)")
     lines.append("")
@@ -641,6 +937,10 @@ def resolve() -> dict:
 
     mapping.update(resolve_drafts(draft_rows))
 
+    shared = blank_cross_genus_shared_ids(mapping, frepj_rows)
+    if shared:
+        logger.warning(f"Blanked {len(shared)} draft rows sharing a wikidata_ID across differing genera.")
+
     order = [r["Raw_Labels"] for r in frepj_rows]
     missing = [raw for raw in order if raw not in mapping]
     if missing:
@@ -649,28 +949,48 @@ def resolve() -> dict:
 
 
 def load_mapping_from_summary() -> dict:
-    """Load the committed mapping, re-attaching proposed_label from the CSV (CSV order)."""
+    """Load the committed mapping, re-attaching proposed_label/Genus/Phylum from the CSV.
+
+    ``proposed_label`` restores the human-facing label for the summary tables;
+    ``_genus``/``_phylum`` (transient, not written back to the TSV) are the row's
+    parsed taxonomy the NCBI lineage guard checks the resolved taxid against (WR-01).
+    CSV row order is preserved.
+    """
     parsed = parse_summary()
-    proposed = {r["Raw_Labels"]: r["proposed_label"] for r in read_csv_rows(CSV_PATH) if r["Dataset"] == DATASET}
+    csv_by_raw = {r["Raw_Labels"]: r for r in read_csv_rows(CSV_PATH) if r["Dataset"] == DATASET}
     order = frepj_order()
     missing = [raw for raw in order if raw not in parsed]
     if missing:
         raise ValueError(f"{len(missing)} frepj rows absent from the summary (first: {missing[0]!r})")
     for raw, rec in parsed.items():
-        rec["proposed_label"] = proposed.get(raw, "")
+        src = csv_by_raw.get(raw, {})
+        rec["proposed_label"] = src.get("proposed_label", "")
+        rec["_genus"] = (src.get("Genus") or "").strip().lower()
+        rec["_phylum"] = (src.get("Phylum") or "").strip().lower()
     return {raw: parsed[raw] for raw in order}
 
 
-def finalize() -> tuple[list[str], dict[str, str]]:
-    """Blank the too-coarse KI-6 matches + run NCBI COX1 corroboration, rewrite summary.
+def finalize() -> tuple[list[str], list[str], dict[str, str]]:
+    """Blank too-coarse KI-6 + lineage-guard wrong-taxon draft IDs + COX1 corroborate.
 
-    Network step (NCBI Entrez). Returns ``(blanked_raw_labels, ncbi_statuses)`` so the
-    caller can report. The CSV write itself stays a separate network-free ``--backfill``.
+    Network step (NCBI Entrez). In order: (1) blank the KI-6 too-coarse (above-genus)
+    draft matches; (2) verify every draft NCBI_ID's taxon lineage against the row's
+    Genus/Phylum and BLANK wrong-taxon substitutions (WR-01); (3) COX1-corroborate the
+    surviving distinct NCBI_IDs (advisory). Returns
+    ``(coarse_blanked, guard_blanked, ncbi_statuses)`` for the report. The CSV write
+    itself stays a separate network-free ``--backfill``.
     """
+    from planktonzilla.planktonzilla_dataset.utils import extract_cox
+
+    extract_cox.configure_entrez()  # raises if NCBI_EMAIL unset — verified before any efetch.
+
     mapping = load_mapping_from_summary()
 
-    blanked = blank_coarse_matches(mapping)
-    logger.info(f"Blanked {len(blanked)} too-coarse (Order/Class/Phylum) draft rows.")
+    coarse = blank_coarse_matches(mapping)
+    logger.info(f"Blanked {len(coarse)} too-coarse (Order/Class/Phylum) draft rows.")
+
+    guarded = verify_ncbi_lineage(mapping)
+    logger.info(f"Lineage-guard blanked {len(guarded)} draft rows whose NCBI taxid contradicts the row.")
 
     # Corroborate every distinct NCBI_ID that survives the blanking.
     surviving = sorted({rec["NCBI_ID"] for rec in mapping.values() if rec["NCBI_ID"]})
@@ -679,7 +999,7 @@ def finalize() -> tuple[list[str], dict[str, str]]:
     apply_corroboration(mapping, statuses)
 
     write_summary(mapping, frepj_order())
-    return blanked, statuses
+    return coarse, guarded, statuses
 
 
 def main() -> None:
@@ -706,9 +1026,12 @@ def main() -> None:
         return
 
     if args.finalize:
-        blanked, statuses = finalize()
+        coarse, guarded, statuses = finalize()
         flagged = [k for k, v in statuses.items() if v == "cox:invalid-id"]
-        logger.info(f"Finalize done: {len(blanked)} blanked; {len(flagged)} NCBI_IDs flagged invalid.")
+        logger.info(
+            f"Finalize done: {len(coarse)} too-coarse blanked; {len(guarded)} lineage-guard blanked; "
+            f"{len(flagged)} NCBI_IDs flagged invalid."
+        )
         return
 
     mapping = resolve()

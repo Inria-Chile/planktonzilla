@@ -139,10 +139,11 @@ def fetch_wikidata_ids(taxa: pl.DataFrame) -> pl.DataFrame:
 
     Returns:
         The input DataFrame with added ``Wikidata URL``, ``Matched Taxon``,
-        ``Matched Rank`` and ``wikidata_ID`` (the Qcode extracted from the URL)
-        columns.
+        ``Matched Rank``, ``Matched Label`` (the resolved entity's Wikidata label,
+        used downstream to verify the hit is the intended taxon) and ``wikidata_ID``
+        (the Qcode extracted from the URL) columns.
     """
-    wikidata_urls, matched_taxon, matched_rank = [], [], []
+    wikidata_urls, matched_taxon, matched_rank, matched_label = [], [], [], []
 
     total = taxa.height
     for idx, row in enumerate(taxa.iter_rows(named=True), start=1):
@@ -151,22 +152,25 @@ def fetch_wikidata_ids(taxa: pl.DataFrame) -> pl.DataFrame:
         # Taxa present, from Species down to Kingdom (deepest rank first).
         taxons = [(row[c], c) for c in COLS if row[c] != ""]
 
-        found_url = found_taxon = found_rank = ""
+        found_url = found_taxon = found_rank = found_label = ""
         for taxon, rank in reversed(taxons):
             result = search_wikidata_taxon(taxon)
             if result:
                 found_url, found_taxon, found_rank = result["url"], taxon, rank
+                found_label = result.get("label", "")
                 break
 
         wikidata_urls.append(found_url)
         matched_taxon.append(found_taxon)
         matched_rank.append(found_rank)
+        matched_label.append(found_label)
 
     return taxa.with_columns(
         [
             pl.Series("Wikidata URL", wikidata_urls),
             pl.Series("Matched Taxon", matched_taxon),
             pl.Series("Matched Rank", matched_rank),
+            pl.Series("Matched Label", matched_label),
         ]
     ).with_columns(pl.col("Wikidata URL").str.extract(r"(Q\d+)", 1).alias("wikidata_ID"))
 
