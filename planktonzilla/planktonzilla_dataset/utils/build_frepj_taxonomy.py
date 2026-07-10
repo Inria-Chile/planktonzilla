@@ -181,6 +181,16 @@ def _load_existing(csv_path: Path):
     genus_lineage = {}
     for gen, rows in genus_rows.items():
         lineages = {(r["Kingdom"], r["Phylum"], r["Class"], r["Order"], r["Family"]) for r in rows}
+        if len(lineages) > 1:
+            # WR-02: do not SILENTLY tie-break a genus that carries two different
+            # existing lineages. The alphabetically-first is still reused (keeps the
+            # output byte-stable for today's conflict-free data), but the conflict is
+            # logged loudly so it surfaces at the Phase-18 checkpoint instead of being
+            # swallowed. No current overlap genus triggers this.
+            logger.warning(
+                f"[reconcile] genus «{gen}» has {len(lineages)} conflicting existing lineages "
+                f"{sorted(lineages)}; reusing the alphabetically-first — verify at the Phase-18 checkpoint."
+            )
         genus_lineage[gen] = {
             "lineages": lineages,
             "kpc_of": sorted(lineages)[0],
@@ -425,16 +435,23 @@ def _encode_rows(csv_rows: list[dict]) -> str:
 def write_csv(csv_path: Path, csv_rows: list[dict]) -> None:
     """Idempotently append the frepj rows after the pristine 1486-line prefix.
 
-    The pre-existing header + 1485 rows are preserved byte-for-byte: the prefix is
-    recovered as everything up to (and including the newline before) the first
-    ``frepj,`` line, so a re-run rewrites only the frepj block and leaves the file
-    byte-identical.
+    The pre-existing header + 1485 rows are preserved byte-for-byte: the append
+    boundary is the first CSV row whose ``Dataset`` column parses to ``frepj``
+    (WR-04) — the row's first field is parsed with ``csv.reader`` rather than raw
+    substring search, so a literal ``frepj,`` embedded in some other quoted field
+    can never be mistaken for the boundary. The prefix bytes up to that row are
+    copied verbatim (never re-serialised), so a re-run rewrites only the frepj block
+    and leaves the file byte-identical.
     """
-    raw = csv_path.read_text()
-    marker = "\nfrepj,"
-    idx = raw.find(marker)
-    prefix = raw if idx == -1 else raw[: idx + 1]
-    csv_path.write_text(prefix + _encode_rows(csv_rows))
+    raw = csv_path.read_bytes()
+    prefix = bytearray()
+    for line in raw.splitlines(keepends=True):
+        content = line.decode("utf-8").rstrip("\r\n")
+        first_field = next(csv.reader([content]), [""])[0] if content else ""
+        if first_field == DATASET_NAME:
+            break
+        prefix += line
+    csv_path.write_text(bytes(prefix).decode("utf-8") + _encode_rows(csv_rows))
 
 
 def _fmt_ids(id_rows: list[dict]) -> str:
