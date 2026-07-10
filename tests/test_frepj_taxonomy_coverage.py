@@ -124,6 +124,23 @@ def test_genus_sentinel_cascade_nulls_species():
         assert "_unk" not in row["proposed_label"]
 
 
+def test_no_unk_leak_in_any_frepj_rank_or_label():
+    """WR-05: NO frepj row leaks a sentinel into ANY rank column or proposed_label.
+
+    The hardcoded ``test_genus_sentinel_cascade_nulls_species`` above only pins 9
+    known rows; this asserts the GENERIC invariant over all 229 shipped rows, so a
+    regression that leaked ``_unk`` (or a bare ``sp``/``sp2``) into a DIFFERENT row or
+    a different rank column (e.g. Order/Family) would be caught too.
+    """
+    bad = []
+    for r in _frepj_rows():
+        for col in ("Order", "Family", "Genus", "Species", "proposed_label"):
+            val = (r[col] or "").strip().lower()
+            if "_unk" in val or val in ("sp", "sp2"):
+                bad.append((r["Raw_Labels"], col, r[col]))
+    assert bad == [], f"sentinel leaked into a rank/label column: {bad}"
+
+
 def test_shared_higher_taxa_single_spelling():
     """TAX-06: a genus shared with another source carries one higher-rank spelling."""
     rows = _read_csv_rows()
