@@ -80,6 +80,34 @@ def test_read_site_coordinates_out_of_range_is_none():
     assert coords["Bad Site"] == (None, None)
 
 
+def test_read_site_coordinates_conflicting_duplicate_site_resolves_to_null(tmp_path):
+    """Two Table_S1 rows for the SAME site name that disagree by more than the
+    conflict tolerance (real-world Tsurugajo case, ~138 km apart) resolve to
+    (None, None) -- never a silently-picked, potentially wrong coordinate (CR-01)."""
+    csv_path = tmp_path / "table_s1_conflict.csv"
+    csv_path.write_text(
+        "site,North latitude,East latitude,date\n"
+        "Tsurugajo,37.48819753,139.9283394,2022.09.11\n"
+        "Tsurugajo,38.72911302,139.8242578,2022.10.16\n"
+    )
+    coords = frepj_tables.read_site_coordinates(csv_path)
+    assert coords["Tsurugajo"] == (None, None)
+
+
+def test_read_site_coordinates_agreeing_duplicate_rows_still_resolve(tmp_path):
+    """Duplicate rows that agree to within the noise tolerance (a few metres, e.g.
+    the real Nunome Dam case) still resolve normally -- the conflict guard does not
+    over-null ordinary GPS/rounding noise across repeat sampling dates."""
+    csv_path = tmp_path / "table_s1_noise.csv"
+    csv_path.write_text(
+        "site,North latitude,East latitude,date\n"
+        "Nunome Dam,34.70038835,135.9781648,2018.11.13\n"
+        "Nunome Dam,34.70037071,135.9781863,2017.05.19\n"
+    )
+    coords = frepj_tables.read_site_coordinates(csv_path)
+    assert coords["Nunome Dam"] == (pytest.approx(34.70037071), pytest.approx(135.9781863))
+
+
 # --- read_per_image_site_index --------------------------------------------------------
 
 

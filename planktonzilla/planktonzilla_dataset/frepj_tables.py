@@ -33,6 +33,8 @@ third-party dependency is introduced (polars/datasets are already vendored;
 
 import hashlib
 import shutil
+from collections import defaultdict
+from math import asin, cos, radians, sin, sqrt
 from pathlib import Path
 
 import polars as pl
@@ -124,21 +126,56 @@ def _parse_coord(raw: str | None, lo: float, hi: float) -> float | None:
     return value
 
 
+# --- Duplicate-site conflict detection (CR-01) -----------------------------------------
+# Table_S1.csv carries one row per (site, sampling date), so a site sampled repeatedly
+# appears more than once. Most repeat rows agree to within GPS/rounding noise (a few
+# metres), but at least one site (``Tsurugajo``) has two rows describing real-world
+# locations ~138 km apart. ``_SITE_COORD_CONFLICT_KM`` separates ordinary noise from a
+# genuine collision: rows for the same site name that disagree by more than this
+# distance are never silently folded together (see 17-REVIEW.md CR-01).
+_EARTH_RADIUS_KM = 6371.0088
+_SITE_COORD_CONFLICT_KM = 1.0
+
+
+def haversine_km(a: tuple[float, float], b: tuple[float, float]) -> float:
+    """Great-circle distance in km between two ``(lat, lon)`` points.
+
+    Public (not underscore-prefixed) because :mod:`frepj_crosswalk` reuses it for its
+    own fuzzy-match tie/conflict guard (WR-01) -- both modules share the same notion of
+    "materially different real-world locations."
+    """
+    lat1, lon1 = radians(a[0]), radians(a[1])
+    lat2, lon2 = radians(b[0]), radians(b[1])
+    dlat, dlon = lat2 - lat1, lon2 - lon1
+    h = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+    return 2 * _EARTH_RADIUS_KM * asin(sqrt(h))
+
+
 def read_site_coordinates(s1_path: str | Path) -> dict[str, tuple[float | None, float | None]]:
     """Map each Table_S1 site name to ``(latitude, longitude)``.
 
     ``North latitude`` -> latitude and ``East latitude`` -> LONGITUDE (the ``East
     latitude`` header is a source typo; it holds longitude — see 15-RESEARCH.md).
     A row whose latitude falls outside ``[-90, 90]`` or longitude outside
-    ``[-180, 180]`` (or is unparseable) resolves to ``(None, None)`` rather than a
-    guessed coordinate.
+    ``[-180, 180]`` (or is unparseable) contributes no coordinate for that row, never
+    a guessed one; a site with no valid row resolves to ``(None, None)``.
+
+    ``Table_S1.csv`` has one row per ``(site, date)``, so a repeatedly-sampled site has
+    multiple rows. When every valid row for a site agrees to within
+    :data:`_SITE_COORD_CONFLICT_KM` (ordinary GPS/rounding noise across sampling dates),
+    the site resolves normally. When two rows for the SAME site name disagree by more
+    than that — a same-name collision describing two different real-world locations,
+    e.g. ``Tsurugajo`` (~138 km apart) — the site is treated as CONFLICTED/ambiguous and
+    resolves to ``(None, None)`` rather than silently picking one (CR-01; never emit a
+    wrong coordinate).
     """
     df, cols = _read_csv(s1_path)
     site_col = cols["site"]
     lat_col = cols["North latitude"]
     lon_col = cols["East latitude"]  # NB: source typo — this column is the longitude.
 
-    coords: dict[str, tuple[float | None, float | None]] = {}
+    valid_pairs: dict[str, list[tuple[float, float]]] = defaultdict(list)
+    seen_sites: set[str] = set()
     for row in df.select(
         pl.col(site_col).alias("site"),
         pl.col(lat_col).alias("lat"),
@@ -147,13 +184,36 @@ def read_site_coordinates(s1_path: str | Path) -> dict[str, tuple[float | None, 
         site = str(row["site"]).strip()
         if not site:
             continue
+        seen_sites.add(site)
         lat = _parse_coord(row["lat"], -90.0, 90.0)
         lon = _parse_coord(row["lon"], -180.0, 180.0)
-        # A single bad axis nulls the whole coordinate (never a half-guessed point).
-        if lat is None or lon is None:
+        if lat is not None and lon is not None:
+            valid_pairs[site].append((lat, lon))
+        # A single bad axis contributes no coordinate for THIS row (never a
+        # half-guessed point); it does not by itself null a site that has other
+        # valid rows -- the per-site aggregation below decides the final value.
+
+    coords: dict[str, tuple[float | None, float | None]] = {}
+    for site in seen_sites:
+        pairs = valid_pairs.get(site, [])
+        if not pairs:
+            coords[site] = (None, None)
+            continue
+        max_spread = max(
+            (haversine_km(pairs[i], pairs[j]) for i in range(len(pairs)) for j in range(i + 1, len(pairs))),
+            default=0.0,
+        )
+        if max_spread > _SITE_COORD_CONFLICT_KM:
+            logger.warning(
+                f"«{site}» has Table_S1 rows disagreeing by up to {max_spread:.1f} km "
+                f"(> {_SITE_COORD_CONFLICT_KM:g} km tolerance) -- treating as a same-name "
+                "collision and resolving to null rather than guessing (CR-01)."
+            )
             coords[site] = (None, None)
         else:
-            coords[site] = (lat, lon)
+            # Rows agree (within GPS/rounding noise) -- keep the last row, matching the
+            # prior last-write-wins selection for the non-conflicting case.
+            coords[site] = pairs[-1]
     return coords
 
 

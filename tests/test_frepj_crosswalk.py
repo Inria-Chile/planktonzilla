@@ -85,6 +85,19 @@ def test_build_crosswalk_fuzzy_match(site_coords, token_counts):
     assert (row["Latitude"], row["Longitude"]) == (pytest.approx(34.7), pytest.approx(132.5))
 
 
+def test_build_crosswalk_resolved_site_with_null_coords_downgrades_to_null_row(token_counts):
+    """A token that resolves (trivial) to a Table_S1 site whose OWN coordinate is
+    (None, None) -- e.g. a same-name collision nulled by CR-01 -- downgrades to a full
+    null row rather than emitting a non-null method with blank coordinates."""
+    conflicted_site_coords = {"Akigawa Dam": (None, None)}
+    rows = frepj_crosswalk.build_crosswalk(conflicted_site_coords, token_counts, {})
+    row = _by_token(rows)["akigawadam"]
+    assert row["method"] == "null"
+    assert row["resolved_site"] == ""
+    assert row["Latitude"] is None
+    assert row["Longitude"] is None
+
+
 def test_build_crosswalk_override_wins(site_coords):
     """An override entry resolves a token that neither trivially nor fuzzily matches."""
     rows = frepj_crosswalk.build_crosswalk(site_coords, {"biwako": 3}, {"biwako": "Lake Biwa"})

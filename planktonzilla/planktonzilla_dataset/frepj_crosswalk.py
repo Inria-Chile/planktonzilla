@@ -116,6 +116,12 @@ def build_crosswalk(
                 resolved_site, method = overrides[raw_token], "override"
 
         latitude, longitude = site_coords.get(resolved_site, (None, None)) if resolved_site else (None, None)
+        if resolved_site and (latitude is None or longitude is None):
+            # The token's name resolved (trivial/fuzzy/override), but Table_S1 itself
+            # has no reliable coordinate for that site -- e.g. a same-name collision
+            # nulled by :func:`frepj_tables.read_site_coordinates` (CR-01). Downgrade to
+            # a full null row rather than emitting a non-null method with blank coords.
+            resolved_site, method = "", "null"
 
         rows.append(
             {
