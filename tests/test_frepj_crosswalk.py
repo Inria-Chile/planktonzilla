@@ -138,6 +138,14 @@ def test_build_crosswalk_override_wins(site_coords):
     assert row["Longitude"] == pytest.approx(136.1)
 
 
+def test_build_crosswalk_override_naming_unknown_site_raises(site_coords):
+    """An override whose target is NOT a Table_S1 site name (e.g. a typo in
+    ``frepj_site_overrides.csv``) fails loud at build time instead of silently
+    emitting method='override' with blank coordinates (WR-02)."""
+    with pytest.raises(ValueError, match="unknown Table_S1 site"):
+        frepj_crosswalk.build_crosswalk(site_coords, {"biwako": 3}, {"biwako": "Lake Biwaaa"})
+
+
 def test_build_crosswalk_unoverridden_ambiguous_is_null(site_coords):
     """Without an override the same low-confidence token stays null (never guessed)."""
     rows = frepj_crosswalk.build_crosswalk(site_coords, {"biwako": 3}, {})

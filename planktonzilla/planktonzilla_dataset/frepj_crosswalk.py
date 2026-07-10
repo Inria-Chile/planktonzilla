@@ -137,6 +137,12 @@ def build_crosswalk(
         ``site_token, resolved_site, Latitude, Longitude, method, n_images``. A token
         with no confident match and no override is emitted with ``method="null"`` and
         ``Latitude``/``Longitude`` set to ``None`` — never a guessed coordinate.
+
+    Raises:
+        ValueError: an override fires for a token whose target site name is not a key
+            of ``site_coords`` (a typo'd/stale entry in ``frepj_site_overrides.csv``) --
+            fails loud at build time rather than silently emitting a non-null method
+            with blank coordinates (WR-02).
     """
     # Deterministic normalized-name -> Table_S1-site lookup (first site wins on a tie).
     norm_to_site: dict[str, str] = {}
@@ -159,7 +165,17 @@ def build_crosswalk(
             if fuzzy_site:
                 resolved_site, method = fuzzy_site, "fuzzy"
             elif raw_token in overrides:
-                resolved_site, method = overrides[raw_token], "override"
+                candidate = overrides[raw_token]
+                if candidate not in site_coords:
+                    # WR-02: a hand-curated override with a typo'd/stale target would
+                    # otherwise silently emit method="override" with blank coords,
+                    # indistinguishable from a correctly-resolved override except for
+                    # the empty cells. Fail loud instead of letting it through quietly.
+                    raise ValueError(
+                        f"Override for «{raw_token}» names unknown Table_S1 site «{candidate}»; "
+                        "fix planktonzilla_dataset/frepj_site_overrides.csv (WR-02)."
+                    )
+                resolved_site, method = candidate, "override"
 
         latitude, longitude = site_coords.get(resolved_site, (None, None)) if resolved_site else (None, None)
         if resolved_site and (latitude is None or longitude is None):
