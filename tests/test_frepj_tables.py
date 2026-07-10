@@ -94,18 +94,25 @@ def test_read_site_coordinates_conflicting_duplicate_site_resolves_to_null(tmp_p
     assert coords["Tsurugajo"] == (None, None)
 
 
-def test_read_site_coordinates_agreeing_duplicate_rows_still_resolve(tmp_path):
-    """Duplicate rows that agree to within the noise tolerance (a few metres, e.g.
-    the real Nunome Dam case) still resolve normally -- the conflict guard does not
-    over-null ordinary GPS/rounding noise across repeat sampling dates."""
+def test_read_site_coordinates_agreeing_duplicate_rows_resolve_to_centroid(tmp_path):
+    """Duplicate rows for the same site that agree to within the conflict tolerance
+    (up to 10 km -- ordinary same-site measurement imprecision, e.g. a large reservoir
+    surveyed from different shore points; the real Lake Ashino case, ~5.5 km apart)
+    resolve to their CENTROID -- the arithmetic mean of every valid row -- rather than
+    last-write-wins or either individual row."""
     csv_path = tmp_path / "table_s1_noise.csv"
     csv_path.write_text(
         "site,North latitude,East latitude,date\n"
-        "Nunome Dam,34.70038835,135.9781648,2018.11.13\n"
-        "Nunome Dam,34.70037071,135.9781863,2017.05.19\n"
+        "Lake Ashino,35.190234,139.024848,2023.04.28\n"
+        "Lake Ashino,35.234145,138.99671,2023.04.28\n"
     )
     coords = frepj_tables.read_site_coordinates(csv_path)
-    assert coords["Nunome Dam"] == (pytest.approx(34.70037071), pytest.approx(135.9781863))
+    expected = (pytest.approx((35.190234 + 35.234145) / 2), pytest.approx((139.024848 + 138.99671) / 2))
+    assert coords["Lake Ashino"] == expected
+    # The centroid must differ from BOTH individual rows -- proof this is a mean, not a
+    # last-write-wins pick or either row selected outright.
+    assert coords["Lake Ashino"] != (pytest.approx(35.190234), pytest.approx(139.024848))
+    assert coords["Lake Ashino"] != (pytest.approx(35.234145), pytest.approx(138.99671))
 
 
 # --- read_per_image_site_index --------------------------------------------------------

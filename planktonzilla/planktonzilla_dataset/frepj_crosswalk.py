@@ -47,9 +47,13 @@ FUZZY_CUTOFF = 0.85
 # proof of ambiguity -- near-identical real-world coordinates (a few tens of metres,
 # the sakurajo case) should still resolve. Only treat a tie as ambiguous (-> fall
 # through to override/null) when the tied candidates ALSO map to materially different
-# real-world locations, reusing the same distance notion as CR-01.
+# real-world locations, reusing :func:`frepj_tables.haversine_km` -- the same distance
+# helper as CR-01, but a DELIBERATELY SEPARATE, DECOUPLED threshold: this guards a tie
+# between two DIFFERENT Table_S1 site names (never loosen it), whereas CR-01's
+# ``_SITE_COORD_CONFLICT_KM`` (10 km) governs same-name duplicate-row centroiding. Do
+# not fold these two constants back into one -- they answer different questions.
 FUZZY_TIE_SCORE_EPSILON = 0.02
-FUZZY_TIE_CONFLICT_KM = 1.0  # matches CR-01's Table_S1 same-name-collision tolerance
+FUZZY_TIE_CONFLICT_KM = 1.0  # intentionally stays at the tight 1 km tie-rejection bar
 
 CROSSWALK_COLUMNS = ["site_token", "resolved_site", "Latitude", "Longitude", "method", "n_images"]
 

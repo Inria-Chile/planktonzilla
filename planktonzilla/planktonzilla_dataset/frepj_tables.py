@@ -126,15 +126,20 @@ def _parse_coord(raw: str | None, lo: float, hi: float) -> float | None:
     return value
 
 
-# --- Duplicate-site conflict detection (CR-01) -----------------------------------------
+# --- Duplicate-site conflict detection (CR-01, refined) --------------------------------
 # Table_S1.csv carries one row per (site, sampling date), so a site sampled repeatedly
-# appears more than once. Most repeat rows agree to within GPS/rounding noise (a few
-# metres), but at least one site (``Tsurugajo``) has two rows describing real-world
-# locations ~138 km apart. ``_SITE_COORD_CONFLICT_KM`` separates ordinary noise from a
-# genuine collision: rows for the same site name that disagree by more than this
-# distance are never silently folded together (see 17-REVIEW.md CR-01).
+# appears more than once. Most repeat rows agree to within ordinary same-site
+# measurement imprecision -- anywhere from a few metres up to a few km for a large
+# reservoir surveyed from different shore points (e.g. ``Miharu Dam`` ~1.06 km,
+# ``Lake Ashino`` ~5.5 km) -- but at least one site name is a genuine collision between
+# two distinct real-world places (``Tsurugajo``, ~138 km apart; ``Kincho Dam``, an
+# Okinawa/Hokkaido split ~2,360 km apart). ``_SITE_COORD_CONFLICT_KM`` separates the two:
+# rows for the same site name that disagree by no more than this distance are folded to
+# their CENTROID (the arithmetic mean of every valid row, more robust than picking any
+# single row); rows that disagree by more are a genuine name collision and are never
+# silently folded together (see 17-REVIEW.md CR-01 and its follow-up).
 _EARTH_RADIUS_KM = 6371.0088
-_SITE_COORD_CONFLICT_KM = 1.0
+_SITE_COORD_CONFLICT_KM = 10.0
 
 
 def haversine_km(a: tuple[float, float], b: tuple[float, float]) -> float:
@@ -162,12 +167,14 @@ def read_site_coordinates(s1_path: str | Path) -> dict[str, tuple[float | None, 
 
     ``Table_S1.csv`` has one row per ``(site, date)``, so a repeatedly-sampled site has
     multiple rows. When every valid row for a site agrees to within
-    :data:`_SITE_COORD_CONFLICT_KM` (ordinary GPS/rounding noise across sampling dates),
-    the site resolves normally. When two rows for the SAME site name disagree by more
-    than that — a same-name collision describing two different real-world locations,
-    e.g. ``Tsurugajo`` (~138 km apart) — the site is treated as CONFLICTED/ambiguous and
-    resolves to ``(None, None)`` rather than silently picking one (CR-01; never emit a
-    wrong coordinate).
+    :data:`_SITE_COORD_CONFLICT_KM` (ordinary same-site measurement imprecision across
+    sampling dates/shore points — e.g. ``Miharu Dam`` ~1.06 km, ``Lake Ashino`` ~5.5 km),
+    the site resolves to the CENTROID of its valid rows (the arithmetic mean of every
+    ``(lat, lon)`` pair), which is more robust than last-write-wins. When two rows for
+    the SAME site name disagree by MORE than that — a same-name collision describing two
+    different real-world locations, e.g. ``Tsurugajo`` (~138 km apart) or ``Kincho Dam``
+    (~2,360 km apart) — the site is treated as CONFLICTED/ambiguous and resolves to
+    ``(None, None)`` rather than silently guessing (CR-01; never emit a wrong coordinate).
     """
     df, cols = _read_csv(s1_path)
     site_col = cols["site"]
@@ -211,9 +218,11 @@ def read_site_coordinates(s1_path: str | Path) -> dict[str, tuple[float | None, 
             )
             coords[site] = (None, None)
         else:
-            # Rows agree (within GPS/rounding noise) -- keep the last row, matching the
-            # prior last-write-wins selection for the non-conflicting case.
-            coords[site] = pairs[-1]
+            # Rows agree within tolerance (ordinary same-site measurement imprecision) --
+            # resolve to their CENTROID rather than picking any single row.
+            mean_lat = sum(p[0] for p in pairs) / len(pairs)
+            mean_lon = sum(p[1] for p in pairs) / len(pairs)
+            coords[site] = (mean_lat, mean_lon)
     return coords
 
 

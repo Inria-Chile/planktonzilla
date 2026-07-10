@@ -5,11 +5,11 @@ Akiu Natural Park,Akiu Natural Park,38.22990968,140.710955,trivial,142
 adachimonuma,Lake Adachi,38.258,140.818,override,2666
 ahadam,"",,,null,500
 aio,Aiofutajima pond,34.045,131.418,override,954
-akanko,Lake Akan,43.455,144.11,override,866
+akanko,Lake Akan,43.455000000000005,144.11,override,866
 akigawadam,Akigawa Dam,35.42534327,137.4318704,trivial,2472
 arakawadam,"",,,null,34
 asahiyama,Asahiyama Park,38.11497719,140.8513749,override,20
-ashinoko,"",,,null,246
+ashinoko,Lake Ashino,35.2040435,139.01898275,override,246
 baiyou,"",,,null,23
 biwako,Lake Biwa,34.973,135.907,override,10017
 biwako_littoral,Lake Biwa littoral area,35.026,135.868762,override,13
@@ -29,7 +29,7 @@ imori,Imori Pond,35.15796734,139.0264613,override,105
 inba_funato,"",,,null,631
 inba_fusha,"",,,null,120
 iwaodam,"",,,null,6062
-iwaonaidam,Iwawonai Dam,44.11566104,142.7076574,fuzzy,2353
+iwaonaidam,Iwawonai Dam,44.11569179714286,142.70763558571429,fuzzy,2353
 kakegawa,A pond in Kakegawa,34.766,138.028,override,340
 kamahusadam,Kamafusa Dam,38.20350303,140.6970296,fuzzy,434
 kannadam,Kanna Dam,26.48243403,127.9495442,trivial,913
@@ -45,7 +45,7 @@ komatsujima,Komatsujima Park,38.28522392,140.8877891,override,16
 korigaike,Pond Korigaike,35.0866309,139.0304439,override,104
 kuzuryu,Kuzuryu Dam,35.89624506,136.6880856,override,43
 managawadam,Managawa Dam,35.91836656,136.5421803,trivial,1924
-miharudam,"",,,null,1957
+miharudam,Miharu Dam,37.406176900000006,140.4806516,trivial,1957
 mikata,Lake Mikata,35.56001411,135.8934894,override,12
 misogawadam,Misokawa Dam,35.97735277,137.7703107,fuzzy,1211
 moriyoshizandam,Moriyoshizan Dam,40.03531332,140.4590625,trivial,2432
@@ -53,7 +53,7 @@ muroodam,Muroo Dam,34.55572189,136.0069412,trivial,736
 nagashimadam,Nagashima Dam,35.16686999,138.155679,trivial,397
 nibutanidam,"",,,null,60
 nukuidam,Nukui Dam,34.63495425,132.2996869,trivial,55
-nunomedam,Nunome Dam,34.70037071,135.9781863,trivial,227
+nunomedam,Nunome Dam,34.70038247,135.97817196666668,trivial,227
 obaradam,Obara Dam,35.22491601,132.9512613,trivial,464
 ohhori,Ohori Pond,33.588,130.374,override,884
 ohtsutsumi,Ohtsutsumi (Sendai),38.34,140.854,override,982
@@ -73,7 +73,7 @@ sugesawadam,Sugasawa Dam,35.20558987,133.3143814,fuzzy,710
 suigetsuko,Lake Suigetsu,35.58509202,135.8830453,override,142
 surikamigawadam,"",,,null,422
 syakujii,"",,,null,199
-takayamadam,Takayama Dam,34.75314339,136.011096,trivial,301
+takayamadam,Takayama Dam,34.75315443,136.01107834285716,trivial,301
 tobiike,Tobiike,33.73,130.523,trivial,674
 tomatadam,Tomada Dam,35.12733662,133.8938966,fuzzy,327
 tsurudadam,Tsuruta Dam,31.98888208,130.4938046,fuzzy,1117
@@ -81,4 +81,4 @@ tsurugajo,"",,,null,65
 tsuruike,Tsuruike,34.836,134.888,trivial,253
 tsuruoka,"",,,null,39
 wakayamakuroiwa,A ponds in Kuroiwa,34.181,135.279,override,36
-yokoyamadam,Yokoyama Dam,35.593261,136.4552267,trivial,4102
+yokoyamadam,Yokoyama Dam,35.593261,136.45524815,trivial,4102
