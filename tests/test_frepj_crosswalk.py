@@ -85,6 +85,36 @@ def test_build_crosswalk_fuzzy_match(site_coords, token_counts):
     assert (row["Latitude"], row["Longitude"]) == (pytest.approx(34.7), pytest.approx(132.5))
 
 
+def test_build_crosswalk_fuzzy_tie_with_distant_coords_is_null():
+    """Two Table_S1 candidates that TIE on fuzzy score but map to materially distant
+    real-world coordinates are never guessed between -- resolves to null (WR-01)."""
+    tied_site_coords = {
+        "Test Site 1": (35.0, 140.0),
+        "Test Site 2": (36.0, 141.0),  # ~140 km from "Test Site 1" -- a real conflict
+    }
+    rows = frepj_crosswalk.build_crosswalk(tied_site_coords, {"testsite3": 1}, {})
+    row = _by_token(rows)["testsite3"]
+    assert row["method"] == "null"
+    assert row["resolved_site"] == ""
+    assert row["Latitude"] is None
+    assert row["Longitude"] is None
+
+
+def test_build_crosswalk_fuzzy_tie_with_near_identical_coords_still_resolves():
+    """A fuzzy score tie between two candidates whose coordinates are near-identical
+    (the real ``sakurajo`` case, ~60 m apart) still resolves via method='fuzzy' --
+    the tie guard only nulls MATERIALLY distant ties, not every tie (WR-01)."""
+    tied_site_coords = {
+        "Test Site 1": (35.00000, 140.00000),
+        "Test Site 2": (35.00050, 140.00000),  # ~55 m from "Test Site 1" -- noise, not a conflict
+    }
+    rows = frepj_crosswalk.build_crosswalk(tied_site_coords, {"testsite3": 1}, {})
+    row = _by_token(rows)["testsite3"]
+    assert row["method"] == "fuzzy"
+    assert row["resolved_site"] in tied_site_coords
+    assert row["Latitude"] is not None and row["Longitude"] is not None
+
+
 def test_build_crosswalk_resolved_site_with_null_coords_downgrades_to_null_row(token_counts):
     """A token that resolves (trivial) to a Table_S1 site whose OWN coordinate is
     (None, None) -- e.g. a same-name collision nulled by CR-01 -- downgrades to a full

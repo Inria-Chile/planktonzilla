@@ -41,6 +41,16 @@ logger = get_pylogger(__name__)
 # the pass never manufactures a wrong coordinate (CONTEXT: ambiguous -> null).
 FUZZY_CUTOFF = 0.85
 
+# WR-01: `difflib.get_close_matches(..., n=1, ...)` only ever returns the single best
+# match, even when a runner-up scores within noise of it (e.g. "sakurajo" scores
+# identically against both "Sakurajo_1" and "Sakurajo_2"). A score tie alone is not
+# proof of ambiguity -- near-identical real-world coordinates (a few tens of metres,
+# the sakurajo case) should still resolve. Only treat a tie as ambiguous (-> fall
+# through to override/null) when the tied candidates ALSO map to materially different
+# real-world locations, reusing the same distance notion as CR-01.
+FUZZY_TIE_SCORE_EPSILON = 0.02
+FUZZY_TIE_CONFLICT_KM = 1.0  # matches CR-01's Table_S1 same-name-collision tolerance
+
 CROSSWALK_COLUMNS = ["site_token", "resolved_site", "Latitude", "Longitude", "method", "n_images"]
 
 _SEPARATOR_RE = re.compile(r"[^a-z0-9]+")
@@ -68,6 +78,42 @@ def _to_float_or_none(raw: str | float | None) -> float | None:
         return float(text)
     except ValueError:
         return None
+
+
+def _resolve_fuzzy_match(
+    norm: str,
+    candidates: list[str],
+    norm_to_site: dict[str, str],
+    site_coords: dict[str, tuple[float | None, float | None]],
+    fuzzy_cutoff: float,
+) -> str | None:
+    """Return the auto-fuzzy Table_S1 site match for ``norm``, or ``None`` if ambiguous.
+
+    Requests the top-2 ``difflib`` candidates (not just the best) so a SCORE TIE between
+    two distinct Table_S1 sites can be detected (WR-01) — ``get_close_matches(n=1, ...)``
+    silently picks one via Python's internal tie-break, which is not a confidence signal.
+    A tie is only treated as ambiguous (returns ``None``, falling through to
+    override/null) when the tied candidates ALSO map to coordinates more than
+    :data:`FUZZY_TIE_CONFLICT_KM` apart — near-identical real-world duplicates (e.g. the
+    real ``sakurajo`` case, two site rows ~60 m apart) still resolve normally.
+    """
+    close = difflib.get_close_matches(norm, candidates, n=2, cutoff=fuzzy_cutoff)
+    if not close:
+        return None
+
+    if len(close) > 1:
+        top_ratio = difflib.SequenceMatcher(None, norm, close[0]).ratio()
+        runner_up_ratio = difflib.SequenceMatcher(None, norm, close[1]).ratio()
+        if (top_ratio - runner_up_ratio) < FUZZY_TIE_SCORE_EPSILON:
+            top_coord = site_coords.get(norm_to_site[close[0]], (None, None))
+            runner_coord = site_coords.get(norm_to_site[close[1]], (None, None))
+            if None in top_coord or None in runner_coord:
+                # Can't establish the two candidates agree -- never guess (WR-01).
+                return None
+            if frepj_tables.haversine_km(top_coord, runner_coord) > FUZZY_TIE_CONFLICT_KM:
+                return None
+
+    return norm_to_site[close[0]]
 
 
 def build_crosswalk(
@@ -109,9 +155,9 @@ def build_crosswalk(
         if norm in norm_to_site:
             resolved_site, method = norm_to_site[norm], "trivial"
         else:
-            close = difflib.get_close_matches(norm, candidates, n=1, cutoff=fuzzy_cutoff)
-            if close:
-                resolved_site, method = norm_to_site[close[0]], "fuzzy"
+            fuzzy_site = _resolve_fuzzy_match(norm, candidates, norm_to_site, site_coords, fuzzy_cutoff)
+            if fuzzy_site:
+                resolved_site, method = fuzzy_site, "fuzzy"
             elif raw_token in overrides:
                 resolved_site, method = overrides[raw_token], "override"
 
