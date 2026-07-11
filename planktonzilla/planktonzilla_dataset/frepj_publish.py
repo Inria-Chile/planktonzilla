@@ -46,7 +46,9 @@ from planktonzilla.utils.logger import get_pylogger
 logger = get_pylogger(__name__)
 
 # The ONLY allowlisted push target (belt-and-suspenders on top of the frozen-id guard).
-TARGET_REPO_ID = "project-oceania/planktonzilla-frepj"
+# Aliased from frozen_repo_guard.FREPJ_ONLY_REPO_ID so there is ONE source of truth for
+# this security-relevant literal — it is never re-typed here.
+TARGET_REPO_ID = frozen_repo_guard.FREPJ_ONLY_REPO_ID
 
 # Default location of the locally-built + validated FREPJ-only dataset (Plan 19-01).
 DEFAULT_DATASET_PATH = "data/frepj_only_build/planktonzilla-17M"
