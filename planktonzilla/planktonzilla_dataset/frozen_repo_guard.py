@@ -29,22 +29,43 @@ FROZEN_REPO_IDS = frozenset(
 )
 
 
+def _normalize(repo_id: str) -> str:
+    """Strip surrounding whitespace and a trailing ``/`` before any comparison.
+
+    A trailing slash makes ``rsplit("/", 1)[-1]`` return an empty string (matching
+    nothing), and stray whitespace adjacent to the last ``/`` becomes part of the
+    basename and breaks the exact-match comparison. Normalizing first closes both
+    bypasses without changing behavior for any already-well-formed repo id.
+    """
+    return repo_id.strip().rstrip("/")
+
+
 def _basename(repo_id: str) -> str:
-    """Return the ``owner/name`` -> ``name`` basename (or the whole string)."""
-    return repo_id.rsplit("/", 1)[-1]
+    """Return the ``owner/name`` -> ``name`` basename (or the whole string).
+
+    The extracted basename is also stripped so a stray space adjacent to the
+    ``/`` separator (e.g. ``"project-oceania/ planktonzilla-17M"``) does not
+    survive into the basename comparison.
+    """
+    return _normalize(repo_id).rsplit("/", 1)[-1].strip()
 
 
 def is_frozen_repo(repo_id: str) -> bool:
     """Return ``True`` when ``repo_id`` (or its basename) is a known frozen id.
 
-    The basename comparison is case-insensitive as a defensive extra so a stray
-    ``Planktonzilla-17M`` capitalisation cannot slip past the guard.
+    ``repo_id`` is normalized first (surrounding whitespace and a trailing ``/``
+    stripped) so trivial, plausible variants of the frozen id — a trailing slash
+    from a copy-pasted Hydra override, a stray leading/trailing space from shell
+    quoting — cannot evade detection. The basename comparison is also
+    case-insensitive as a defensive extra so a stray ``Planktonzilla-17M``
+    capitalisation cannot slip past the guard.
     """
-    if repo_id in FROZEN_REPO_IDS:
+    normalized = _normalize(repo_id)
+    if normalized in FROZEN_REPO_IDS:
         return True
 
     frozen_basenames = {_basename(frozen).lower() for frozen in FROZEN_REPO_IDS}
-    return _basename(repo_id).lower() in frozen_basenames
+    return _basename(normalized).lower() in frozen_basenames
 
 
 def assert_not_frozen_repo(repo_id: str) -> None:

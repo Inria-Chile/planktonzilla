@@ -92,6 +92,36 @@ def test_guard_rejects_frozen_case_insensitive_basename():
         guard.assert_not_frozen_repo("Project-Oceania/Planktonzilla-17M")
 
 
+def test_guard_rejects_frozen_id_with_trailing_slash():
+    """assert_not_frozen_repo raises on the frozen id decorated with a trailing slash (CR-01)."""
+    with pytest.raises(ValueError):
+        guard.assert_not_frozen_repo("project-oceania/planktonzilla-17M/")
+
+
+def test_guard_rejects_frozen_id_with_surrounding_whitespace():
+    """assert_not_frozen_repo raises on the frozen id with leading/trailing whitespace (CR-01)."""
+    with pytest.raises(ValueError):
+        guard.assert_not_frozen_repo(" project-oceania/planktonzilla-17M ")
+
+
+def test_guard_rejects_frozen_id_with_whitespace_and_trailing_slash():
+    """assert_not_frozen_repo raises when both a trailing slash and surrounding whitespace are present (CR-01)."""
+    with pytest.raises(ValueError):
+        guard.assert_not_frozen_repo(" project-oceania/planktonzilla-17M/ ")
+
+
+def test_guard_rejects_frozen_bare_basename_with_trailing_whitespace():
+    """assert_not_frozen_repo raises on the bare frozen basename with a trailing space (CR-01)."""
+    with pytest.raises(ValueError):
+        guard.assert_not_frozen_repo("planktonzilla-17M ")
+
+
+def test_guard_rejects_frozen_id_with_stray_space_after_slash():
+    """assert_not_frozen_repo raises when a stray space follows the ``/`` separator (CR-01)."""
+    with pytest.raises(ValueError):
+        guard.assert_not_frozen_repo("project-oceania/ planktonzilla-17M")
+
+
 def test_guard_allows_frepj_target():
     """assert_not_frozen_repo returns None for the intended frepj target."""
     assert guard.assert_not_frozen_repo("project-oceania/planktonzilla-frepj") is None
