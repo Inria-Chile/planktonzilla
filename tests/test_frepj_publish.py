@@ -14,7 +14,11 @@ rejected before it reaches the wire):
       API) unless ``confirm_public=True``; with the gate it calls
       ``update_repo_settings(private=False)`` on a MOCKED ``HfApi``,
   (d) ``HF_TOKEN`` is read from the environment only,
-  (e) ``push_private`` preflights then pushes with ``private=True`` (mocked dataset).
+  (e) ``push_private`` preflights then pushes with ``private=True`` (mocked dataset),
+  (f) ``smoke_load`` raises a clear ``RuntimeError`` (not a bare ``StopIteration``) on an
+      empty stream,
+  (g) the CLI's ``--publish`` public flip requires BOTH an explicit ``--public`` intent AND
+      ``--confirm-public``: ``--publish --confirm-public`` alone never goes public.
 
 The tests never touch the Hub: the only hub objects exercised are ``DatasetCard`` (built
 offline from committed constants) and a fake ``HfApi`` / fake dataset.
@@ -179,6 +183,20 @@ def test_push_private_rejects_frozen_before_pushing(monkeypatch):
     with pytest.raises(ValueError):
         fp.push_private(ds, "planktonzilla-17M")
     assert ds.pushes == []
+
+
+# --- (f) smoke_load raises a clear RuntimeError on an empty stream (IN-01) -------------
+
+
+def test_smoke_load_raises_clear_error_on_empty_stream(monkeypatch):
+    """smoke_load raises a descriptive RuntimeError (not a bare StopIteration) on an empty stream."""
+    monkeypatch.setenv("HF_TOKEN", "hf_faketoken")
+    import datasets
+
+    monkeypatch.setattr(datasets, "load_dataset", lambda *args, **kwargs: iter([]))
+
+    with pytest.raises(RuntimeError, match="train split is empty"):
+        fp.smoke_load("project-oceania/planktonzilla-frepj")
 
 
 # --- CLI wiring: the public flip is gated behind --confirm-public ---------------------

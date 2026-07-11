@@ -146,7 +146,10 @@ def smoke_load(repo_id: str = TARGET_REPO_ID, token: str | None = None) -> bool:
 
     logger.info(f"Smoke-loading «{repo_id}» (streaming) to verify the FREPJ columns.")
     stream = datasets.load_dataset(repo_id, split="train", streaming=True, token=token)
-    example = next(iter(stream))
+    try:
+        example = next(iter(stream))
+    except StopIteration:
+        raise RuntimeError(f"Smoke-load FAILED: «{repo_id}» train split is empty.") from None
     missing = [column for column in EXPECTED_FREPJ_COLUMNS if column not in example]
     if missing:
         raise RuntimeError(f"Smoke-load FAILED: «{repo_id}» is missing expected FREPJ columns {missing}.")
