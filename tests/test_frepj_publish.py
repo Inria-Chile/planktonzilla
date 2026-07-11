@@ -1,0 +1,211 @@
+"""
+(c) Inria
+
+Network-free tests for the FREPJ-only publish helper (Plan 19-02, VAL-01).
+
+They pin, by construction (NO real push, NO network — every hub call is a fake or is
+rejected before it reaches the wire):
+
+  (a) ``preflight`` rejects the frozen ``planktonzilla-17M`` (full id + bare basename) and
+      ANY non-target repo, and allows ONLY ``project-oceania/planktonzilla-frepj``,
+  (b) ``build_card()`` carries the CC BY 4.0 license, the Otake et al. 2024 citation, the
+      paper DOI, and the LITERAL "intermediate validation build (v1.2)" note,
+  (c) the private->public flip is GATED: ``make_public`` refuses (and never calls the HF
+      API) unless ``confirm_public=True``; with the gate it calls
+      ``update_repo_settings(private=False)`` on a MOCKED ``HfApi``,
+  (d) ``HF_TOKEN`` is read from the environment only,
+  (e) ``push_private`` preflights then pushes with ``private=True`` (mocked dataset).
+
+The tests never touch the Hub: the only hub objects exercised are ``DatasetCard`` (built
+offline from committed constants) and a fake ``HfApi`` / fake dataset.
+"""
+
+import pyrootutils
+
+root = pyrootutils.setup_root(
+    search_from=__file__,
+    indicator=[".git", "pyproject.toml"],
+    pythonpath=True,
+    dotenv=True,
+)
+
+
+from typing import ClassVar
+
+import huggingface_hub
+import pytest
+
+from planktonzilla.dataset_import import frepj_layout
+from planktonzilla.planktonzilla_dataset import frepj_publish as fp
+
+
+class _FakeApi:
+    """Records ``update_repo_settings`` kwargs instead of hitting the Hub."""
+
+    calls: ClassVar[list[dict]] = []
+
+    def update_repo_settings(self, **kwargs):
+        _FakeApi.calls.append(kwargs)
+
+
+class _FakeDataset:
+    """Records ``push_to_hub`` kwargs instead of hitting the Hub."""
+
+    def __init__(self):
+        self.pushes: list[dict] = []
+
+    def push_to_hub(self, repo_id, private=None, token=None):
+        self.pushes.append({"repo_id": repo_id, "private": private, "token": token})
+
+
+# --- (a) preflight allowlist + frozen-id guard ----------------------------------------
+
+
+def test_preflight_rejects_frozen_full_repo_id():
+    """preflight raises on the frozen full owner/name id."""
+    with pytest.raises(ValueError):
+        fp.preflight("project-oceania/planktonzilla-17M")
+
+
+def test_preflight_rejects_frozen_bare_basename():
+    """preflight raises on the bare frozen basename."""
+    with pytest.raises(ValueError):
+        fp.preflight("planktonzilla-17M")
+
+
+def test_preflight_rejects_non_target_repo():
+    """preflight raises on any non-frozen repo that is not the allowlisted target."""
+    with pytest.raises(ValueError):
+        fp.preflight("project-oceania/some-other-dataset")
+
+
+def test_preflight_allows_frepj_target():
+    """preflight returns None for the intended frepj target only."""
+    assert fp.preflight("project-oceania/planktonzilla-frepj") is None
+    assert fp.TARGET_REPO_ID == "project-oceania/planktonzilla-frepj"
+
+
+# --- (b) dataset card content ---------------------------------------------------------
+
+
+def test_build_card_carries_license_citation_and_literal_note():
+    """build_card() text carries CC BY 4.0, Otake, the paper DOI, and the literal note."""
+    content = fp.build_card().content
+    assert "cc-by-4.0" in content
+    assert "CC BY 4.0" in content
+    assert "Otake" in content
+    assert frepj_layout.PAPER_DOI in content
+    assert frepj_layout.DATA_DOI in content
+    # The EXACT phrasing distinguishing this build from 17M and the forthcoming v1.2.
+    assert "intermediate validation build (v1.2)" in content
+    assert fp.INTERMEDIATE_NOTE == "intermediate validation build (v1.2)"
+
+
+# --- (c) gated public flip (mocked HfApi, no network) ---------------------------------
+
+
+def test_make_public_refuses_without_confirm(monkeypatch):
+    """make_public raises and NEVER calls the HF API unless confirm_public=True."""
+    _FakeApi.calls = []
+    monkeypatch.setattr(huggingface_hub, "HfApi", _FakeApi)
+    monkeypatch.setenv("HF_TOKEN", "hf_faketoken")
+
+    with pytest.raises(ValueError):
+        fp.make_public("project-oceania/planktonzilla-frepj", confirm_public=False)
+    assert _FakeApi.calls == []  # the settings call was never reached
+
+
+def test_make_public_flips_private_false_with_confirm(monkeypatch):
+    """With confirm_public=True, make_public calls update_repo_settings(private=False) on a mocked HfApi."""
+    _FakeApi.calls = []
+    monkeypatch.setattr(huggingface_hub, "HfApi", _FakeApi)
+    monkeypatch.setenv("HF_TOKEN", "hf_faketoken")
+
+    fp.make_public("project-oceania/planktonzilla-frepj", confirm_public=True)
+
+    assert len(_FakeApi.calls) == 1
+    call = _FakeApi.calls[0]
+    assert call["repo_id"] == "project-oceania/planktonzilla-frepj"
+    assert call["repo_type"] == "dataset"
+    assert call["private"] is False
+
+
+def test_make_public_rejects_frozen_even_with_confirm(monkeypatch):
+    """The public flip still preflights: a frozen id is rejected even with --confirm-public."""
+    _FakeApi.calls = []
+    monkeypatch.setattr(huggingface_hub, "HfApi", _FakeApi)
+    monkeypatch.setenv("HF_TOKEN", "hf_faketoken")
+
+    with pytest.raises(ValueError):
+        fp.make_public("project-oceania/planktonzilla-17M", confirm_public=True)
+    assert _FakeApi.calls == []
+
+
+# --- (d) token read from env only -----------------------------------------------------
+
+
+def test_resolve_token_reads_env(monkeypatch):
+    """_resolve_token reads HF_TOKEN from the environment when no explicit token is passed."""
+    monkeypatch.setenv("HF_TOKEN", "hf_fromenv")
+    assert fp._resolve_token() == "hf_fromenv"
+
+
+def test_resolve_token_raises_when_absent(monkeypatch):
+    """_resolve_token raises when neither an explicit token nor HF_TOKEN is set."""
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    with pytest.raises(ValueError):
+        fp._resolve_token()
+
+
+# --- (e) push_private preflights and pushes PRIVATE (mocked dataset, no network) -------
+
+
+def test_push_private_pushes_with_private_true(monkeypatch):
+    """push_private preflights then pushes the mocked dataset with private=True."""
+    monkeypatch.setenv("HF_TOKEN", "hf_faketoken")
+    ds = _FakeDataset()
+    fp.push_private(ds, "project-oceania/planktonzilla-frepj")
+
+    assert len(ds.pushes) == 1
+    push = ds.pushes[0]
+    assert push["repo_id"] == "project-oceania/planktonzilla-frepj"
+    assert push["private"] is True
+
+
+def test_push_private_rejects_frozen_before_pushing(monkeypatch):
+    """push_private rejects a frozen id BEFORE any push_to_hub call."""
+    monkeypatch.setenv("HF_TOKEN", "hf_faketoken")
+    ds = _FakeDataset()
+    with pytest.raises(ValueError):
+        fp.push_private(ds, "planktonzilla-17M")
+    assert ds.pushes == []
+
+
+# --- CLI wiring: the public flip is gated behind --confirm-public ---------------------
+
+
+def test_cli_defines_confirm_public_flag():
+    """The CLI wires an explicit --confirm-public gate for any public flip."""
+    parser = fp._build_parser()
+    options = {action.dest for action in parser._actions}
+    assert "confirm_public" in options
+    assert "make_public" in options
+    assert "card_only" in options
+    assert "dataset_path" in options
+    assert "repo_id" in options
+
+
+def test_cli_public_without_confirm_errors():
+    """--public without --confirm-public exits with a parser error (never auto-public)."""
+    with pytest.raises(SystemExit):
+        fp.main(["--public"])
+
+
+def test_cli_make_public_without_confirm_refuses(monkeypatch):
+    """--make-public without --confirm-public refuses at the make_public gate (no HF API call)."""
+    _FakeApi.calls = []
+    monkeypatch.setattr(huggingface_hub, "HfApi", _FakeApi)
+    monkeypatch.setenv("HF_TOKEN", "hf_faketoken")
+    with pytest.raises(ValueError):
+        fp.main(["--make-public"])
+    assert _FakeApi.calls == []
