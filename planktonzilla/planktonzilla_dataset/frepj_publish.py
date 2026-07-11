@@ -281,21 +281,29 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--card-only", action="store_true", help="alias for --push-card (push only the card)")
     parser.add_argument("--publish", action="store_true", help="full flow: push (PRIVATE) -> card (no public flip)")
     parser.add_argument("--make-public", action="store_true", help="flip the dataset PUBLIC (requires --confirm-public)")
-    visibility = parser.add_mutually_exclusive_group()
-    visibility.add_argument("--private", action="store_true", help="publish privately (default)")
-    visibility.add_argument("--public", action="store_true", help="publish public (requires --confirm-public)")
+    parser.add_argument(
+        "--public", action="store_true", help="explicit public intent for --publish (requires --confirm-public)"
+    )
     parser.add_argument("--confirm-public", action="store_true", help="explicit confirmation gate for any public flip")
     return parser
 
 
 def main(argv: list[str] | None = None) -> None:
-    """Dispatch the requested publish phases. Never flips public without --confirm-public."""
+    """Dispatch the requested publish phases.
+
+    The public flip happens ONLY when an explicit public-intent flag (``--public`` for
+    ``--publish``, or ``--make-public`` on its own) is combined with ``--confirm-public``.
+    ``--confirm-public`` alone — e.g. ``--publish --confirm-public`` without ``--public`` —
+    NEVER flips public (WR-02).
+    """
     parser = _build_parser()
     args = parser.parse_args(argv)
 
     # Any public-exposing request must carry the explicit gate.
     if args.public and not args.confirm_public:
         parser.error("--public requires --confirm-public (the private->public flip is gated).")
+    if args.publish and args.confirm_public and not args.public:
+        parser.error("--confirm-public with --publish also requires --public (explicit public intent).")
 
     did = False
     if args.push_private:
@@ -308,7 +316,14 @@ def main(argv: list[str] | None = None) -> None:
         push_card(args.repo_id)
         did = True
     if args.publish:
-        publish_frepj_only(args.dataset_path, args.repo_id, private=not args.public, confirm_public=args.confirm_public)
+        # confirm_public is gated on args.public too: --publish --confirm-public alone
+        # (no explicit --public intent) must never flip the repo public.
+        publish_frepj_only(
+            args.dataset_path,
+            args.repo_id,
+            private=not args.public,
+            confirm_public=args.public and args.confirm_public,
+        )
         did = True
     if args.make_public:
         make_public(args.repo_id, confirm_public=args.confirm_public)

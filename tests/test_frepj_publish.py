@@ -209,3 +209,57 @@ def test_cli_make_public_without_confirm_refuses(monkeypatch):
     with pytest.raises(ValueError):
         fp.main(["--make-public"])
     assert _FakeApi.calls == []
+
+
+# --- WR-02: --publish's public flip requires BOTH --public AND --confirm-public --------
+
+
+def test_cli_publish_confirm_public_without_public_errors(monkeypatch):
+    """--publish --confirm-public (no --public) is rejected by the parser, never reaches publish."""
+    monkeypatch.setenv("HF_TOKEN", "hf_faketoken")
+    ds = _FakeDataset()
+    monkeypatch.setattr(fp, "load_built", lambda path: ds)
+    monkeypatch.setattr(fp, "push_card", lambda repo_id, token=None: None)
+    make_public_calls: list[tuple] = []
+    monkeypatch.setattr(fp, "make_public", lambda *a, **k: make_public_calls.append((a, k)))
+
+    with pytest.raises(SystemExit):
+        fp.main(["--publish", "--confirm-public"])
+
+    # Rejected before any push/card/make_public call — never went public, never pushed at all.
+    assert ds.pushes == []
+    assert make_public_calls == []
+
+
+def test_cli_publish_alone_never_flips_public(monkeypatch):
+    """Plain --publish (no --public, no --confirm-public) pushes privately and never calls make_public."""
+    monkeypatch.setenv("HF_TOKEN", "hf_faketoken")
+    ds = _FakeDataset()
+    monkeypatch.setattr(fp, "load_built", lambda path: ds)
+    monkeypatch.setattr(fp, "push_card", lambda repo_id, token=None: None)
+    make_public_calls: list[tuple] = []
+    monkeypatch.setattr(fp, "make_public", lambda *a, **k: make_public_calls.append((a, k)))
+
+    fp.main(["--publish"])
+
+    assert len(ds.pushes) == 1
+    assert ds.pushes[0]["private"] is True
+    assert make_public_calls == []
+
+
+def test_cli_publish_public_and_confirm_public_flips_public(monkeypatch):
+    """--publish --public --confirm-public (both explicit flags) DOES flip public."""
+    monkeypatch.setenv("HF_TOKEN", "hf_faketoken")
+    ds = _FakeDataset()
+    monkeypatch.setattr(fp, "load_built", lambda path: ds)
+    monkeypatch.setattr(fp, "push_card", lambda repo_id, token=None: None)
+    make_public_calls: list[tuple] = []
+    monkeypatch.setattr(fp, "make_public", lambda *a, **k: make_public_calls.append((a, k)))
+
+    fp.main(["--publish", "--public", "--confirm-public"])
+
+    assert len(ds.pushes) == 1
+    assert ds.pushes[0]["private"] is False
+    assert len(make_public_calls) == 1
+    _, kwargs = make_public_calls[0]
+    assert kwargs["confirm_public"] is True
