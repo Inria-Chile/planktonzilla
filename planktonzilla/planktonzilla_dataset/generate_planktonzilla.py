@@ -41,6 +41,7 @@ import pyrootutils
 import requests
 from datasets import (
     Dataset,
+    Features,
     Image,
     Value,
     concatenate_datasets,
@@ -411,7 +412,28 @@ class RedefineDataset:
             )
 
             logger.info(f"Processing split {split}...")
-            ds = ds.map(process_row, desc="Mapping taxonomy", num_proc=num_proc)
+            # Pin the map output schema instead of letting datasets infer it per
+            # write batch. Without this, a SPARSE-NULL source (e.g. FREPJ: many
+            # blank external IDs, null Species/Genus) can hand the ArrowWriter a
+            # first batch whose taxonomy/ID column is entirely None -> inferred as
+            # pyarrow `null`; a later batch (or, under num_proc>1, a sibling shard)
+            # holding strings then fails with "Couldn't cast array of type string
+            # to null" in iflatmap_unordered, crashing before _cast_scalar_types
+            # (below) can coerce the types. These are EXACTLY the string types
+            # _cast_scalar_types produces here (taxonomy/ID cols + dataset/
+            # original_label/original_path -> string; `plankton` stays string at
+            # this stage and only becomes bool in _cast_scalar_types), so pinning
+            # them is output-preserving — it just forbids the transient `null`.
+            map_features = Features(
+                {
+                    **ds.features,
+                    "dataset": Value("string"),
+                    "original_label": Value("string"),
+                    "original_path": Value("string"),
+                    **{col: Value("string") for col in self.lookup_cols},
+                }
+            )
+            ds = ds.map(process_row, desc="Mapping taxonomy", num_proc=num_proc, features=map_features)
 
             ds = self._add_metadata(ds)
             ds = self._flatten_metadata(ds)
