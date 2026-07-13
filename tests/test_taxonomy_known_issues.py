@@ -17,14 +17,24 @@ re-verified.
 Network-free: reads only the committed CSV.
 """
 
+import pyrootutils
+
+root = pyrootutils.setup_root(
+    search_from=__file__,
+    indicator=[".git", "pyproject.toml"],
+    pythonpath=True,
+    dotenv=False,
+)
+
 import csv
 import re
 from collections import defaultdict
-from pathlib import Path
 
 import pytest
 
-_CSV_PATH = Path(__file__).resolve().parent.parent / "planktonzilla" / "planktonzilla_dataset" / "planktonzilla_taxonomy.csv"
+from planktonzilla.planktonzilla_dataset.constants import QUALIFIERS
+
+_CSV_PATH = root / "planktonzilla" / "planktonzilla_dataset" / "planktonzilla_taxonomy.csv"
 
 RANKS = ("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
 # Columns that are normalized to lowercase (Raw_Labels intentionally keeps source casing).
@@ -77,26 +87,15 @@ def test_ki10_plankton_flag_contradiction(rows, label):
     assert flags == {"True", "False"}
 
 
-# --- KI-11: `qualifier` values outside the documented enumeration ---
-def test_ki11_undocumented_qualifier_values(rows):
-    documented = {
-        "full_body",
-        "larvae",
-        "part",
-        "egg",
-        "like",
-        "mix",
-        "part_tail",
-        "part_tentacle",
-        "part_head",
-        "parasite",
-        "part_leg",
-        "",
-    }
+# --- KI-11 (RESOLVED 2026-07-13): every CSV qualifier is a recognized vocabulary value ---
+def test_ki11_qualifier_vocabulary_complete(rows):
+    # constants.QUALIFIERS is the authoritative vocabulary; an empty cell = "unqualified".
+    # part_carapace/part_skin/part_trunk are now members (the KI-11 widening), so the CSV
+    # conforms. Fails if a future CSV adds a qualifier without updating the constant.
+    assert len(QUALIFIERS) == len(set(QUALIFIERS)), "constants.QUALIFIERS has duplicate entries"
     seen = {r["qualifier"].strip() for r in rows}
-    undocumented = seen - documented
-    # rows 122 / 446 & 512 / 969 — follow the part_* pattern, correctly detritus.
-    assert {"part_carapace", "part_skin", "part_trunk"} <= undocumented
+    unrecognized = seen - set(QUALIFIERS) - {""}
+    assert not unrecognized, f"CSV qualifier value(s) absent from constants.QUALIFIERS: {sorted(unrecognized)}"
 
 
 # --- KI-12: integer IDs serialized as floats ('X.0'); wikidata clean 'Qxxxx' ---

@@ -193,6 +193,15 @@ internally consistent — the **enumeration is incomplete**.
 **Frozen-output risk: none (docs/validator only).** Widening the documented set / any validator
 to include these three values is not a data change. Lowest-risk item.
 
+**Resolved 2026-07-13 (260713-n3e).** Investigation confirmed the repo had **no** qualifier
+enumeration or validator — the generation pipeline only casts `qualifier` to string
+(`generate_planktonzilla.py`), never validates its values. An authoritative vocabulary
+`QUALIFIERS` (all 14 non-empty values, including `part_carapace` / `part_skin` / `part_trunk`)
+was added to `planktonzilla_dataset/constants.py`; an empty cell means "unqualified". **No CSV
+data changed** — this is documentation/validation only. Conformance (every CSV `qualifier` ∈
+`QUALIFIERS`) is now pinned by `tests/test_taxonomy_known_issues.py`, which will fail if a
+future CSV introduces an unrecognized qualifier without updating the constant.
+
 ## KI-12 — Integer IDs serialized as floats
 
 **Where:** `aphia_ID` (1293/1293), `NCBI_ID` (1263/1263), `BOLD_ID` (1262/1262) — *every*

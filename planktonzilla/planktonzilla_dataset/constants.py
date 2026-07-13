@@ -29,6 +29,29 @@ TAXONOMY_RANKS = ("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Spe
 # Extra label/classification columns that travel alongside the taxonomy ranks.
 EXTRA_COLS = ("proposed_label", "plankton", "root_class", "qualifier")
 
+# Authoritative reference vocabulary for the ``qualifier`` column (the specimen
+# condition/part a label describes). An empty ``qualifier`` cell means "unqualified"
+# and is intentionally NOT a member. This is documentation/validation only: the
+# generation pipeline never validates against this set (it only casts the column to
+# string), so this constant does not affect generated output. Conformance of the CSV
+# to this vocabulary is pinned by ``tests/test_taxonomy_known_issues.py`` (KI-11).
+QUALIFIERS = (
+    "full_body",
+    "larvae",
+    "egg",
+    "like",
+    "mix",
+    "parasite",
+    "part",
+    "part_head",
+    "part_tail",
+    "part_tentacle",
+    "part_leg",
+    "part_carapace",
+    "part_skin",
+    "part_trunk",
+)
+
 # External-database ID columns, grouped by how the CSV stores them.
 ID_STR_COLS = ("wikidata_ID", "ecotaxa_ID")  # already text in the CSV
 ID_NUM_COLS = ("aphia_ID", "NCBI_ID", "BOLD_ID")  # numeric in the CSV -> text without decimals
