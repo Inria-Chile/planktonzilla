@@ -1,0 +1,430 @@
+<title>planktonzilla-17M · Taxonomic Sankey</title>
+<style>
+__FONTS__
+  :root {
+    /* Inria Palette 2024 — the five brand hexes are immutable in both themes */
+    --rouge:#c9191e; --framboise:#a60f79; --violet:#534b9a; --bleu-mat:#27348b; --bleu-canard:#1067a3;
+    /* root_class branch hues — fixed order (Bleu mat → Bleu canard → Violet → Framboise); Rouge is RESERVED as the UI signal */
+    --c-living:#27348b; --c-detritus:#1067a3; --c-artefact:#534b9a; --c-inert:#a60f79; --c-root:#8a939c;
+    /* neutrals — light; blanc tournant = white */
+    --bg:#ffffff; --panel:#ffffff; --panel-2:#f4f6f8; --ink:#171a1d; --ink-2:#3f474e;
+    --ink-3:#5c666f; --hair:#e0e5ea; --hair-2:#b9c1ca;
+    --accent:#c9191e; --focus:#1067a3;   /* accent = Rouge (text-safe on white); focus ring = Bleu canard */
+    --shadow:0 1px 2px rgba(23,26,29,.06),0 4px 16px rgba(23,26,29,.06);
+    --font-serif:"Inria Serif",Georgia,serif;
+    --font-sans:"Inria Sans",Tahoma,ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+    --font-mono:ui-monospace,"SF Mono","Cascadia Code","Roboto Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#121517; --panel:#1a1e21; --panel-2:#22272b; --ink:#e9edf0; --ink-2:#b7c0c8;
+      --ink-3:#8a939c; --hair:#2a3034; --hair-2:#414b52;
+      /* lighter tints of the four brand hues so fills read on the dark board (charter allows tints on dark) */
+      --c-living:#7482c9; --c-detritus:#4ea3c9; --c-artefact:#948cce; --c-inert:#cc6aad; --c-root:#8a939c;
+      --accent:#ec7b74; --focus:#6ac4d7;   /* lighter Rouge / Bleu-canard tints so text & ring stay legible on dark */
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 40px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#ffffff; --panel:#ffffff; --panel-2:#f4f6f8; --ink:#171a1d; --ink-2:#3f474e;
+    --ink-3:#5c666f; --hair:#e0e5ea; --hair-2:#b9c1ca; --accent:#c9191e; --focus:#1067a3;
+    --shadow:0 1px 2px rgba(23,26,29,.06),0 4px 16px rgba(23,26,29,.06);
+  }
+  :root[data-theme="dark"]{
+    --bg:#121517; --panel:#1a1e21; --panel-2:#22272b; --ink:#e9edf0; --ink-2:#b7c0c8;
+    --ink-3:#8a939c; --hair:#2a3034; --hair-2:#414b52; --accent:#ec7b74; --focus:#6ac4d7;
+    --c-living:#7482c9; --c-detritus:#4ea3c9; --c-artefact:#948cce; --c-inert:#cc6aad; --c-root:#8a939c;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 40px rgba(0,0,0,.4);
+  }
+
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1180px;margin:0 auto;padding:clamp(16px,3vw,40px);}
+
+  header.head{position:relative;border-radius:16px;overflow:hidden;background:var(--panel);
+    border:1px solid var(--hair);box-shadow:var(--shadow);padding:clamp(20px,3vw,34px);}
+  /* Rouge Inria brand rule */
+  header.head::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--rouge);}
+  /* signature Inria dot-grid motif, top-right corner (masked) */
+  header.head::after{content:"";position:absolute;top:0;right:0;width:280px;height:210px;pointer-events:none;
+    background-image:radial-gradient(currentColor 1px,transparent 1.6px);background-size:16px 16px;color:var(--bleu-mat);opacity:.10;
+    -webkit-mask-image:radial-gradient(230px 190px at 100% 0,#000,transparent 72%);mask-image:radial-gradient(230px 190px at 100% 0,#000,transparent 72%);}
+  /* emitter lockup — RÉPUBLIQUE FRANÇAISE + Inria, on a white plaque (State marques sit on white) */
+  .lockup{display:inline-flex;align-items:center;margin:0 0 16px;background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:9px 14px;position:relative;z-index:1;box-shadow:0 1px 2px rgba(0,0,0,.05);}
+  .lockup .rf-inria{height:42px;width:auto;display:block;}
+  .rf{display:flex;flex-direction:column;gap:1px;line-height:1.06;}
+  .rf .flag{display:flex;height:13px;width:20px;border-radius:1px;overflow:hidden;}
+  .rf .flag i{flex:1;} .rf .b{background:#000091;} .rf .w{background:#fff;box-shadow:0 0 0 .5px #ececec inset;} .rf .r{background:#e1000f;}
+  .rf .rfw{font-family:var(--font-sans);font-weight:800;font-size:8.5px;letter-spacing:.01em;color:#161616;margin-top:3px;}
+  .rf .dev{font-family:var(--font-serif);font-style:italic;font-size:7.5px;color:#3a3a3a;}
+  .lockup .rule{width:1px;height:32px;background:#dcdcdc;}
+  .lockup .inria{font-family:var(--font-serif);font-weight:700;font-style:italic;font-size:23px;color:#c9191e;letter-spacing:-.01em;}
+  .lockup .plh{font-family:var(--font-mono);font-size:8px;color:#9a9a9a;align-self:flex-start;line-height:1.3;}
+  .eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);margin:0 0 10px;position:relative;z-index:1;}
+  h1{font-family:var(--font-serif);font-weight:700;font-size:clamp(26px,4.4vw,40px);line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance;position:relative;z-index:1;}
+  h1 .glow{color:var(--accent);font-style:italic;}
+  .lede{margin:12px 0 0;max-width:66ch;color:var(--ink-2);font-size:15px;}
+
+  .stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px;}
+  .stat{flex:1 1 120px;min-width:118px;background:color-mix(in srgb,var(--bg) 55%,var(--panel));border:1px solid var(--hair);border-radius:11px;padding:12px 14px;}
+  .stat .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:22px;font-weight:600;letter-spacing:-.02em;line-height:1;}
+  .stat .lbl{display:block;margin-top:7px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);}
+  .stat.branch{border-left-width:3px;}
+  .stat.living{border-left-color:var(--c-living);} .stat.detritus{border-left-color:var(--c-detritus);}
+  .stat.artefact{border-left-color:var(--c-artefact);} .stat.inert{border-left-color:var(--c-inert);}
+  /* numbers stay ink (brand hues read as fills/borders, not as text — legible in both themes) */
+
+  .toolbar{margin:20px 0 0;padding:12px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;
+    background:var(--panel);border:1px solid var(--hair);border-radius:12px;box-shadow:var(--shadow);}
+  .crumbs{display:flex;flex-wrap:wrap;gap:2px;align-items:center;font-size:13px;min-width:0;flex:1 1 320px;}
+  .crumbs button{font-family:var(--font-sans);font-size:13px;color:var(--ink-2);background:transparent;border:0;cursor:pointer;
+    padding:4px 7px;border-radius:7px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .crumbs button:hover{background:var(--panel-2);color:var(--ink);}
+  .crumbs button.here{color:var(--ink);font-weight:600;cursor:default;}
+  .crumbs .sep{color:var(--ink-3);opacity:.6;user-select:none;}
+  .ctl{display:flex;align-items:center;gap:8px;margin-left:auto;}
+  .ctl label{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);}
+  .depthbtns{display:inline-flex;border:1px solid var(--hair-2);border-radius:8px;overflow:hidden;}
+  .depthbtns button{font-family:var(--font-mono);font-size:12px;color:var(--ink-2);background:var(--bg);border:0;border-left:1px solid var(--hair-2);padding:6px 10px;cursor:pointer;}
+  .depthbtns button:first-child{border-left:0;}
+  .depthbtns button.on{background:var(--rouge);color:#fff;}
+  .depthbtns button:not(.on):hover{color:var(--ink);}
+  .btn{font-family:var(--font-sans);font-size:13px;color:var(--ink-2);background:var(--bg);border:1px solid var(--hair-2);border-radius:9px;padding:7px 12px;cursor:pointer;}
+  .btn:hover{color:var(--ink);border-color:var(--accent);}
+
+  .legend{display:flex;flex-wrap:wrap;gap:12px;margin:12px 2px 0;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-2);}
+  .legend i{width:11px;height:11px;border-radius:3px;display:inline-block;}
+
+  .board{margin-top:12px;background:var(--panel);border:1px solid var(--hair);border-radius:14px;box-shadow:var(--shadow);padding:6px;overflow:auto;position:relative;}
+  svg.sankey{display:block;}
+  .link{fill-opacity:.26;stroke:none;transition:fill-opacity .12s ease;}
+  .link.agg{fill-opacity:.12;}
+  .node rect{stroke:color-mix(in srgb,var(--bg) 55%,transparent);stroke-width:1;transition:opacity .12s ease;}
+  .node.drillable{cursor:pointer;}
+  .node.agg rect{opacity:.55;}
+  .node:focus-visible{outline:none;}
+  .node:focus-visible rect{stroke:var(--focus);stroke-width:2;}
+  .nlabel{font-family:var(--font-serif);fill:var(--ink);font-size:12px;pointer-events:none;}
+  .nlabel.sci{font-style:italic;}
+  .nlabel.plain{font-family:var(--font-sans);}
+  .nlabel.branch{font-family:var(--font-sans);font-weight:650;}
+  .ncount{font-family:var(--font-mono);fill:var(--ink-3);font-size:10.5px;font-variant-numeric:tabular-nums;}
+  .dim{opacity:.16;} .dim-link{fill-opacity:.05;}
+  .colhead{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;fill:var(--ink-3);}
+
+  .tip{position:fixed;z-index:30;pointer-events:none;max-width:320px;background:var(--panel);color:var(--ink);
+    border:1px solid var(--hair-2);border-radius:10px;box-shadow:var(--shadow);padding:9px 11px;font-size:12.5px;opacity:0;transition:opacity .1s;}
+  .tip .lin{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);word-break:break-word;margin-bottom:4px;line-height:1.45;}
+  .tip .tt{font-family:var(--font-serif);font-size:14px;font-weight:600;}
+  .tip .tt.sci{font-style:italic;}
+  .tip .row{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--ink-2);margin-top:3px;}
+  .tip .row b{color:var(--ink);}
+
+  .hint{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3);margin:10px 2px 0;}
+  footer.foot{margin:16px 0 8px;color:var(--ink-3);font-size:12.5px;line-height:1.6;display:grid;gap:6px;}
+  footer.foot b{color:var(--ink-2);font-weight:600;}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+  @media (max-width:560px){.ctl{margin-left:0;} .lede{font-size:14px;}}
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div class="lockup" title="Official Inria + République Française co-signature (inria.fr/…/logo.svg)">
+      <img class="rf-inria" alt="République Française · Inria" src="data:image/svg+xml;base64,__LOGO_B64__">
+    </div>
+    <p class="eyebrow">Project OcéanIA · plankton image classification</p>
+    <h1>planktonzilla<span class="glow">-17M</span> taxonomic sankey</h1>
+    <p class="lede">
+      The same label space as a flow diagram — size the bars by <b>Size by</b>: label mappings,
+      distinct taxa, or the <b>17.4M dataset images</b> (which tell very different stories). The
+      <b>living</b> branch fans out through the Linnaean ranks
+      (Kingdom → Species); <b>detritus</b>,
+      <b>artefact</b>, and <b>inert</b>
+      flow straight into their <em>proposed_label</em> values. Click a node to dive in.
+    </p>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="toolbar">
+    <nav class="crumbs" id="crumbs" aria-label="Focus path"></nav>
+    <div class="ctl">
+      <label>Source</label>
+      <div class="depthbtns" id="srcbtns" role="group" aria-label="Source dataset level"></div>
+      <label>Size by</label>
+      <div class="depthbtns" id="metricbtns" role="group" aria-label="Size metric"></div>
+      <label>Levels</label>
+      <div class="depthbtns" id="depthbtns" role="group" aria-label="Levels shown"></div>
+      <button class="btn" id="reset">Reset</button>
+    </div>
+  </div>
+  <div class="legend" id="legend"></div>
+
+  <div class="board" id="board">
+    <svg class="sankey" id="svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Taxonomic Sankey diagram"></svg>
+  </div>
+  <p class="hint">Bar height &amp; ribbon width = the selected <b>Size by</b> metric (label mappings · distinct taxa · dataset images) · flip <b>Source</b> on to insert the source-dataset column right after the root · hover a node or flow for its lineage &amp; share · click a node to re-root.</p>
+
+  <footer class="foot">
+    <div><b>Reading it.</b> Every level is a column; a node's height and its outgoing ribbons are proportional to the selected <b>Size by</b> metric — <b>Mappings</b> (taxonomy rows, source-label → taxon), <b>Taxa</b> (distinct taxa in the subtree), or <b>Images</b> (real per-class sample counts from <code>planktonzilla-17M</code>, 17,404,047 images). The smallest siblings are pooled into a faded “+N more”; in <b>Images</b> mode, taxa with no dataset samples drop out. The three views diverge sharply — e.g. living dominates by taxa, but detritus is ~60% of the images.</div>
+    <div><b>Source.</b> <code>planktonzilla_dataset/planktonzilla_taxonomy.csv</code> — <span id="fRows"></span> mappings across <span id="fDs"></span> datasets (NCBI, Wikidata, WHOI, EcoTaxa, ZooLake, …).</div>
+    <div><b>Identity.</b> Styled to the Inria charte graphique (Palette 2024, Inria Sans/Serif) via the <code>/inria-ui</code> skill. Branch hues use the four non-red brand tones; Rouge Inria <code>#C9191E</code> is reserved as the UI signal. The top-left emitter lockup is the <b>official Inria + RÉPUBLIQUE FRANÇAISE co-signature SVG</b> (from <code>inria.fr/themes/custom/inria/logo/logo.svg</code>, embedded as a data-URI); the dot-grid motif is a simple stand-in for the official trame.</div>
+  </footer>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script id="treedata" type="application/json">__TREE__</script>
+<script id="treedata_src" type="application/json">__TREE_SRC__</script>
+<script>
+(function(){
+  "use strict";
+  const DATA=JSON.parse(document.getElementById("treedata").textContent);
+  const _srcEl=document.getElementById("treedata_src");
+  const DATA_SRC=(_srcEl&&_srcEl.textContent.trim().charAt(0)==="{")?JSON.parse(_srcEl.textContent):null;
+  let SHOW_SRC=false;
+  let meta, root, byId={}, uid=0, focus;
+
+  const BRANCHES={living:"--c-living",detritus:"--c-detritus",artefact:"--c-artefact",inert:"--c-inert"};
+  // ---- size metric: bars/ribbons can be sized by any of these additive per-node values ----
+  const METRICS={
+    c:{label:"Mappings",unit:"mappings",desc:"taxonomy rows (source-label → taxon mappings)"},
+    t:{label:"Taxa",unit:"taxa",desc:"distinct taxa in the subtree"},
+    s:{label:"Images",unit:"images",desc:"dataset image samples (planktonzilla-17M)"}
+  };
+  let METRIC="c";
+  const V=n=>n?(n[METRIC]||0):0;
+  const munit=()=>METRICS[METRIC].unit;
+  const RANK_LABEL={dataset:"dataset",source:"source",root_class:"root class",group:"group",proposed_label:"label",
+    Kingdom:"kingdom",Phylum:"phylum",Class:"class",Order:"order",Family:"family",Genus:"genus",Species:"species"};
+  const SCI=new Set(["Genus","Species"]);
+  const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
+  const fmt=n=>n.toLocaleString("en-US");
+  const disp=node=>node.r==="Species"?node.n:cap(node.n);
+  const branchOf=node=>node.r==="root_class"?node.n:node._branch;
+  const colorOf=b=>b&&BRANCHES[b]?`var(${BRANCHES[b]})`:"var(--c-root)";
+
+  // annotate tree with parent / branch / id; bindTree lets us swap the normal and source-augmented trees
+  function annotate(n,parent,branch){
+    n._id=uid++; n._parent=parent; n._branch=branch;
+    (n.k||[]).forEach(c=>annotate(c,n,n.r==="root_class"?n.n:branch));
+  }
+  function bindTree(data){
+    meta=data.meta; root=data.tree; uid=0; byId={};
+    annotate(root,null,null);
+    (function idx(n){byId[n._id]=n;(n.k||[]).forEach(idx);})(root);
+    focus=root;
+  }
+  bindTree(DATA);
+
+  // one-time header bits
+  document.getElementById("legend").innerHTML=Object.keys(BRANCHES).map(b=>`<span><i style="background:var(${BRANCHES[b]})"></i>${b}</span>`).join("")+`<span><i style="background:var(--ink-3);opacity:.5"></i>pooled “+N more”</span>`;
+  document.getElementById("fRows").textContent=fmt(meta.total_rows);
+  document.getElementById("fDs").textContent=meta.n_datasets;
+  // stat tiles reflect the ACTIVE size metric (total + per-branch value, + fixed tree-node count)
+  function buildStats(){
+    // sum the active metric per root_class across the whole tree (works with or without the source level)
+    const by={}; (function walk(n){ if(n.r==="root_class") by[n.n]=(by[n.n]||0)+V(n); (n.k||[]).forEach(walk); })(root);
+    const last=SHOW_SRC?{n:fmt(meta.n_datasets),l:"sources"}:{n:fmt(meta.tree_nodes),l:"tree nodes"};
+    const tiles=[
+      {c:"",n:fmt(V(root)),l:munit()},
+      {c:"branch living",n:fmt(by.living||0),l:"living"},
+      {c:"branch detritus",n:fmt(by.detritus||0),l:"detritus"},
+      {c:"branch artefact",n:fmt(by.artefact||0),l:"artefact"},
+      {c:"branch inert",n:fmt(by.inert||0),l:"inert"},
+      {c:"",n:last.n,l:last.l}
+    ];
+    document.getElementById("stats").innerHTML=tiles.map(t=>`<div class="stat ${t.c}"><span class="num">${t.n}</span><span class="lbl">${t.l}</span></div>`).join("");
+  }
+
+  // layout constants + state
+  const NS="http://www.w3.org/2000/svg";
+  const NODE_W=12, COL_GAP=186, PAD_X=22, PAD_TOP=26, PAD_BOT=16, GAP=3, MIN_H=3.4, TARGET_H=640, LABEL_PAD=162;
+  let maxDepth=4;
+
+  function layout(){
+    const usableH=TARGET_H-PAD_TOP-PAD_BOT;
+    const nodes=[], links=[]; let maxY=PAD_TOP, maxCol=0;
+    function place(node,x,yTop,h,col){
+      const rec={key:"n"+node._id,node,x,yTop,h,col,name:disp(node),count:V(node),branch:branchOf(node),rank:node.r,agg:false};
+      nodes.push(rec); maxY=Math.max(maxY,yTop+h); maxCol=Math.max(maxCol,col);
+      if(col>=maxDepth) return;
+      const kids=(node.k||[]).filter(c=>V(c)>0); if(!kids.length) return;   // drop branches with 0 of the active metric
+      const val=V(node);
+      let shown=kids.slice().sort((a,b)=>V(b)-V(a)), agg=[];
+      const MAXGAPFRAC=0.28;   // keep total inter-sibling gap ≤28% of the band so a small band can't be gap-dominated
+      for(let g=0;g<kids.length+2;g++){
+        const nn=shown.length+(agg.length?1:0), totalgap=GAP*Math.max(0,nn-1), usable=h-totalgap, unit=val>0?usable/val:0;
+        if(shown.length<=1) break;
+        if(unit<=0 || V(shown[shown.length-1])*unit<MIN_H || totalgap>MAXGAPFRAC*h){agg.push(shown.pop());continue;}
+        break;
+      }
+      const nn=shown.length+(agg.length?1:0), totalgap=GAP*Math.max(0,nn-1), usable=h-totalgap, unit=val>0?usable/val:0;
+      const childX=x+NODE_W+COL_GAP;
+      const seq=shown.map(c=>({cnt:V(c),node:c,agg:false}));
+      if(agg.length) seq.push({cnt:agg.reduce((s,c)=>s+V(c),0),node:null,agg:true,list:agg});
+      // Constant-width, gap-symmetric ribbons: parent and child edges share the SAME gapped
+      // positions, so node bars and their ribbons align exactly (no bottom strip, no taper/swoosh).
+      let top=yTop;
+      seq.forEach((it,i)=>{
+        const ch=it.cnt*unit;
+        const childKey=it.agg?rec.key+"_agg":"n"+it.node._id;
+        links.push({parentKey:rec.key,childKey,x1:x+NODE_W,y1:top,h1:ch,x2:childX,y2:top,h2:ch,
+          branch:it.agg?rec.branch:branchOf(it.node),count:it.cnt,agg:it.agg});
+        if(it.agg){
+          nodes.push({key:childKey,node:null,x:childX,yTop:top,h:ch,col:col+1,name:`+${it.list.length} more`,
+            count:it.cnt,branch:rec.branch,rank:kids[0].r,agg:true,aggList:it.list,parentId:node._id});
+          maxY=Math.max(maxY,top+ch);
+        } else {
+          place(it.node,childX,top,ch,col+1);
+        }
+        top+=ch+(i<seq.length-1?GAP:0);
+      });
+    }
+    place(focus,PAD_X,PAD_TOP,usableH,0);
+    const numCols=maxCol+1;
+    const width=PAD_X*2+numCols*NODE_W+(numCols-1)*COL_GAP+LABEL_PAD;
+    return {nodes,links,width,height:maxY+PAD_BOT,numCols};
+  }
+
+  const svg=document.getElementById("svg"), tip=document.getElementById("tip"), board=document.getElementById("board");
+  let LNK=[], NOD=[];
+
+  const ribbon=l=>{const xm=(l.x1+l.x2)/2;return `M${l.x1},${l.y1} C${xm},${l.y1} ${xm},${l.y2} ${l.x2},${l.y2} L${l.x2},${l.y2+l.h2} C${xm},${l.y2+l.h2} ${xm},${l.y1+l.h1} ${l.x1},${l.y1+l.h1} Z`;};
+  function lineage(node){const out=[];let n=node;while(n){if(n.r!=="dataset")out.unshift(disp(n));n=n._parent;}return out;}
+  function el(tag,attrs,cls){const e=document.createElementNS(NS,tag);if(cls)e.setAttribute("class",cls);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
+  const labelClass=n=>n.agg?"plain":(n.rank==="root_class"?"branch":(n.rank==="proposed_label"||n.rank==="group"||n.rank==="dataset"?"plain":(SCI.has(n.rank)?"sci":"")));
+
+  function render(){
+    const L=layout();
+    svg.setAttribute("width",L.width); svg.setAttribute("height",L.height); svg.setAttribute("viewBox",`0 0 ${L.width} ${L.height}`);
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+    const gLinks=el("g",{}), gNodes=el("g",{}); svg.appendChild(gLinks); svg.appendChild(gNodes);
+    LNK=[]; NOD=[];
+
+    const colRank={}, colHeadDone={};
+    L.nodes.forEach(n=>{ if(colRank[n.col]===undefined) colRank[n.col]=RANK_LABEL[n.rank]||n.rank; });
+
+    for(const l of L.links){
+      const p=el("path",{d:ribbon(l),fill:colorOf(l.branch)},"link"+(l.agg?" agg":""));
+      p._l=l; gLinks.appendChild(p); LNK.push(p);
+      p.addEventListener("mousemove",e=>showLinkTip(e,l));
+      p.addEventListener("mouseenter",()=>hiKeys(l.parentKey,l.childKey));
+      p.addEventListener("mouseleave",clearHi);
+    }
+
+    for(const n of L.nodes){
+      const hasKids=!n.agg&&n.node&&n.node.k&&n.node.k.length;
+      const g=el("g",{},"node"+(n.agg?" agg":"")+(hasKids?" drillable":""));
+      g.appendChild(el("rect",{x:n.x,y:n.yTop.toFixed(2),width:NODE_W,height:Math.max(1,n.h).toFixed(2),fill:n.agg?"var(--ink-3)":colorOf(n.branch),rx:2}));
+
+      if(!colHeadDone[n.col]){ const t=el("text",{x:n.x,y:PAD_TOP-12,"text-anchor":"start"},"colhead"); t.textContent=colRank[n.col]||""; gNodes.appendChild(t); colHeadDone[n.col]=1; }
+
+      if(n.h>=10){
+        const lx=n.x+NODE_W+6, tall=n.h>=24;
+        let nm=n.name; if(nm.length>22) nm=nm.slice(0,21)+"…";
+        const t=el("text",{x:lx,y:(n.yTop+n.h/2-(tall?4:0)).toFixed(2),"text-anchor":"start"},"nlabel "+labelClass(n));
+        t.textContent=nm; g.appendChild(t);
+        if(tall){ const c=el("text",{x:lx,y:(n.yTop+n.h/2+11).toFixed(2),"text-anchor":"start"},"ncount"); c.textContent=fmt(n.count); g.appendChild(c); }
+      }
+
+      g._n=n; gNodes.appendChild(g); NOD.push(g);
+      if(hasKids){ g.setAttribute("tabindex","0"); g.setAttribute("role","button"); }
+      g.addEventListener("click",()=>{ if(hasKids){ focus=n.node; render(); board.scrollTo({left:0,top:0}); } });
+      g.addEventListener("keydown",e=>{ if(hasKids&&(e.key==="Enter"||e.key===" ")){ e.preventDefault(); focus=n.node; render(); board.scrollTo({left:0,top:0}); } });
+      g.addEventListener("mousemove",e=>showNodeTip(e,n));
+      g.addEventListener("mouseenter",()=>hiNode(n));
+      g.addEventListener("mouseleave",clearHi);
+    }
+    renderCrumbs(); renderDepth(); renderMetric(); renderSource();
+  }
+
+  function hiNode(n){
+    const keep=new Set();
+    if(n.node){ let a=n.node; while(a){keep.add("n"+a._id);a=a._parent;} (function ds(m){keep.add("n"+m._id);(m.k||[]).forEach(ds);})(n.node); }
+    else { keep.add(n.key); if(n.parentId!=null) keep.add("n"+n.parentId); }
+    NOD.forEach(g=>g.classList.toggle("dim",!keep.has(g._n.key)));
+    LNK.forEach(p=>p.classList.toggle("dim-link",!(keep.has(p._l.parentKey)&&keep.has(p._l.childKey))));
+  }
+  function hiKeys(pk,ck){
+    NOD.forEach(g=>g.classList.toggle("dim",g._n.key!==pk&&g._n.key!==ck));
+    LNK.forEach(p=>p.classList.toggle("dim-link",!(p._l.parentKey===pk&&p._l.childKey===ck)));
+  }
+  function clearHi(){ NOD.forEach(g=>g.classList.remove("dim")); LNK.forEach(p=>p.classList.remove("dim-link")); tip.style.opacity=0; }
+
+  function placeTip(e){ let x=e.clientX+14, y=e.clientY+14; const r=tip.getBoundingClientRect();
+    if(x+r.width>innerWidth-8) x=e.clientX-r.width-14; if(y+r.height>innerHeight-8) y=e.clientY-r.height-14;
+    tip.style.left=x+"px"; tip.style.top=y+"px"; tip.style.opacity=1; }
+
+  function showNodeTip(e,n){
+    const total=V(root);
+    const parentCount=n.node?(n.node._parent?V(n.node._parent):total):(byId[n.parentId]?V(byId[n.parentId]):total);
+    const lin=n.node?lineage(n.node):(byId[n.parentId]?lineage(byId[n.parentId]).concat(n.name):[n.name]);
+    const sci=n.node&&SCI.has(n.rank)?" sci":"";
+    let s=`<div class="lin">${lin.join(" › ")}</div><div class="tt${sci}">${n.name}${n.agg?` <span style="color:var(--ink-3);font-family:var(--font-mono);font-size:11px">(${n.aggList.length} taxa)</span>`:""}</div>`;
+    s+=`<div class="row"><b>${fmt(n.count)}</b> ${munit()} · ${(n.count/total*100).toFixed(1)}% of all`;
+    if(parentCount&&parentCount!==n.count) s+=` · ${(n.count/parentCount*100).toFixed(0)}% of parent`;
+    s+=`</div>`;
+    if(!n.agg&&n.node&&n.node.k&&n.node.k.length) s+=`<div class="row" style="color:var(--accent)">click to focus →</div>`;
+    if(n.agg){ s+=`<div class="row" style="color:var(--ink-3);font-size:11px">${n.aggList.slice(0,6).map(disp).join(", ")}${n.aggList.length>6?", …":""}</div>`; }
+    tip.innerHTML=s; placeTip(e);
+  }
+  function showLinkTip(e,l){
+    const parent=byId[l.parentKey.slice(1)]; const total=V(root);
+    const childNode=l.agg?null:byId[l.childKey.slice(1)];
+    const name=l.agg?"pooled taxa":disp(childNode);
+    const lin=parent?lineage(parent).concat(name):[name];
+    const sci=childNode&&SCI.has(childNode.r)?" sci":"";
+    let s=`<div class="lin">${lin.join(" › ")}</div><div class="tt${sci}">${parent?cap(disp(parent)):""} → ${name}</div>`;
+    s+=`<div class="row"><b>${fmt(l.count)}</b> ${munit()} · ${(l.count/total*100).toFixed(1)}% of all`;
+    if(parent) s+=` · ${(l.count/V(parent)*100).toFixed(0)}% of ${disp(parent)}`;
+    s+=`</div>`;
+    tip.innerHTML=s; placeTip(e);
+  }
+
+  function renderCrumbs(){
+    const c=document.getElementById("crumbs"); c.innerHTML="";
+    const chain=[]; let n=focus; while(n){chain.unshift(n);n=n._parent;}
+    chain.forEach((node,i)=>{
+      const b=document.createElement("button");
+      b.textContent=node.r==="dataset"?"planktonzilla-17M":disp(node);
+      if(i===chain.length-1){ b.className="here"; } else { b.onclick=()=>{focus=node;render();board.scrollTo({left:0,top:0});}; }
+      c.appendChild(b);
+      if(i<chain.length-1){ const s=document.createElement("span"); s.className="sep"; s.textContent="›"; c.appendChild(s); }
+    });
+  }
+  function renderDepth(){
+    const d=document.getElementById("depthbtns"); d.innerHTML="";
+    [2,3,4,5,6].forEach(v=>{ const b=document.createElement("button"); b.textContent=v; if(v===maxDepth)b.className="on";
+      b.onclick=()=>{maxDepth=v;render();}; d.appendChild(b); });
+  }
+  function renderMetric(){
+    const d=document.getElementById("metricbtns"); if(!d) return; d.innerHTML="";
+    ["c","t","s"].forEach(m=>{
+      if(m==="s" && !meta.samples_available) return;
+      const b=document.createElement("button"); b.textContent=METRICS[m].label; b.title="Size bars by "+METRICS[m].desc;
+      if(m===METRIC) b.className="on";
+      b.onclick=()=>{ METRIC=m; buildStats(); render(); board.scrollTo({left:0,top:0}); };
+      d.appendChild(b);
+    });
+  }
+  function renderSource(){
+    const d=document.getElementById("srcbtns"); if(!d) return; d.innerHTML="";
+    [["Off",false],["On",true]].forEach(([lbl,on])=>{
+      const b=document.createElement("button"); b.textContent=lbl;
+      if(on===SHOW_SRC) b.className="on";
+      if(on && !DATA_SRC){ b.disabled=true; b.title="source-level data unavailable"; b.style.opacity=".45"; b.style.cursor="not-allowed"; }
+      else b.title=on?"Insert a source-dataset level right after the root":"Hide the source-dataset level";
+      b.onclick=()=>{ if(on!==SHOW_SRC && !(on&&!DATA_SRC)){ SHOW_SRC=on; bindTree(SHOW_SRC?DATA_SRC:DATA);
+        if(METRIC==="s" && !meta.samples_available) METRIC="c";
+        maxDepth=SHOW_SRC?5:4; buildStats(); render(); board.scrollTo({left:0,top:0}); } };
+      d.appendChild(b);
+    });
+  }
+  document.getElementById("reset").onclick=()=>{ focus=root; maxDepth=SHOW_SRC?5:4; render(); board.scrollTo({left:0,top:0}); };
+
+  buildStats();
+  render();
+})();
+</script>
