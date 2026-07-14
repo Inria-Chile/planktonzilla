@@ -5,7 +5,8 @@ Network-free tests for the pz_build_sankey generator (planktonzilla/explorer/bui
 
 Exercise the pure tree-building + assembly logic with a tiny hand-built fixture and an in-memory
 per-class image-count map, with hand-computed expectations. No HuggingFace Hub, Google Fonts, or
-inria.fr requests — the network paths (scan_dataset / fetch_fonts / fetch_logo) are never called.
+inria.fr requests: fetch_fonts / fetch_logo are never called, and scan_dataset is driven only against
+a mocked ``datasets`` streaming API (so its per-class Counter is verified without any network).
 """
 
 import pyrootutils
@@ -109,6 +110,73 @@ def test_no_samples_gives_zero_images_but_keeps_structure():
     tree, mapped = bs.build_tree(ROWS, Counter())
     assert mapped == 0
     assert tree["c"] == 3 and tree["s"] == 0 and tree["t"] == 2
+
+
+def test_scan_dataset_uses_datasets_api_and_preserves_counter(monkeypatch):
+    """scan_dataset drives the scan through datasets.load_dataset + split_dataset_by_node and returns
+    the exact per-(dataset, proposed_label_lower, root_class) Counter — None -> "", whitespace
+    stripped, labels lowercased — aggregated across shards. The datasets API is mocked; no network.
+    """
+    import datasets
+    import datasets.distributed
+    import pyarrow as pa
+
+    # Two fake shards with edge cases: a None label, surrounding whitespace, and mixed-case labels.
+    shards = [
+        pa.table(
+            {
+                "dataset": ["whoi", "whoi", "whoi", " zoolake "],
+                "proposed_label": ["Calanus Finmarchicus", "Calanus Finmarchicus", "Calanus Finmarchicus", None],
+                "root_class": ["living", "living", "living", "detritus"],
+            }
+        ),
+        pa.table(
+            {
+                "dataset": ["ecotaxa", "ecotaxa"],
+                "proposed_label": ["marine snow", "MARINE SNOW"],
+                "root_class": ["detritus", "detritus"],
+            }
+        ),
+    ]
+
+    class FakeBase:
+        num_shards = len(shards)
+
+        def select_columns(self, cols):
+            assert cols == ["dataset", "proposed_label", "root_class"]  # only the 3 metadata columns
+            return self
+
+        def with_format(self, fmt):
+            assert fmt == "arrow"
+            return self
+
+    class FakeNode:
+        def __init__(self, rank):
+            self.rank = rank
+
+        def iter(self, batch_size):
+            yield shards[self.rank]  # whole shard as one arrow batch
+
+    def fake_load_dataset(repo_id, split, streaming):
+        assert split == "train" and streaming is True
+        return FakeBase()
+
+    def fake_split(base, rank, world_size):
+        assert world_size == FakeBase.num_shards  # world_size == num_shards -> one whole shard per rank
+        return FakeNode(rank)
+
+    monkeypatch.setattr(datasets, "load_dataset", fake_load_dataset)
+    monkeypatch.setattr(datasets.distributed, "split_dataset_by_node", fake_split)
+
+    got = bs.scan_dataset("fake/repo", workers=8)
+    assert got == Counter(
+        {
+            ("whoi", "calanus finmarchicus", "living"): 3,  # mixed case collapses to one key
+            ("zoolake", "", "detritus"): 1,  # " zoolake " stripped; None label -> ""
+            ("ecotaxa", "marine snow", "detritus"): 2,
+        }
+    )
+    assert sum(got.values()) == 6
 
 
 def test_assemble_substitutes_all_placeholders():

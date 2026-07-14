@@ -202,46 +202,56 @@ def _tree_meta(root: dict, rows: list[dict], samples_available: bool, *, source:
 
 # --------------------------------------------------------------- dataset scan
 def scan_dataset(repo_id: str, workers: int, retries: int = 4) -> Counter:
-    """Aggregate per-(dataset, proposed_label_lower, root_class) image counts from the HF parquet shards.
+    """Aggregate per-(dataset, proposed_label_lower, root_class) image counts from the HF dataset.
 
-    Only the three metadata columns are read (column projection), so the image bytes are never
-    downloaded. Shards are discovered dynamically so a new dataset version with a different shard
-    count still works.
+    Driven by the HuggingFace ``datasets`` library in streaming mode with column projection, so only
+    the three metadata columns are read — the image bytes are never downloaded. Each shard is handled
+    as its own task: ``split_dataset_by_node(rank=i, world_size=num_shards)`` assigns exactly one
+    whole, disjoint shard per rank, and the shards are read concurrently through a thread pool. The
+    shard count is discovered from the dataset itself, so a new version with a different number of
+    shards still works, and ``--workers`` keeps its "how many shards are read at once" meaning.
+
+    ``datasets``/``huggingface_hub`` already auto-retry transient HTTP failures internally; the outer
+    ``retries`` loop here only re-runs a shard whose stream still fails after those retries.
     """
     import concurrent.futures as cf
 
-    import pyarrow.parquet as pq
-    from huggingface_hub import HfFileSystem
+    from datasets import load_dataset
+    from datasets.distributed import split_dataset_by_node
 
-    fs = HfFileSystem()
-    files = sorted(fs.glob(f"datasets/{repo_id}/**/*.parquet"))
-    if not files:
-        raise RuntimeError(f"no parquet shards found for dataset {repo_id!r}")
-    logger.info("Scanning %d parquet shards of %s for per-class image counts…", len(files), repo_id)
+    base = (
+        load_dataset(repo_id, split="train", streaming=True)
+        .select_columns(["dataset", "proposed_label", "root_class"])
+        .with_format("arrow")
+    )
+    n_shards = base.num_shards
+    logger.info("Scanning %d dataset shards of %s for per-class image counts…", n_shards, repo_id)
 
-    def read_one(path: str) -> Counter:
+    def read_shard(rank: int) -> Counter:
         last: Exception | None = None
         for k in range(retries):
             try:
-                with fs.open(path) as fh:
-                    tbl = pq.read_table(fh, columns=["dataset", "proposed_label", "root_class"])
-                ds = [(x or "").strip() for x in tbl.column("dataset").to_pylist()]
-                pl = [(x or "").strip().lower() for x in tbl.column("proposed_label").to_pylist()]
-                rc = [(x or "").strip() for x in tbl.column("root_class").to_pylist()]
-                return Counter(zip(ds, pl, rc))
+                node = split_dataset_by_node(base, rank=rank, world_size=n_shards)
+                part: Counter = Counter()
+                for tbl in node.iter(batch_size=50_000):
+                    ds = [(x or "").strip() for x in tbl.column("dataset").to_pylist()]
+                    pl = [(x or "").strip().lower() for x in tbl.column("proposed_label").to_pylist()]
+                    rc = [(x or "").strip() for x in tbl.column("root_class").to_pylist()]
+                    part.update(zip(ds, pl, rc))
+                return part
             except Exception as exc:
                 last = exc
                 time.sleep(2 * (k + 1))
-        raise RuntimeError(f"failed to read {path}: {last}")
+        raise RuntimeError(f"failed to read shard {rank} of {repo_id!r}: {last}")
 
     agg: Counter = Counter()
     done = 0
-    with cf.ThreadPoolExecutor(max_workers=workers) as ex:
-        for part in ex.map(read_one, files):
+    with cf.ThreadPoolExecutor(max_workers=max(1, min(workers, n_shards))) as ex:
+        for part in ex.map(read_shard, range(n_shards)):
             agg.update(part)
             done += 1
-            if done % 20 == 0 or done == len(files):
-                logger.info("  %d/%d shards scanned (%d rows so far)", done, len(files), sum(agg.values()))
+            if done % 20 == 0 or done == n_shards:
+                logger.info("  %d/%d shards scanned (%d rows so far)", done, n_shards, sum(agg.values()))
     logger.info("Scan done: %d images across %d (dataset, label, root_class) classes.", sum(agg.values()), len(agg))
     return agg
 
@@ -329,7 +339,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--dataset-repo", default=DEFAULT_PLANKTONZILLA_DATASET_REPO_ID, help="HF dataset repo scanned for image counts"
     )
     ap.add_argument("--logo-url", default=DEFAULT_LOGO_URL, help="official Inria logo SVG URL to embed")
-    ap.add_argument("--workers", type=int, default=16, help="concurrent parquet readers for the dataset scan")
+    ap.add_argument("--workers", type=int, default=16, help="how many dataset shards are read concurrently in the scan")
     ap.add_argument(
         "--no-samples", action="store_true", help="skip the dataset scan (mappings + taxa only; the Images metric is hidden)"
     )
