@@ -25,7 +25,7 @@ DOMAIN_ACCENT    : <which of the 5 brand hues is this product's secondary accent
 EMITTER_MODE     : <sole | co-branded>   # sole → the République Française State lockup is MANDATORY
 CO_EMITTERS      : <if co-branded: partner logos/order, e.g. "Sorbonne Université, CNRS">
 OUTPUT_MEDIUM    : <web | csp-artifact | slide | doc>   # csp-artifact = no external hosts allowed
-LOGO_ASSET       : <inline SVG provided? path? or "text facsimile" if none available>
+LOGO_ASSET       : <inline SVG / path; else the official Inria logo https://inria.fr/themes/custom/inria/logo/logo.svg; else "text facsimile">
 THEME            : <light | dark | both>   # default both
 ```
 
@@ -160,6 +160,8 @@ charter leans on **white** (see *blanc tournant*).
 - **Inria logo** is a **red script “Inria” wordmark** (Rouge `#C9191E`), reversed **white** on dark.
   **Never** render it in ink/black, redraw, recolour, distort, rotate, or add effects.
   - **Asset:** use the official pack — web (**.svg**, .png), office (.png/.jpg), edition (.ai/.eps).
+    The canonical web SVG is <https://inria.fr/themes/custom/inria/logo/logo.svg> (embed it as a
+    `data:` URI for CSP-restricted artifacts, where external hosts are blocked).
     If `LOGO_ASSET` provides an SVG/data-URI, embed it. If none is available (e.g. a CSP artifact
     with nothing supplied), a **text facsimile is permitted only** if set in **Inria Serif at Rouge
     `#C9191E`** (white on dark) and clearly flagged *non-production — replace with official SVG*.

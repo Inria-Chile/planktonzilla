@@ -1,6 +1,6 @@
 ---
 name: inria-ui
-description: "Apply Inria's official visual identity (charte graphique) when designing, building, or restyling ANY UI for an Inria product — web app, dashboard, Hugging Face Space, data-viz, slide, or doc. Covers the Palette 2024, Inria Sans/Serif typography, the République Française State lockup, logo rules, the graphic system (blanc tournant, dot-grid motif, gradients), components, and accessibility. Use whenever building UI for Inria / Project OcéanIA / planktonzilla, or when the user mentions Inria branding, the charte graphique, the Inria palette, Inria Sans/Serif, or the Inria red."
+description: "Apply Inria's official visual identity (charte graphique) when designing, building, or restyling ANY UI for an Inria product — web app, dashboard, Hugging Face Space, data-viz, slide, or doc. Covers the Palette 2024, Inria Sans/Serif typography, the République Française State lockup, logo rules (official logo SVG: https://inria.fr/themes/custom/inria/logo/logo.svg), the graphic system (blanc tournant, dot-grid motif, gradients), components, and accessibility. Use whenever building UI for Inria / Project OcéanIA / planktonzilla, or when the user mentions Inria branding, the charte graphique, the Inria palette, Inria Sans/Serif, or the Inria red."
 trigger: /inria-ui
 ---
 
@@ -31,7 +31,7 @@ PRODUCT_NAME  : <e.g. "Plankton Atlas">
 DOMAIN_ACCENT : <secondary brand hue; default Bleu mat>
 EMITTER_MODE  : <sole | co-branded>    # sole → the République Française State lockup is MANDATORY
 OUTPUT_MEDIUM : <web | csp-artifact | slide | doc>   # csp-artifact = no external hosts allowed
-LOGO_ASSET    : <inline SVG provided? path? or "text facsimile" if none>
+LOGO_ASSET    : <inline SVG / path; else the official Inria logo https://inria.fr/themes/custom/inria/logo/logo.svg; else "text facsimile">
 THEME         : <light | dark | both>  # default both
 ```
 
@@ -56,7 +56,9 @@ per view (brand mark > primary action > selected > corner marker). Editorial **I
 
 ### Logo & République Française
 - Inria logo = **red script wordmark `#C9191E`** (white on dark); never render in ink/black, redraw,
-  recolour, or distort — use the official SVG (or a flagged Inria-Serif-at-Rouge text facsimile if none).
+  recolour, or distort — use the official SVG (<https://inria.fr/themes/custom/inria/logo/logo.svg>;
+  embed it as a `data:` URI in CSP-restricted artifacts, where external hosts are blocked), or a flagged
+  Inria-Serif-at-Rouge text facsimile if it can't be embedded.
 - **When `EMITTER_MODE = sole`, the "RÉPUBLIQUE FRANÇAISE" State bloc-marque is MANDATORY** (Inria is
   a State operator): tricolour + "RÉPUBLIQUE FRANÇAISE" + "Liberté · Égalité · Fraternité", top-left,
   co-signed with Inria. Its DSFR colours are **State exceptions outside the palette**: blue `#000091`,
