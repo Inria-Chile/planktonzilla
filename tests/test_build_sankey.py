@@ -20,7 +20,7 @@ root = pyrootutils.setup_root(
 
 from collections import Counter
 
-from planktonzilla.explorer import build_sankey as bs
+from planktonzilla.planktonzilla_dataset import build_sankey as bs
 
 RANKS = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]
 

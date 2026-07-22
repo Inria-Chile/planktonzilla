@@ -58,7 +58,7 @@ pz_train = 'planktonzilla.train:main'
 pz_generate_planktonzilla = 'planktonzilla.planktonzilla_dataset.generate_planktonzilla:main'
 pz_update_planktonzilla = 'planktonzilla.planktonzilla_dataset.update_planktonzilla:main'
 pz_generate_sankey = 'planktonzilla.planktonzilla_dataset.generate_sankey:main'
-pz_build_sankey = 'planktonzilla.explorer.build_sankey:main'
+pz_build_sankey = 'planktonzilla.planktonzilla_dataset.build_sankey:main'
 
 [dependency-groups]
 dev = [
@@ -86,7 +86,7 @@ packages = ["planktonzilla"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "configs" = "configs"
-"planktonzilla/explorer/templates/sankey_template.html" = "planktonzilla/explorer/templates/sankey_template.html"
+"planktonzilla/planktonzilla_dataset/templates/sankey_template.html" = "planktonzilla/planktonzilla_dataset/templates/sankey_template.html"
 
 [tool.ruff]
 line-length = 128
