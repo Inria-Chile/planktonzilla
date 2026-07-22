@@ -27,7 +27,7 @@ Examples
     # Reuse a previously-scanned per-(dataset,proposed_label,root_class) counts JSON
     pz_build_sankey --samples-json counts.json --out flow.html
 
-The same CLI is available via ``python -m planktonzilla.explorer.build_sankey``.
+The same CLI is available via ``python -m planktonzilla.planktonzilla_dataset.build_sankey``.
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ from planktonzilla.planktonzilla_dataset.constants import (
     TAXONOMY_RANKS,
 )
 
-logger = logging.getLogger("planktonzilla.explorer.build_sankey")
+logger = logging.getLogger("planktonzilla.planktonzilla_dataset.build_sankey")
 
 TEMPLATE_PATH = Path(__file__).parent / "templates" / "sankey_template.html"
 PLACEHOLDERS = ("__FONTS__", "__LOGO_B64__", "__TREE__", "__TREE_SRC__")

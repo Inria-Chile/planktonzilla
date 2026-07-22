@@ -1,7 +1,7 @@
 """
 (c) Inria
 
-Network-free tests for the pz_build_sankey generator (planktonzilla/explorer/build_sankey.py).
+Network-free tests for the pz_build_sankey generator (planktonzilla/planktonzilla_dataset/build_sankey.py).
 
 Exercise the pure tree-building + assembly logic with a tiny hand-built fixture and an in-memory
 per-class image-count map, with hand-computed expectations. No HuggingFace Hub, Google Fonts, or
