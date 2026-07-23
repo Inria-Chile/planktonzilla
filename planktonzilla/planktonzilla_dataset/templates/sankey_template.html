@@ -184,6 +184,7 @@ __FONTS__
   const _srcEl=document.getElementById("treedata_src");
   const DATA_SRC=(_srcEl&&_srcEl.textContent.trim().charAt(0)==="{")?JSON.parse(_srcEl.textContent):null;
   let SHOW_SRC=false;
+  let COLORBY="branch";   // "branch" | "dataset" — Branch is the default so on-load colouring is unchanged
   let meta, root, byId={}, uid=0, focus;
 
   const BRANCHES={living:"--c-living",detritus:"--c-detritus",artefact:"--c-artefact",inert:"--c-inert"};
@@ -203,16 +204,41 @@ __FONTS__
   const fmt=n=>n.toLocaleString("en-US");
   const disp=node=>node.r==="Species"?node.n:cap(node.n);
   const branchOf=node=>node.r==="root_class"?node.n:node._branch;
+  const sourceOf=node=>node.r==="source"?node.n:node._source;
   const colorOf=b=>b&&BRANCHES[b]?`var(${BRANCHES[b]})`:"var(--c-root)";
 
+  // ---- dataset colouring (Dataset mode) — on-brand, Rouge-free -----------------------------------
+  // Fixed client-side palette generated from the four NON-RED Palette-2024 anchors only. Unlike the
+  // branch hues (theme-swapping CSS vars), these are FIXED hexes: a deliberate compromise so the same
+  // fill stays legible on BOTH the light and dark board. Rouge is never used for data.
+  const DATASET_ANCHORS=["#27348b","#1067a3","#534b9a","#a60f79"];   // bleu-mat · bleu-canard · violet · framboise
+  const _h2=v=>{const s=Math.max(0,Math.min(255,Math.round(v))).toString(16);return s.length<2?"0"+s:s;};
+  const mix=(hex,target,t)=>{   // linear RGB interpolation of two #rrggbb strings → #rrggbb
+    const a=parseInt(hex.slice(1),16), b=parseInt(target.slice(1),16);
+    const ar=(a>>16)&255, ag=(a>>8)&255, ab=a&255, br=(b>>16)&255, bg=(b>>8)&255, bb=b&255;
+    return "#"+_h2(ar+(br-ar)*t)+_h2(ag+(bg-ag)*t)+_h2(ab+(bb-ab)*t);
+  };
+  // 12 distinct tones, LEVEL-major: four saturated bases, four tints (→white ~.30), four shades (→black ~.20).
+  // Largest datasets sort first → get the fully-saturated bases; adjacent datasets differ in hue. Wraps at >12.
+  function buildDatasetPalette(n){
+    const ramp=[];
+    [x=>x, x=>mix(x,"#ffffff",0.30), x=>mix(x,"#000000",0.20)].forEach(fn=>DATASET_ANCHORS.forEach(a=>ramp.push(fn(a))));
+    const out=[]; for(let i=0;i<n;i++) out.push(ramp[i%ramp.length]); return out;
+  }
+  // Stable, deterministic order = the already-sorted (by -count, then name) source list from DATA_SRC.
+  const DS_ORDER=((DATA_SRC&&DATA_SRC.tree.k)||[]).filter(s=>s.r==="source").map(s=>s.n);
+  const DS_COLOR=(()=>{const p=buildDatasetPalette(DS_ORDER.length);return new Map(DS_ORDER.map((n,i)=>[n,p[i]]));})();
+  const datasetColor=src=>DS_COLOR.has(src)?DS_COLOR.get(src):"var(--c-root)";   // root bar / normal tree / pooled → neutral grey
+  function fillOf(rec){ return COLORBY==="dataset" ? datasetColor(rec.source) : colorOf(rec.branch); }
+
   // annotate tree with parent / branch / id; bindTree lets us swap the normal and source-augmented trees
-  function annotate(n,parent,branch){
-    n._id=uid++; n._parent=parent; n._branch=branch;
-    (n.k||[]).forEach(c=>annotate(c,n,n.r==="root_class"?n.n:branch));
+  function annotate(n,parent,branch,source){
+    n._id=uid++; n._parent=parent; n._branch=branch; n._source=source;
+    (n.k||[]).forEach(c=>annotate(c,n,n.r==="root_class"?n.n:branch,n.r==="source"?n.n:source));
   }
   function bindTree(data){
     meta=data.meta; root=data.tree; uid=0; byId={};
-    annotate(root,null,null);
+    annotate(root,null,null,null);
     (function idx(n){byId[n._id]=n;(n.k||[]).forEach(idx);})(root);
     focus=root;
   }
@@ -247,7 +273,7 @@ __FONTS__
     const usableH=TARGET_H-PAD_TOP-PAD_BOT;
     const nodes=[], links=[]; let maxY=PAD_TOP, maxCol=0;
     function place(node,x,yTop,h,col){
-      const rec={key:"n"+node._id,node,x,yTop,h,col,name:disp(node),count:V(node),branch:branchOf(node),rank:node.r,agg:false};
+      const rec={key:"n"+node._id,node,x,yTop,h,col,name:disp(node),count:V(node),branch:branchOf(node),source:sourceOf(node),rank:node.r,agg:false};
       nodes.push(rec); maxY=Math.max(maxY,yTop+h); maxCol=Math.max(maxCol,col);
       if(col>=maxDepth) return;
       const kids=(node.k||[]).filter(c=>V(c)>0); if(!kids.length) return;   // drop branches with 0 of the active metric
@@ -271,10 +297,10 @@ __FONTS__
         const ch=it.cnt*unit;
         const childKey=it.agg?rec.key+"_agg":"n"+it.node._id;
         links.push({parentKey:rec.key,childKey,x1:x+NODE_W,y1:top,h1:ch,x2:childX,y2:top,h2:ch,
-          branch:it.agg?rec.branch:branchOf(it.node),count:it.cnt,agg:it.agg});
+          branch:it.agg?rec.branch:branchOf(it.node),source:it.agg?rec.source:sourceOf(it.node),count:it.cnt,agg:it.agg});
         if(it.agg){
           nodes.push({key:childKey,node:null,x:childX,yTop:top,h:ch,col:col+1,name:`+${it.list.length} more`,
-            count:it.cnt,branch:rec.branch,rank:kids[0].r,agg:true,aggList:it.list,parentId:node._id});
+            count:it.cnt,branch:rec.branch,source:rec.source,rank:kids[0].r,agg:true,aggList:it.list,parentId:node._id});
           maxY=Math.max(maxY,top+ch);
         } else {
           place(it.node,childX,top,ch,col+1);
@@ -307,7 +333,7 @@ __FONTS__
     L.nodes.forEach(n=>{ if(colRank[n.col]===undefined) colRank[n.col]=RANK_LABEL[n.rank]||n.rank; });
 
     for(const l of L.links){
-      const p=el("path",{d:ribbon(l),fill:colorOf(l.branch)},"link"+(l.agg?" agg":""));
+      const p=el("path",{d:ribbon(l),fill:fillOf(l)},"link"+(l.agg?" agg":""));
       p._l=l; gLinks.appendChild(p); LNK.push(p);
       p.addEventListener("mousemove",e=>showLinkTip(e,l));
       p.addEventListener("mouseenter",()=>hiKeys(l.parentKey,l.childKey));
@@ -317,7 +343,7 @@ __FONTS__
     for(const n of L.nodes){
       const hasKids=!n.agg&&n.node&&n.node.k&&n.node.k.length;
       const g=el("g",{},"node"+(n.agg?" agg":"")+(hasKids?" drillable":""));
-      g.appendChild(el("rect",{x:n.x,y:n.yTop.toFixed(2),width:NODE_W,height:Math.max(1,n.h).toFixed(2),fill:n.agg?"var(--ink-3)":colorOf(n.branch),rx:2}));
+      g.appendChild(el("rect",{x:n.x,y:n.yTop.toFixed(2),width:NODE_W,height:Math.max(1,n.h).toFixed(2),fill:n.agg?"var(--ink-3)":fillOf(n),rx:2}));
 
       if(!colHeadDone[n.col]){ const t=el("text",{x:n.x,y:PAD_TOP-12,"text-anchor":"start"},"colhead"); t.textContent=colRank[n.col]||""; gNodes.appendChild(t); colHeadDone[n.col]=1; }
 
