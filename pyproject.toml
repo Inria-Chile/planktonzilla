@@ -90,6 +90,7 @@ packages = ["planktonzilla"]
 
 [tool.ruff]
 line-length = 128
+include = ["planktonzilla/**/*.py", "tests/**/*.py", "notebooks/**/*.ipynb", "notebooks/**/*.py"]
 lint.select = [
     "F",    # Pyflakes
     "E",    # Pycodestyle
@@ -106,9 +107,6 @@ lint.ignore = ["E402", "N806"]
 # generate_sankey.py embeds a self-contained HTML/CSS/JS page as a raw-string template;
 # its long style/script lines are not Python and cannot carry a line-level noqa.
 lint.per-file-ignores = { "planktonzilla/planktonzilla_dataset/generate_sankey.py" = ["E501"] }
-exclude = [
-    "notebooks/", # do not check notebooks
-]
 
 [tool.pytest.ini_options]
 # --doctest-modules removed: no doctests in planktonzilla/; testpaths=["tests"] alone is the gate. (INFRA-01, CONCERNS #13)
