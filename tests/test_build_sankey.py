@@ -199,3 +199,14 @@ def test_real_template_has_the_four_placeholders():
     tmpl = bs.TEMPLATE_PATH.read_text(encoding="utf-8")
     for placeholder in bs.PLACEHOLDERS:
         assert tmpl.count(placeholder) == 1, placeholder
+
+
+def test_real_template_has_colorby_controls():
+    """The shipped template exposes the Color-by (Branch/Dataset) toolbar + client-side dataset palette.
+
+    Network-free token check (mirrors ``test_real_template_has_the_four_placeholders``): the build is
+    output-preserving, so we only assert the template still carries the client-side coloring seams.
+    """
+    tmpl = bs.TEMPLATE_PATH.read_text(encoding="utf-8")
+    for token in ('id="colorbtns"', "renderColor(", "renderLegend(", "datasetColor(", "COLORBY"):
+        assert token in tmpl, token

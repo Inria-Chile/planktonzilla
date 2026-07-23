@@ -152,6 +152,8 @@ __FONTS__
     <div class="ctl">
       <label>Source</label>
       <div class="depthbtns" id="srcbtns" role="group" aria-label="Source dataset level"></div>
+      <label>Color by</label>
+      <div class="depthbtns" id="colorbtns" role="group" aria-label="Colour mode"></div>
       <label>Size by</label>
       <div class="depthbtns" id="metricbtns" role="group" aria-label="Size metric"></div>
       <label>Levels</label>
@@ -164,7 +166,7 @@ __FONTS__
   <div class="board" id="board">
     <svg class="sankey" id="svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Taxonomic Sankey diagram"></svg>
   </div>
-  <p class="hint">Bar height &amp; ribbon width = the selected <b>Size by</b> metric (label mappings · distinct taxa · dataset images) · flip <b>Source</b> on to insert the source-dataset column right after the root · hover a node or flow for its lineage &amp; share · click a node to re-root.</p>
+  <p class="hint">Bar height &amp; ribbon width = the selected <b>Size by</b> metric (label mappings · distinct taxa · dataset images) · flip <b>Source</b> on to insert the source-dataset column right after the root · recolour by branch or source dataset with <b>Color by</b> · hover a node or flow for its lineage &amp; share · click a node to re-root.</p>
 
   <footer class="foot">
     <div><b>Reading it.</b> Every level is a column; a node's height and its outgoing ribbons are proportional to the selected <b>Size by</b> metric — <b>Mappings</b> (taxonomy rows, source-label → taxon), <b>Taxa</b> (distinct taxa in the subtree), or <b>Images</b> (real per-class sample counts from <code>planktonzilla-17M</code>, 17,404,047 images). The smallest siblings are pooled into a faded “+N more”; in <b>Images</b> mode, taxa with no dataset samples drop out. The three views diverge sharply — e.g. living dominates by taxa, but detritus is ~60% of the images.</div>
@@ -244,8 +246,7 @@ __FONTS__
   }
   bindTree(DATA);
 
-  // one-time header bits
-  document.getElementById("legend").innerHTML=Object.keys(BRANCHES).map(b=>`<span><i style="background:var(${BRANCHES[b]})"></i>${b}</span>`).join("")+`<span><i style="background:var(--ink-3);opacity:.5"></i>pooled “+N more”</span>`;
+  // one-time header bits (legend is now rebuilt per render via renderLegend so it can swap Branch⇄Dataset)
   document.getElementById("fRows").textContent=fmt(meta.total_rows);
   document.getElementById("fDs").textContent=meta.n_datasets;
   // stat tiles reflect the ACTIVE size metric (total + per-branch value, + fixed tree-node count)
@@ -363,7 +364,7 @@ __FONTS__
       g.addEventListener("mouseenter",()=>hiNode(n));
       g.addEventListener("mouseleave",clearHi);
     }
-    renderCrumbs(); renderDepth(); renderMetric(); renderSource();
+    renderCrumbs(); renderDepth(); renderMetric(); renderSource(); renderColor(); renderLegend();
   }
 
   function hiNode(n){
@@ -443,10 +444,44 @@ __FONTS__
       if(on && !DATA_SRC){ b.disabled=true; b.title="source-level data unavailable"; b.style.opacity=".45"; b.style.cursor="not-allowed"; }
       else b.title=on?"Insert a source-dataset level right after the root":"Hide the source-dataset level";
       b.onclick=()=>{ if(on!==SHOW_SRC && !(on&&!DATA_SRC)){ SHOW_SRC=on; bindTree(SHOW_SRC?DATA_SRC:DATA);
+        if(!SHOW_SRC && COLORBY==="dataset") COLORBY="branch";   // dataset colouring is undefined without the source level
         if(METRIC==="s" && !meta.samples_available) METRIC="c";
         maxDepth=SHOW_SRC?5:4; buildStats(); render(); board.scrollTo({left:0,top:0}); } };
       d.appendChild(b);
     });
+  }
+  function renderColor(){
+    const d=document.getElementById("colorbtns"); if(!d) return; d.innerHTML="";
+    [["Branch","branch"],["Dataset","dataset"]].forEach(([lbl,mode])=>{
+      const b=document.createElement("button"); b.textContent=lbl;
+      if(mode===COLORBY) b.className="on";
+      if(mode==="dataset" && !DATA_SRC){ b.disabled=true; b.title="source-level colouring unavailable"; b.style.opacity=".45"; b.style.cursor="not-allowed"; }
+      else b.title=mode==="dataset"?"Recolour every bar & ribbon by its source dataset":"Colour by taxonomic branch";
+      b.onclick=()=>{
+        if(mode==="dataset"){
+          if(!DATA_SRC || COLORBY==="dataset") return;
+          COLORBY="dataset";
+          // Dataset colouring is only well-defined with the source level present → auto-enable it.
+          if(!SHOW_SRC){ SHOW_SRC=true; bindTree(DATA_SRC); if(METRIC==="s" && !meta.samples_available) METRIC="c"; maxDepth=5; }
+          buildStats(); render(); board.scrollTo({left:0,top:0});
+        } else if(COLORBY!=="branch"){
+          COLORBY="branch"; render();   // leave the source level as-is; branch colouring is fine with or without it
+        }
+      };
+      d.appendChild(b);
+    });
+  }
+  function renderLegend(){
+    const lg=document.getElementById("legend"); if(!lg) return; lg.innerHTML="";
+    const add=(color,label,dim)=>{
+      const s=document.createElement("span");
+      const i=document.createElement("i"); i.style.background=color; if(dim) i.style.opacity=".5"; s.appendChild(i);
+      s.appendChild(document.createTextNode(label));   // names via textContent — never innerHTML interpolation (T-js7-01)
+      lg.appendChild(s);
+    };
+    if(COLORBY==="dataset") DS_ORDER.forEach(name=>add(DS_COLOR.get(name),name,false));
+    else Object.keys(BRANCHES).forEach(b=>add(`var(${BRANCHES[b]})`,b,false));
+    add("var(--ink-3)","pooled “+N more”",true);
   }
   document.getElementById("reset").onclick=()=>{ focus=root; maxDepth=SHOW_SRC?5:4; render(); board.scrollTo({left:0,top:0}); };
 
