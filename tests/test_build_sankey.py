@@ -248,7 +248,7 @@ def test_real_template_has_layout_modes():
     Google Fonts / inria.fr requests).
     """
     tmpl = bs.TEMPLATE_PATH.read_text(encoding="utf-8")
-    for token in ("layoutSankeyInto", "paintLayout", "renderLayout", 'id="layoutbtns"'):
+    for token in ("layoutSankeyInto", "paintLayout", "renderLayout", 'id="layoutbtns"', "SANKEY_MAXH"):
         assert token in tmpl, token
 
 

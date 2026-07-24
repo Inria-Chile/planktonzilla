@@ -503,11 +503,26 @@ __FONTS__
     L.nodes.forEach(n=>{ if(colRank[n.col]===undefined) colRank[n.col]=RANK_LABEL[n.rank]||n.rank; });
 
     for(const l of L.links){
-      const p=el("path",{d:ribbon(l,dy),fill:fillOf(l)},"link"+(l.agg?" agg":""));
-      p._l=l; gLinks.appendChild(p); LNK.push(p);
-      p.addEventListener("mousemove",e=>showLinkTip(e,l));
-      p.addEventListener("mouseenter",()=>hiKeys(l.parentKey,l.childKey));
-      p.addEventListener("mouseleave",clearHi);
+      const childNode=(!l.agg && (""+l.childKey).charAt(0)==="n") ? byId[l.childKey.slice(1)] : null;
+      const csegs=(COLORBY==="dataset" && !l.source && childNode) ? nodeSegments(childNode) : null;
+      if(csegs && csegs.length){
+        let tot=0; csegs.forEach(s=>tot+=s.v); let py1=l.y1, py2=l.y2;
+        csegs.forEach(seg=>{
+          const sh1=seg.v/tot*l.h1, sh2=seg.v/tot*l.h2;
+          const sp=el("path",{d:ribbon({x1:l.x1,y1:py1,h1:sh1,x2:l.x2,y2:py2,h2:sh2},dy),fill:datasetColor(seg.src)},"link");
+          sp._l=l; gLinks.appendChild(sp); LNK.push(sp);
+          sp.addEventListener("mousemove",e=>showLinkTip(e,l));
+          sp.addEventListener("mouseenter",()=>hiKeys(l.parentKey,l.childKey));
+          sp.addEventListener("mouseleave",clearHi);
+          py1+=sh1; py2+=sh2;
+        });
+      } else {
+        const p=el("path",{d:ribbon(l,dy),fill:fillOf(l)},"link"+(l.agg?" agg":""));
+        p._l=l; gLinks.appendChild(p); LNK.push(p);
+        p.addEventListener("mousemove",e=>showLinkTip(e,l));
+        p.addEventListener("mouseenter",()=>hiKeys(l.parentKey,l.childKey));
+        p.addEventListener("mouseleave",clearHi);
+      }
     }
 
     for(const n of L.nodes){
