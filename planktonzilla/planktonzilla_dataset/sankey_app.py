@@ -1,0 +1,341 @@
+"""
+(c) Inria
+
+pz_sankey_app — an interactive, server-side Plotly ``go.Sankey`` Gradio 6 explorer for the
+planktonzilla taxonomy.
+
+This is a NEW, parallel deliverable that reuses the converging data model of ``build_sankey.py``
+(the frozen self-contained HTML emitter) but renders it live: columns flow
+``source_dataset -> root_class -> Kingdom..Species / (unclassified) -> proposed_label`` as a
+drill-down Sankey with a JS double-click zoom bridge and the full Inria visual identity.
+
+Layering (dependency-isolation guard, Phase 9): the pure data core — ``row_path`` / ``build_graph``
+/ ``breadcrumb`` / ``_read_rows`` — imports NOTHING from ``gradio`` / ``plotly`` and therefore runs
+in the frozen core env without the ``explorer`` group installed. The figure (``make_figure``) and
+app (``build_app`` / ``main``) layers keep their ``import plotly`` / ``import gradio`` FUNCTION-LOCAL
+so no module-scope viz import trips ``tests/test_dependency_isolation.py``.
+
+The command is available as ``pz_sankey_app`` and via
+``python -m planktonzilla.planktonzilla_dataset.sankey_app``.
+"""
+
+from __future__ import annotations
+
+import csv
+from collections import Counter, defaultdict
+from dataclasses import dataclass
+from itertools import pairwise
+from pathlib import Path
+
+from planktonzilla.planktonzilla_dataset.constants import (
+    DEFAULT_TAXONOMY_CSV_FILENAME,
+    TAXONOMY_RANKS,
+)
+
+# --------------------------------------------------------------- column vocabulary
+# Fixed ordered column-key vocabulary; drives arrangement="fixed" x-positions and the
+# CheckboxGroup collapse/relink. "group" is the (unclassified) living-fallback bucket.
+SOURCE_COL = "source_dataset"
+ROOT_COL = "root_class"
+GROUP_COL = "group"
+LEAF_COL = "proposed_label"
+ALL_COLUMNS: tuple[str, ...] = (SOURCE_COL, ROOT_COL, *TAXONOMY_RANKS, GROUP_COL, LEAF_COL)
+_COLUMN_INDEX: dict[str, int] = {col: i for i, col in enumerate(ALL_COLUMNS)}
+
+# Sentinel first-token for pooled "+N other" node keys, so they never collide with a real
+# (column_key, label) node identity (no real column is "\x00other").
+_OTHER = "\x00other"
+
+# A node identity in the converging DAG is a (column_key, label) tuple.
+ColumnKey = tuple[str, str]
+
+
+@dataclass
+class Node:
+    """One Sankey node: its column, display label, flow value, and the pooled-"other" flag."""
+
+    col: str
+    label: str
+    value: float
+    is_other: bool = False
+
+
+@dataclass
+class Link:
+    """A ribbon between two nodes, referenced by their index in ``Graph.nodes``."""
+
+    src: int
+    tgt: int
+    value: float
+
+
+@dataclass
+class Graph:
+    """A converging Sankey DAG: nodes plus index-referenced links."""
+
+    nodes: list[Node]
+    links: list[Link]
+
+
+def _read_rows(csv_path: Path | str = DEFAULT_TAXONOMY_CSV_FILENAME) -> list[dict]:
+    """Read the taxonomy-mapping CSV into a list of row dicts (viz-free, local file only)."""
+    with Path(csv_path).open(newline="", encoding="utf-8") as fh:
+        return list(csv.DictReader(fh))
+
+
+def _norm_columns(columns_enabled: object) -> set[str]:
+    """Normalize the enabled-columns argument to a membership set (None -> every column)."""
+    if columns_enabled is None:
+        return set(ALL_COLUMNS)
+    return set(columns_enabled)  # type: ignore[arg-type]
+
+
+def _count_key(row: dict) -> tuple[str, str, str]:
+    """The (dataset, proposed_label_lower, root_class) key that ``load_sample_counts`` uses."""
+    return row["Dataset"].strip(), row["proposed_label"].strip().lower(), row["root_class"].strip()
+
+
+def row_path(row: dict, columns_enabled: object = None) -> list[ColumnKey]:
+    """Ordered (column_key, label) path for one CSV row through the converging column model.
+
+    * living row with >=1 filled rank: source_dataset -> root_class(living) -> filled ranks (in order).
+    * living row with ALL ranks blank: FALLBACK mirroring ``build_sankey._living_path`` exactly —
+      source_dataset -> root_class(living) -> group("(unclassified)") -> proposed_label. Without this
+      the ~31 all-blank living rows would dead-end on root_class:living, breaking conservation.
+    * non-living row: source_dataset -> root_class -> proposed_label.
+
+    A column key absent from ``columns_enabled`` is omitted (collapse), so the surviving neighbours
+    become adjacent (relink). ``columns_enabled=None`` keeps every column.
+    """
+    enabled = _norm_columns(columns_enabled)
+    src = row["Dataset"].strip()
+    rc = row["root_class"].strip()
+    path: list[ColumnKey] = [(SOURCE_COL, src), (ROOT_COL, rc)]
+    if rc == "living":
+        ranks = [(rk, row[rk].strip()) for rk in TAXONOMY_RANKS if row[rk].strip()]
+        if ranks:
+            path.extend(ranks)
+        else:
+            label = row["proposed_label"].strip() or "(unlabeled)"
+            path.append((GROUP_COL, "(unclassified)"))
+            path.append((LEAF_COL, label))
+    else:
+        label = row["proposed_label"].strip() or "(unlabeled)"
+        path.append((LEAF_COL, label))
+    return [key for key in path if key[0] in enabled]
+
+
+def _ribbons_images(paths: list[tuple[dict, list[ColumnKey]]], counts: Counter) -> list[tuple[list[ColumnKey], float]]:
+    """Images metric: link value = additive per-(dataset, label, root_class) image count.
+
+    Each count key is attributed to exactly ONE ribbon (the first row that owns it, mirroring
+    ``build_sankey``'s ``setdefault``), so a label shared by several CSV rows is not double-counted.
+    Zero-count ribbons are dropped (the Sankey shows only flows that carry images).
+    """
+    ribbons: list[tuple[list[ColumnKey], float]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for row, path in paths:
+        key = _count_key(row)
+        if key in seen:
+            continue
+        seen.add(key)
+        weight = float(counts.get(key, 0.0))
+        if weight > 0.0:
+            ribbons.append((path, weight))
+    return ribbons
+
+
+def _ribbons_taxa(paths: list[tuple[dict, list[ColumnKey]]]) -> list[tuple[list[ColumnKey], float]]:
+    """Distinct-taxa metric via FRACTIONAL 1/N ATTRIBUTION.
+
+    ``go.Sankey`` nodes have no size attribute, so a "distinct taxa" count must be encoded in the
+    link values. Each distinct leaf taxon carries a mass of 1 split evenly across the N source
+    datasets it appears in: every link of a given source ribbon carries ``1/N``. Flow therefore
+    conserves at every node and the shared distinct leaf node value equals exactly ``1.0``.
+    """
+    leaf_datasets: dict[ColumnKey, set[str]] = defaultdict(set)
+    representative: dict[tuple[ColumnKey, str], list[ColumnKey]] = {}
+    for row, path in paths:
+        leaf = path[-1]
+        dataset = row["Dataset"].strip()
+        leaf_datasets[leaf].add(dataset)
+        representative.setdefault((leaf, dataset), path)
+    ribbons: list[tuple[list[ColumnKey], float]] = []
+    for (leaf, _dataset), path in representative.items():
+        ribbons.append((path, 1.0 / len(leaf_datasets[leaf])))
+    return ribbons
+
+
+def _focus_ribbons(ribbons: list[tuple[list[ColumnKey], float]], focus_key: ColumnKey) -> list[tuple[list[ColumnKey], float]]:
+    """Restrict to ribbons passing through ``focus_key`` and re-root each at it (its descendants)."""
+    focused: list[tuple[list[ColumnKey], float]] = []
+    for path, weight in ribbons:
+        if focus_key in path:
+            focused.append((path[path.index(focus_key) :], weight))
+    return focused
+
+
+def _accumulate(
+    ribbons: list[tuple[list[ColumnKey], float]],
+) -> tuple[dict[ColumnKey, float], dict[tuple[ColumnKey, ColumnKey], float], list[ColumnKey], list[ColumnKey]]:
+    """Sum ribbon weights into node values (flow-through) and edge values; return roots too."""
+    node_value: dict[ColumnKey, float] = defaultdict(float)
+    edge_value: dict[tuple[ColumnKey, ColumnKey], float] = defaultdict(float)
+    order: list[ColumnKey] = []
+    seen: set[ColumnKey] = set()
+    targets: set[ColumnKey] = set()
+    for path, weight in ribbons:
+        for key in path:
+            if key not in seen:
+                seen.add(key)
+                order.append(key)
+            node_value[key] += weight
+        for src, tgt in pairwise(path):
+            edge_value[(src, tgt)] += weight
+            targets.add(tgt)
+    roots = [key for key in order if key not in targets]
+    return node_value, edge_value, order, roots
+
+
+def _reachable(edges: dict[tuple[ColumnKey, ColumnKey], float], roots: list[ColumnKey]) -> set[ColumnKey]:
+    """Nodes reachable from ``roots`` following ``edges`` (used to prune pooled-away subtrees)."""
+    adjacency: dict[ColumnKey, list[ColumnKey]] = defaultdict(list)
+    for src, tgt in edges:
+        adjacency[src].append(tgt)
+    seen = set(roots)
+    stack = list(roots)
+    while stack:
+        node = stack.pop()
+        for nxt in adjacency[node]:
+            if nxt not in seen:
+                seen.add(nxt)
+                stack.append(nxt)
+    return seen
+
+
+def _pool_below_threshold(
+    node_value: dict[ColumnKey, float],
+    edge_value: dict[tuple[ColumnKey, ColumnKey], float],
+    order: list[ColumnKey],
+    roots: list[ColumnKey],
+    threshold: float,
+) -> tuple[dict, dict, list, dict]:
+    """Pool, within each parent, children whose incoming edge value < ``threshold`` into one gray
+    "+N other" node (``is_other``), then prune the now-unreachable pooled subtrees. Conserves flow.
+    """
+    children: dict[ColumnKey, list[ColumnKey]] = defaultdict(list)
+    for src, tgt in edge_value:
+        children[src].append(tgt)
+
+    new_edges = dict(edge_value)
+    new_values = dict(node_value)
+    other_meta: dict[ColumnKey, ColumnKey] = {}
+    for idx, parent in enumerate(list(children)):
+        small = [child for child in children[parent] if new_edges.get((parent, child), 0.0) < threshold]
+        if not small:
+            continue
+        total = 0.0
+        for child in small:
+            total += new_edges.pop((parent, child))
+        col = min((child[0] for child in small), key=lambda c: _COLUMN_INDEX.get(c, len(ALL_COLUMNS)))
+        other_key: ColumnKey = (_OTHER, f"{parent[0]}:{parent[1]}#{idx}")
+        new_edges[(parent, other_key)] = total
+        new_values[other_key] = total
+        other_meta[other_key] = (col, f"+{len(small)} other")
+        order.append(other_key)
+
+    kept = _reachable(new_edges, roots)
+    kept_values = {key: value for key, value in new_values.items() if key in kept}
+    kept_edges = {edge: value for edge, value in new_edges.items() if edge[0] in kept and edge[1] in kept}
+    kept_order = [key for key in order if key in kept]
+    kept_meta = {key: meta for key, meta in other_meta.items() if key in kept}
+    return kept_values, kept_edges, kept_order, kept_meta
+
+
+def _materialize(
+    node_value: dict[ColumnKey, float],
+    edge_value: dict[tuple[ColumnKey, ColumnKey], float],
+    order: list[ColumnKey],
+    other_meta: dict[ColumnKey, ColumnKey],
+) -> Graph:
+    """Turn the value/edge dicts into an index-referenced ``Graph``, columns left-to-right."""
+
+    def col_label(key: ColumnKey) -> ColumnKey:
+        return other_meta[key] if key in other_meta else key
+
+    ordered = sorted(
+        order,
+        key=lambda key: (_COLUMN_INDEX.get(col_label(key)[0], len(ALL_COLUMNS)), -node_value[key], col_label(key)[1]),
+    )
+    index = {key: i for i, key in enumerate(ordered)}
+    nodes = [
+        Node(col=col_label(key)[0], label=col_label(key)[1], value=node_value[key], is_other=key in other_meta)
+        for key in ordered
+    ]
+    links = [Link(src=index[src], tgt=index[tgt], value=value) for (src, tgt), value in edge_value.items()]
+    return Graph(nodes=nodes, links=links)
+
+
+def build_graph(
+    rows: list[dict],
+    counts: Counter | None = None,
+    *,
+    columns_enabled: object = None,
+    size_metric: str = "images",
+    min_threshold: float = 0.0,
+    focus_key: ColumnKey | None = None,
+) -> Graph:
+    """Aggregate CSV rows into a converging Sankey ``Graph``.
+
+    ``size_metric="images"`` sizes links by additive per-class image counts from ``counts``;
+    ``size_metric="taxa"`` sizes them by fractional 1/N distinct-taxa attribution (see
+    ``_ribbons_taxa``). ``columns_enabled`` collapses columns, ``min_threshold`` pools small
+    siblings into a gray "+N other" node, and ``focus_key`` restricts to a node and its descendants.
+    Flow conserves at every node under every combination.
+    """
+    counts = counts or Counter()
+    paths = [(row, path) for row in rows if (path := row_path(row, columns_enabled))]
+
+    ribbons = _ribbons_images(paths, counts) if size_metric == "images" else _ribbons_taxa(paths)
+    if focus_key is not None:
+        ribbons = _focus_ribbons(ribbons, focus_key)
+
+    node_value, edge_value, order, roots = _accumulate(ribbons)
+    other_meta: dict[ColumnKey, ColumnKey] = {}
+    if min_threshold and min_threshold > 0:
+        node_value, edge_value, order, other_meta = _pool_below_threshold(
+            node_value, edge_value, order, roots, float(min_threshold)
+        )
+    return _materialize(node_value, edge_value, order, other_meta)
+
+
+def breadcrumb(graph_or_rows: Graph | list[dict], focus_key: ColumnKey | None) -> list[ColumnKey]:
+    """Ancestor chain from the root column down to ``focus_key`` (inclusive) for the Back affordance.
+
+    Accepts either a built ``Graph`` (walks incoming edges up to a root) or the raw rows (finds the
+    first row whose path passes through ``focus_key``). Returns ``[]`` when ``focus_key`` is None.
+    """
+    if focus_key is None:
+        return []
+    if isinstance(graph_or_rows, Graph):
+        parent: dict[ColumnKey, ColumnKey] = {}
+        for link in graph_or_rows.links:
+            src = graph_or_rows.nodes[link.src]
+            tgt = graph_or_rows.nodes[link.tgt]
+            parent.setdefault((tgt.col, tgt.label), (src.col, src.label))
+        chain = [focus_key]
+        cur = focus_key
+        seen = {cur}
+        while cur in parent:
+            cur = parent[cur]
+            if cur in seen:
+                break
+            seen.add(cur)
+            chain.append(cur)
+        chain.reverse()
+        return chain
+    for row in graph_or_rows:
+        path = row_path(row)
+        if focus_key in path:
+            return path[: path.index(focus_key) + 1]
+    return [focus_key]
