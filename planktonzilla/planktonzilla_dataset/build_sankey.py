@@ -24,6 +24,9 @@ Examples
     # Fast rebuild without the (minutes-long) dataset scan — mappings + taxa only
     pz_build_sankey --no-samples
 
+    # Scan once and cache the per-class counts for fast reuse later
+    pz_build_sankey --save-samples counts.json
+
     # Reuse a previously-scanned per-(dataset,proposed_label,root_class) counts JSON
     pz_build_sankey --samples-json counts.json --out flow.html
 
@@ -48,8 +51,9 @@ from planktonzilla.planktonzilla_dataset.constants import (
     DEFAULT_TAXONOMY_CSV_FILENAME,
     TAXONOMY_RANKS,
 )
+from planktonzilla.utils.logger import get_pylogger
 
-logger = logging.getLogger("planktonzilla.planktonzilla_dataset.build_sankey")
+logger = get_pylogger(__name__)
 
 TEMPLATE_PATH = Path(__file__).parent / "templates" / "sankey_template.html"
 PLACEHOLDERS = ("__FONTS__", "__LOGO_B64__", "__TREE__", "__TREE_SRC__")
@@ -267,6 +271,15 @@ def load_sample_counts(path: Path) -> Counter:
     return counts
 
 
+def save_sample_counts(counts: Counter, path: Path) -> None:
+    """Write a per-(dataset, proposed_label, root_class) counts JSON — the inverse of load_sample_counts."""
+    rows = sorted(counts.items(), key=lambda item: (item[0][0], item[0][2], item[0][1]))
+    doc = {"counts": [{"dataset": ds, "proposed_label": pl, "root_class": rc, "n": int(n)} for (ds, pl, rc), n in rows]}
+    with path.open("w", encoding="utf-8") as fh:
+        json.dump(doc, fh, ensure_ascii=False)
+    logger.info("Saved %d classes (%d images) to %s.", len(counts), sum(counts.values()), path)
+
+
 # ----------------------------------------------------------------- asset fetch
 def fetch_fonts() -> str:
     """Return an ``@font-face`` block (base64 data-URIs) for the Inria typefaces, or '' on failure."""
@@ -349,6 +362,13 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="load precomputed per-(dataset,proposed_label,root_class) counts instead of scanning",
     )
+    ap.add_argument(
+        "--save-samples",
+        type=Path,
+        default=None,
+        help="after scanning, write the per-(dataset,proposed_label,root_class) counts JSON to this path "
+        "(reuse later with --samples-json to skip the scan)",
+    )
     return ap
 
 
@@ -367,6 +387,12 @@ def main(argv: list[str] | None = None) -> int:
     else:
         per_source = scan_dataset(args.dataset_repo, args.workers)
     samples_available = bool(per_source)
+
+    if args.save_samples is not None:
+        if per_source:
+            save_sample_counts(per_source, args.save_samples)
+        else:
+            logger.warning("--save-samples ignored: no samples to save (--no-samples or empty scan).")
 
     per_label: Counter = Counter()
     for (_ds, pl, rc), n in per_source.items():
