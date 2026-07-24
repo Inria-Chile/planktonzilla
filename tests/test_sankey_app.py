@@ -18,6 +18,9 @@ and focus/breadcrumb.
 
 from __future__ import annotations
 
+import os
+import socket
+
 import pyrootutils
 import pytest
 
@@ -28,8 +31,13 @@ root = pyrootutils.setup_root(
     dotenv=False,
 )
 
+# Set before any gradio/plotly import (belt-and-suspenders with the socket fixture below).
+os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+
 from collections import Counter, defaultdict
 
+from planktonzilla.planktonzilla_dataset import sankey_app as sa
 from planktonzilla.planktonzilla_dataset.sankey_app import ALL_COLUMNS, breadcrumb, build_graph, row_path
 
 RANKS = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]
@@ -210,3 +218,55 @@ def test_focus_subtree_and_breadcrumb():
         ("root_class", "living"),
         ("Genus", "calanus"),
     ]
+
+
+# --------------------------------------------------- figure layer (plotly-guarded)
+@pytest.fixture(autouse=True)
+def _block_network(monkeypatch):
+    """Make any real INTERNET socket raise; allow AF_UNIX so a viz event loop still builds.
+
+    Mirrors tests/test_app_compose.py: INET/INET6 sockets (and ``create_connection``) raise, so a
+    live HF read fails LOUDLY, while local ``AF_UNIX`` socketpairs (gradio's asyncio loop) pass.
+    """
+    real_socket = socket.socket
+
+    def _guarded_socket(family=socket.AF_INET, *args, **kwargs):
+        if family in (socket.AF_INET, getattr(socket, "AF_INET6", socket.AF_INET)):
+            raise RuntimeError("network access is blocked in the explorer test suite")
+        return real_socket(family, *args, **kwargs)
+
+    def _no_connection(*args, **kwargs):
+        raise RuntimeError("network access is blocked in the explorer test suite")
+
+    monkeypatch.setattr(socket, "socket", _guarded_socket)
+    monkeypatch.setattr(socket, "create_connection", _no_connection)
+    yield
+
+
+def test_make_figure_returns_pinned_sankey():
+    pytest.importorskip("plotly")
+    import plotly.graph_objects as go
+
+    graph = build_graph(ROWS, PER_SOURCE, size_metric="images")
+    fig = sa.make_figure(graph, theme="light", size_metric="images")
+    assert isinstance(fig, go.Figure)
+    sankeys = [trace for trace in fig.data if isinstance(trace, go.Sankey)]
+    assert len(sankeys) == 1
+    node_x = sankeys[0].node.x
+    assert node_x is not None
+    assert len(node_x) == len(graph.nodes)
+    assert all(0.02 <= x <= 0.98 for x in node_x)  # columns pinned off the 0/1 edges
+    assert sankeys[0].arrangement == "fixed"
+    # Rouge is reserved: no data node may carry it.
+    assert all((c or "").lower() != sa.ROUGE_RESERVED for c in sankeys[0].node.color)
+
+
+def test_style_constants_present():
+    # Assert on the module's constant strings directly — no gradio/plotly import needed.
+    assert "plotly_click" in sa.BRIDGE_JS
+    assert "#pz_click" in sa.BRIDGE_JS
+    assert "--rouge" in sa.INRIA_CSS
+    assert "inria-motif" in sa.INRIA_CSS
+    assert 'data-theme="dark"' in sa.INRIA_CSS and 'data-theme="light"' in sa.INRIA_CSS
+    assert "#000091" in sa.HEADER_HTML  # RF State blue, outside the Inria 5-hue palette
+    assert "#e1000f" in sa.HEADER_HTML  # RF State red

@@ -27,6 +27,7 @@ from dataclasses import dataclass
 from itertools import pairwise
 from pathlib import Path
 
+from planktonzilla.planktonzilla_dataset.build_sankey import DEFAULT_LOGO_URL
 from planktonzilla.planktonzilla_dataset.constants import (
     DEFAULT_TAXONOMY_CSV_FILENAME,
     TAXONOMY_RANKS,
@@ -339,3 +340,229 @@ def breadcrumb(graph_or_rows: Graph | list[dict], focus_key: ColumnKey | None) -
         if focus_key in path:
             return path[: path.index(focus_key) + 1]
     return [focus_key]
+
+
+# ===================================================================== figure layer
+# Inria data ramp (charter §8): fixed order Bleu mat -> Bleu canard -> Violet -> Framboise, then
+# their 70% / 50% tints. Rouge #C9191E is RESERVED (a signal, never a data node); "+N other" pooled
+# nodes use the reserved gray. plotly needs concrete hexes, so the tints are precomputed here.
+ROUGE_RESERVED = "#c9191e"  # NEVER assigned to a data node
+DATA_OTHER_COLOR = "#aab3bf"
+INRIA_DATA_RAMP_BASE: tuple[str, ...] = ("#27348b", "#1067a3", "#534b9a", "#a60f79")
+
+_COLUMN_TITLES = {
+    "source_dataset": "Source dataset",
+    "root_class": "Root class",
+    "group": "Group",
+    "proposed_label": "Label",
+}
+
+
+def _tint(hex_color: str, weight: float) -> str:
+    """Mix ``hex_color`` toward white by ``weight`` (1.0 = full brand, 0.5 = 50% tint)."""
+    mixed = tuple(round(int(hex_color[i : i + 2], 16) * weight + 255 * (1 - weight)) for i in (1, 3, 5))
+    return "#{:02x}{:02x}{:02x}".format(*mixed)
+
+
+def _rgba(hex_color: str, alpha: float) -> str:
+    """Return ``hex_color`` as an ``rgba(...)`` string with the given alpha (for translucent links)."""
+    r, g, b = (int(hex_color[i : i + 2], 16) for i in (1, 3, 5))
+    return f"rgba({r},{g},{b},{alpha})"
+
+
+INRIA_DATA_RAMP: tuple[str, ...] = (
+    *INRIA_DATA_RAMP_BASE,
+    *(_tint(c, 0.7) for c in INRIA_DATA_RAMP_BASE),
+    *(_tint(c, 0.5) for c in INRIA_DATA_RAMP_BASE),
+)
+
+
+def _column_title(col: str) -> str:
+    """Human-readable header for a column key (ranks keep their own name)."""
+    return _COLUMN_TITLES.get(col, col)
+
+
+def _stack_y(graph: Graph, present: list[str]) -> dict[int, float]:
+    """Per-column y in (0,1): stack each column's nodes by descending value, centers value-weighted."""
+    band_lo, band_hi = 0.03, 0.97
+    y_pos: dict[int, float] = {}
+    for col in present:
+        col_nodes = sorted(
+            (i for i, n in enumerate(graph.nodes) if n.col == col),
+            key=lambda i: (-graph.nodes[i].value, graph.nodes[i].label),
+        )
+        total = sum(graph.nodes[i].value for i in col_nodes) or 1.0
+        cursor = 0.0
+        for i in col_nodes:
+            frac = graph.nodes[i].value / total
+            y_pos[i] = band_lo + (band_hi - band_lo) * (cursor + frac / 2)
+            cursor += frac
+    return y_pos
+
+
+def make_figure(graph: Graph, *, theme: str = "light", size_metric: str = "images"):
+    """Build a fixed-column ``go.Sankey`` figure for ``graph`` (plotly imported FUNCTION-LOCAL).
+
+    Columns are pinned with ``arrangement="fixed"``: each node's column maps to an x evenly spaced
+    in 0.02..0.98 (in the fixed column order, over the columns present), with a value-stacked y kept
+    off the 0/1 edges (RESEARCH section 3). Node colors follow the Inria data ramp; ``is_other``
+    nodes are gray; Rouge is never used. ``theme`` ("light"/"dark") tracks the page background/ink.
+    """
+    import plotly.graph_objects as go
+
+    ink = "#171a1d" if theme != "dark" else "#e9edf0"
+    paper = "#ffffff" if theme != "dark" else "#121517"
+    metric_word = "images" if size_metric == "images" else "distinct taxa"
+
+    present = [c for c in ALL_COLUMNS if any(n.col == c for n in graph.nodes)]
+    if len(present) <= 1:
+        col_x = {c: 0.5 for c in present}
+    else:
+        col_x = {c: 0.02 + 0.96 * i / (len(present) - 1) for i, c in enumerate(present)}
+    col_color = {c: INRIA_DATA_RAMP[i % len(INRIA_DATA_RAMP)] for i, c in enumerate(present)}
+
+    y_pos = _stack_y(graph, present)
+    xs = [col_x[n.col] for n in graph.nodes]
+    ys = [y_pos[i] for i in range(len(graph.nodes))]
+    colors = [DATA_OTHER_COLOR if n.is_other else col_color[n.col] for n in graph.nodes]
+    labels = [n.label for n in graph.nodes]
+    columns = [_column_title(n.col) for n in graph.nodes]
+
+    sankey = go.Sankey(
+        arrangement="fixed",
+        node=dict(
+            label=labels,
+            x=xs,
+            y=ys,
+            color=colors,
+            customdata=columns,
+            pad=14,
+            thickness=16,
+            line=dict(color=paper, width=0.5),
+            hovertemplate="<b>%{label}</b><br>%{customdata}<br>%{value:.3g} " + metric_word + "<extra></extra>",
+        ),
+        link=dict(
+            source=[link.src for link in graph.links],
+            target=[link.tgt for link in graph.links],
+            value=[link.value for link in graph.links],
+            color=[_rgba(colors[link.src], 0.32) for link in graph.links],
+            hovertemplate="%{source.label} → %{target.label}<br>%{value:.3g} " + metric_word + "<extra></extra>",
+        ),
+        # NOTE: sankey node labels render on the PAPER, not on the colored node, so for WCAG AA they
+        # track the theme ink (dark on light / near-white on dark) rather than always-white.
+        textfont=dict(color=ink, family="Inria Sans, Tahoma, sans-serif", size=12),
+    )
+    fig = go.Figure(data=[sankey])
+    fig.update_layout(
+        paper_bgcolor=paper,
+        plot_bgcolor=paper,
+        font=dict(family="Inria Sans, Tahoma, sans-serif", color=ink, size=13),
+        margin=dict(t=54, l=12, r=12, b=12),
+    )
+    for col in present:
+        fig.add_annotation(
+            x=col_x[col],
+            y=1.045,
+            xref="paper",
+            yref="paper",
+            showarrow=False,
+            text=f"<b>{_column_title(col)}</b>",
+            font=dict(family="Inria Sans, Tahoma, sans-serif", size=12, color=ink),
+            xanchor="center",
+            yanchor="bottom",
+        )
+    return fig
+
+
+# ============================================================== Inria style constants
+# Double-click zoom bridge (RESEARCH section 2). gr.Plot has NO server-side click event, so this
+# client-side listener attaches to the rendered plotly div, debounces plotly_click to detect a
+# double-click on the SAME node index (~350ms), then writes that index into the hidden gr.Number's
+# <input> and dispatches an 'input' event so its .change() fires the Python re-root callback.
+# SINGLE-CLICK FALLBACK: if a browser/Plotly build never delivers the paired click (RESEARCH A1/A2),
+# drop the `now - last < 350 && p.index === lastIdx` guard so a single click zooms instead.
+BRIDGE_JS = r"""
+() => {
+  const attach = () => {
+    const gd = document.querySelector('#pz_sankey .js-plotly-plot');
+    if (!gd || !gd.on) { return setTimeout(attach, 300); }   // wait for Plotly.newPlot
+    let last = 0, lastIdx = -1;
+    gd.on('plotly_click', (e) => {
+      const p = e.points && e.points[0];
+      if (!p || p.index === undefined) return;               // p.index = clicked node index
+      const now = Date.now();
+      if (now - last < 350 && p.index === lastIdx) {          // debounced double-click
+        const inp = document.querySelector('#pz_click input, #pz_click textarea');
+        if (inp) {
+          inp.value = String(p.index);
+          inp.dispatchEvent(new Event('input', {bubbles: true}));  // -> gr.Number.change
+        }
+      }
+      last = now; lastIdx = p.index;
+    });
+  };
+  attach();
+}
+"""
+
+# Token-driven Inria palette + dot-grid motif + blanc-tournant, light AND dark (charter §1/§2/§5).
+# Brand hexes are immutable across themes; only neutrals re-tune. Both the media query and the
+# data-theme overrides are emitted so a manual toggle wins over the OS preference.
+INRIA_CSS = """
+:root{
+  --rouge:#c9191e; --framboise:#a60f79; --violet:#534b9a; --bleu-mat:#27348b; --bleu-canard:#1067a3;
+  --data-other:#aab3bf;
+  --page:#ffffff; --panel:#ffffff; --ink:#171a1d; --ink-muted:#5c666f; --hair:#e0e5ea;
+}
+@media (prefers-color-scheme:dark){:root{
+  --page:#121517; --panel:#1a1e21; --ink:#e9edf0; --ink-muted:#8a939c; --hair:#2a3034;
+}}
+:root[data-theme="dark"]{
+  --page:#121517; --panel:#1a1e21; --ink:#e9edf0; --ink-muted:#8a939c; --hair:#2a3034;
+}
+:root[data-theme="light"]{
+  --page:#ffffff; --panel:#ffffff; --ink:#171a1d; --ink-muted:#5c666f; --hair:#e0e5ea;
+}
+.gradio-container{background:var(--page); color:var(--ink);}
+/* blanc tournant — white margin framing the content zone, never bleeding to the viewport edge */
+.pz-frame{padding:24px; background:var(--page);}
+@media (min-width:768px){.pz-frame{padding:48px;}}
+@media (min-width:1024px){.pz-frame{padding:64px; max-width:1200px; margin:0 auto;}}
+/* signature dot-grid motif — a corner tile only, NEVER tiled behind body text */
+.inria-motif{
+  background-image:radial-gradient(currentColor 1px, transparent 1.5px);
+  background-size:16px 16px; color:var(--bleu-mat); opacity:.08;
+  width:240px; height:240px; pointer-events:none;
+}
+@media (prefers-color-scheme:dark){.inria-motif{opacity:.11;}}
+.pz-header{display:flex; align-items:center; gap:16px; flex-wrap:wrap;}
+.pz-rf{display:flex; align-items:center; gap:8px; color:var(--ink);}
+.pz-rf-label{font-weight:700; font-size:11px; line-height:1.05; letter-spacing:.03em;}
+.pz-rf-devise{font-size:9px; font-style:italic; font-weight:400;}
+.pz-rule{width:1px; height:38px; background:var(--hair);}
+/* NON-PRODUCTION facsimile — shown only if the official Inria SVG fails to load. Serif + Rouge. */
+.pz-inria-fallback{font-family:"Inria Serif",Georgia,serif; color:var(--rouge); font-size:28px; font-style:italic;}
+"""
+
+# Sole-emitter (EMITTER_MODE=sole) lockup: the République Française bloc-marque on the LEFT (State
+# colors #000091 / #E1000F / #FFFFFF — deliberately OUTSIDE the Inria 5-hue palette), a thin rule,
+# then the official Inria red-script wordmark. onerror reveals the flagged Serif-Rouge facsimile.
+HEADER_HTML = f"""
+<div class="pz-header" role="banner">
+  <div class="pz-rf" aria-label="République Française">
+    <svg width="42" height="38" viewBox="0 0 42 38" role="img" aria-hidden="true">
+      <rect x="0" y="0" width="14" height="38" fill="#000091"></rect>
+      <rect x="14" y="0" width="14" height="38" fill="#ffffff"></rect>
+      <rect x="28" y="0" width="14" height="38" fill="#e1000f"></rect>
+    </svg>
+    <div>
+      <div class="pz-rf-label">RÉPUBLIQUE<br>FRANÇAISE</div>
+      <div class="pz-rf-devise">Liberté · Égalité · Fraternité</div>
+    </div>
+  </div>
+  <div class="pz-rule"></div>
+  <img class="pz-inria-logo" alt="Inria" height="34" src="{DEFAULT_LOGO_URL}"
+       onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+  <span class="pz-inria-fallback" style="display:none;">Inria</span>
+</div>
+"""
