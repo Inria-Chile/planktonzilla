@@ -227,6 +227,18 @@ def test_real_template_has_converging_source_seam():
     assert "MERGED ? layoutMerged()" in tmpl, "MERGED ? layoutMerged()"
 
 
+def test_real_template_has_dataset_composition_seam():
+    """The shipped template carries the per-dataset composition-stack (Color-by=Dataset) client-side seam.
+
+    Network-free token check: the stacked dataset-coloured segments are derived entirely client-side from
+    the two already-emitted trees (DATA + DATA_SRC) via _pk / PATH_SRC / nodeSegments, so build_sankey.py
+    is unchanged (no HuggingFace / Google Fonts / inria.fr requests).
+    """
+    tmpl = bs.TEMPLATE_PATH.read_text(encoding="utf-8")
+    for token in ("PATH_SRC", "nodeSegments", "_pk"):
+        assert token in tmpl, token
+
+
 def test_save_sample_counts_roundtrips(tmp_path):
     """save_sample_counts writes the exact JSON shape load_sample_counts reads back: round-trip equality."""
     c = Counter(

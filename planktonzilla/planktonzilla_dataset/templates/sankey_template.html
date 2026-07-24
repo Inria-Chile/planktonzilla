@@ -461,7 +461,18 @@ __FONTS__
     for(const n of L.nodes){
       const hasKids=!n.agg&&n.node&&n.node.k&&n.node.k.length;
       const g=el("g",{},"node"+(n.agg?" agg":"")+(hasKids?" drillable":""));
-      g.appendChild(el("rect",{x:n.x,y:n.yTop.toFixed(2),width:NODE_W,height:Math.max(1,n.h).toFixed(2),fill:n.agg?"var(--ink-3)":fillOf(n),rx:2}));
+      // Dataset mode: paint each SHARED downstream node as a vertical DS_ORDER stack of dataset-coloured
+      // segments (heights proportional to each dataset's contribution). Every other case — Branch mode,
+      // agg pools, col-0 dataset nodes, drilled-into-dataset subtrees (n.source set) — falls through to
+      // the single rect. The existing `.node rect` stroke draws the hairline dividers between segments.
+      const segs=(COLORBY==="dataset" && !n.agg && n.node && !n.source) ? nodeSegments(n.node) : null;
+      if(segs && segs.length){
+        const H=Math.max(1,n.h); let tot=0; segs.forEach(s=>tot+=s.v); let sy=n.yTop;
+        segs.forEach(seg=>{ const sh=seg.v/tot*H;
+          g.appendChild(el("rect",{x:n.x,y:sy.toFixed(2),width:NODE_W,height:sh.toFixed(2),fill:datasetColor(seg.src)})); sy+=sh; });
+      } else {
+        g.appendChild(el("rect",{x:n.x,y:n.yTop.toFixed(2),width:NODE_W,height:Math.max(1,n.h).toFixed(2),fill:n.agg?"var(--ink-3)":fillOf(n),rx:2}));
+      }
 
       if(!colHeadDone[n.col]){ const t=el("text",{x:n.x,y:PAD_TOP-12,"text-anchor":"start"},"colhead"); t.textContent=colRank[n.col]||""; gNodes.appendChild(t); colHeadDone[n.col]=1; }
 
@@ -561,7 +572,7 @@ __FONTS__
     ["c","t","s"].forEach(m=>{
       if(m==="s" && !meta.samples_available) return;
       const b=document.createElement("button"); b.textContent=METRICS[m].label;
-      if(m==="t" && MERGED){   // Taxa can't converge (a taxon appears in several datasets) → greyed while merged
+      if(m==="t" && (MERGED || COLORBY==="dataset")){   // Taxa can't converge (a taxon appears in several datasets) → greyed while merged or dataset-coloured
         b.disabled=true; b.style.opacity=".45"; b.style.cursor="not-allowed";
         b.title="Taxa can't be partitioned across converging datasets";
         d.appendChild(b); return;
