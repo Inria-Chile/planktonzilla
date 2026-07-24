@@ -251,17 +251,35 @@ __FONTS__
 
   // annotate tree with parent / branch / id (unchanged); a SHARED dual index holds BOTH trees at once so
   // the merged view can reference DATA root_class nodes and DATA_SRC source nodes from one byId.
-  function annotate(n,parent,branch,source){
+  function annotate(n,parent,branch,source,pk){
     n._id=uid++; n._parent=parent; n._branch=branch; n._source=source;
-    (n.k||[]).forEach(c=>annotate(c,n,n.r==="root_class"?n.n:branch,n.r==="source"?n.n:source));
+    n._pk = n.r==="root_class" ? "rc:"+n.n.toLowerCase()
+          : (n.r==="dataset"||n.r==="source") ? null
+          : (pk!=null ? pk+"|"+n.r+":"+n.n.toLowerCase() : null);
+    (n.k||[]).forEach(c=>annotate(c,n,n.r==="root_class"?n.n:branch,n.r==="source"?n.n:source,n._pk));
   }
   function indexInto(n){ byId[n._id]=n; (n.k||[]).forEach(indexInto); }
   // bindActive points meta/root/focus at an ALREADY-annotated tree — no re-annotation, no uid reset
   function bindActive(data){ meta=data.meta; root=data.tree; focus=data.tree; }
   // annotate BOTH trees into one continuous uid space so byId holds every node in both (no key collisions)
-  annotate(DATA.tree,null,null,null); indexInto(DATA.tree);
-  if(DATA_SRC){ annotate(DATA_SRC.tree,null,null,null); indexInto(DATA_SRC.tree); }
+  annotate(DATA.tree,null,null,null,null); indexInto(DATA.tree);
+  if(DATA_SRC){ annotate(DATA_SRC.tree,null,null,null,null); indexInto(DATA_SRC.tree); }
   meta=DATA.meta; root=DATA.tree; focus=DATA.tree;
+
+  // ---- per-(pk, dataset) raw {c,t,s} — snapshotted ONCE, AFTER annotation so _pk/_source are set ----
+  // FULL-DEPTH walk (mirrors indexInto): visits root_class AND every taxonomy level, so dataset colours
+  // reach past the first hop. Must post-date annotate(DATA_SRC.tree,...) or _pk/_source are undefined.
+  const PATH_SRC=(()=>{ const out={}; if(!DATA_SRC) return out;
+    (function walk(n){ if(n._pk!=null && n._source!=null){ (out[n._pk]=out[n._pk]||{})[n._source]={c:n.c,t:n.t,s:n.s}; }
+      (n.k||[]).forEach(walk); })(DATA_SRC.tree); return out; })();
+  // returns [{src,v}] for a shared node (DS_ORDER preserved) on the ACTIVE metric, or null when the node
+  // has no per-dataset breakdown (col-0 dataset/source nodes, agg pools, or nodes absent from DATA_SRC).
+  function nodeSegments(node){
+    if(node._pk==null || !PATH_SRC[node._pk]) return null;
+    const out=[];
+    DS_ORDER.forEach(src=>{ const rec=PATH_SRC[node._pk][src]; const v=(rec && rec[METRIC] ? rec[METRIC] : 0)||0; if(v>0) out.push({src,v}); });
+    return out;
+  }
 
   // one-time header bits (legend is now rebuilt per render via renderLegend so it can swap Branch⇄Dataset)
   document.getElementById("fRows").textContent=fmt(meta.total_rows);
