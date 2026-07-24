@@ -18,7 +18,9 @@ root = pyrootutils.setup_root(
     dotenv=False,
 )
 
+import json
 from collections import Counter
+from pathlib import Path
 
 from planktonzilla.planktonzilla_dataset import build_sankey as bs
 
@@ -223,3 +225,54 @@ def test_real_template_has_converging_source_seam():
     for token in ("sourceInflows(", "layoutMerged(", "MERGED", "enterMerged("):
         assert token in tmpl, token
     assert "MERGED ? layoutMerged()" in tmpl, "MERGED ? layoutMerged()"
+
+
+def test_save_sample_counts_roundtrips(tmp_path):
+    """save_sample_counts writes the exact JSON shape load_sample_counts reads back: round-trip equality."""
+    c = Counter(
+        {
+            ("EcoTaxa", "copepoda", "living"): 5,
+            ("WHOI", "detritus", "detritus"): 9,
+            ("ZooLake", "copepoda", "living"): 2,
+        }
+    )
+    out = tmp_path / "counts.json"
+    bs.save_sample_counts(c, out)
+
+    doc = json.loads(out.read_text(encoding="utf-8"))
+    assert isinstance(doc["counts"], list)
+    for row in doc["counts"]:
+        assert set(row) == {"dataset", "proposed_label", "root_class", "n"}
+
+    assert bs.load_sample_counts(out) == c
+
+
+def test_parser_accepts_save_samples():
+    assert bs._build_parser().parse_args(["--save-samples", "x.json"]).save_samples == Path("x.json")
+
+
+def test_main_save_samples_then_reload(tmp_path, monkeypatch):
+    """main() persists the loaded counts to --save-samples and returns 0, fully offline.
+
+    ``--samples-json`` means scan_dataset is never called; fetch_fonts / fetch_logo are stubbed so the
+    run makes no network requests (mirroring this module's network-free contract).
+    """
+    monkeypatch.setattr(bs, "fetch_fonts", lambda: "")
+    monkeypatch.setattr(bs, "fetch_logo", lambda url: "")
+    in_json = tmp_path / "in.json"
+    out_json = tmp_path / "out.json"
+    bs.save_sample_counts(Counter({("whoi", "calanus", "living"): 7}), in_json)
+    rc = bs.main(
+        [
+            "--csv",
+            str(bs.DEFAULT_TAXONOMY_CSV_FILENAME),
+            "--samples-json",
+            str(in_json),
+            "--save-samples",
+            str(out_json),
+            "--out",
+            str(tmp_path / "o.html"),
+        ]
+    )
+    assert rc == 0
+    assert bs.load_sample_counts(out_json) == bs.load_sample_counts(in_json)
