@@ -210,3 +210,16 @@ def test_real_template_has_colorby_controls():
     tmpl = bs.TEMPLATE_PATH.read_text(encoding="utf-8")
     for token in ('id="colorbtns"', "renderColor(", "renderLegend(", "datasetColor(", "COLORBY"):
         assert token in tmpl, token
+
+
+def test_real_template_has_converging_source_seam():
+    """The shipped template carries the converging dataset-Sankey (Source=On) client-side seam.
+
+    Network-free token check: the merged converging view is derived entirely client-side from the two
+    already-emitted trees (DATA + DATA_SRC), so build_sankey.py is unchanged and this is a pure token
+    check (no HuggingFace / Google Fonts / inria.fr requests).
+    """
+    tmpl = bs.TEMPLATE_PATH.read_text(encoding="utf-8")
+    for token in ("sourceInflows(", "layoutMerged(", "MERGED", "enterMerged("):
+        assert token in tmpl, token
+    assert "MERGED ? layoutMerged()" in tmpl, "MERGED ? layoutMerged()"
