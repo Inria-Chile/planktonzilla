@@ -307,7 +307,7 @@ __FONTS__
   const NS="http://www.w3.org/2000/svg";
   const NODE_W=12, COL_GAP=186, PAD_X=22, PAD_TOP=26, PAD_BOT=16, GAP=3, MIN_H=3.4, TARGET_H=640, LABEL_PAD=162;
   let maxDepth=4;
-  let LAYOUT="tiled";   // "tiled" (default, gentle-fan) | "sankey" (per-column) | "compare" — default keeps on-load byte-identical
+  let LAYOUT="sankey";   // "sankey" (per-column, DEFAULT) | "tiled" (gentle-fan) | "compare" — Tiled/Compare stay available via the Layout control
 
   // Layout core, extracted so the merged view can reuse it. Recurses from `focusNode`, pushing node/link
   // recs into the passed arrays and mutating st={maxY,maxCol}. Pooling + constant-width ribbon logic is
@@ -393,11 +393,16 @@ __FONTS__
     // DOWN for deep taxonomies and DECOUPLE it from the PAD_TOP-anchored merged source column + the tiled
     // Compare diagram. Top-aligning keeps tiled + sankey + merged all anchored at PAD_TOP. Flow-conservation
     // and crossing-free are unaffected — they depend on DFS order + contiguous `pe` stacking, not anchoring.
-    cols.forEach(list=>{ let y=PAD_TOP; list.forEach(r=>{ r.yTop=y; y+=r.h+GAP; }); });
-    // EMIT NODES (st.maxY tracks the diagram bottom so layout()/layoutMerged() width/height math is unchanged)
+    // HEIGHT CAP — if the tallest stacked column would exceed SANKEY_MAXH, scale heights AND gaps by one
+    // uniform factor f (deep taxonomies no longer spread absurdly tall; ribbons stay constant-width because
+    // h1===h2===scaled c.h and sum(child.h) <= parent.h is preserved by the shared factor → crossing-free).
+    const SANKEY_MAXH=usableH*1.4, GAP_S=2;
+    let maxColH=0;
+    cols.forEach(list=>{ let h=GAP_S*Math.max(0,list.length-1); list.forEach(r=>h+=r.count*unit); maxColH=Math.max(maxColH,h); });
+    const f=(maxColH>SANKEY_MAXH&&maxColH>0)?SANKEY_MAXH/maxColH:1;
+    const uEff=unit*f, gEff=GAP_S*f;
+    cols.forEach(list=>{ let y=PAD_TOP; list.forEach(r=>{ r.h=Math.max(0,r.count*uEff); r.yTop=y; y+=r.h+gEff; }); });
     cols.forEach(list=>list.forEach(r=>{ nodes.push(r); st.maxY=Math.max(st.maxY,r.yTop+r.h); }));
-    // EMIT RIBBONS — constant width (h1===h2===c.h), contiguous parent edge (cursor `pe`, no gaps) from the
-    // parent's own yTop to each child's spread yTop. The offset between `pe` (packed) and c.yTop (gapped) IS the swoosh.
     cols.forEach(list=>list.forEach(r=>{ if(!r._kids||!r._kids.length) return; let pe=r.yTop; r._kids.forEach(c=>{ links.push({parentKey:r.key,childKey:c.key,x1:r.x+NODE_W,y1:pe,h1:c.h,x2:c.x,y2:c.yTop,h2:c.h,branch:c.branch,source:c.source,count:c.count,agg:!!c.agg}); pe+=c.h; }); }));
   }
   function layout(kind="tiled"){
