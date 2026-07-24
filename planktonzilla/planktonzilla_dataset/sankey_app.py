@@ -21,14 +21,22 @@ The command is available as ``pz_sankey_app`` and via
 
 from __future__ import annotations
 
+import argparse
 import csv
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from itertools import pairwise
 from pathlib import Path
 
-from planktonzilla.planktonzilla_dataset.build_sankey import DEFAULT_LOGO_URL
+from planktonzilla.planktonzilla_dataset.build_sankey import (
+    DEFAULT_LOGO_URL,
+    fetch_fonts,
+    fetch_logo,
+    load_sample_counts,
+    scan_dataset,
+)
 from planktonzilla.planktonzilla_dataset.constants import (
+    DEFAULT_PLANKTONZILLA_DATASET_REPO_ID,
     DEFAULT_TAXONOMY_CSV_FILENAME,
     TAXONOMY_RANKS,
 )
@@ -566,3 +574,156 @@ HEADER_HTML = f"""
   <span class="pz-inria-fallback" style="display:none;">Inria</span>
 </div>
 """
+
+
+# ======================================================================= gradio app
+def _metric_key(metric: object) -> str:
+    """Map a Size-by Radio choice ("Images"/"Taxa") to the build_graph metric key."""
+    return "images" if str(metric).lower().startswith("image") else "taxa"
+
+
+def build_app(rows: list[dict] | None = None, counts: Counter | None = None, *, header_html: str = HEADER_HTML):
+    """Compose the Sankey explorer ``gr.Blocks`` (gradio imported FUNCTION-LOCAL); does NOT launch.
+
+    ``rows=None`` reads the bundled taxonomy CSV (local file, no network) so a no-arg
+    ``build_app()`` smoke works offline. When ``counts`` is falsy the Size-by Radio offers "Taxa"
+    only (gr.Radio has no per-choice disable, so "Images" is FILTERED OUT, not greyed) and the app
+    defaults to the fractional-taxa metric. Controls rebuild the graph server-side and return a
+    fresh figure; node double-click zoom is wired via the ``demo.load(js=BRIDGE_JS)`` bridge into a
+    hidden ``gr.Number``. theme/css/head belong on ``.launch()`` (Gradio 6), applied by ``main()``.
+    """
+    import gradio as gr
+
+    if rows is None:
+        rows = _read_rows()
+    has_counts = bool(counts)
+    default_metric = "images" if has_counts else "taxa"
+    all_columns = list(ALL_COLUMNS)
+
+    def _rebuild(columns_enabled, metric, threshold, focus):
+        graph = build_graph(
+            rows,
+            counts,
+            columns_enabled=columns_enabled or all_columns,
+            size_metric=_metric_key(metric),
+            min_threshold=threshold or 0.0,
+            focus_key=focus,
+        )
+        crumb = breadcrumb(rows, focus)
+        crumb_text = " / ".join(label for _col, label in crumb) if focus else "**planktonzilla-17M** taxonomy"
+        return make_figure(graph, size_metric=_metric_key(metric)), crumb_text
+
+    initial_graph = build_graph(rows, counts, columns_enabled=all_columns, size_metric=default_metric)
+
+    with gr.Blocks(title="planktonzilla taxonomy Sankey", analytics_enabled=False) as demo:
+        gr.HTML(
+            f'<div class="pz-frame" style="position:relative;">{header_html}'
+            '<div class="inria-motif" style="position:absolute; top:8px; right:8px;"></div></div>'
+        )
+        breadcrumb_md = gr.Markdown("**planktonzilla-17M** taxonomy")
+        with gr.Row():
+            with gr.Column(scale=3):
+                plot = gr.Plot(value=make_figure(initial_graph, size_metric=default_metric), elem_id="pz_sankey")
+            with gr.Column(scale=1):
+                back_btn = gr.Button("◄ Zoom out", size="sm")
+                metric_radio = gr.Radio(
+                    choices=["Images", "Taxa"] if has_counts else ["Taxa"],
+                    value="Images" if has_counts else "Taxa",
+                    label="Size by",
+                )
+                columns_group = gr.CheckboxGroup(choices=all_columns, value=all_columns, label="Columns")
+                threshold_slider = gr.Slider(minimum=0, maximum=200, step=1, value=0, label="Pool below size")
+        focus_state = gr.State(None)
+        click_sink = gr.Number(visible=False, elem_id="pz_click")
+
+        controls = [columns_group, metric_radio, threshold_slider, focus_state]
+        rebuild_outputs = [plot, breadcrumb_md]
+        columns_group.change(_rebuild, controls, rebuild_outputs)
+        metric_radio.change(_rebuild, controls, rebuild_outputs)
+        threshold_slider.release(_rebuild, controls, rebuild_outputs)
+
+        def _zoom_to(idx, columns_enabled, metric, threshold, focus):
+            graph = build_graph(
+                rows,
+                counts,
+                columns_enabled=columns_enabled or all_columns,
+                size_metric=_metric_key(metric),
+                min_threshold=threshold or 0.0,
+                focus_key=focus,
+            )
+            new_focus = focus
+            if idx is not None and 0 <= int(idx) < len(graph.nodes):
+                node = graph.nodes[int(idx)]
+                new_focus = (node.col, node.label)
+            figure, crumb_text = _rebuild(columns_enabled, metric, threshold, new_focus)
+            return figure, crumb_text, new_focus
+
+        click_sink.change(
+            _zoom_to,
+            [click_sink, columns_group, metric_radio, threshold_slider, focus_state],
+            [plot, breadcrumb_md, focus_state],
+        )
+
+        def _zoom_out(columns_enabled, metric, threshold, focus):
+            new_focus = None
+            if focus is not None:
+                chain = breadcrumb(rows, focus)
+                new_focus = chain[-2] if len(chain) >= 2 else None
+            figure, crumb_text = _rebuild(columns_enabled, metric, threshold, new_focus)
+            return figure, crumb_text, new_focus
+
+        back_btn.click(_zoom_out, controls, [plot, breadcrumb_md, focus_state])
+
+        demo.load(js=BRIDGE_JS)  # attach the client-side double-click zoom bridge
+    return demo
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Build and launch the Sankey explorer for local dev (gradio imported FUNCTION-LOCAL).
+
+    theme/css/head go on ``.launch()`` (Gradio 6), NOT the ``gr.Blocks`` constructor. Sample counts
+    come from ``--samples-json`` (a prior scan) or, with ``--scan``, a live HF scan of
+    ``--dataset-repo``; with neither, the Size-by Radio offers "Taxa" only.
+    """
+    import gradio as gr
+
+    parser = argparse.ArgumentParser(prog="pz_sankey_app", description="Interactive planktonzilla taxonomy Sankey.")
+    parser.add_argument("--samples-json", type=Path, default=None, help="precomputed per-class counts JSON to load")
+    parser.add_argument("--scan", action="store_true", help="scan --dataset-repo live for image counts instead")
+    parser.add_argument("--dataset-repo", default=DEFAULT_PLANKTONZILLA_DATASET_REPO_ID, help="HF dataset repo to scan")
+    parser.add_argument("--workers", type=int, default=16, help="dataset shards read concurrently when --scan")
+    parser.add_argument("--host", default="127.0.0.1", help="server bind host")
+    parser.add_argument("--port", type=int, default=7860, help="server bind port")
+    parser.add_argument("--share", action="store_true", help="open a public Gradio share tunnel")
+    args = parser.parse_args(argv)
+
+    if args.samples_json is not None:
+        counts: Counter | None = load_sample_counts(args.samples_json)
+    elif args.scan:
+        counts = scan_dataset(args.dataset_repo, args.workers)
+    else:
+        counts = None
+
+    theme = gr.themes.Ocean(
+        primary_hue="rose",
+        secondary_hue="fuchsia",
+        radius_size="md",
+        font=[gr.themes.GoogleFont("Inria Sans"), "ui-sans-serif", "system-ui", "sans-serif"],
+    )
+    fonts = fetch_fonts()
+    head = f"<style>{fonts}</style>" if fonts else None
+    logo_b64 = fetch_logo(DEFAULT_LOGO_URL)
+    header = HEADER_HTML.replace(DEFAULT_LOGO_URL, f"data:image/svg+xml;base64,{logo_b64}") if logo_b64 else HEADER_HTML
+
+    build_app(counts=counts, header_html=header).launch(
+        theme=theme,
+        css=INRIA_CSS,
+        head=head,
+        server_name=args.host,
+        server_port=args.port,
+        share=args.share,
+    )
+
+
+if __name__ == "__main__":
+    main()

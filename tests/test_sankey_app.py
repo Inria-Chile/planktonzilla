@@ -270,3 +270,36 @@ def test_style_constants_present():
     assert 'data-theme="dark"' in sa.INRIA_CSS and 'data-theme="light"' in sa.INRIA_CSS
     assert "#000091" in sa.HEADER_HTML  # RF State blue, outside the Inria 5-hue palette
     assert "#e1000f" in sa.HEADER_HTML  # RF State red
+
+
+# --------------------------------------------------- gradio app (gradio-guarded)
+def _radio_labels(radio):
+    return [choice[0] if isinstance(choice, list | tuple) else choice for choice in radio.choices]
+
+
+def test_build_app_constructs_blocks_taxa_only():
+    pytest.importorskip("gradio")
+    import gradio as gr
+
+    demo = sa.build_app()  # no rows -> bundled CSV, no .launch, network-free
+    assert isinstance(demo, gr.Blocks)
+    elem_ids = {getattr(block, "elem_id", None) for block in demo.blocks.values()}
+    assert "pz_sankey" in elem_ids  # the go.Sankey Plot the JS bridge hooks
+    assert "pz_click" in elem_ids  # the hidden gr.Number double-click sink
+
+    radios = [block for block in demo.blocks.values() if isinstance(block, gr.Radio)]
+    assert len(radios) == 1
+    labels = _radio_labels(radios[0])
+    assert "Images" not in labels  # no counts -> "Images" filtered out, not greyed
+    assert "Taxa" in labels
+
+
+def test_build_app_offers_images_when_counts():
+    pytest.importorskip("gradio")
+    import gradio as gr
+
+    demo = sa.build_app(rows=ROWS, counts=PER_SOURCE)
+    radios = [block for block in demo.blocks.values() if isinstance(block, gr.Radio)]
+    assert len(radios) == 1
+    labels = _radio_labels(radios[0])
+    assert "Images" in labels and "Taxa" in labels
