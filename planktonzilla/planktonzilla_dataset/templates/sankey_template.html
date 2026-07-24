@@ -304,6 +304,7 @@ __FONTS__
   const NS="http://www.w3.org/2000/svg";
   const NODE_W=12, COL_GAP=186, PAD_X=22, PAD_TOP=26, PAD_BOT=16, GAP=3, MIN_H=3.4, TARGET_H=640, LABEL_PAD=162;
   let maxDepth=4;
+  let LAYOUT="tiled";   // "tiled" (default, gentle-fan) | "sankey" (per-column) | "compare" — default keeps on-load byte-identical
 
   // Layout core, extracted so the merged view can reuse it. Recurses from `focusNode`, pushing node/link
   // recs into the passed arrays and mutating st={maxY,maxCol}. Pooling + constant-width ribbon logic is
@@ -353,9 +354,52 @@ __FONTS__
     }
     place(focusNode,PAD_X,PAD_TOP,usableH,0);
   }
-  function layout(){
+
+  // Full per-column SANKEY layout — a DROP-IN alternative to layoutInto: SAME signature and SAME
+  // node/link/agg record shapes, at the SAME column X. ONE global px-per-metric-unit scale (every node's
+  // height is V(node)*unit); DFS column build; per-parent tail pooling; TOP-ANCHORED columns (at PAD_TOP,
+  // matching tiled + merged so Compare stacks and the converging first hop stay aligned); contiguous
+  // parent-edge stacking (`pe` cursor, NO gaps) → constant-width curved "swoosh" ribbons. Crossing-free
+  // because r._kids follows the child column's top-to-bottom order and sum(child.h) <= parent.h (the
+  // additive-count invariant), so `pe` never leaves the parent band. `_kids` is a transient layout-only
+  // field (nothing downstream reads it; harmless once the rec is pushed to nodes).
+  function layoutSankeyInto(focusNode,nodes,links,st){
+    const usableH=TARGET_H-PAD_TOP-PAD_BOT;
+    const fv=V(focusNode);
+    const unit=fv>0?usableH/fv:0;
+    const cols=[];
+    function build(node,col){
+      const rec={key:"n"+node._id,node,x:PAD_X+col*(NODE_W+COL_GAP),yTop:0,h:V(node)*unit,col,name:disp(node),count:V(node),branch:branchOf(node),source:sourceOf(node),rank:node.r,agg:false};
+      cols[col]=cols[col]||[]; cols[col].push(rec); st.maxCol=Math.max(st.maxCol,col);
+      if(col>=maxDepth) return rec;
+      const kids=(node.k||[]).filter(c=>V(c)>0); if(!kids.length) return rec;
+      let shown=kids.slice().sort((a,b)=>V(b)-V(a)), agg=[];
+      while(shown.length>1 && V(shown[shown.length-1])*unit<MIN_H){ agg.push(shown.pop()); }
+      rec._kids=[];
+      shown.forEach(c=>{ rec._kids.push(build(c,col+1)); });
+      if(agg.length){
+        const cnt=agg.reduce((s,c)=>s+V(c),0);
+        const aggRec={key:rec.key+"_agg",node:null,x:PAD_X+(col+1)*(NODE_W+COL_GAP),yTop:0,h:cnt*unit,col:col+1,name:"+"+agg.length+" more",count:cnt,branch:rec.branch,source:rec.source,rank:kids[0].r,agg:true,aggList:agg,parentId:node._id};
+        cols[col+1]=cols[col+1]||[]; cols[col+1].push(aggRec); st.maxCol=Math.max(st.maxCol,col+1);
+        rec._kids.push(aggRec);
+      }
+      return rec;
+    }
+    build(focusNode,0);
+    // COLUMN LAYOUT — TOP-ALIGN at PAD_TOP (NOT centered). Centering would push the root/root_class column
+    // DOWN for deep taxonomies and DECOUPLE it from the PAD_TOP-anchored merged source column + the tiled
+    // Compare diagram. Top-aligning keeps tiled + sankey + merged all anchored at PAD_TOP. Flow-conservation
+    // and crossing-free are unaffected — they depend on DFS order + contiguous `pe` stacking, not anchoring.
+    cols.forEach(list=>{ let y=PAD_TOP; list.forEach(r=>{ r.yTop=y; y+=r.h+GAP; }); });
+    // EMIT NODES (st.maxY tracks the diagram bottom so layout()/layoutMerged() width/height math is unchanged)
+    cols.forEach(list=>list.forEach(r=>{ nodes.push(r); st.maxY=Math.max(st.maxY,r.yTop+r.h); }));
+    // EMIT RIBBONS — constant width (h1===h2===c.h), contiguous parent edge (cursor `pe`, no gaps) from the
+    // parent's own yTop to each child's spread yTop. The offset between `pe` (packed) and c.yTop (gapped) IS the swoosh.
+    cols.forEach(list=>list.forEach(r=>{ if(!r._kids||!r._kids.length) return; let pe=r.yTop; r._kids.forEach(c=>{ links.push({parentKey:r.key,childKey:c.key,x1:r.x+NODE_W,y1:pe,h1:c.h,x2:c.x,y2:c.yTop,h2:c.h,branch:c.branch,source:c.source,count:c.count,agg:!!c.agg}); pe+=c.h; }); }));
+  }
+  function layout(kind="tiled"){
     const nodes=[], links=[]; const st={maxY:PAD_TOP,maxCol:0};
-    layoutInto(focus,nodes,links,st);
+    (kind==="sankey"?layoutSankeyInto:layoutInto)(focus,nodes,links,st);
     const numCols=st.maxCol+1;
     const width=PAD_X*2+numCols*NODE_W+(numCols-1)*COL_GAP+LABEL_PAD;
     return {nodes,links,width,height:st.maxY+PAD_BOT,numCols};
@@ -364,9 +408,9 @@ __FONTS__
   // MERGED converging-source view: reuse the DATA tree for columns >=1, DROP its synthetic root, and
   // replace the root's first hop with converging ribbons from the individual source datasets — one ribbon
   // per contributing dataset, tiling each SHARED root_class node's left edge. Derived 100% client-side.
-  function layoutMerged(){
+  function layoutMerged(kind="tiled"){
     const nodes=[], links=[]; const st={maxY:PAD_TOP,maxCol:0};
-    layoutInto(DATA.tree,nodes,links,st);
+    (kind==="sankey"?layoutSankeyInto:layoutInto)(DATA.tree,nodes,links,st);
     const rootKey="n"+DATA.tree._id;
     const keptNodes=nodes.filter(r=>r.key!==rootKey);          // drop the col-0 synthetic root
     const keptLinks=links.filter(l=>l.parentKey!==rootKey);    // drop the root's outgoing links; keep all downstream
@@ -425,6 +469,8 @@ __FONTS__
     return {nodes:keptNodes.concat(sourceRecs),links:keptLinks.concat(firstHop),
       width,height:Math.max(st.maxY,srcColBottom)+PAD_BOT,numCols};
   }
+  // Layout dispatch: merged (converging source) vs normal, each honouring the tiled/sankey `kind`.
+  function computeLayout(kind){ return MERGED ? layoutMerged(kind) : layout(kind); }
 
   // ---- merged-view state helpers (defined here; wired into the toolbar in Task 2) ----------------
   function enterMerged(){ SHOW_SRC=true; MERGED=true; focus=null; meta=DATA.meta; root=DATA.tree;
