@@ -112,6 +112,7 @@ __FONTS__
   .ncount{font-family:var(--font-mono);fill:var(--ink-3);font-size:10.5px;font-variant-numeric:tabular-nums;}
   .dim{opacity:.16;} .dim-link{fill-opacity:.05;}
   .colhead{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;fill:var(--ink-3);}
+  .cmplabel{font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;fill:var(--ink-3);}
 
   .tip{position:fixed;z-index:30;pointer-events:none;max-width:320px;background:var(--panel);color:var(--ink);
     border:1px solid var(--hair-2);border-radius:10px;box-shadow:var(--shadow);padding:9px 11px;font-size:12.5px;opacity:0;transition:opacity .1s;}
@@ -154,6 +155,8 @@ __FONTS__
       <div class="depthbtns" id="srcbtns" role="group" aria-label="Source dataset level"></div>
       <label>Color by</label>
       <div class="depthbtns" id="colorbtns" role="group" aria-label="Colour mode"></div>
+      <label>Layout</label>
+      <div class="depthbtns" id="layoutbtns" role="group" aria-label="Layout mode"></div>
       <label>Size by</label>
       <div class="depthbtns" id="metricbtns" role="group" aria-label="Size metric"></div>
       <label>Levels</label>
@@ -481,23 +484,21 @@ __FONTS__
   const svg=document.getElementById("svg"), tip=document.getElementById("tip"), board=document.getElementById("board");
   let LNK=[], NOD=[];
 
-  const ribbon=l=>{const xm=(l.x1+l.x2)/2;return `M${l.x1},${l.y1} C${xm},${l.y1} ${xm},${l.y2} ${l.x2},${l.y2} L${l.x2},${l.y2+l.h2} C${xm},${l.y2+l.h2} ${xm},${l.y1+l.h1} ${l.x1},${l.y1+l.h1} Z`;};
+  const ribbon=(l,dy=0)=>{const xm=(l.x1+l.x2)/2;return `M${l.x1},${l.y1+dy} C${xm},${l.y1+dy} ${xm},${l.y2+dy} ${l.x2},${l.y2+dy} L${l.x2},${l.y2+l.h2+dy} C${xm},${l.y2+l.h2+dy} ${xm},${l.y1+l.h1+dy} ${l.x1},${l.y1+l.h1+dy} Z`;};
   function lineage(node){const out=[];let n=node;while(n){if(n.r!=="dataset")out.unshift(disp(n));n=n._parent;}return out;}
   function el(tag,attrs,cls){const e=document.createElementNS(NS,tag);if(cls)e.setAttribute("class",cls);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
   const labelClass=n=>n.agg?"plain":(n.rank==="root_class"?"branch":(n.rank==="proposed_label"||n.rank==="group"||n.rank==="dataset"||n.rank==="source"?"plain":(SCI.has(n.rank)?"sci":"")));
 
-  function render(){
-    const L = MERGED ? layoutMerged() : layout();
-    svg.setAttribute("width",L.width); svg.setAttribute("height",L.height); svg.setAttribute("viewBox",`0 0 ${L.width} ${L.height}`);
-    while(svg.firstChild) svg.removeChild(svg.firstChild);
-    const gLinks=el("g",{}), gNodes=el("g",{}); svg.appendChild(gLinks); svg.appendChild(gNodes);
-    LNK=[]; NOD=[];
-
+  // Paint one computed layout L into the given groups at vertical offset dy. Extracted from render() so any
+  // layout can be drawn at an offset (Compare stacks two). colRank/colHeadDone are LOCAL to this function so
+  // each call redraws its own column heads (required so Compare draws heads for BOTH stacked layouts). Does
+  // NOT clear/size the svg and does NOT reset LNK/NOD — render() owns those. Every DRAWN y is offset by dy.
+  function paintLayout(L,dy,gLinks,gNodes){
     const colRank={}, colHeadDone={};
     L.nodes.forEach(n=>{ if(colRank[n.col]===undefined) colRank[n.col]=RANK_LABEL[n.rank]||n.rank; });
 
     for(const l of L.links){
-      const p=el("path",{d:ribbon(l),fill:fillOf(l)},"link"+(l.agg?" agg":""));
+      const p=el("path",{d:ribbon(l,dy),fill:fillOf(l)},"link"+(l.agg?" agg":""));
       p._l=l; gLinks.appendChild(p); LNK.push(p);
       p.addEventListener("mousemove",e=>showLinkTip(e,l));
       p.addEventListener("mouseenter",()=>hiKeys(l.parentKey,l.childKey));
@@ -513,21 +514,21 @@ __FONTS__
       // the single rect. The existing `.node rect` stroke draws the hairline dividers between segments.
       const segs=(COLORBY==="dataset" && !n.agg && n.node && !n.source) ? nodeSegments(n.node) : null;
       if(segs && segs.length){
-        const H=Math.max(1,n.h); let tot=0; segs.forEach(s=>tot+=s.v); let sy=n.yTop;
+        const H=Math.max(1,n.h); let tot=0; segs.forEach(s=>tot+=s.v); let sy=n.yTop+dy;
         segs.forEach(seg=>{ const sh=seg.v/tot*H;
           g.appendChild(el("rect",{x:n.x,y:sy.toFixed(2),width:NODE_W,height:sh.toFixed(2),fill:datasetColor(seg.src)})); sy+=sh; });
       } else {
-        g.appendChild(el("rect",{x:n.x,y:n.yTop.toFixed(2),width:NODE_W,height:Math.max(1,n.h).toFixed(2),fill:n.agg?"var(--ink-3)":fillOf(n),rx:2}));
+        g.appendChild(el("rect",{x:n.x,y:(n.yTop+dy).toFixed(2),width:NODE_W,height:Math.max(1,n.h).toFixed(2),fill:n.agg?"var(--ink-3)":fillOf(n),rx:2}));
       }
 
-      if(!colHeadDone[n.col]){ const t=el("text",{x:n.x,y:PAD_TOP-12,"text-anchor":"start"},"colhead"); t.textContent=colRank[n.col]||""; gNodes.appendChild(t); colHeadDone[n.col]=1; }
+      if(!colHeadDone[n.col]){ const t=el("text",{x:n.x,y:PAD_TOP-12+dy,"text-anchor":"start"},"colhead"); t.textContent=colRank[n.col]||""; gNodes.appendChild(t); colHeadDone[n.col]=1; }
 
       if(n.h>=10){
         const lx=n.x+NODE_W+6, tall=n.h>=24;
         let nm=n.name; if(nm.length>22) nm=nm.slice(0,21)+"…";
-        const t=el("text",{x:lx,y:(n.yTop+n.h/2-(tall?4:0)).toFixed(2),"text-anchor":"start"},"nlabel "+labelClass(n));
+        const t=el("text",{x:lx,y:(n.yTop+n.h/2-(tall?4:0)+dy).toFixed(2),"text-anchor":"start"},"nlabel "+labelClass(n));
         t.textContent=nm; g.appendChild(t);
-        if(tall){ const c=el("text",{x:lx,y:(n.yTop+n.h/2+11).toFixed(2),"text-anchor":"start"},"ncount"); c.textContent=fmt(n.count); g.appendChild(c); }
+        if(tall){ const c=el("text",{x:lx,y:(n.yTop+n.h/2+11+dy).toFixed(2),"text-anchor":"start"},"ncount"); c.textContent=fmt(n.count); g.appendChild(c); }
       }
 
       g._n=n; gNodes.appendChild(g); NOD.push(g);
@@ -538,7 +539,29 @@ __FONTS__
       g.addEventListener("mouseenter",()=>hiNode(n));
       g.addEventListener("mouseleave",clearHi);
     }
-    renderCrumbs(); renderDepth(); renderMetric(); renderSource(); renderColor(); renderLegend();
+  }
+
+  function render(){
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+    const gLinks=el("g",{}), gNodes=el("g",{}); svg.appendChild(gLinks); svg.appendChild(gNodes);
+    LNK=[]; NOD=[];
+    if(LAYOUT!=="compare"){
+      const L=computeLayout(LAYOUT==="sankey"?"sankey":"tiled");
+      svg.setAttribute("width",L.width); svg.setAttribute("height",L.height); svg.setAttribute("viewBox",`0 0 ${L.width} ${L.height}`);
+      paintLayout(L,0,gLinks,gNodes);
+    } else {
+      // COMPARE: tiled ABOVE, full-sankey BELOW, in one SVG. LNK/NOD accumulate across both paintLayout draws.
+      const A=computeLayout("tiled"), B=computeLayout("sankey");
+      const la=el("text",{x:PAD_X,y:14},"cmplabel"); la.textContent="Tiled — gentle fan"; gNodes.appendChild(la);
+      paintLayout(A,22,gLinks,gNodes);
+      const bDy=22+A.height+40;
+      gNodes.appendChild(el("line",{x1:PAD_X,y1:bDy-20,x2:Math.max(A.width,B.width)-PAD_X,y2:bDy-20,stroke:"var(--hair)"}));
+      const lb=el("text",{x:PAD_X,y:bDy-8},"cmplabel"); lb.textContent="Full Sankey (per-column)"; gNodes.appendChild(lb);
+      paintLayout(B,bDy,gLinks,gNodes);
+      const W=Math.max(A.width,B.width), H=bDy+B.height+PAD_BOT;
+      svg.setAttribute("width",W); svg.setAttribute("height",H); svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+    }
+    renderCrumbs(); renderDepth(); renderMetric(); renderSource(); renderColor(); renderLayout(); renderLegend();
   }
 
   function hiNode(n){
@@ -658,6 +681,16 @@ __FONTS__
           COLORBY="branch"; render();   // stay in the current mode — branch colouring is valid merged or not
         }
       };
+      d.appendChild(b);
+    });
+  }
+  function renderLayout(){
+    const d=document.getElementById("layoutbtns"); if(!d) return; d.innerHTML="";
+    [["Tiled","tiled"],["Sankey","sankey"],["Compare","compare"]].forEach(([lbl,mode])=>{
+      const b=document.createElement("button"); b.textContent=lbl;
+      if(mode===LAYOUT) b.className="on";
+      b.title=mode==="tiled"?"Tiled gentle-fan layout":(mode==="sankey"?"Full per-column sankey layout":"Compare tiled above / sankey below");
+      b.onclick=()=>{ LAYOUT=mode; render(); board.scrollTo({left:0,top:0}); };
       d.appendChild(b);
     });
   }

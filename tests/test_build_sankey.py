@@ -224,7 +224,8 @@ def test_real_template_has_converging_source_seam():
     tmpl = bs.TEMPLATE_PATH.read_text(encoding="utf-8")
     for token in ("sourceInflows(", "layoutMerged(", "MERGED", "enterMerged("):
         assert token in tmpl, token
-    assert "MERGED ? layoutMerged()" in tmpl, "MERGED ? layoutMerged()"
+    # render() now dispatches through computeLayout(kind), which still branches MERGED -> layoutMerged(kind).
+    assert "MERGED ? layoutMerged(kind)" in tmpl, "MERGED ? layoutMerged(kind)"
 
 
 def test_real_template_has_dataset_composition_seam():
@@ -236,6 +237,18 @@ def test_real_template_has_dataset_composition_seam():
     """
     tmpl = bs.TEMPLATE_PATH.read_text(encoding="utf-8")
     for token in ("PATH_SRC", "nodeSegments", "_pk"):
+        assert token in tmpl, token
+
+
+def test_real_template_has_layout_modes():
+    """The shipped template carries the Tiled|Sankey|Compare layout-mode client-side seam.
+
+    Network-free token check: the layout modes are derived entirely client-side (layoutSankeyInto +
+    paintLayout draw step + renderLayout toolbar), so build_sankey.py is unchanged (no HuggingFace /
+    Google Fonts / inria.fr requests).
+    """
+    tmpl = bs.TEMPLATE_PATH.read_text(encoding="utf-8")
+    for token in ("layoutSankeyInto", "paintLayout", "renderLayout", 'id="layoutbtns"'):
         assert token in tmpl, token
 
 
