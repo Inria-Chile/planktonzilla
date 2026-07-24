@@ -310,13 +310,17 @@ __FONTS__
       const childX=x+NODE_W+COL_GAP;
       const seq=shown.map(c=>({cnt:V(c),node:c,agg:false}));
       if(agg.length) seq.push({cnt:agg.reduce((s,c)=>s+V(c),0),node:null,agg:true,list:agg});
-      // Constant-width, gap-symmetric ribbons: parent and child edges share the SAME gapped
-      // positions, so node bars and their ribbons align exactly (no bottom strip, no taper/swoosh).
-      let top=yTop;
+      // Constant-width ribbons with a GENTLE FAN: the child column keeps its gapped tops (`top`),
+      // but each ribbon's parent-side edge is packed contiguously and centered on the parent bar
+      // (`ptop`, advancing by ch with no gaps). The small symmetric offset is bounded by the gap
+      // budget, so children never leave the parent's band — still crossing-free and constant-width.
+      // `fan` is disabled for degenerate sub-pixel bands (h < totalgap → unit<=0), which stay straight.
+      const fan=unit>0;
+      let top=yTop, ptop=yTop+totalgap/2;
       seq.forEach((it,i)=>{
         const ch=it.cnt*unit;
         const childKey=it.agg?rec.key+"_agg":"n"+it.node._id;
-        links.push({parentKey:rec.key,childKey,x1:x+NODE_W,y1:top,h1:ch,x2:childX,y2:top,h2:ch,
+        links.push({parentKey:rec.key,childKey,x1:x+NODE_W,y1:fan?ptop:top,h1:ch,x2:childX,y2:top,h2:ch,
           branch:it.agg?rec.branch:branchOf(it.node),source:it.agg?rec.source:sourceOf(it.node),count:it.cnt,agg:it.agg});
         if(it.agg){
           nodes.push({key:childKey,node:null,x:childX,yTop:top,h:ch,col:col+1,name:`+${it.list.length} more`,
@@ -326,6 +330,7 @@ __FONTS__
           place(it.node,childX,top,ch,col+1);
         }
         top+=ch+(i<seq.length-1?GAP:0);
+        ptop+=ch;
       });
     }
     place(focusNode,PAD_X,PAD_TOP,usableH,0);
