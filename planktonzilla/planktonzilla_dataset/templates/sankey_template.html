@@ -186,6 +186,7 @@ __FONTS__
   const _srcEl=document.getElementById("treedata_src");
   const DATA_SRC=(_srcEl&&_srcEl.textContent.trim().charAt(0)==="{")?JSON.parse(_srcEl.textContent):null;
   let SHOW_SRC=false;
+  let MERGED=false;   // converging dataset-Sankey view (Source=On); derived client-side from DATA + DATA_SRC
   let COLORBY="branch";   // "branch" | "dataset" — Branch is the default so on-load colouring is unchanged
   let meta, root, byId={}, uid=0, focus;
 
@@ -233,18 +234,34 @@ __FONTS__
   const datasetColor=src=>DS_COLOR.has(src)?DS_COLOR.get(src):"var(--c-root)";   // root bar / normal tree / pooled → neutral grey
   function fillOf(rec){ return COLORBY==="dataset" ? datasetColor(rec.source) : colorOf(rec.branch); }
 
-  // annotate tree with parent / branch / id; bindTree lets us swap the normal and source-augmented trees
+  // ---- converging-source inflow model (per (source, root_class) raw {c,t,s}) --------------------
+  // Built once from DATA_SRC: each source node's root_class children carry that source's contribution
+  // to the SHARED root_class. The merged view converges these into ONE shared root_class column.
+  const SRC_INFLOW=(()=>{ const out={}; if(!DATA_SRC) return out;
+    (DATA_SRC.tree.k||[]).filter(s=>s.r==="source").forEach(s=>{ const rc={};
+      (s.k||[]).filter(c=>c.r==="root_class").forEach(c=>{ rc[c.n]={c:c.c||0,t:c.t||0,s:c.s||0}; });
+      out[s.n]=rc; }); return out; })();
+  // source-name -> the DATA_SRC source node (drillable subtree; annotated at load so ._id is set)
+  const SRC_NODE=(()=>{ const m={}; ((DATA_SRC&&DATA_SRC.tree.k)||[]).filter(s=>s.r==="source").forEach(s=>{ m[s.n]=s; }); return m; })();
+  // project SRC_INFLOW onto the ACTIVE metric -> { srcName: { rcName: value } }
+  function sourceInflows(){ const out={}; for(const src in SRC_INFLOW){ const rc={};
+    for(const name in SRC_INFLOW[src]) rc[name]=SRC_INFLOW[src][name][METRIC]||0; out[src]=rc; } return out; }
+  // summed active-metric inflow for one source
+  function srcTotal(src,inflow){ const rc=inflow[src]||{}; let s=0; for(const k in rc) s+=rc[k]; return s; }
+
+  // annotate tree with parent / branch / id (unchanged); a SHARED dual index holds BOTH trees at once so
+  // the merged view can reference DATA root_class nodes and DATA_SRC source nodes from one byId.
   function annotate(n,parent,branch,source){
     n._id=uid++; n._parent=parent; n._branch=branch; n._source=source;
     (n.k||[]).forEach(c=>annotate(c,n,n.r==="root_class"?n.n:branch,n.r==="source"?n.n:source));
   }
-  function bindTree(data){
-    meta=data.meta; root=data.tree; uid=0; byId={};
-    annotate(root,null,null,null);
-    (function idx(n){byId[n._id]=n;(n.k||[]).forEach(idx);})(root);
-    focus=root;
-  }
-  bindTree(DATA);
+  function indexInto(n){ byId[n._id]=n; (n.k||[]).forEach(indexInto); }
+  // bindActive points meta/root/focus at an ALREADY-annotated tree — no re-annotation, no uid reset
+  function bindActive(data){ meta=data.meta; root=data.tree; focus=data.tree; }
+  // annotate BOTH trees into one continuous uid space so byId holds every node in both (no key collisions)
+  annotate(DATA.tree,null,null,null); indexInto(DATA.tree);
+  if(DATA_SRC){ annotate(DATA_SRC.tree,null,null,null); indexInto(DATA_SRC.tree); }
+  meta=DATA.meta; root=DATA.tree; focus=DATA.tree;
 
   // one-time header bits (legend is now rebuilt per render via renderLegend so it can swap Branch⇄Dataset)
   document.getElementById("fRows").textContent=fmt(meta.total_rows);
@@ -270,12 +287,14 @@ __FONTS__
   const NODE_W=12, COL_GAP=186, PAD_X=22, PAD_TOP=26, PAD_BOT=16, GAP=3, MIN_H=3.4, TARGET_H=640, LABEL_PAD=162;
   let maxDepth=4;
 
-  function layout(){
+  // Layout core, extracted so the merged view can reuse it. Recurses from `focusNode`, pushing node/link
+  // recs into the passed arrays and mutating st={maxY,maxCol}. Pooling + constant-width ribbon logic is
+  // UNCHANGED from the original layout() — only maxY/maxCol became st.maxY/st.maxCol.
+  function layoutInto(focusNode,nodes,links,st){
     const usableH=TARGET_H-PAD_TOP-PAD_BOT;
-    const nodes=[], links=[]; let maxY=PAD_TOP, maxCol=0;
     function place(node,x,yTop,h,col){
       const rec={key:"n"+node._id,node,x,yTop,h,col,name:disp(node),count:V(node),branch:branchOf(node),source:sourceOf(node),rank:node.r,agg:false};
-      nodes.push(rec); maxY=Math.max(maxY,yTop+h); maxCol=Math.max(maxCol,col);
+      nodes.push(rec); st.maxY=Math.max(st.maxY,yTop+h); st.maxCol=Math.max(st.maxCol,col);
       if(col>=maxDepth) return;
       const kids=(node.k||[]).filter(c=>V(c)>0); if(!kids.length) return;   // drop branches with 0 of the active metric
       const val=V(node);
@@ -302,18 +321,93 @@ __FONTS__
         if(it.agg){
           nodes.push({key:childKey,node:null,x:childX,yTop:top,h:ch,col:col+1,name:`+${it.list.length} more`,
             count:it.cnt,branch:rec.branch,source:rec.source,rank:kids[0].r,agg:true,aggList:it.list,parentId:node._id});
-          maxY=Math.max(maxY,top+ch);
+          st.maxY=Math.max(st.maxY,top+ch);
         } else {
           place(it.node,childX,top,ch,col+1);
         }
         top+=ch+(i<seq.length-1?GAP:0);
       });
     }
-    place(focus,PAD_X,PAD_TOP,usableH,0);
-    const numCols=maxCol+1;
-    const width=PAD_X*2+numCols*NODE_W+(numCols-1)*COL_GAP+LABEL_PAD;
-    return {nodes,links,width,height:maxY+PAD_BOT,numCols};
+    place(focusNode,PAD_X,PAD_TOP,usableH,0);
   }
+  function layout(){
+    const nodes=[], links=[]; const st={maxY:PAD_TOP,maxCol:0};
+    layoutInto(focus,nodes,links,st);
+    const numCols=st.maxCol+1;
+    const width=PAD_X*2+numCols*NODE_W+(numCols-1)*COL_GAP+LABEL_PAD;
+    return {nodes,links,width,height:st.maxY+PAD_BOT,numCols};
+  }
+
+  // MERGED converging-source view: reuse the DATA tree for columns >=1, DROP its synthetic root, and
+  // replace the root's first hop with converging ribbons from the individual source datasets — one ribbon
+  // per contributing dataset, tiling each SHARED root_class node's left edge. Derived 100% client-side.
+  function layoutMerged(){
+    const nodes=[], links=[]; const st={maxY:PAD_TOP,maxCol:0};
+    layoutInto(DATA.tree,nodes,links,st);
+    const rootKey="n"+DATA.tree._id;
+    const keptNodes=nodes.filter(r=>r.key!==rootKey);          // drop the col-0 synthetic root
+    const keptLinks=links.filter(l=>l.parentKey!==rootKey);    // drop the root's outgoing links; keep all downstream
+    // FIX 2: a pooled "+N more" node ALSO has rank "root_class" but node===null — skip it (name isn't a real rc)
+    const rcRecs=keptNodes.filter(r=>r.rank==="root_class"&&r.node);
+    const numCols=st.maxCol+1;
+    const width=PAD_X*2+numCols*NODE_W+(numCols-1)*COL_GAP+LABEL_PAD;
+    if(!rcRecs.length) return {nodes:keptNodes,links:keptLinks,width,height:st.maxY+PAD_BOT,numCols};
+    // shared pixel scale (all root_class siblings share it): pixels per active-metric unit
+    const unit=rcRecs[0].h/rcRecs[0].count;
+    const inflow=sourceInflows();
+    // FIRST COLUMN — the individual source datasets, stacked in DS_ORDER, using the SAME unit as the rc
+    // column (FIX 4: a per-column unit would taper the converging ribbons and misrepresent flow).
+    const sourceRecs=[], srcByName={};
+    let top=PAD_TOP;
+    DS_ORDER.forEach(srcName=>{
+      const tot=srcTotal(srcName,inflow); if(tot<=0) return;
+      const srcNode=SRC_NODE[srcName]; if(!srcNode) return;
+      const h=tot*unit;
+      const rec={key:"n"+srcNode._id,node:srcNode,x:PAD_X,yTop:top,h,col:0,name:disp(srcNode),count:tot,branch:null,source:srcName,rank:"source",agg:false};
+      sourceRecs.push(rec); srcByName[srcName]=rec; top+=h+GAP;
+    });
+    const srcColBottom=sourceRecs.length?top-GAP:PAD_TOP;   // source column may overhang the rc column (FIX 4) — expected
+    // CONVERGING RIBBONS — partition each rc LEFT edge contiguously in DS_ORDER; allocate each source's
+    // RIGHT edge by target rc.yTop ascending (fewer crossings). h1===h2 so ribbons are constant-width
+    // (flow-conserving: the per-source segments tile the rc node height exactly for Mappings/Images).
+    const segY2={}, segH={}, segCnt={};   // rc-left-edge y + segment height + raw value, keyed srcName|rcKey
+    rcRecs.forEach(rc=>{
+      let y=rc.yTop;
+      DS_ORDER.forEach(srcName=>{
+        if(!srcByName[srcName]) return;
+        const val=(inflow[srcName]&&inflow[srcName][rc.node.n])||0; if(val<=0) return;
+        const seg=val*unit, key=srcName+"|"+rc.key;
+        segY2[key]=y; segH[key]=seg; segCnt[key]=val; y+=seg;
+      });
+    });
+    const segY1={};
+    sourceRecs.forEach(srcRec=>{
+      const srcName=srcRec.source, rcOf=inflow[srcName]||{};
+      const targets=rcRecs.filter(rc=>(rcOf[rc.node.n]||0)>0).slice().sort((a,b)=>a.yTop-b.yTop);
+      let y=srcRec.yTop;
+      targets.forEach(rc=>{ const key=srcName+"|"+rc.key; segY1[key]=y; y+=segH[key]; });
+    });
+    const firstHop=[];
+    sourceRecs.forEach(srcRec=>{
+      const srcName=srcRec.source;
+      rcRecs.forEach(rc=>{
+        const key=srcName+"|"+rc.key; if(segH[key]===undefined) return;
+        // BLOCKER: every converging link MUST carry parentKey (source rec) + childKey (root_class rec), or
+        // the reused hover wiring (hiKeys / showLinkTip's byId[l.parentKey.slice(1)]) throws on hover.
+        firstHop.push({parentKey:srcRec.key,childKey:rc.key,
+          x1:PAD_X+NODE_W,y1:segY1[key],h1:segH[key],x2:rc.x,y2:segY2[key],h2:segH[key],
+          branch:rc.node.n,source:srcName,count:segCnt[key],agg:false});
+      });
+    });
+    return {nodes:keptNodes.concat(sourceRecs),links:keptLinks.concat(firstHop),
+      width,height:Math.max(st.maxY,srcColBottom)+PAD_BOT,numCols};
+  }
+
+  // ---- merged-view state helpers (defined here; wired into the toolbar in Task 2) ----------------
+  function enterMerged(){ SHOW_SRC=true; MERGED=true; focus=null; meta=DATA.meta; root=DATA.tree;
+    if(METRIC==="t") METRIC="c"; if(METRIC==="s"&&!meta.samples_available) METRIC="c"; maxDepth=4; }
+  function exitToNormal(){ SHOW_SRC=false; MERGED=false; bindActive(DATA); if(COLORBY==="dataset") COLORBY="branch"; maxDepth=4; }
+  function goMerged(){ MERGED=true; focus=null; if(METRIC==="t") METRIC="c"; buildStats(); render(); board.scrollTo({left:0,top:0}); }
 
   const svg=document.getElementById("svg"), tip=document.getElementById("tip"), board=document.getElementById("board");
   let LNK=[], NOD=[];
@@ -443,7 +537,7 @@ __FONTS__
       if(on===SHOW_SRC) b.className="on";
       if(on && !DATA_SRC){ b.disabled=true; b.title="source-level data unavailable"; b.style.opacity=".45"; b.style.cursor="not-allowed"; }
       else b.title=on?"Insert a source-dataset level right after the root":"Hide the source-dataset level";
-      b.onclick=()=>{ if(on!==SHOW_SRC && !(on&&!DATA_SRC)){ SHOW_SRC=on; bindTree(SHOW_SRC?DATA_SRC:DATA);
+      b.onclick=()=>{ if(on!==SHOW_SRC && !(on&&!DATA_SRC)){ SHOW_SRC=on; bindActive(SHOW_SRC?DATA_SRC:DATA);
         if(!SHOW_SRC && COLORBY==="dataset") COLORBY="branch";   // dataset colouring is undefined without the source level
         if(METRIC==="s" && !meta.samples_available) METRIC="c";
         maxDepth=SHOW_SRC?5:4; buildStats(); render(); board.scrollTo({left:0,top:0}); } };
@@ -462,7 +556,7 @@ __FONTS__
           if(!DATA_SRC || COLORBY==="dataset") return;
           COLORBY="dataset";
           // Dataset colouring is only well-defined with the source level present → auto-enable it.
-          if(!SHOW_SRC){ SHOW_SRC=true; bindTree(DATA_SRC); if(METRIC==="s" && !meta.samples_available) METRIC="c"; maxDepth=5; }
+          if(!SHOW_SRC){ SHOW_SRC=true; bindActive(DATA_SRC); if(METRIC==="s" && !meta.samples_available) METRIC="c"; maxDepth=5; }
           buildStats(); render(); board.scrollTo({left:0,top:0});
         } else if(COLORBY!=="branch"){
           COLORBY="branch"; render();   // leave the source level as-is; branch colouring is fine with or without it
