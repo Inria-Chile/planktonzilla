@@ -200,7 +200,7 @@ __FONTS__
   let METRIC="c";
   const V=n=>n?(n[METRIC]||0):0;
   const munit=()=>METRICS[METRIC].unit;
-  const RANK_LABEL={dataset:"dataset",source:"source",root_class:"root class",group:"group",proposed_label:"label",
+  const RANK_LABEL={dataset:"dataset",source:"datasets",root_class:"root class",group:"group",proposed_label:"label",
     Kingdom:"kingdom",Phylum:"phylum",Class:"class",Order:"order",Family:"family",Genus:"genus",Species:"species"};
   const SCI=new Set(["Genus","Species"]);
   const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
@@ -415,10 +415,10 @@ __FONTS__
   const ribbon=l=>{const xm=(l.x1+l.x2)/2;return `M${l.x1},${l.y1} C${xm},${l.y1} ${xm},${l.y2} ${l.x2},${l.y2} L${l.x2},${l.y2+l.h2} C${xm},${l.y2+l.h2} ${xm},${l.y1+l.h1} ${l.x1},${l.y1+l.h1} Z`;};
   function lineage(node){const out=[];let n=node;while(n){if(n.r!=="dataset")out.unshift(disp(n));n=n._parent;}return out;}
   function el(tag,attrs,cls){const e=document.createElementNS(NS,tag);if(cls)e.setAttribute("class",cls);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
-  const labelClass=n=>n.agg?"plain":(n.rank==="root_class"?"branch":(n.rank==="proposed_label"||n.rank==="group"||n.rank==="dataset"?"plain":(SCI.has(n.rank)?"sci":"")));
+  const labelClass=n=>n.agg?"plain":(n.rank==="root_class"?"branch":(n.rank==="proposed_label"||n.rank==="group"||n.rank==="dataset"||n.rank==="source"?"plain":(SCI.has(n.rank)?"sci":"")));
 
   function render(){
-    const L=layout();
+    const L = MERGED ? layoutMerged() : layout();
     svg.setAttribute("width",L.width); svg.setAttribute("height",L.height); svg.setAttribute("viewBox",`0 0 ${L.width} ${L.height}`);
     while(svg.firstChild) svg.removeChild(svg.firstChild);
     const gLinks=el("g",{}), gNodes=el("g",{}); svg.appendChild(gLinks); svg.appendChild(gNodes);
@@ -452,8 +452,8 @@ __FONTS__
 
       g._n=n; gNodes.appendChild(g); NOD.push(g);
       if(hasKids){ g.setAttribute("tabindex","0"); g.setAttribute("role","button"); }
-      g.addEventListener("click",()=>{ if(hasKids){ focus=n.node; render(); board.scrollTo({left:0,top:0}); } });
-      g.addEventListener("keydown",e=>{ if(hasKids&&(e.key==="Enter"||e.key===" ")){ e.preventDefault(); focus=n.node; render(); board.scrollTo({left:0,top:0}); } });
+      g.addEventListener("click",()=>{ if(hasKids){ MERGED=false; focus=n.node; render(); board.scrollTo({left:0,top:0}); } });
+      g.addEventListener("keydown",e=>{ if(hasKids&&(e.key==="Enter"||e.key===" ")){ e.preventDefault(); MERGED=false; focus=n.node; render(); board.scrollTo({left:0,top:0}); } });
       g.addEventListener("mousemove",e=>showNodeTip(e,n));
       g.addEventListener("mouseenter",()=>hiNode(n));
       g.addEventListener("mouseleave",clearHi);
@@ -462,6 +462,16 @@ __FONTS__
   }
 
   function hiNode(n){
+    // FIX 3: merged col-0 dataset hover — n.node is the DATA_SRC source node whose descendants are a
+    // PRIVATE subtree, NOT the shared DATA nodes drawn downstream. Build the keep-set from the FIRST-HOP
+    // links instead: keep the hovered dataset + the root_class recs it feeds (do NOT walk downstream).
+    if(MERGED && n.col===0 && n.node){
+      const keep=new Set([n.key]);
+      LNK.forEach(p=>{ if(p._l.source===n.source) keep.add(p._l.childKey); });
+      NOD.forEach(g=>g.classList.toggle("dim",!keep.has(g._n.key)));
+      LNK.forEach(p=>p.classList.toggle("dim-link",!(keep.has(p._l.parentKey)&&keep.has(p._l.childKey))));
+      return;
+    }
     const keep=new Set();
     if(n.node){ let a=n.node; while(a){keep.add("n"+a._id);a=a._parent;} (function ds(m){keep.add("n"+m._id);(m.k||[]).forEach(ds);})(n.node); }
     else { keep.add(n.key); if(n.parentId!=null) keep.add("n"+n.parentId); }
@@ -506,11 +516,14 @@ __FONTS__
 
   function renderCrumbs(){
     const c=document.getElementById("crumbs"); c.innerHTML="";
+    if(MERGED){ const b=document.createElement("button"); b.className="here"; b.textContent="Datasets"; c.appendChild(b); return; }
     const chain=[]; let n=focus; while(n){chain.unshift(n);n=n._parent;}
     chain.forEach((node,i)=>{
       const b=document.createElement("button");
-      b.textContent=node.r==="dataset"?"planktonzilla-17M":disp(node);
-      if(i===chain.length-1){ b.className="here"; } else { b.onclick=()=>{focus=node;render();board.scrollTo({left:0,top:0});}; }
+      b.textContent=node.r==="dataset"?(SHOW_SRC?"Datasets":"planktonzilla-17M"):disp(node);   // textContent only (T-tws-01)
+      if(i===chain.length-1){ b.className="here"; }
+      else if(node.r==="dataset" && SHOW_SRC){ b.onclick=()=>{goMerged();}; }   // breadcrumb root returns to the merged view
+      else { b.onclick=()=>{focus=node;render();board.scrollTo({left:0,top:0});}; }
       c.appendChild(b);
       if(i<chain.length-1){ const s=document.createElement("span"); s.className="sep"; s.textContent="›"; c.appendChild(s); }
     });
@@ -524,7 +537,13 @@ __FONTS__
     const d=document.getElementById("metricbtns"); if(!d) return; d.innerHTML="";
     ["c","t","s"].forEach(m=>{
       if(m==="s" && !meta.samples_available) return;
-      const b=document.createElement("button"); b.textContent=METRICS[m].label; b.title="Size bars by "+METRICS[m].desc;
+      const b=document.createElement("button"); b.textContent=METRICS[m].label;
+      if(m==="t" && MERGED){   // Taxa can't converge (a taxon appears in several datasets) → greyed while merged
+        b.disabled=true; b.style.opacity=".45"; b.style.cursor="not-allowed";
+        b.title="Taxa can't be partitioned across converging datasets";
+        d.appendChild(b); return;
+      }
+      b.title="Size bars by "+METRICS[m].desc;
       if(m===METRIC) b.className="on";
       b.onclick=()=>{ METRIC=m; buildStats(); render(); board.scrollTo({left:0,top:0}); };
       d.appendChild(b);
@@ -536,11 +555,10 @@ __FONTS__
       const b=document.createElement("button"); b.textContent=lbl;
       if(on===SHOW_SRC) b.className="on";
       if(on && !DATA_SRC){ b.disabled=true; b.title="source-level data unavailable"; b.style.opacity=".45"; b.style.cursor="not-allowed"; }
-      else b.title=on?"Insert a source-dataset level right after the root":"Hide the source-dataset level";
-      b.onclick=()=>{ if(on!==SHOW_SRC && !(on&&!DATA_SRC)){ SHOW_SRC=on; bindActive(SHOW_SRC?DATA_SRC:DATA);
-        if(!SHOW_SRC && COLORBY==="dataset") COLORBY="branch";   // dataset colouring is undefined without the source level
-        if(METRIC==="s" && !meta.samples_available) METRIC="c";
-        maxDepth=SHOW_SRC?5:4; buildStats(); render(); board.scrollTo({left:0,top:0}); } };
+      else b.title=on?"Converge the source datasets into the shared label space":"Hide the source-dataset level";
+      b.onclick=()=>{ if(on!==SHOW_SRC && !(on&&!DATA_SRC)){
+        if(on) enterMerged(); else exitToNormal();   // enterMerged/exitToNormal own SHOW_SRC/MERGED/metric/depth
+        buildStats(); render(); board.scrollTo({left:0,top:0}); } };
       d.appendChild(b);
     });
   }
@@ -554,12 +572,10 @@ __FONTS__
       b.onclick=()=>{
         if(mode==="dataset"){
           if(!DATA_SRC || COLORBY==="dataset") return;
-          COLORBY="dataset";
-          // Dataset colouring is only well-defined with the source level present → auto-enable it.
-          if(!SHOW_SRC){ SHOW_SRC=true; bindActive(DATA_SRC); if(METRIC==="s" && !meta.samples_available) METRIC="c"; maxDepth=5; }
-          buildStats(); render(); board.scrollTo({left:0,top:0});
+          if(!SHOW_SRC || !MERGED) enterMerged();   // dataset colouring is defined in the converging view → enter it
+          COLORBY="dataset"; buildStats(); render(); board.scrollTo({left:0,top:0});
         } else if(COLORBY!=="branch"){
-          COLORBY="branch"; render();   // leave the source level as-is; branch colouring is fine with or without it
+          COLORBY="branch"; render();   // stay in the current mode — branch colouring is valid merged or not
         }
       };
       d.appendChild(b);
@@ -577,7 +593,7 @@ __FONTS__
     else Object.keys(BRANCHES).forEach(b=>add(`var(${BRANCHES[b]})`,b,false));
     add("var(--ink-3)","pooled “+N more”",true);
   }
-  document.getElementById("reset").onclick=()=>{ focus=root; maxDepth=SHOW_SRC?5:4; render(); board.scrollTo({left:0,top:0}); };
+  document.getElementById("reset").onclick=()=>{ maxDepth=4; if(SHOW_SRC){ goMerged(); } else { focus=root; render(); board.scrollTo({left:0,top:0}); } };
 
   buildStats();
   render();
