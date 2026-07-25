@@ -96,6 +96,24 @@ def _assert_conserves(graph):
             assert incoming[i] == pytest.approx(node.value)
 
 
+def _assert_flow_invariants(graph, context=""):
+    """The FULL conservation contract on the converging DAG, checked at every node.
+
+    * incoming (when non-zero) equals the node value — a node can never keep flow that no surviving
+      ribbon delivers (the M1 defect: edge-level pooling popped an edge but left the value behind).
+    * outgoing never EXCEEDS the node value — a node can never emit flow it never received.
+    """
+    incoming = defaultdict(float)
+    outgoing = defaultdict(float)
+    for link in graph.links:
+        incoming[link.tgt] += link.value
+        outgoing[link.src] += link.value
+    for i, node in enumerate(graph.nodes):
+        if incoming[i] > 0:
+            assert incoming[i] == pytest.approx(node.value), f"incoming != value for {node}{context}"
+        assert outgoing[i] <= node.value + 1e-9, f"outgoing > value for {node}{context}"
+
+
 # ----------------------------------------------------------------- pure functions
 def test_row_path_living_and_non_living():
     living = _row("whoi", "calanus", "living", Kingdom="animalia", Genus="calanus")
@@ -218,6 +236,141 @@ def test_focus_subtree_and_breadcrumb():
         ("root_class", "living"),
         ("Genus", "calanus"),
     ]
+
+
+# ------------------------------------------------ pooling: conservation on the DAG
+# The same leaf genus reached through TWO different kingdoms in TWO datasets — the converging
+# shape the real CSV has and the one that breaks edge-level pooling: at threshold 10 the ecotaxa
+# branch (2 images) is sub-threshold while the whoi branch (100) survives, so a pooler that pops
+# an edge without re-deriving node values leaves ``calanus`` holding 102 with only 100 incoming.
+SHARED_CHILD_ROWS = [
+    _row("whoi", "calanus", "living", Kingdom="animalia", Genus="calanus"),
+    _row("ecotaxa", "calanus", "living", Kingdom="protista", Genus="calanus"),
+]
+SHARED_CHILD_COUNTS = Counter(
+    {("whoi", "calanus", "living"): 100, ("ecotaxa", "calanus", "living"): 2},
+)
+
+
+def test_pooling_conserves_with_shared_child():
+    for metric in ("images", "taxa"):
+        for threshold in (0, 1, 5, 10, 50, 500):
+            graph = build_graph(
+                SHARED_CHILD_ROWS,
+                SHARED_CHILD_COUNTS,
+                size_metric=metric,
+                min_threshold=threshold,
+            )
+            _assert_flow_invariants(graph, context=f" [metric={metric} threshold={threshold}]")
+
+
+def test_pooling_is_per_parent():
+    # Two kingdoms, each with two 1-image children and one 100-image child. A GLOBAL pooler emits a
+    # single "+4 other"; the per-parent contract requires one bucket under EACH kingdom.
+    rows = [
+        _row("whoi", "a1", "living", Kingdom="animalia", Genus="a1"),
+        _row("whoi", "a2", "living", Kingdom="animalia", Genus="a2"),
+        _row("whoi", "a3", "living", Kingdom="animalia", Genus="a3"),
+        _row("whoi", "p1", "living", Kingdom="protista", Genus="p1"),
+        _row("whoi", "p2", "living", Kingdom="protista", Genus="p2"),
+        _row("whoi", "p3", "living", Kingdom="protista", Genus="p3"),
+    ]
+    counts = Counter(
+        {
+            ("whoi", "a1", "living"): 1,
+            ("whoi", "a2", "living"): 1,
+            ("whoi", "a3", "living"): 100,
+            ("whoi", "p1", "living"): 1,
+            ("whoi", "p2", "living"): 1,
+            ("whoi", "p3", "living"): 100,
+        }
+    )
+    graph = build_graph(rows, counts, size_metric="images", min_threshold=10)
+    others = [n for n in graph.nodes if n.is_other]
+    assert len(others) == 2
+    assert {n.label for n in others} == {"+2 other"}
+    assert all(n.value == pytest.approx(2.0) for n in others)
+    assert all(n.col == "Genus" for n in others)
+    _assert_flow_invariants(graph)
+
+
+def test_pooling_other_per_column():
+    # ONE parent (root_class:living) whose small children live in DIFFERENT columns: a ranked row
+    # continues into Kingdom, an all-ranks-blank row into the (unclassified) group column. Each
+    # needs its OWN "+N other" in ITS child's column — never one bucket parked in the left-most.
+    rows = [
+        _row("whoi", "calanus", "living", Kingdom="animalia", Genus="calanus"),
+        _row("whoi", "blob", "living"),
+        _row("whoi", "big", "living", Kingdom="bigkingdom"),
+    ]
+    counts = Counter(
+        {
+            ("whoi", "calanus", "living"): 1,
+            ("whoi", "blob", "living"): 2,
+            ("whoi", "big", "living"): 100,
+        }
+    )
+    graph = build_graph(rows, counts, size_metric="images", min_threshold=10)
+    others = [n for n in graph.nodes if n.is_other]
+    assert len(others) == 2
+    assert {n.col for n in others} == {"Kingdom", "group"}
+    assert all(n.label == "+1 other" for n in others)
+    _assert_flow_invariants(graph)
+
+
+def test_pooling_boundary():
+    # STRICT `<`: a child sitting exactly AT the threshold is KEPT.
+    rows = [_row("whoi", "a", "living", Genus="a"), _row("whoi", "b", "living", Genus="b")]
+    counts = Counter({("whoi", "a", "living"): 10, ("whoi", "b", "living"): 100})
+
+    kept = build_graph(rows, counts, size_metric="images", min_threshold=10)
+    assert not any(n.is_other for n in kept.nodes)
+    assert _node(kept, "Genus", "a")[1] is not None
+    _assert_flow_invariants(kept)
+
+    pooled = build_graph(rows, counts, size_metric="images", min_threshold=10.5)
+    others = [n for n in pooled.nodes if n.is_other]
+    assert len(others) == 1
+    assert others[0].label == "+1 other"
+    assert _node(pooled, "Genus", "a")[1] is None
+    _assert_flow_invariants(pooled)
+
+
+def test_images_count_key_dedupe():
+    # Two CSV rows collapsing onto ONE load_sample_counts key (proposed_label differs only in case).
+    # The single 100-image entry must be attributed exactly once, and the loser row's divergent
+    # Kingdom must not materialise a phantom node.
+    rows = [
+        _row("whoi", "Calanus", "living", Kingdom="animalia", Genus="calanus"),
+        _row("whoi", "calanus", "living", Kingdom="protista", Genus="calanus"),
+    ]
+    counts = Counter({("whoi", "calanus", "living"): 100})
+    graph = build_graph(rows, counts, size_metric="images")
+    _, whoi = _node(graph, "source_dataset", "whoi")
+    assert whoi.value == pytest.approx(100)  # not 200
+    assert _node(graph, "Kingdom", "animalia")[1] is not None
+    assert _node(graph, "Kingdom", "protista")[1] is None
+    _assert_flow_invariants(graph)
+
+
+def test_breadcrumb_rows_branch():
+    rows = [_row("whoi", "calanus", "living", Kingdom="animalia", Genus="calanus")]
+    assert breadcrumb(rows, ("Genus", "calanus")) == [
+        ("source_dataset", "whoi"),
+        ("root_class", "living"),
+        ("Kingdom", "animalia"),
+        ("Genus", "calanus"),
+    ]
+    assert breadcrumb(rows, None) == []
+    assert breadcrumb(rows, ("Genus", "nope")) == [("Genus", "nope")]
+
+    # M2: with a column collapsed away, Zoom-out must never target a key from that column.
+    enabled = [c for c in ALL_COLUMNS if c != "Kingdom"]
+    chain = breadcrumb(rows, ("Genus", "calanus"), enabled)
+    assert all(col != "Kingdom" for col, _label in chain)
+    path = row_path(rows[0], enabled)
+    assert chain == path[: len(chain)]
+    assert chain[-1] == ("Genus", "calanus")
 
 
 # --------------------------------------------------- figure layer (plotly-guarded)
