@@ -400,6 +400,26 @@ def _tint(hex_color: str, weight: float) -> str:
     return "#{:02x}{:02x}{:02x}".format(*mixed)
 
 
+def _shade(hex_color: str, weight: float) -> str:
+    """Mix ``hex_color`` toward BLACK by ``weight`` (1.0 = full brand, 0.3 = near-black shade)."""
+    mixed = tuple(round(int(hex_color[i : i + 2], 16) * weight) for i in (1, 3, 5))
+    return "#{:02x}{:02x}{:02x}".format(*mixed)
+
+
+def _color_ramp(hex_color: str) -> tuple[str, ...]:
+    """The 11 Tailwind-shaped stops (c50..c950) for a brand hue, centred on the hue itself at c500.
+
+    ``gr.themes.Color`` takes those eleven stops POSITIONALLY, so a Gradio theme can be built from
+    the immutable Inria Palette 2024 hexes instead of a Tailwind hue name. Lighter stops are tints
+    (toward white), darker stops are shades (toward black) — the hue is never re-hued.
+    """
+    return (
+        *(_tint(hex_color, w) for w in (0.08, 0.16, 0.30, 0.50, 0.75)),
+        hex_color,
+        *(_shade(hex_color, w) for w in (0.85, 0.70, 0.55, 0.42, 0.30)),
+    )
+
+
 def _rgba(hex_color: str, alpha: float) -> str:
     """Return ``hex_color`` as an ``rgba(...)`` string with the given alpha (for translucent links)."""
     r, g, b = (int(hex_color[i : i + 2], 16) for i in (1, 3, 5))
@@ -542,28 +562,42 @@ BRIDGE_JS = r"""
 """
 
 # Token-driven Inria palette + dot-grid motif + blanc-tournant, light AND dark (charter §1/§2/§5).
-# Brand hexes are immutable across themes; only neutrals re-tune. Both the media query and the
-# data-theme overrides are emitted so a manual toggle wins over the OS preference.
+# Brand hexes are immutable across themes; only neutrals re-tune, and BOTH neutral sets are complete
+# (charter §2: a partial dark override is a bug). Three dark signals are emitted: the OS media query,
+# Gradio's own `.dark` CLASS (what the app actually toggles — a `:root[data-theme]` selector alone
+# never matches under Gradio 6), and `:root[data-theme="dark"]` for an external stamp.
 INRIA_CSS = """
 :root{
   --rouge:#c9191e; --framboise:#a60f79; --violet:#534b9a; --bleu-mat:#27348b; --bleu-canard:#1067a3;
   --data-other:#aab3bf;
-  --page:#ffffff; --panel:#ffffff; --ink:#171a1d; --ink-muted:#5c666f; --hair:#e0e5ea;
+  --page:#ffffff; --panel:#ffffff; --sunken:#f4f6f8;
+  --ink:#171a1d; --ink-2:#3f474e; --ink-muted:#5c666f;
+  --hair:#e0e5ea; --border-strong:#b9c1ca;
 }
 @media (prefers-color-scheme:dark){:root{
-  --page:#121517; --panel:#1a1e21; --ink:#e9edf0; --ink-muted:#8a939c; --hair:#2a3034;
+  --page:#121517; --panel:#1a1e21; --sunken:#0e1113;
+  --ink:#e9edf0; --ink-2:#b7c0c8; --ink-muted:#8a939c;
+  --hair:#2a3034; --border-strong:#414b52;
 }}
-:root[data-theme="dark"]{
-  --page:#121517; --panel:#1a1e21; --ink:#e9edf0; --ink-muted:#8a939c; --hair:#2a3034;
+.dark, :root[data-theme="dark"]{
+  --page:#121517; --panel:#1a1e21; --sunken:#0e1113;
+  --ink:#e9edf0; --ink-2:#b7c0c8; --ink-muted:#8a939c;
+  --hair:#2a3034; --border-strong:#414b52;
 }
 :root[data-theme="light"]{
-  --page:#ffffff; --panel:#ffffff; --ink:#171a1d; --ink-muted:#5c666f; --hair:#e0e5ea;
+  --page:#ffffff; --panel:#ffffff; --sunken:#f4f6f8;
+  --ink:#171a1d; --ink-2:#3f474e; --ink-muted:#5c666f;
+  --hair:#e0e5ea; --border-strong:#b9c1ca;
 }
-.gradio-container{background:var(--page); color:var(--ink);}
-/* blanc tournant — white margin framing the content zone, never bleeding to the viewport edge */
-.pz-frame{padding:24px; background:var(--page);}
-@media (min-width:768px){.pz-frame{padding:48px;}}
-@media (min-width:1024px){.pz-frame{padding:64px; max-width:1200px; margin:0 auto;}}
+/* blanc tournant — the white margin frames the WHOLE app, so the lockup and the content below it
+   share one 1200px measure instead of the header being padded twice (charter §5). */
+.gradio-container{
+  background:var(--page); color:var(--ink);
+  max-width:1200px; margin:0 auto; padding:24px;
+}
+@media (min-width:768px){.gradio-container{padding:48px;}}
+@media (min-width:1024px){.gradio-container{padding:64px;}}
+.pz-frame{position:relative; margin-bottom:16px;}
 /* signature dot-grid motif — a corner tile only, NEVER tiled behind body text */
 .inria-motif{
   background-image:radial-gradient(currentColor 1px, transparent 1.5px);
@@ -571,6 +605,7 @@ INRIA_CSS = """
   width:240px; height:240px; pointer-events:none;
 }
 @media (prefers-color-scheme:dark){.inria-motif{opacity:.11;}}
+.dark .inria-motif{opacity:.11;}
 .pz-header{display:flex; align-items:center; gap:16px; flex-wrap:wrap;}
 .pz-rf{display:flex; align-items:center; gap:8px; color:var(--ink);}
 .pz-rf-label{font-weight:700; font-size:11px; line-height:1.05; letter-spacing:.03em;}
@@ -586,6 +621,8 @@ INRIA_CSS = """
 HEADER_HTML = f"""
 <div class="pz-header" role="banner">
   <div class="pz-rf" aria-label="République Française">
+    <!-- NON-PRODUCTION facsimile of the controlled DSFR bloc-marque (charter §4): reproduce the
+         official asset, never restyle it — swap this hand-drawn tricolour for the real SVG. -->
     <svg width="42" height="38" viewBox="0 0 42 38" role="img" aria-hidden="true">
       <rect x="0" y="0" width="14" height="38" fill="#000091"></rect>
       <rect x="14" y="0" width="14" height="38" fill="#ffffff"></rect>
@@ -610,6 +647,11 @@ def _metric_key(metric: object) -> str:
     return "images" if str(metric).lower().startswith("image") else "taxa"
 
 
+def _theme_key(theme: object) -> str:
+    """Map a Theme Radio choice ("Light"/"Dark") to the make_figure theme key."""
+    return "dark" if str(theme).lower().startswith("dark") else "light"
+
+
 def build_app(rows: list[dict] | None = None, counts: Counter | None = None, *, header_html: str = HEADER_HTML):
     """Compose the Sankey explorer ``gr.Blocks`` (gradio imported FUNCTION-LOCAL); does NOT launch.
 
@@ -628,7 +670,7 @@ def build_app(rows: list[dict] | None = None, counts: Counter | None = None, *, 
     default_metric = "images" if has_counts else "taxa"
     all_columns = list(ALL_COLUMNS)
 
-    def _rebuild(columns_enabled, metric, threshold, focus):
+    def _rebuild(columns_enabled, metric, threshold, theme, focus):
         graph = build_graph(
             rows,
             counts,
@@ -637,9 +679,9 @@ def build_app(rows: list[dict] | None = None, counts: Counter | None = None, *, 
             min_threshold=threshold or 0.0,
             focus_key=focus,
         )
-        crumb = breadcrumb(rows, focus)
+        crumb = breadcrumb(rows, focus, columns_enabled or all_columns)
         crumb_text = " / ".join(label for _col, label in crumb) if focus else "**planktonzilla-17M** taxonomy"
-        return make_figure(graph, size_metric=_metric_key(metric)), crumb_text
+        return make_figure(graph, theme=_theme_key(theme), size_metric=_metric_key(metric)), crumb_text
 
     initial_graph = build_graph(rows, counts, columns_enabled=all_columns, size_metric=default_metric)
 
@@ -651,7 +693,10 @@ def build_app(rows: list[dict] | None = None, counts: Counter | None = None, *, 
         breadcrumb_md = gr.Markdown("**planktonzilla-17M** taxonomy")
         with gr.Row():
             with gr.Column(scale=3):
-                plot = gr.Plot(value=make_figure(initial_graph, size_metric=default_metric), elem_id="pz_sankey")
+                plot = gr.Plot(
+                    value=make_figure(initial_graph, theme="light", size_metric=default_metric),
+                    elem_id="pz_sankey",
+                )
             with gr.Column(scale=1):
                 back_btn = gr.Button("◄ Zoom out", size="sm")
                 metric_radio = gr.Radio(
@@ -661,16 +706,20 @@ def build_app(rows: list[dict] | None = None, counts: Counter | None = None, *, 
                 )
                 columns_group = gr.CheckboxGroup(choices=all_columns, value=all_columns, label="Columns")
                 threshold_slider = gr.Slider(minimum=0, maximum=200, step=1, value=0, label="Pool below size")
+                # "Light" matches the initial gr.Plot figure above; the radio is the single source
+                # of truth for the figure's paper/ink from the first re-render onward.
+                theme_radio = gr.Radio(choices=["Light", "Dark"], value="Light", label="Theme")
         focus_state = gr.State(None)
         click_sink = gr.Number(visible=False, elem_id="pz_click")
 
-        controls = [columns_group, metric_radio, threshold_slider, focus_state]
+        controls = [columns_group, metric_radio, threshold_slider, theme_radio, focus_state]
         rebuild_outputs = [plot, breadcrumb_md]
         columns_group.change(_rebuild, controls, rebuild_outputs)
         metric_radio.change(_rebuild, controls, rebuild_outputs)
         threshold_slider.release(_rebuild, controls, rebuild_outputs)
+        theme_radio.change(_rebuild, controls, rebuild_outputs)
 
-        def _zoom_to(idx, columns_enabled, metric, threshold, focus):
+        def _zoom_to(idx, columns_enabled, metric, threshold, theme, focus):
             graph = build_graph(
                 rows,
                 counts,
@@ -683,21 +732,17 @@ def build_app(rows: list[dict] | None = None, counts: Counter | None = None, *, 
             if idx is not None and 0 <= int(idx) < len(graph.nodes):
                 node = graph.nodes[int(idx)]
                 new_focus = (node.col, node.label)
-            figure, crumb_text = _rebuild(columns_enabled, metric, threshold, new_focus)
+            figure, crumb_text = _rebuild(columns_enabled, metric, threshold, theme, new_focus)
             return figure, crumb_text, new_focus
 
-        click_sink.change(
-            _zoom_to,
-            [click_sink, columns_group, metric_radio, threshold_slider, focus_state],
-            [plot, breadcrumb_md, focus_state],
-        )
+        click_sink.change(_zoom_to, [click_sink, *controls], [plot, breadcrumb_md, focus_state])
 
-        def _zoom_out(columns_enabled, metric, threshold, focus):
+        def _zoom_out(columns_enabled, metric, threshold, theme, focus):
             new_focus = None
             if focus is not None:
-                chain = breadcrumb(rows, focus)
+                chain = breadcrumb(rows, focus, columns_enabled or all_columns)
                 new_focus = chain[-2] if len(chain) >= 2 else None
-            figure, crumb_text = _rebuild(columns_enabled, metric, threshold, new_focus)
+            figure, crumb_text = _rebuild(columns_enabled, metric, threshold, theme, new_focus)
             return figure, crumb_text, new_focus
 
         back_btn.click(_zoom_out, controls, [plot, breadcrumb_md, focus_state])
@@ -732,9 +777,12 @@ def main(argv: list[str] | None = None) -> None:
     else:
         counts = None
 
+    # Charter palette, not Tailwind: "rose"/"fuchsia" are off-brand hues. Rouge #C9191E is the
+    # view's ONE signal — primary button / active state only, never a surface flood (§0.1, §6) —
+    # so it drives primary, with Bleu mat #27348B as the secondary accent.
     theme = gr.themes.Ocean(
-        primary_hue="rose",
-        secondary_hue="fuchsia",
+        primary_hue=gr.themes.Color(*_color_ramp(ROUGE_RESERVED), name="inria-rouge"),
+        secondary_hue=gr.themes.Color(*_color_ramp("#27348b"), name="inria-bleu-mat"),
         radius_size="md",
         font=[gr.themes.GoogleFont("Inria Sans"), "ui-sans-serif", "system-ui", "sans-serif"],
     )

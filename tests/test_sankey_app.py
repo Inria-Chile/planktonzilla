@@ -479,7 +479,8 @@ def test_color_ramp_is_inria():
     assert ramp[5] == "#c9191e"  # c500 is the charter Rouge itself, untinted and unshaded
     assert all(isinstance(stop, str) and len(stop) == 7 and stop.startswith("#") for stop in ramp)
     assert all(int(stop[1:], 16) >= 0 for stop in ramp)
-    assert ramp == sorted(ramp, key=lambda s: -sum(int(s[i : i + 2], 16) for i in (1, 3, 5)))
+    # c50 -> c950 must darken monotonically (tints toward white, then shades toward black).
+    assert list(ramp) == sorted(ramp, key=lambda s: -sum(int(s[i : i + 2], 16) for i in (1, 3, 5)))
 
 
 def test_style_constants_present():
