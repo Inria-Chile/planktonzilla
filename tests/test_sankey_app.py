@@ -353,6 +353,40 @@ def test_images_count_key_dedupe():
     _assert_flow_invariants(graph)
 
 
+def test_click_index_coercion():
+    # The sink is a DOM-reachable <input>: anything can be POSTed at it, and a bare int() on NaN /
+    # inf / a non-numeric payload would raise out of the event handler as a 500 (T-udp-01).
+    for junk in (None, float("nan"), float("inf"), float("-inf"), "banana", [1], {}, object()):
+        assert sa._click_index(junk) is None, junk
+    assert sa._click_index(3) == 3
+    assert sa._click_index(3.0) == 3
+    assert sa._click_index(3.7) == 3
+    assert sa._click_index("4") == 4
+    assert sa._click_index(-1) == -1  # the sink's default; rejected later by the bound check
+
+
+def test_zoom_ignores_other_node():
+    # A pooled "+N other" node carries a synthetic key that matches NO ribbon, so re-rooting on its
+    # (col, label) yields an EMPTY graph — which is exactly why _zoom_to must ignore those clicks.
+    rows = [
+        _row("whoi", "a", "living", Genus="a"),
+        _row("whoi", "b", "living", Genus="b"),
+        _row("whoi", "c", "living", Genus="c"),
+    ]
+    counts = Counter({("whoi", "a", "living"): 1, ("whoi", "b", "living"): 1, ("whoi", "c", "living"): 100})
+    graph = build_graph(rows, counts, size_metric="images", min_threshold=10)
+    other = next(n for n in graph.nodes if n.is_other)
+    blanked = build_graph(
+        rows,
+        counts,
+        size_metric="images",
+        min_threshold=10,
+        focus_key=(other.col, other.label),
+    )
+    assert blanked.nodes == []
+    assert blanked.links == []
+
+
 def test_breadcrumb_rows_branch():
     rows = [_row("whoi", "calanus", "living", Kingdom="animalia", Genus="calanus")]
     assert breadcrumb(rows, ("Genus", "calanus")) == [
@@ -533,3 +567,71 @@ def test_build_app_offers_images_when_counts():
     demo = sa.build_app(rows=ROWS, counts=PER_SOURCE)
     labels = _radio_labels(_radio_by_label(demo, "Size by"))
     assert "Images" in labels and "Taxa" in labels
+
+
+def _only_block(demo, predicate, what):
+    found = [bid for bid, block in demo.blocks.items() if predicate(block)]
+    assert len(found) == 1, f"expected exactly one {what}, got {len(found)}"
+    return found[0]
+
+
+def test_build_app_event_wiring():
+    pytest.importorskip("gradio")
+    import gradio as gr
+
+    demo = sa.build_app(rows=ROWS, counts=PER_SOURCE)
+    deps = demo.config["dependencies"]
+
+    plot_id = _only_block(demo, lambda b: getattr(b, "elem_id", None) == "pz_sankey", "pz_sankey Plot")
+    click_id = _only_block(demo, lambda b: getattr(b, "elem_id", None) == "pz_click", "pz_click sink")
+    state_id = _only_block(demo, lambda b: isinstance(b, gr.State), "focus State")
+    columns_id = _only_block(demo, lambda b: isinstance(b, gr.CheckboxGroup), "Columns group")
+    slider_id = _only_block(demo, lambda b: isinstance(b, gr.Slider), "threshold Slider")
+    metric_id = _only_block(demo, lambda b: isinstance(b, gr.Radio) and b.label == "Size by", "Size-by Radio")
+    theme_id = _only_block(demo, lambda b: isinstance(b, gr.Radio) and b.label == "Theme", "Theme Radio")
+    back_id = _only_block(demo, lambda b: isinstance(b, gr.Button) and "Zoom out" in str(b.value), "Zoom-out Button")
+
+    by_target = {}
+    for dep in deps:
+        for target in dep["targets"]:
+            block_id, event = tuple(target)
+            assert block_id in demo.blocks, f"target {target} does not resolve through demo.blocks"
+            by_target[(block_id, event)] = dep
+
+    expected = [
+        (columns_id, "change"),
+        (metric_id, "change"),
+        (theme_id, "change"),
+        (slider_id, "release"),  # NOT change: no server rebuild per drag tick
+        (click_id, "change"),
+        (back_id, "click"),
+    ]
+    for target in expected:
+        assert target in by_target, f"missing event wiring for {target}"
+        assert plot_id in by_target[target]["outputs"], f"{target} does not re-render the Sankey"
+    assert (slider_id, "change") not in by_target
+
+    for target in ((click_id, "change"), (back_id, "click")):
+        assert state_id in by_target[target]["outputs"], f"{target} must write the focus State"
+
+    js_payloads = [dep["js"] for dep in deps if dep.get("js")]
+    assert any("plotly_click" in js and "MutationObserver" in js for js in js_payloads), (
+        "no dependency carries the self-healing double-click bridge"
+    )
+
+
+def test_click_sink_is_dom_rendered():
+    pytest.importorskip("gradio")
+
+    demo = sa.build_app(rows=ROWS, counts=PER_SOURCE)
+    sink_id = _only_block(demo, lambda b: getattr(b, "elem_id", None) == "pz_click", "pz_click sink")
+    # Gradio 6 does not mount visible=False components into the DOM AT ALL, so the bridge would
+    # have no <input> to write. The sink must render and be hidden by CSS instead.
+    assert demo.blocks[sink_id].visible is True
+
+    packed = sa.CLICK_SINK_CSS.replace(" ", "")
+    assert "#pz_click{" in packed
+    assert "display:none" not in packed  # display:none stops the input taking programmatic events
+    assert "position:absolute" in packed
+    assert "opacity:0" in packed
+    assert sa.CLICK_SINK_CSS in sa.INRIA_CSS  # main() ships it via .launch(css=...)
