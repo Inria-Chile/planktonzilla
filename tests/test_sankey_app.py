@@ -591,11 +591,14 @@ def test_build_app_event_wiring():
     theme_id = _only_block(demo, lambda b: isinstance(b, gr.Radio) and b.label == "Theme", "Theme Radio")
     back_id = _only_block(demo, lambda b: isinstance(b, gr.Button) and "Zoom out" in str(b.value), "Zoom-out Button")
 
+    # Every target must resolve to a real block — or to the Blocks root itself, which is what
+    # demo.load(js=...) attaches to (it is not a member of demo.blocks).
+    resolvable = set(demo.blocks) | {demo._id}
     by_target = {}
     for dep in deps:
         for target in dep["targets"]:
             block_id, event = tuple(target)
-            assert block_id in demo.blocks, f"target {target} does not resolve through demo.blocks"
+            assert block_id in resolvable, f"target {target} resolves to no block"
             by_target[(block_id, event)] = dep
 
     expected = [

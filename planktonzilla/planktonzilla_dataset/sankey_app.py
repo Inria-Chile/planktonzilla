@@ -32,6 +32,7 @@ import csv
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from itertools import pairwise
+from math import isfinite
 from pathlib import Path
 
 from planktonzilla.planktonzilla_dataset.build_sankey import (
@@ -533,31 +534,52 @@ def make_figure(graph: Graph, *, theme: str = "light", size_metric: str = "image
 # ============================================================== Inria style constants
 # Double-click zoom bridge (RESEARCH section 2). gr.Plot has NO server-side click event, so this
 # client-side listener attaches to the rendered plotly div, debounces plotly_click to detect a
-# double-click on the SAME node index (~350ms), then writes that index into the hidden gr.Number's
-# <input> and dispatches an 'input' event so its .change() fires the Python re-root callback.
+# double-click on the SAME node index (~350ms), then writes that index into the click sink's
+# <input> and dispatches 'input' + 'change' so the svelte binding observes the write and the
+# component's .change() fires the Python re-root callback.
+#
+# SELF-HEALING: every server-side rebuild REPLACES the plotly div, which drops any handler bound to
+# the old one. A one-shot attach therefore works exactly until the first control change. Instead a
+# MutationObserver on the stable #pz_sankey wrapper re-scans on every subtree mutation and binds
+# each fresh .js-plotly-plot once (guarded by a __pzBound marker), with an immediate scan plus a
+# bounded poll covering the case where the wrapper itself is not mounted yet.
+#
+# LINK GUARD: plotly fires the SAME plotly_click binder for sankey LINK paths. Link points expose
+# `source`/`target`; node points do not — so a link click must be dropped, or it would zoom to an
+# arbitrary node index. Node index is `pointNumber` (`index` only as a fallback).
+#
 # SINGLE-CLICK FALLBACK: if a browser/Plotly build never delivers the paired click (RESEARCH A1/A2),
-# drop the `now - last < 350 && p.index === lastIdx` guard so a single click zooms instead.
+# drop the `now - last < 350 && idx === lastIdx` guard so a single click zooms instead.
 BRIDGE_JS = r"""
 () => {
-  const attach = () => {
-    const gd = document.querySelector('#pz_sankey .js-plotly-plot');
-    if (!gd || !gd.on) { return setTimeout(attach, 300); }   // wait for Plotly.newPlot
+  const bind = (gd) => {
+    if (!gd || !gd.on || gd.__pzBound) return;               // bind each plotly div exactly once
+    gd.__pzBound = true;
     let last = 0, lastIdx = -1;
-    gd.on('plotly_click', (e) => {
-      const p = e.points && e.points[0];
-      if (!p || p.index === undefined) return;               // p.index = clicked node index
+    gd.on('plotly_click', (ev) => {
+      const pt = ev && ev.points && ev.points[0];
+      if (!pt) return;
+      if (pt.source !== undefined || pt.target !== undefined) return;   // a LINK, not a node
+      const idx = pt.pointNumber !== undefined ? pt.pointNumber : pt.index;
+      if (idx === undefined || idx === null) return;
       const now = Date.now();
-      if (now - last < 350 && p.index === lastIdx) {          // debounced double-click
+      if (now - last < 350 && idx === lastIdx) {              // debounced double-click
         const inp = document.querySelector('#pz_click input, #pz_click textarea');
         if (inp) {
-          inp.value = String(p.index);
-          inp.dispatchEvent(new Event('input', {bubbles: true}));  // -> gr.Number.change
+          inp.value = String(idx);
+          inp.dispatchEvent(new Event('input', {bubbles: true}));   // svelte binding
+          inp.dispatchEvent(new Event('change', {bubbles: true}));  // -> gr.Number.change
         }
       }
-      last = now; lastIdx = p.index;
+      last = now; lastIdx = idx;
     });
   };
-  attach();
+  const scan = () => document.querySelectorAll('#pz_sankey .js-plotly-plot').forEach(bind);
+  const host = document.querySelector('#pz_sankey') || document.body;
+  new MutationObserver(scan).observe(host, {childList: true, subtree: true});
+  scan();
+  let tries = 0;
+  const poll = setInterval(() => { scan(); if (++tries > 40) clearInterval(poll); }, 300);
 }
 """
 
@@ -615,6 +637,13 @@ INRIA_CSS = """
 .pz-inria-fallback{font-family:"Inria Serif",Georgia,serif; color:var(--rouge); font-size:28px; font-style:italic;}
 """
 
+# The double-click sink must be RENDERED (Gradio 6 never mounts a visible=False component into the
+# DOM, leaving BRIDGE_JS with no <input> to write), so it is hidden GEOMETRICALLY instead.
+# `display:none` is deliberately NOT used: a display-none input is skipped by the browser's event
+# plumbing, and the programmatic 'input'/'change' dispatch would never reach the svelte binding.
+CLICK_SINK_CSS = "#pz_click{position:absolute!important;width:0;height:0;opacity:0;pointer-events:none;overflow:hidden;}"
+INRIA_CSS += f"{CLICK_SINK_CSS}\n"
+
 # Sole-emitter (EMITTER_MODE=sole) lockup: the République Française bloc-marque on the LEFT (State
 # colors #000091 / #E1000F / #FFFFFF — deliberately OUTSIDE the Inria 5-hue palette), a thin rule,
 # then the official Inria red-script wordmark. onerror reveals the flagged Serif-Rouge facsimile.
@@ -652,6 +681,23 @@ def _theme_key(theme: object) -> str:
     return "dark" if str(theme).lower().startswith("dark") else "light"
 
 
+def _click_index(idx: object) -> int | None:
+    """Coerce the click sink's value to a node index, or ``None`` when it is not one.
+
+    The sink is a DOM-rendered, client-writable ``<input>``, so an arbitrary payload can be POSTed
+    at the zoom callback. A bare ``int(idx)`` on ``None`` / NaN / infinity / a non-numeric string
+    raises straight out of the event handler as a 500, so those are rejected here; the caller's
+    ``0 <= i < len(nodes)`` bound check then handles out-of-range integers.
+    """
+    try:
+        value = float(idx)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    if not isfinite(value):
+        return None
+    return int(value)
+
+
 def build_app(rows: list[dict] | None = None, counts: Counter | None = None, *, header_html: str = HEADER_HTML):
     """Compose the Sankey explorer ``gr.Blocks`` (gradio imported FUNCTION-LOCAL); does NOT launch.
 
@@ -660,7 +706,8 @@ def build_app(rows: list[dict] | None = None, counts: Counter | None = None, *, 
     only (gr.Radio has no per-choice disable, so "Images" is FILTERED OUT, not greyed) and the app
     defaults to the fractional-taxa metric. Controls rebuild the graph server-side and return a
     fresh figure; node double-click zoom is wired via the ``demo.load(js=BRIDGE_JS)`` bridge into a
-    hidden ``gr.Number``. theme/css/head belong on ``.launch()`` (Gradio 6), applied by ``main()``.
+    RENDERED-but-CSS-hidden ``gr.Number`` sink (see ``CLICK_SINK_CSS``). theme/css/head belong on
+    ``.launch()`` (Gradio 6), applied by ``main()``.
     """
     import gradio as gr
 
@@ -710,7 +757,11 @@ def build_app(rows: list[dict] | None = None, counts: Counter | None = None, *, 
                 # of truth for the figure's paper/ink from the first re-render onward.
                 theme_radio = gr.Radio(choices=["Light", "Dark"], value="Light", label="Theme")
         focus_state = gr.State(None)
-        click_sink = gr.Number(visible=False, elem_id="pz_click")
+        # Rendered (not visible=False) so BRIDGE_JS has a real <input> to write, then hidden by
+        # CLICK_SINK_CSS. Emitted here too, so a build_app() used without main()'s .launch(css=...)
+        # still hides it. The -1 default is rejected by the bound check in _zoom_to.
+        gr.HTML(f"<style>{CLICK_SINK_CSS}</style>")
+        click_sink = gr.Number(value=-1, elem_id="pz_click", visible=True, container=False, show_label=False)
 
         controls = [columns_group, metric_radio, threshold_slider, theme_radio, focus_state]
         rebuild_outputs = [plot, breadcrumb_md]
@@ -729,8 +780,12 @@ def build_app(rows: list[dict] | None = None, counts: Counter | None = None, *, 
                 focus_key=focus,
             )
             new_focus = focus
-            if idx is not None and 0 <= int(idx) < len(graph.nodes):
-                node = graph.nodes[int(idx)]
+            i = _click_index(idx)
+            # A pooled "+N other" node carries a synthetic _OTHER key that matches NO ribbon, so
+            # re-rooting on its (col, label) yields an empty graph. Ignore the click instead: the
+            # current view is returned unchanged rather than blanked.
+            if i is not None and 0 <= i < len(graph.nodes) and not graph.nodes[i].is_other:
+                node = graph.nodes[i]
                 new_focus = (node.col, node.label)
             figure, crumb_text = _rebuild(columns_enabled, metric, threshold, theme, new_focus)
             return figure, crumb_text, new_focus
