@@ -9,6 +9,12 @@ This is a NEW, parallel deliverable that reuses the converging data model of ``b
 ``source_dataset -> root_class -> Kingdom..Species / (unclassified) -> proposed_label`` as a
 drill-down Sankey with a JS double-click zoom bridge and the full Inria visual identity.
 
+Everything downstream of ``row_path`` is expressed as RIBBONS (a full column path plus a weight):
+focus re-roots them, threshold pooling TRUNCATES them at sub-threshold edges, and a single
+``_accumulate`` pass then derives node values and edge values from whatever ribbons survived. Flow
+therefore conserves at every node by construction, including where the DAG converges (one child
+reached from several parents) — the case that defeats popping edges out of a finished graph.
+
 Layering (dependency-isolation guard, Phase 9): the pure data core — ``row_path`` / ``build_graph``
 / ``breadcrumb`` / ``_read_rows`` — imports NOTHING from ``gradio`` / ``plotly`` and therefore runs
 in the frozen core env without the ``explorer`` group installed. The figure (``make_figure``) and
@@ -206,59 +212,60 @@ def _accumulate(
     return node_value, edge_value, order, roots
 
 
-def _reachable(edges: dict[tuple[ColumnKey, ColumnKey], float], roots: list[ColumnKey]) -> set[ColumnKey]:
-    """Nodes reachable from ``roots`` following ``edges`` (used to prune pooled-away subtrees)."""
-    adjacency: dict[ColumnKey, list[ColumnKey]] = defaultdict(list)
-    for src, tgt in edges:
-        adjacency[src].append(tgt)
-    seen = set(roots)
-    stack = list(roots)
-    while stack:
-        node = stack.pop()
-        for nxt in adjacency[node]:
-            if nxt not in seen:
-                seen.add(nxt)
-                stack.append(nxt)
-    return seen
-
-
-def _pool_below_threshold(
-    node_value: dict[ColumnKey, float],
-    edge_value: dict[tuple[ColumnKey, ColumnKey], float],
-    order: list[ColumnKey],
-    roots: list[ColumnKey],
+def _pool_ribbons(
+    ribbons: list[tuple[list[ColumnKey], float]],
     threshold: float,
-) -> tuple[dict, dict, list, dict]:
-    """Pool, within each parent, children whose incoming edge value < ``threshold`` into one gray
-    "+N other" node (``is_other``), then prune the now-unreachable pooled subtrees. Conserves flow.
-    """
-    children: dict[ColumnKey, list[ColumnKey]] = defaultdict(list)
-    for src, tgt in edge_value:
-        children[src].append(tgt)
+) -> tuple[list[tuple[list[ColumnKey], float]], dict[ColumnKey, ColumnKey]]:
+    """Pool small siblings by TRUNCATING RIBBONS, so conservation holds by construction.
 
-    new_edges = dict(edge_value)
-    new_values = dict(node_value)
+    Popping sub-threshold EDGES out of an already-accumulated graph is unsound on a converging DAG:
+    a child reachable from two parents keeps the node value contributed by BOTH while only the
+    surviving parent still feeds it, so ``incoming < value``. Instead this works on the ribbon set
+    itself — a ribbon crossing a sub-threshold edge is cut at that edge and re-pointed at a
+    synthetic "+N other" key, dropping its tail. ``_accumulate`` then re-derives values AND edges
+    from the surviving ribbons, so every node's value is exactly what flows into it.
+
+    Pooling is per-parent AND per-CHILD-COLUMN: a parent whose small children span two columns gets
+    one "+N other" in EACH of those columns (never one bucket parked in the left-most). Levels are
+    processed by ascending column index so a truncation at one depth feeds the flows of the next; a
+    ``row_path`` visits each column at most once, so a ribbon contributes at most one edge per level.
+
+    Returns the rewritten ribbons plus ``other_meta``: synthetic key -> ``(display_column, label)``,
+    exactly the shape ``_materialize`` consumes. Synthetic keys carry the ``_OTHER`` sentinel in
+    slot 0, so they never match a real column, are never re-pooled, and terminate the ribbon.
+    """
     other_meta: dict[ColumnKey, ColumnKey] = {}
-    for idx, parent in enumerate(list(children)):
-        small = [child for child in children[parent] if new_edges.get((parent, child), 0.0) < threshold]
+    current = ribbons
+    for col in ALL_COLUMNS:
+        flow: dict[tuple[ColumnKey, ColumnKey], float] = defaultdict(float)
+        for path, weight in current:
+            for src, tgt in pairwise(path):
+                if tgt[0] == col:
+                    flow[(src, tgt)] += weight
+        small = {edge for edge, value in flow.items() if value < threshold}  # STRICT: at-threshold is kept
         if not small:
             continue
-        total = 0.0
-        for child in small:
-            total += new_edges.pop((parent, child))
-        col = min((child[0] for child in small), key=lambda c: _COLUMN_INDEX.get(c, len(ALL_COLUMNS)))
-        other_key: ColumnKey = (_OTHER, f"{parent[0]}:{parent[1]}#{idx}")
-        new_edges[(parent, other_key)] = total
-        new_values[other_key] = total
-        other_meta[other_key] = (col, f"+{len(small)} other")
-        order.append(other_key)
 
-    kept = _reachable(new_edges, roots)
-    kept_values = {key: value for key, value in new_values.items() if key in kept}
-    kept_edges = {edge: value for edge, value in new_edges.items() if edge[0] in kept and edge[1] in kept}
-    kept_order = [key for key in order if key in kept]
-    kept_meta = {key: meta for key, meta in other_meta.items() if key in kept}
-    return kept_values, kept_edges, kept_order, kept_meta
+        pooled_children: dict[ColumnKey, list[ColumnKey]] = defaultdict(list)
+        for parent, child in small:
+            pooled_children[parent].append(child)
+        other_key_for: dict[ColumnKey, ColumnKey] = {}
+        for parent, kids in pooled_children.items():
+            # "\x00" joiner: no real column key or label can contain a NUL, so no collision.
+            key: ColumnKey = (_OTHER, f"{parent[0]}\x00{parent[1]}\x00{col}")
+            other_key_for[parent] = key
+            other_meta[key] = (col, f"+{len(kids)} other")
+
+        rebuilt: list[tuple[list[ColumnKey], float]] = []
+        for path, weight in current:
+            truncated = path
+            for i, (src, tgt) in enumerate(pairwise(path)):
+                if (src, tgt) in small:
+                    truncated = [*path[: i + 1], other_key_for[src]]
+                    break
+            rebuilt.append((truncated, weight))
+        current = rebuilt
+    return current, other_meta
 
 
 def _materialize(
@@ -298,9 +305,13 @@ def build_graph(
 
     ``size_metric="images"`` sizes links by additive per-class image counts from ``counts``;
     ``size_metric="taxa"`` sizes them by fractional 1/N distinct-taxa attribution (see
-    ``_ribbons_taxa``). ``columns_enabled`` collapses columns, ``min_threshold`` pools small
-    siblings into a gray "+N other" node, and ``focus_key`` restricts to a node and its descendants.
-    Flow conserves at every node under every combination.
+    ``_ribbons_taxa``). ``columns_enabled`` collapses columns, ``min_threshold`` TRUNCATES ribbons
+    at sub-threshold edges into a gray "+N other" node (see ``_pool_ribbons``), and ``focus_key``
+    restricts to a node and its descendants.
+
+    Focus, then pooling, then ONE ``_accumulate`` pass: node values and edge values are always
+    derived from the SAME surviving ribbon set, so flow conserves at every node under every
+    combination of the four knobs.
     """
     counts = counts or Counter()
     paths = [(row, path) for row in rows if (path := row_path(row, columns_enabled))]
@@ -309,42 +320,59 @@ def build_graph(
     if focus_key is not None:
         ribbons = _focus_ribbons(ribbons, focus_key)
 
-    node_value, edge_value, order, roots = _accumulate(ribbons)
     other_meta: dict[ColumnKey, ColumnKey] = {}
     if min_threshold and min_threshold > 0:
-        node_value, edge_value, order, other_meta = _pool_below_threshold(
-            node_value, edge_value, order, roots, float(min_threshold)
-        )
+        ribbons, other_meta = _pool_ribbons(ribbons, float(min_threshold))
+
+    node_value, edge_value, order, _roots = _accumulate(ribbons)
     return _materialize(node_value, edge_value, order, other_meta)
 
 
-def breadcrumb(graph_or_rows: Graph | list[dict], focus_key: ColumnKey | None) -> list[ColumnKey]:
+def breadcrumb(
+    graph_or_rows: Graph | list[dict],
+    focus_key: ColumnKey | None,
+    columns_enabled: object = None,
+) -> list[ColumnKey]:
     """Ancestor chain from the root column down to ``focus_key`` (inclusive) for the Back affordance.
 
-    Accepts either a built ``Graph`` (walks incoming edges up to a root) or the raw rows (finds the
-    first row whose path passes through ``focus_key``). Returns ``[]`` when ``focus_key`` is None.
+    Accepts either a built ``Graph`` (walks a real left-to-right path up to a root) or the raw rows
+    (finds the first row whose path passes through ``focus_key``). Returns ``[]`` when ``focus_key``
+    is None.
+
+    ``columns_enabled`` MUST mirror the CheckboxGroup used to build the view: the rows branch feeds
+    it to ``row_path`` so Zoom-out can never target an ancestor that the current view collapsed
+    away (which would re-root on a key no ribbon carries and blank the chart).
     """
     if focus_key is None:
         return []
     if isinstance(graph_or_rows, Graph):
-        parent: dict[ColumnKey, ColumnKey] = {}
+        # ALL in-edge parents per node (a converging DAG has many), not just the first seen.
+        parents: dict[ColumnKey, list[ColumnKey]] = defaultdict(list)
         for link in graph_or_rows.links:
             src = graph_or_rows.nodes[link.src]
             tgt = graph_or_rows.nodes[link.tgt]
-            parent.setdefault((tgt.col, tgt.label), (src.col, src.label))
+            parents[(tgt.col, tgt.label)].append((src.col, src.label))
         chain = [focus_key]
         cur = focus_key
         seen = {cur}
-        while cur in parent:
-            cur = parent[cur]
-            if cur in seen:
+        while True:
+            # A breadcrumb is a LEFT-TO-RIGHT path: only accept a parent strictly left of `cur`,
+            # take the left-most such candidate, label as the deterministic tiebreak.
+            cur_index = _COLUMN_INDEX.get(cur[0], len(ALL_COLUMNS))
+            candidates = [
+                key
+                for key in parents.get(cur, [])
+                if key not in seen and _COLUMN_INDEX.get(key[0], len(ALL_COLUMNS)) < cur_index
+            ]
+            if not candidates:
                 break
-            seen.add(cur)
+            cur = min(candidates, key=lambda key: (_COLUMN_INDEX.get(key[0], len(ALL_COLUMNS)), key[1]))
+            seen.add(cur)  # cycle guard (indices already decrease strictly, but keep it explicit)
             chain.append(cur)
         chain.reverse()
         return chain
     for row in graph_or_rows:
-        path = row_path(row)
+        path = row_path(row, columns_enabled)
         if focus_key in path:
             return path[: path.index(focus_key) + 1]
     return [focus_key]
