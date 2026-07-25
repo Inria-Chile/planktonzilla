@@ -414,6 +414,74 @@ def test_make_figure_returns_pinned_sankey():
     assert all((c or "").lower() != sa.ROUGE_RESERVED for c in sankeys[0].node.color)
 
 
+def test_make_figure_pins_x_per_column():
+    pytest.importorskip("plotly")
+    import plotly.graph_objects as go
+
+    graph = build_graph(ROWS, PER_SOURCE, size_metric="images")
+    sankey = next(t for t in sa.make_figure(graph).data if isinstance(t, go.Sankey))
+    xs = list(sankey.node.x)
+
+    # arrangement="fixed" is only meaningful if a column maps to exactly ONE x ...
+    per_column = defaultdict(set)
+    for node, x in zip(graph.nodes, xs, strict=True):
+        per_column[node.col].add(round(float(x), 9))
+    assert all(len(values) == 1 for values in per_column.values()), per_column
+
+    # ... and if those x's march LEFT TO RIGHT in the fixed column order (a constant-x layout
+    # would satisfy the 0.02..0.98 range check alone).
+    ordered = sorted(per_column, key=lambda col: ALL_COLUMNS.index(col))
+    x_by_column = [next(iter(per_column[col])) for col in ordered]
+    assert len(set(x_by_column)) == len(x_by_column)
+    assert x_by_column == sorted(x_by_column)
+    assert all(0.02 <= x <= 0.98 for x in x_by_column)
+
+
+def test_other_node_is_gray():
+    pytest.importorskip("plotly")
+    import plotly.graph_objects as go
+
+    rows = [
+        _row("whoi", "a", "living", Genus="a"),
+        _row("whoi", "b", "living", Genus="b"),
+        _row("whoi", "c", "living", Genus="c"),
+    ]
+    counts = Counter({("whoi", "a", "living"): 1, ("whoi", "b", "living"): 1, ("whoi", "c", "living"): 100})
+    graph = build_graph(rows, counts, size_metric="images", min_threshold=10)
+    sankey = next(t for t in sa.make_figure(graph).data if isinstance(t, go.Sankey))
+    colors = list(sankey.node.color)
+
+    other_idx = [i for i, n in enumerate(graph.nodes) if n.is_other]
+    assert other_idx
+    assert all(colors[i] == sa.DATA_OTHER_COLOR for i in other_idx)
+    # Rouge is the view's ONE signal — never a data encoding, in either notation.
+    assert all((c or "").lower() != sa.ROUGE_RESERVED for c in colors)
+    rouge_rgb = ",".join(str(int(sa.ROUGE_RESERVED[i : i + 2], 16)) for i in (1, 3, 5))
+    assert all(rouge_rgb not in (c or "") for c in sankey.link.color)
+
+
+def test_make_figure_theme_dark():
+    pytest.importorskip("plotly")
+
+    graph = build_graph(ROWS, PER_SOURCE, size_metric="images")
+    light = sa.make_figure(graph, theme="light")
+    dark = sa.make_figure(graph, theme="dark")
+    assert dark.layout.paper_bgcolor != light.layout.paper_bgcolor
+    assert dark.layout.paper_bgcolor == "#121517"
+    assert dark.layout.font.color == "#e9edf0"
+    assert light.layout.paper_bgcolor == "#ffffff"
+
+
+def test_color_ramp_is_inria():
+    # Pure (no gradio import): the 11 Tailwind-shaped stops the gr.themes.Color takes positionally.
+    ramp = sa._color_ramp(sa.ROUGE_RESERVED)
+    assert len(ramp) == 11
+    assert ramp[5] == "#c9191e"  # c500 is the charter Rouge itself, untinted and unshaded
+    assert all(isinstance(stop, str) and len(stop) == 7 and stop.startswith("#") for stop in ramp)
+    assert all(int(stop[1:], 16) >= 0 for stop in ramp)
+    assert ramp == sorted(ramp, key=lambda s: -sum(int(s[i : i + 2], 16) for i in (1, 3, 5)))
+
+
 def test_style_constants_present():
     # Assert on the module's constant strings directly — no gradio/plotly import needed.
     assert "plotly_click" in sa.BRIDGE_JS
@@ -421,6 +489,10 @@ def test_style_constants_present():
     assert "--rouge" in sa.INRIA_CSS
     assert "inria-motif" in sa.INRIA_CSS
     assert 'data-theme="dark"' in sa.INRIA_CSS and 'data-theme="light"' in sa.INRIA_CSS
+    assert ".dark" in sa.INRIA_CSS  # Gradio toggles a CLASS, not a :root[data-theme] attribute
+    for token in ("--sunken", "--ink-2", "--border-strong"):
+        assert sa.INRIA_CSS.count(token) >= 3  # :root + both dark blocks — a partial override is a bug
+    assert ".gradio-container" in sa.INRIA_CSS and "max-width:1200px" in sa.INRIA_CSS
     assert "#000091" in sa.HEADER_HTML  # RF State blue, outside the Inria 5-hue palette
     assert "#e1000f" in sa.HEADER_HTML  # RF State red
 
@@ -428,6 +500,14 @@ def test_style_constants_present():
 # --------------------------------------------------- gradio app (gradio-guarded)
 def _radio_labels(radio):
     return [choice[0] if isinstance(choice, list | tuple) else choice for choice in radio.choices]
+
+
+def _radio_by_label(demo, label):
+    import gradio as gr
+
+    found = [b for b in demo.blocks.values() if isinstance(b, gr.Radio) and getattr(b, "label", None) == label]
+    assert len(found) == 1, f"expected exactly one Radio labelled {label!r}, got {len(found)}"
+    return found[0]
 
 
 def test_build_app_constructs_blocks_taxa_only():
@@ -438,21 +518,17 @@ def test_build_app_constructs_blocks_taxa_only():
     assert isinstance(demo, gr.Blocks)
     elem_ids = {getattr(block, "elem_id", None) for block in demo.blocks.values()}
     assert "pz_sankey" in elem_ids  # the go.Sankey Plot the JS bridge hooks
-    assert "pz_click" in elem_ids  # the hidden gr.Number double-click sink
+    assert "pz_click" in elem_ids  # the CSS-hidden gr.Number double-click sink
 
-    radios = [block for block in demo.blocks.values() if isinstance(block, gr.Radio)]
-    assert len(radios) == 1
-    labels = _radio_labels(radios[0])
+    labels = _radio_labels(_radio_by_label(demo, "Size by"))
     assert "Images" not in labels  # no counts -> "Images" filtered out, not greyed
     assert "Taxa" in labels
+    assert _radio_labels(_radio_by_label(demo, "Theme")) == ["Light", "Dark"]
 
 
 def test_build_app_offers_images_when_counts():
     pytest.importorskip("gradio")
-    import gradio as gr
 
     demo = sa.build_app(rows=ROWS, counts=PER_SOURCE)
-    radios = [block for block in demo.blocks.values() if isinstance(block, gr.Radio)]
-    assert len(radios) == 1
-    labels = _radio_labels(radios[0])
+    labels = _radio_labels(_radio_by_label(demo, "Size by"))
     assert "Images" in labels and "Taxa" in labels
