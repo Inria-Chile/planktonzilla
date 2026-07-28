@@ -21,6 +21,7 @@ root = pyrootutils.setup_root(
 import csv
 import json
 from collections import Counter
+from datetime import datetime
 
 from planktonzilla.planktonzilla_dataset import sankey as sk
 
@@ -263,6 +264,92 @@ def test_the_shipped_template_carries_every_placeholder():
     text = sk.TEMPLATE_PATH.read_text(encoding="utf-8")
     for placeholder in sk.PLACEHOLDERS:
         assert placeholder in text, placeholder
+
+
+# --------------------------------------------------------------------------- dataset naming
+def test_assemble_prints_the_bare_dataset_name_and_the_full_repo_id():
+    html = sk.assemble("<title>__DATASET_NAME__</title><p>__DATASET_REPO__</p>", {}, "", "", "org/plankton-9K")
+    assert "<title>plankton-9K</title>" in html
+    assert "<p>org/plankton-9K</p>" in html
+
+
+def test_assemble_links_the_repo_id_to_the_dataset_on_the_hub():
+    html = sk.assemble('<a href="__DATASET_URL__">__DATASET_REPO__</a>', {}, "", "", "org/plankton-9K")
+    assert html == '<a href="https://huggingface.co/datasets/org/plankton-9K">org/plankton-9K</a>'
+
+
+def test_dataset_url_passes_an_absolute_url_through_untouched():
+    assert sk.dataset_url("https://example.org/data/plankton") == "https://example.org/data/plankton"
+    assert sk.dataset_url("org/plankton-9K") == "https://huggingface.co/datasets/org/plankton-9K"
+
+
+def test_assemble_accepts_a_dataset_name_with_no_org():
+    html = sk.assemble("__DATASET_NAME__|__DATASET_REPO__", {}, "", "", "plankton-9K")
+    assert html == "plankton-9K|plankton-9K"
+
+
+def test_assemble_escapes_the_dataset_so_it_cannot_inject_markup():
+    html = sk.assemble("<title>__DATASET_NAME__</title><p>__DATASET_REPO__</p>", {}, "", "", '<b onclick="x">')
+    assert "<b onclick=" not in html
+    assert html.count("&lt;b onclick=&quot;x&quot;&gt;") == 2
+
+
+def test_assemble_defaults_to_the_published_planktonzilla_dataset():
+    html = sk.assemble("__DATASET_REPO__", {}, "", "")
+    assert html == sk.DEFAULT_PLANKTONZILLA_DATASET_REPO_ID
+
+
+def test_a_dataset_name_inside_the_payload_is_never_treated_as_a_placeholder():
+    # The payload lands last, so data that happens to spell a placeholder stays literal.
+    html = sk.assemble("__PAYLOAD__ __DATASET_NAME__", {"d": "__DATASET_NAME__"}, "", "", "org/real")
+    assert html == '{"d":"__DATASET_NAME__"} real'
+
+
+# --------------------------------------------------------------------------- provenance
+def test_provenance_stamps_the_build_time_in_utc_to_the_second():
+    stamp = sk.provenance("org/plankton-9K", offline=True)["generated_at"]
+    parsed = datetime.fromisoformat(stamp)
+    assert stamp.endswith("Z") and "T" in stamp
+    assert parsed.tzinfo is not None and parsed.utcoffset().total_seconds() == 0
+    assert parsed.microsecond == 0
+
+
+def test_provenance_never_reaches_the_hub_when_the_version_is_pinned_or_offline(monkeypatch):
+    def explode(repo_id):
+        raise AssertionError("the Hub must not be consulted here")
+
+    monkeypatch.setattr(sk, "fetch_dataset_metadata", explode)
+    assert sk.provenance("org/plankton-9K", version="v1.2")["dataset_version"] == "v1.2"
+    assert sk.provenance("org/plankton-9K", offline=True)["dataset_version"] == ""
+
+
+def test_provenance_carries_the_hub_version_revision_and_modified_date(monkeypatch):
+    monkeypatch.setattr(
+        sk,
+        "fetch_dataset_metadata",
+        lambda repo_id: {"version": "b204961", "revision": "b204961" + "f" * 33, "modified": "2026-07-27"},
+    )
+    meta = sk.provenance("org/plankton-9K")
+    assert meta["dataset_version"] == "b204961"
+    assert meta["dataset_revision"].startswith("b204961")
+    assert meta["dataset_modified"] == "2026-07-27"
+
+
+def test_provenance_degrades_to_blanks_when_the_hub_is_unreachable(monkeypatch):
+    monkeypatch.setattr(sk, "fetch_dataset_metadata", lambda repo_id: {})
+    meta = sk.provenance("org/plankton-9K")
+    assert meta["dataset_version"] == meta["dataset_revision"] == meta["dataset_modified"] == ""
+    assert meta["generated_at"]  # the build stamp is local, so it survives a dead Hub
+
+
+def _args(**kw):
+    return sk._build_parser().parse_args([f"--{k.replace('_', '-')}={v}" for k, v in kw.items()])
+
+
+def test_resolve_dataset_name_prefers_the_explicit_name_then_the_scanned_repo():
+    assert sk.resolve_dataset_name(_args(dataset_name="org/explicit", dataset_repo="org/scanned")) == "org/explicit"
+    assert sk.resolve_dataset_name(_args(dataset_repo="org/scanned")) == "org/scanned"
+    assert sk.resolve_dataset_name(_args()) == sk.DEFAULT_PLANKTONZILLA_DATASET_REPO_ID
 
 
 # --------------------------------------------------------------------------- real CSV

@@ -118,7 +118,7 @@ planktonzilla/                          # repo root
 │   │   ├── update_planktonzilla.py          # incremental dataset update (Hydra entry)
 │   │   ├── save_planktonzilla_for_clip.py   # export to WebDataset for CLIP
 │   │   ├── sankey.py                        # pz_sankey — live label-space Sankey (self-contained HTML)
-│   │   ├── generate_sankey.py               # taxonomy Sankey diagram
+│   │   ├── templates/sankey_flow.html       # the page pz_sankey fills in
 │   │   ├── constants.py                     # shared constants
 │   │   ├── planktonzilla_taxonomy.csv       # taxonomy mapping table
 │   │   ╰── utils/                            # extract_cox.py, extract_taxon_ids.py, KNOWN_ISSUES.md
@@ -129,7 +129,7 @@ planktonzilla/                          # repo root
 
 ### Prerequisites
 
-- Python 3.11-3.14
+- Python 3.11-3.13
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) for dependency management
 - CUDA-compatible GPU (recommended for training)
 

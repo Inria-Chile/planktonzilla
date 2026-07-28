@@ -3,19 +3,28 @@
 
 Network-free dependency-isolation guard (Phase 9, FND-03 + FND-04).
 
-The heavy viz stack (``gradio``, ``plotly``) must never leak into the frozen
-training/dataset core. This guard enforces the boundary two ways, both pure
+The heavy viz stack (``gradio``, ``plotly``, ``kaleido``) must never leak into the
+frozen training/dataset core. This guard enforces the boundary two ways, both pure
 file/AST inspection (no ``import gradio`` / ``import plotly`` needed to RUN — so
-it passes in the core env where neither is installed):
+it passes in the core env where none of them is installed):
 
-* Manifest assertion: ``gradio`` and ``plotly`` (exact PEP 508 names) are absent
-  from ``[project.dependencies]`` and the ``dev`` group, and present ONLY in the
-  ``explorer`` dependency group. Exact-name matching is used so the legitimate
-  transitive ``gradio-client`` does NOT false-positive.
-* AST module-scope scan: no ``*.py`` under ``planktonzilla/`` imports ``gradio`` /
-  ``plotly`` at module scope. Function/method-body imports (the lazy-import seam,
-  e.g. ``planktonzilla/explorer/taxonomy_explorer.py``) are COMPLIANT.
-  ``import gradio_client`` is a different top-level module and never triggers.
+* Manifest assertion: the forbidden names (exact PEP 508) appear in NO dependency
+  group — not ``[project.dependencies]``, not ``dev``, not any group added later.
+  Exact-name matching is used so the legitimate transitive ``gradio-client`` does
+  NOT false-positive.
+* AST module-scope scan: no ``*.py`` under ``planktonzilla/`` imports one of them
+  at module scope. Function/method-body imports (the lazy-import seam) stay
+  COMPLIANT, so re-introducing an opt-in viz surface does not require rewriting
+  this guard. ``import gradio_client`` is a different top-level module and never
+  triggers.
+
+The manifest rule used to be "present ONLY in the ``explorer`` group". That group
+existed for the Gradio/Plotly explorer views; those were retired along with
+``sankey_app.py`` and ``generate_sankey.py`` — ``pz_sankey`` renders its own SVG
+and embeds its assets, so the project now has no viz dependency at all. Absence
+everywhere is therefore the stronger and currently-true invariant. Should an
+opt-in viz group come back, the fix is to allow it here explicitly rather than to
+weaken the scan.
 
 A negative leak-injection test proves the helpers actually FIRE on a simulated
 leak (so the guard would go red on a real one).
@@ -31,10 +40,9 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 _PYPROJECT = _REPO_ROOT / "pyproject.toml"
 
 # The viz distributions / top-level modules forbidden in core.
-# kaleido (Phase 11, SANKEY-04 PNG-export backend) joins the boundary: it is added to
-# the ISOLATED explorer group ONLY and is imported function-locally in
-# planktonzilla/explorer/sankey.py (D4), so BOTH the manifest assertion (absent from core
-# + dev, present only in explorer) AND the AST module-scope scan now cover it.
+# kaleido (Phase 11, SANKEY-04) was the PNG-export backend of the retired explorer views;
+# it stays on the list so re-adding any of the three to a dependency group is a deliberate,
+# visible act rather than a silent one.
 FORBIDDEN_NAMES = frozenset({"gradio", "plotly", "kaleido"})
 
 # Core packages whose import-time graph must stay viz-free.
@@ -109,22 +117,21 @@ def _load_manifest() -> dict:
 
 
 def test_manifest_isolates_viz_deps() -> None:
-    """gradio/plotly live ONLY in the explorer group, never in core or dev."""
+    """gradio/plotly/kaleido appear in NO dependency group — core, dev, or any other."""
     manifest = _load_manifest()
     core = _pkg_names(manifest["project"]["dependencies"])
-    groups = manifest["dependency-groups"]
-    dev = _pkg_names(groups.get("dev", []))
-    explorer = _pkg_names(groups.get("explorer", []))
+    groups = manifest.get("dependency-groups", {})
 
     for name in FORBIDDEN_NAMES:
         assert name not in core, f"{name} leaked into [project.dependencies]"
-        assert name not in dev, f"{name} leaked into the dev group"
-        assert name in explorer, f"{name} missing from the explorer group"
+        # Every group is checked by name, so a viz dep cannot be smuggled in by
+        # inventing a new group the guard has never heard of.
+        for group, reqs in groups.items():
+            assert name not in _pkg_names(reqs), f"{name} leaked into the {group} group"
 
     # The substring trap: gradio-client is a legitimate transitive and is NOT
     # the same distribution as gradio. It must not be confused with it.
     assert "gradio-client" not in core
-    assert "gradio-client" not in explorer  # only direct gradio is pinned here
 
 
 def test_no_module_scope_viz_imports_in_core() -> None:

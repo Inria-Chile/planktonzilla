@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>planktonzilla · label-space Sankey</title>
+<title>__DATASET_NAME__ · label-space Sankey</title>
 <style>
 __FONTS__
 :root{
@@ -54,25 +54,38 @@ header.head::after{content:"";position:absolute;top:0;right:0;width:300px;height
   color:var(--bleu-mat);opacity:.10;
   -webkit-mask-image:radial-gradient(240px 190px at 100% 0,#000,transparent 72%);
   mask-image:radial-gradient(240px 190px at 100% 0,#000,transparent 72%)}
-.lockup{display:inline-flex;align-items:center;gap:11px;margin:0 0 14px;background:#fff;border:1px solid #e3e3e3;
-  border-radius:var(--r-md);padding:9px 14px;position:relative;z-index:1;box-shadow:0 1px 2px rgba(0,0,0,.05)}
-.lockup img{height:42px;width:auto;display:block}
+/* logo left, wordmark + title right — no plaque around the co-signature */
+.masthead{display:flex;align-items:center;gap:clamp(16px,2.4vw,30px);margin:0 0 14px;flex-wrap:wrap;position:relative;z-index:1}
+.masthead .titles{flex:1 1 340px;min-width:0}
+.masthead .eyebrow{margin:0 0 5px}
+.masthead h1{margin:0}
+.masthead h1 .ds{white-space:nowrap}  /* never break the dataset name across lines */
+.lockup{display:inline-flex;align-items:center;gap:11px;flex:0 0 auto}
+.lockup img{height:clamp(54px,6.4vw,74px);width:auto;display:block}
 .lockup .rf{display:flex;flex-direction:column;gap:1px;line-height:1.06}
-.lockup .flag{display:flex;height:13px;width:20px;border-radius:1px;overflow:hidden}
+.lockup .flag{display:flex;height:19px;width:29px;border-radius:1px;overflow:hidden}
 .lockup .flag i{flex:1}.lockup .b{background:#000091}.lockup .w{background:#fff;box-shadow:0 0 0 .5px #ececec inset}.lockup .r{background:#e1000f}
-.lockup .rfw{font-weight:700;font-size:8.5px;letter-spacing:.01em;color:#161616;margin-top:3px}
-.lockup .dev{font-family:var(--serif);font-style:italic;font-size:7.5px;color:#3a3a3a}
-.lockup .rule{width:1px;height:32px;background:#dcdcdc}
-.lockup .inria{font-family:var(--serif);font-weight:700;font-style:italic;font-size:23px;color:#c9191e;letter-spacing:-.01em}
+.lockup .rfw{font-weight:700;font-size:12px;letter-spacing:.01em;color:#161616;margin-top:4px}
+.lockup .dev{font-family:var(--serif);font-style:italic;font-size:10.5px;color:#3a3a3a}
+.lockup .rule{width:1px;height:46px;background:#dcdcdc}
+.lockup .inria{font-family:var(--serif);font-weight:700;font-style:italic;font-size:33px;color:#c9191e;letter-spacing:-.01em}
+/* the SVG carries its own white plate; the text facsimile needs one to stay legible on dark */
+#logo-fb{background:#fff;padding:9px 14px}
 .eyebrow{margin:0 0 6px;font-size:11.5px;letter-spacing:.10em;text-transform:uppercase;color:var(--ink-muted);font-weight:700;position:relative;z-index:1}
+/* the repo id links to the dataset on the Hub — underlined on the hairline, Rouge on hover */
+.eyebrow a{color:inherit;text-decoration:none;border-bottom:1px solid var(--border-strong);
+  transition:color .12s,border-color .12s}
+.eyebrow a:hover{color:var(--accent);border-bottom-color:var(--accent)}
+.eyebrow a::after{content:"↗";margin-left:4px;font-size:10px;border:0;vertical-align:.05em}
 h1{margin:0 0 10px;font-size:clamp(24px,3.4vw,36px);line-height:1.12;font-weight:700;letter-spacing:-.015em;position:relative;z-index:1}
 h1 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--violet)}
-.lede{margin:0;max-width:74ch;color:var(--ink-2);font-size:15px;position:relative;z-index:1}
+.lede{margin:0;max-width:92%;color:var(--ink-2);font-size:15px;position:relative;z-index:1}
 .lede b{color:var(--ink);font-weight:700}
 .stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;position:relative;z-index:1}
 .tile{background:var(--sunken);border:1px solid var(--hair);border-radius:var(--r-md);padding:9px 14px;min-width:118px}
 .tile .k{display:block;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-muted);font-weight:700}
 .tile .v{display:block;font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.25}
+.tile .v.sm{font-size:15px;line-height:1.6}   /* provenance tiles: text, not a headline figure */
 
 /* ───────────────────────── controls box ───────────────────────── */
 .controls{margin-top:18px;background:var(--panel);border:1px solid var(--hair);border-radius:var(--r-lg);
@@ -128,8 +141,11 @@ input[type=range]{width:100%;min-width:240px;accent-color:var(--rouge);margin:0}
   padding:14px 20px 0}
 .board-head h2{margin:0;font-size:14px;font-weight:700;letter-spacing:-.01em}
 .board-head .sub{font-size:12px;color:var(--ink-muted)}
-.scroller{overflow:auto;padding:6px 20px 20px;max-height:min(1500px,86vh)}
-svg.sankey{display:block;font-family:var(--sans)}
+/* The board takes the height the diagram asks for, so the page scrolls and the box never
+   does. A viewport narrower than the diagram's intrinsic width scales the SVG down through
+   its viewBox instead of growing a horizontal scrollbar. */
+.scroller{overflow:visible;padding:6px 20px 20px}
+svg.sankey{display:block;max-width:100%;height:auto;font-family:var(--sans)}
 svg.sankey .rib{transition:opacity .13s ease}
 svg.sankey.dimmed .rib{opacity:.05}
 svg.sankey.dimmed .rib.hi{opacity:.82}
@@ -159,33 +175,36 @@ footer.note code{font-family:var(--mono);font-size:11.5px;background:var(--sunke
   border-radius:4px;padding:1px 5px;color:var(--ink-2)}
 footer.note .rule{height:1px;background:var(--hair);margin:14px 0}
 .corner{width:26px;height:4px;background:var(--rouge);margin-left:auto;border-radius:2px}
+/* signature: centred on the page, Rouge corner stacked under the line rather than beside it */
+footer.note .sig{display:flex;flex-direction:column;align-items:center;gap:10px;margin:0;max-width:none;text-align:center}
+footer.note .sig .corner{margin-left:0}
 @media (max-width:760px){ .ctl-row{gap:14px} .field.grow{flex-basis:100%} }
 </style>
 </head>
 <body>
 <div class="wrap">
-
   <header class="head">
-    <div class="lockup" title="Official Inria + République Française co-signature">
-      <img id="logo" alt="République Française · Inria" src="data:image/svg+xml;base64,__LOGO_B64__">
-      <span id="logo-fb" hidden style="display:none;align-items:center;gap:11px">
-        <span class="rf">
-          <span class="flag"><i class="b"></i><i class="w"></i><i class="r"></i></span>
-          <span class="rfw">RÉPUBLIQUE<br>FRANÇAISE</span>
-          <span class="dev">Liberté · Égalité · Fraternité</span>
+    <div class="masthead">
+      <div class="lockup" title="Official Inria + République Française co-signature">
+        <img id="logo" alt="République Française · Inria" src="data:image/svg+xml;base64,__LOGO_B64__">
+        <span id="logo-fb" hidden style="display:none;align-items:center;gap:11px">
+          <span class="rf">
+            <span class="flag"><i class="b"></i><i class="w"></i><i class="r"></i></span>
+            <span class="rfw">RÉPUBLIQUE<br>FRANÇAISE</span>
+            <span class="dev">Liberté · Égalité · Fraternité</span>
+          </span>
+          <span class="rule"></span>
+          <span class="inria">Inria</span>
         </span>
-        <span class="rule"></span>
-        <span class="inria">Inria</span>
-      </span>
+      </div>
+      <div class="titles">
+        <p class="eyebrow"><a href="__DATASET_URL__" target="_blank" rel="noopener noreferrer">__DATASET_REPO__</a></p>
+        <h1><span class="ds">__DATASET_NAME__</span> dataset taxonomy explorer</h1>
+      </div>
     </div>
-    <p class="eyebrow">Project OcéanIA · planktonzilla</p>
-    <h1>The label space, <em>end to end</em></h1>
     <p class="lede">
-      Every source label in the corpus, followed from the <b>dataset that produced it</b> through
-      <b>root class</b> and down the Linnaean ranks. Living material fans out
-      <b>Domain → Species</b>; <b>detritus</b>, <b>artefact</b> and <b>inert</b> have no lineage, so their
-      <em>proposed_label</em> sits at the Domain column and the ribbon ends there. Ribbons also end at the
-      deepest rank the taxonomy actually fills — nothing drains into a fictitious “blank” node.
+      Part of <a href="https://oceania.inria.cl" target="_blank" rel="noopener noreferrer">Inria Challenge OcéanIA 🌊</a> - <a href="https://www.inria.cl" target="_blank" rel="noopener noreferrer">Inria Chile Research Center</a> and collaborators.<br/>
+      <b>GitHub:</b> <a href="https://github.com/Inria-Chile/planktonzilla" target="_blank" rel="noopener noreferrer">https://github.com/Inria-Chile/planktonzilla</a> - <b>Hugging Face:</b> <a href="https://huggingface.co/collections/project-oceania/planktonzilla" target="_blank" rel="noopener noreferrer">https://huggingface.co/collections/project-oceania/planktonzilla</a>
     </p>
     <div class="stats" id="stats"></div>
   </header>
@@ -225,9 +244,10 @@ footer.note .rule{height:1px;background:var(--hair);margin:14px 0}
       <div class="field">
         <span class="lab">Actions</span>
         <div class="btn-row">
-          <button class="btn" id="reset" type="button">Reset view</button>
+          <button class="btn" id="reset" type="button">Reset</button>
           <button class="btn" id="theme" type="button" aria-live="polite">Dark</button>
-          <button class="btn primary" id="export" type="button">Download SVG</button>
+          <button class="btn" id="export" type="button">💾 SVG</button>
+          <button class="btn" id="exportPng" type="button">💾 PNG</button>
         </div>
       </div>
     </div>
@@ -247,29 +267,26 @@ footer.note .rule{height:1px;background:var(--hair);margin:14px 0}
 
   <footer class="note">
     <h3>How to read this</h3>
-    <p>
+    <p style="max-width: 92%;">
       A ribbon’s <b>thickness is the same everywhere it goes</b> — one global scale — so the flow you see
       leaving a column is the flow that genuinely continues. Where a column’s stack is shorter than the one
       before it, that difference is material whose lineage <em>stops</em> at that rank (the taxonomy fills
       <code>Species</code> for roughly a fifth of living labels), not material that was dropped.
     </p>
-    <p>
+    <pstyle="max-width: 92%;">
       <b>Merging.</b> The threshold is applied column by column, left to right: any class carrying less than
       the threshold is pooled into that column’s grey <b>Other</b> node and its ribbon ends there. Pooling one
       column changes what is left for the next, so the sweep re-measures at every column. Nothing is discarded —
       the pooled total is exactly the sum of what went into it.
     </p>
-    <p>
+    <p style="max-width: 92%;">
       <b>Converging flow.</b> A node is identified by its column and its value, so the same taxon reached from
       several datasets is one node, and the ribbons visibly merge into it. Node and link values are re-derived
       from surviving ribbons on every change, so the diagram conserves flow at each node by construction.
     </p>
     <div class="rule"></div>
-    <p style="display:flex;align-items:center;gap:12px">
-      <span><b>Identity.</b> Inria charte graphique — Palette 2024, Inria Sans / Inria Serif. Series hues run
-      Bleu mat → Bleu canard → Violet → Framboise with sanctioned tints; Rouge Inria <code>#C9191E</code> is
-      held back as the interface signal (selection, focus, search). Grey <code>#AAB3BF</code> is reserved for
-      pooled “Other”.</span>
+    <p class="sig">
+      <span>Made with ❤️ by Inria</span>
       <span class="corner" aria-hidden="true"></span>
     </p>
   </footer>
@@ -560,7 +577,7 @@ function render(){
 
   const out = [];
   out.push(`<svg class="sankey" id="svg" width="${width}" height="${totalH}" viewBox="0 0 ${width} ${totalH}" `
-         + `xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sankey of the planktonzilla label space">`);
+         + `xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sankey of the __DATASET_NAME__ label space">`);
   out.push(`<rect width="${width}" height="${totalH}" fill="${page}"/>`);
 
   /* column headers */
@@ -799,16 +816,32 @@ function paintBoard(g){
     + `${full(ends)} (${(100*ends/g.total).toFixed(1)}%) reach ${COLS[g.vis[g.V-1]].label}`;
 }
 
+/* `2026-07-28T14:22:07Z` → `2026-07-28 14:22`; the tile label already says UTC. */
+function stampText(iso){ return iso ? iso.replace('T', ' ').replace(/:\d\dZ?$/, '') : '—'; }
+
+/* Full provenance for the version tile's tooltip: the commit the version names, and when
+   that commit was written. Both are absent on an offline or pinned build. */
+function versionTip(){
+  const bits = [];
+  if (META.dataset_revision) bits.push(`revision ${META.dataset_revision}`);
+  if (META.dataset_modified) bits.push(`last modified ${META.dataset_modified}`);
+  return bits.join(' · ');
+}
+
 function paintStats(){
   const box = document.getElementById('stats');
   const tiles = [
-    ['Images', META.samples_available ? full(META.total_images) : '—'],
-    ['Label mappings', full(META.total_mappings)],
-    ['Source datasets', String(META.n_datasets)],
-    ['Distinct paths', full(META.n_ribbons)],
-    ['Columns', `${NC}`],
+    {k:'Images', v: META.samples_available ? full(META.total_images) : '—'},
+    {k:'Label mappings', v: full(META.total_mappings)},
+    {k:'Source datasets', v: String(META.n_datasets)},
+    {k:'Distinct paths', v: full(META.n_ribbons)},
+    {k:'Columns', v: `${NC}`},
+    {k:'Dataset version', v: META.dataset_version || '—', sm:true, title: versionTip()},
+    {k:'Generated (UTC)', v: stampText(META.generated_at), sm:true, title: META.generated_at || ''},
   ];
-  box.innerHTML = tiles.map(([k,v]) => `<div class="tile"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join('');
+  box.innerHTML = tiles.map(t =>
+    `<div class="tile"${t.title ? ` title="${esc(t.title)}"` : ''}>`
+    + `<span class="k">${esc(t.k)}</span><span class="v${t.sm ? ' sm' : ''}">${esc(t.v)}</span></div>`).join('');
 }
 
 function paintThr(){
@@ -894,15 +927,89 @@ document.getElementById('reset').addEventListener('click', () => {
   document.getElementById('thr').value = state.slider;
   paintThr(); render(); paintCrumbs();
 });
-document.getElementById('export').addEventListener('click', () => {
-  const svg = document.getElementById('svg');
-  if (!svg) return;
-  const blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n' + svg.outerHTML], { type:'image/svg+xml' });
+/* ═════════════════════ export ═════════════════════
+   The typeface reaches the diagram through the page's stylesheet, so a bare copy of the
+   live <svg> loses it the moment it leaves the page. Both exports therefore carry the
+   embedded Inria faces and the resolved family inline — which is also what makes the
+   rasterised PNG match what is on screen. */
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function svgForExport(){
+  const live = document.getElementById('svg');
+  if (!live) return null;
+  const clone = live.cloneNode(true);
+  clone.classList.remove('dimmed');                       // export the whole diagram, not a hover state
+  // The hit areas are click targets kept invisible by a page CSS rule, so outside the page
+  // they would paint as solid black rectangles over every node. A static file has no use
+  // for them anyway.
+  clone.querySelector('g.hits')?.remove();
+  const faces = (document.querySelector('style').textContent.match(/@font-face\s*\{[^}]*\}/g) || []).join('');
+  const style = document.createElementNS(SVG_NS, 'style');
+  style.textContent = `${faces}svg{font-family:${getComputedStyle(live).fontFamily}}`;
+  clone.insertBefore(style, clone.firstChild);
+  return {
+    markup: '<?xml version="1.0" encoding="UTF-8"?>\n' + clone.outerHTML,
+    width: +live.getAttribute('width'),
+    height: +live.getAttribute('height'),
+  };
+}
+
+function saveBlob(blob, name){
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'planktonzilla-sankey.svg';
+  a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+/* UTF-8 → base64, chunked: the labels carry accents and btoa alone only takes latin-1. */
+function b64utf8(str){
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+document.getElementById('export').addEventListener('click', () => {
+  const out = svgForExport();
+  if (out) saveBlob(new Blob([out.markup], { type:'image/svg+xml' }), '__DATASET_NAME__-sankey.svg');
+});
+
+/* PNG: rasterise that same markup through an <img>. The source has to be a data: URI — a
+   blob: URL inherits this page's origin, which is opaque when the file is opened from disk,
+   and an opaque-origin image taints the canvas so toBlob() would throw. */
+const PNG_SCALE = 2, MAX_SIDE = 16384;   // 2× for a crisp raster, capped at the canvas limit
+document.getElementById('exportPng').addEventListener('click', async ev => {
+  const out = svgForExport();
+  if (!out) return;
+  const btn = ev.currentTarget, label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Rendering…';
+  let failed = false;
+  try {
+    const img = new Image();
+    await new Promise((ok, no) => {
+      img.onload = ok;
+      img.onerror = () => no(new Error('the diagram could not be rasterised'));
+      img.src = 'data:image/svg+xml;base64,' + b64utf8(out.markup);
+    });
+    const k = Math.min(PNG_SCALE, MAX_SIDE / out.width, MAX_SIDE / out.height);
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(out.width * k);
+    cv.height = Math.round(out.height * k);
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = cssVar('--page') || '#ffffff';        // the SVG paints its own ground, but PNG alpha is unforgiving
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
+    const blob = await new Promise(ok => cv.toBlob(ok, 'image/png'));
+    if (!blob) throw new Error('the canvas could not be encoded');
+    saveBlob(blob, '__DATASET_NAME__-sankey.png');
+  } catch (err) {
+    failed = true;
+    console.error(err);
+  }
+  btn.disabled = false;
+  btn.textContent = failed ? 'PNG failed' : label;
+  if (failed) setTimeout(() => { btn.textContent = label; }, 2500);
 });
 addEventListener('resize', () => scheduleRender());
 matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => { if (state.theme === 'auto') render(); });

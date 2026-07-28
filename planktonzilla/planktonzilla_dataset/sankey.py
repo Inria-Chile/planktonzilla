@@ -28,6 +28,10 @@ Française lockup are embedded as data-URIs at build time. Everything the page o
 column visibility, colour dimension, the merge-threshold slider, focus, search — recomputes
 in the browser, so the file stays live long after it is generated.
 
+The page names the dataset it describes and links it back to the Hub, and stamps its own
+provenance — the dataset version (resolved from the Hub, or pinned) and the UTC build time —
+so a downloaded copy still says which data it was built from and when.
+
 Examples
 --------
     # Defaults: bundled taxonomy CSV + ./samples.json if present → planktonzilla_sankey_flow.html
@@ -42,28 +46,28 @@ Examples
     # Scan the published dataset for fresh per-class counts and cache them
     pz_sankey --dataset-repo project-oceania/planktonzilla-17M --save-samples samples.json
 
+    # Name a different dataset on the page, with its version pinned instead of read from the Hub
+    pz_sankey --dataset-name org/plankton-9K --dataset-version v1.2
+
 The same CLI is available via ``python -m planktonzilla.planktonzilla_dataset.sankey``.
 """
 
 from __future__ import annotations
 
 import argparse
+import base64
 import csv
 import json
 import logging
+import re
 import sys
+import time
 import webbrowser
 from collections import Counter
+from datetime import UTC, datetime
+from html import escape  # ``html`` itself is a local name throughout this module
 from pathlib import Path
 
-from planktonzilla.planktonzilla_dataset.build_sankey import (
-    DEFAULT_LOGO_URL,
-    fetch_fonts,
-    fetch_logo,
-    load_sample_counts,
-    save_sample_counts,
-    scan_dataset,
-)
 from planktonzilla.planktonzilla_dataset.constants import (
     DEFAULT_PLANKTONZILLA_DATASET_REPO_ID,
     DEFAULT_TAXONOMY_CSV_FILENAME,
@@ -74,7 +78,8 @@ from planktonzilla.utils.logger import get_pylogger
 logger = get_pylogger(__name__)
 
 TEMPLATE_PATH = Path(__file__).parent / "templates" / "sankey_flow.html"
-PLACEHOLDERS = ("__FONTS__", "__LOGO_B64__", "__PAYLOAD__")
+PLACEHOLDERS = ("__FONTS__", "__LOGO_B64__", "__PAYLOAD__", "__DATASET_NAME__", "__DATASET_REPO__", "__DATASET_URL__")
+HF_DATASET_BASE_URL = "https://huggingface.co/datasets/"
 
 # The ten Sankey columns, left to right. ``key`` is the machine name used in the payload,
 # ``label`` is what the page prints in the column header and the visibility chips.
@@ -185,7 +190,7 @@ def build_ribbons(rows: list[dict], counts: Counter) -> dict:
     point where a ribbon stops.
 
     ``counts`` is keyed ``(dataset, proposed_label_lower, root_class)`` — exactly what
-    ``build_sankey.load_sample_counts`` and ``scan_dataset`` produce.
+    ``load_sample_counts`` and ``scan_dataset`` produce.
     """
     lineage = build_lineage_index(rows)
 
@@ -254,13 +259,240 @@ def build_ribbons(rows: list[dict], counts: Counter) -> dict:
     }
 
 
-def assemble(template: str, payload: dict, fonts_css: str, logo_b64: str) -> str:
-    """Substitute the three template placeholders and return the finished page."""
+# --------------------------------------------------------------- dataset scan
+def scan_dataset(repo_id: str, workers: int, retries: int = 4) -> Counter:
+    """Aggregate per-(dataset, proposed_label_lower, root_class) image counts from the HF dataset.
+
+    Driven by the HuggingFace ``datasets`` library in streaming mode with column projection, so only
+    the three metadata columns are read — the image bytes are never downloaded. Each shard is handled
+    as its own task: ``split_dataset_by_node(rank=i, world_size=num_shards)`` assigns exactly one
+    whole, disjoint shard per rank, and the shards are read concurrently through a thread pool. The
+    shard count is discovered from the dataset itself, so a new version with a different number of
+    shards still works, and ``--workers`` keeps its "how many shards are read at once" meaning.
+
+    ``datasets``/``huggingface_hub`` already auto-retry transient HTTP failures internally; the outer
+    ``retries`` loop here only re-runs a shard whose stream still fails after those retries.
+    """
+    import concurrent.futures as cf
+
+    from datasets import load_dataset
+    from datasets.distributed import split_dataset_by_node
+
+    base = (
+        load_dataset(repo_id, split="train", streaming=True)
+        .select_columns(["dataset", "proposed_label", "root_class"])
+        .with_format("arrow")
+    )
+    n_shards = base.num_shards
+    logger.info("Scanning %d dataset shards of %s for per-class image counts…", n_shards, repo_id)
+
+    def read_shard(rank: int) -> Counter:
+        last: Exception | None = None
+        for k in range(retries):
+            try:
+                node = split_dataset_by_node(base, rank=rank, world_size=n_shards)
+                part: Counter = Counter()
+                for tbl in node.iter(batch_size=50_000):
+                    ds = [(x or "").strip() for x in tbl.column("dataset").to_pylist()]
+                    pl = [(x or "").strip().lower() for x in tbl.column("proposed_label").to_pylist()]
+                    rc = [(x or "").strip() for x in tbl.column("root_class").to_pylist()]
+                    part.update(zip(ds, pl, rc))
+                return part
+            except Exception as exc:
+                last = exc
+                time.sleep(2 * (k + 1))
+        raise RuntimeError(f"failed to read shard {rank} of {repo_id!r}: {last}")
+
+    agg: Counter = Counter()
+    done = 0
+    with cf.ThreadPoolExecutor(max_workers=max(1, min(workers, n_shards))) as ex:
+        for part in ex.map(read_shard, range(n_shards)):
+            agg.update(part)
+            done += 1
+            if done % 20 == 0 or done == n_shards:
+                logger.info("  %d/%d shards scanned (%d rows so far)", done, n_shards, sum(agg.values()))
+    logger.info("Scan done: %d images across %d (dataset, label, root_class) classes.", sum(agg.values()), len(agg))
+    return agg
+
+
+def load_sample_counts(path: Path) -> Counter:
+    """Load a precomputed per-(dataset, proposed_label, root_class) counts JSON (as written by a prior scan)."""
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    counts: Counter = Counter()
+    for row in doc.get("counts", []):
+        key = (row["dataset"].strip(), row["proposed_label"].strip().lower(), row["root_class"].strip())
+        counts[key] += int(row["n"])
+    logger.info("Loaded %d classes (%d images) from %s.", len(counts), sum(counts.values()), path)
+    return counts
+
+
+def save_sample_counts(counts: Counter, path: Path) -> None:
+    """Write a per-(dataset, proposed_label, root_class) counts JSON — the inverse of load_sample_counts."""
+    rows = sorted(counts.items(), key=lambda item: (item[0][0], item[0][2], item[0][1]))
+    doc = {"counts": [{"dataset": ds, "proposed_label": pl, "root_class": rc, "n": int(n)} for (ds, pl, rc), n in rows]}
+    with path.open("w", encoding="utf-8") as fh:
+        json.dump(doc, fh, ensure_ascii=False)
+    logger.info("Saved %d classes (%d images) to %s.", len(counts), sum(counts.values()), path)
+
+
+# ----------------------------------------------------------------- asset fetch
+DEFAULT_LOGO_URL = "https://inria.fr/themes/custom/inria/logo/logo.svg"
+GOOGLE_FONTS_CSS = (
+    "https://fonts.googleapis.com/css2?family=Inria+Sans:ital,wght@0,300;0,400;0,700;1,400"
+    "&family=Inria+Serif:ital,wght@0,400;0,700;1,400&display=swap"
+)
+# (family, style, weight) faces embedded from the latin subset
+WANTED_FACES = {
+    ("Inria Sans", "normal", "300"),
+    ("Inria Sans", "normal", "400"),
+    ("Inria Sans", "normal", "700"),
+    ("Inria Sans", "italic", "400"),
+    ("Inria Serif", "normal", "400"),
+    ("Inria Serif", "normal", "700"),
+    ("Inria Serif", "italic", "400"),
+}
+_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
+
+
+def fetch_fonts() -> str:
+    """Return an ``@font-face`` block (base64 data-URIs) for the Inria typefaces, or '' on failure."""
+    import requests
+
+    try:
+        css = requests.get(GOOGLE_FONTS_CSS, headers={"User-Agent": _UA}, timeout=30).text
+        faces, seen = [], set()
+        for block in re.findall(r"@font-face\s*\{(.*?)\}", css, re.DOTALL):
+            fam = re.search(r"font-family:\s*'([^']+)'", block)
+            sty = re.search(r"font-style:\s*(\w+)", block)
+            wgt = re.search(r"font-weight:\s*(\d+)", block)
+            rng = re.search(r"unicode-range:\s*([^;]+)", block)
+            src = re.search(r"url\((https://[^)]+\.woff2)\)", block)
+            if not (fam and sty and wgt and src):
+                continue
+            key = (fam.group(1), sty.group(1), wgt.group(1))
+            is_latin = bool(rng) and "U+0000-00FF" in rng.group(1)
+            if key in WANTED_FACES and is_latin and key not in seen:
+                data = requests.get(src.group(1), headers={"User-Agent": _UA}, timeout=30).content
+                b64 = base64.b64encode(data).decode()
+                faces.append(
+                    f"@font-face{{font-family:'{key[0]}';font-style:{key[1]};font-weight:{key[2]};"
+                    f"font-display:swap;src:url(data:font/woff2;base64,{b64}) format('woff2');}}"
+                )
+                seen.add(key)
+        logger.info("Embedded %d Inria font faces.", len(faces))
+        return "\n".join(faces)
+    except Exception as exc:
+        logger.warning("Font fetch failed (%s); the viz will use its Georgia/Tahoma fallback stack.", exc)
+        return ""
+
+
+def fetch_logo(url: str) -> str:
+    """Return the base64 of the logo SVG at ``url``, or '' on failure."""
+    import requests
+
+    try:
+        svg = requests.get(url, headers={"User-Agent": _UA}, timeout=30).content
+        logger.info("Embedded logo from %s (%d KB).", url, len(svg) // 1024)
+        return base64.b64encode(svg).decode()
+    except Exception as exc:
+        logger.warning("Logo fetch failed (%s); the header lockup image will be blank.", exc)
+        return ""
+
+
+def fetch_dataset_metadata(repo_id: str) -> dict:
+    """Return ``{'version', 'revision', 'modified'}`` for a Hub dataset, or ``{}`` if unreachable.
+
+    A Hub dataset is versioned by commit, so the version reported here is the first of: an
+    explicit ``version:`` in the dataset card, a tag pointing at the current commit, and
+    otherwise the short commit sha. ``revision`` is always the full sha and ``modified`` the
+    date the dataset was last written, both of which the page shows as the tile's tooltip.
+    """
+    try:
+        from huggingface_hub import HfApi
+
+        api = HfApi()
+        info = api.dataset_info(repo_id)
+    except Exception as exc:
+        logger.warning("Hub metadata for %s is unavailable (%s); the page will omit the dataset version.", repo_id, exc)
+        return {}
+
+    sha = info.sha or ""
+    card = info.card_data.to_dict() if info.card_data else {}
+    version = str(card.get("version") or "").strip()
+    if not version:
+        try:  # a release tag on the published commit is a better version than its sha
+            refs = api.list_repo_refs(repo_id, repo_type="dataset")
+            version = next((t.name for t in refs.tags if t.target_commit == sha), "")
+        except Exception as exc:
+            logger.debug("Could not list refs for %s (%s); falling back to the commit sha.", repo_id, exc)
+    meta = {
+        "version": version or sha[:7],
+        "revision": sha,
+        "modified": info.last_modified.date().isoformat() if info.last_modified else "",
+    }
+    logger.info("Hub metadata for %s: version %s (revision %s, last modified %s).", repo_id, *meta.values())
+    return meta
+
+
+# ------------------------------------------------------------------- provenance
+def dataset_url(dataset: str) -> str:
+    """Return the browsable URL for ``dataset``.
+
+    A bare repo id (``org/name``) resolves to its page on the HuggingFace Hub; anything already
+    absolute is passed through untouched, so a dataset published elsewhere can still be linked.
+    """
+    if dataset.startswith(("http://", "https://")):
+        return dataset
+    return f"{HF_DATASET_BASE_URL}{dataset}"
+
+
+def dataset_name(dataset: str) -> str:
+    """Return the bare dataset name — the last path segment of a repo id or URL, org stripped."""
+    return dataset.rstrip("/").rsplit("/", 1)[-1]
+
+
+def provenance(dataset_repo: str, *, version: str = "", offline: bool = False) -> dict:
+    """Return the build-provenance block the page shows in its ``Dataset version`` / ``Generated`` tiles.
+
+    ``generated_at`` is stamped locally in UTC to the second, so it is always present. The dataset
+    version is resolved from the Hub (see ``fetch_dataset_metadata``) *unless* it is pinned with an
+    explicit ``version`` or the build is ``offline`` — in both of those cases the Hub is never
+    consulted, and the revision/last-modified detail is simply absent rather than guessed.
+    """
+    stamp = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    meta = {"generated_at": stamp, "dataset_version": version, "dataset_revision": "", "dataset_modified": ""}
+    if version or offline:
+        return meta
+    hub = fetch_dataset_metadata(dataset_repo)
+    meta["dataset_version"] = hub.get("version", "")
+    meta["dataset_revision"] = hub.get("revision", "")
+    meta["dataset_modified"] = hub.get("modified", "")
+    return meta
+
+
+# ------------------------------------------------------------------- assemble
+def assemble(
+    template: str,
+    payload: dict,
+    fonts_css: str,
+    logo_b64: str,
+    dataset: str = DEFAULT_PLANKTONZILLA_DATASET_REPO_ID,
+) -> str:
+    """Substitute the template placeholders and return the finished page.
+
+    The dataset id reaches the page as three tokens — its full repo id, its bare name (titles and
+    download filenames) and its URL — each HTML-escaped, so a repo id that spells markup is printed
+    rather than injected. ``__PAYLOAD__`` is substituted LAST so that data which happens to spell a
+    placeholder is never mistaken for one.
+    """
     blob = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     # Defang any literal </script> in the data so it cannot break out of the JSON island.
     blob = blob.replace("</", "<\\/")
     html = template.replace("__FONTS__", fonts_css)
     html = html.replace("__LOGO_B64__", logo_b64)
+    html = html.replace("__DATASET_URL__", escape(dataset_url(dataset)))
+    html = html.replace("__DATASET_REPO__", escape(dataset))
+    html = html.replace("__DATASET_NAME__", escape(dataset_name(dataset)))
     return html.replace("__PAYLOAD__", blob)
 
 
@@ -287,10 +519,30 @@ def _build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--save-samples", type=Path, default=None, help="write the scanned counts to this JSON for reuse")
     ap.add_argument("--workers", type=int, default=16, help="how many dataset shards are read concurrently in a scan")
     ap.add_argument("--no-samples", action="store_true", help="skip image counts entirely; weight ribbons by label mappings")
+    ap.add_argument(
+        "--dataset-name",
+        default=None,
+        help="dataset the page is about — repo id or URL (default: --dataset-repo, else the published dataset)",
+    )
+    ap.add_argument(
+        "--dataset-version",
+        default="",
+        help="pin the version shown on the page instead of resolving it from the Hub",
+    )
     ap.add_argument("--logo-url", default=DEFAULT_LOGO_URL, help="official Inria lockup SVG to embed")
-    ap.add_argument("--no-assets", action="store_true", help="do not fetch fonts/logo (offline; uses the fallback stack)")
+    ap.add_argument(
+        "--no-assets",
+        action="store_true",
+        help="build offline: no fonts/logo fetch (fallback stack) and no Hub lookup for the dataset version",
+    )
     ap.add_argument("--open", dest="open_browser", action="store_true", help="open the result in a browser when done")
     return ap
+
+
+def resolve_dataset_name(args: argparse.Namespace) -> str:
+    """Decide which dataset the page names: an explicit ``--dataset-name`` wins, then the scanned
+    ``--dataset-repo``, and otherwise the published planktonzilla dataset."""
+    return args.dataset_name or args.dataset_repo or DEFAULT_PLANKTONZILLA_DATASET_REPO_ID
 
 
 def resolve_counts(args: argparse.Namespace) -> Counter:
@@ -333,14 +585,16 @@ def main(argv: list[str] | None = None) -> int:
         else:
             logger.warning("--save-samples ignored: there are no counts to save.")
 
+    dataset = resolve_dataset_name(args)
     payload = build_ribbons(rows, counts)
+    payload["meta"].update(provenance(dataset, version=args.dataset_version, offline=args.no_assets))
     meta = payload["meta"]
 
     fonts_css = "" if args.no_assets else fetch_fonts()
     logo_b64 = "" if args.no_assets else fetch_logo(args.logo_url)
 
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
-    html = assemble(template, payload, fonts_css, logo_b64)
+    html = assemble(template, payload, fonts_css, logo_b64, dataset)
     leftover = [p for p in PLACEHOLDERS if p in html]
     if leftover:
         logger.error("Template placeholders were not all substituted: %s", leftover)
