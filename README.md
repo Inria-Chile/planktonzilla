@@ -7,7 +7,8 @@ Multimodal deep learning framework, datasets, and models for plankton identifica
 
 **Part of [Inria Challenge OcéanIA](https://oceania.inria.cl/).**
 
-[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white&style=for-the-badge)](https://www.python.org)
+[![Python](https://img.shields.io/badge/Python-3.11--3.13-3776AB?logo=python&logoColor=white&style=for-the-badge)](https://www.python.org)
+[![CI](https://img.shields.io/github/actions/workflow/status/Inria-Chile/planktonzilla/ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI)](https://github.com/Inria-Chile/planktonzilla/actions/workflows/ci.yml)
 ![Hugging Face Models](https://img.shields.io/badge/Hugging_Face-Models-FF9D00?logo=huggingface&logoColor=white&link=https://huggingface.co/project-oceania/models&style=for-the-badge)
 ![Hugging Face Datasets](https://img.shields.io/badge/Hugging_Face-Datasets-FF9D00?logo=huggingface&logoColor=white&link=https://huggingface.co/project-oceania/models&style=for-the-badge)
 [![Hydra](https://img.shields.io/badge/Hydra-1.3-89b8cd?logo=hexo&logoColor=white&style=for-the-badge&label=Hydra)](https://hydra.cc/)
@@ -23,8 +24,7 @@ Multimodal deep learning framework, datasets, and models for plankton identifica
 
 ## Online Resources
 
-- `planktonzilla-17M` dataset: 17 million plankton images from 9 different datasets, all standardized and preprocessed for deep learning applications: [`project-oceania/planktonzilla-17M`](https://huggingface.co/datasets/project-oceania/planktonzilla-17m).
-- Planktonzilla taxonomy mapping explorer: [`project-oceania/planktonzilla-explorer`](https://huggingface.co/spaces/project-oceania/planktonzilla-explorer)
+- `planktonzilla-17M` dataset: 17.4 million plankton images drawn from 15 source datasets, all standardized and preprocessed for deep learning applications: [`project-oceania/planktonzilla-17M`](https://huggingface.co/datasets/project-oceania/planktonzilla-17m). To explore how those source labels map onto one taxonomy, build the Sankey locally with [`pz_sankey`](#explore-the-label-space-sankey).
 - Models trained on [`project-oceania/planktonzilla-17M`](https://huggingface.co/datasets/project-oceania/planktonzilla-17m):
   - [`project-oceania/CLIP-ViT-B-16.openai-pt.planktonzilla-pt`](https://huggingface.co/project-oceania/CLIP-ViT-B-16.openai-pt.planktonzilla-pt)
   - [`project-oceania/CLIP-ViT-B-16.bioclip-pt.planktonzilla-pt`](https://huggingface.co/project-oceania/CLIP-ViT-B-16.bioclip-pt.planktonzilla-pt)
@@ -80,7 +80,7 @@ print(model.config.id2label[predicted_idx])
 
 ## Project Structure
 
-```
+```text
 planktonzilla/                          # repo root
 ├── configs/                            # Hydra configuration tree (bundled into wheel)
 │   ├── train.yaml                      # root config for pz_train
@@ -124,6 +124,10 @@ planktonzilla/                          # repo root
 │   │   ╰── utils/                            # extract_cox.py, extract_taxon_ids.py, KNOWN_ISSUES.md
 │   ╰── utils/                           # hydra.py, resolvers.py, logger.py, rich_utils.py
 ├── scripts/                            # train.sh, train_clip.sh, push_dataset.sh (SLURM launchers)
+├── notebooks/                          # exploratory analysis (metrics paper, sampling map)
+├── docs/                               # banner + figures used by this README
+├── .devcontainer/                      # CUDA 12.5 + cuDNN dev container
+├── .github/workflows/ci.yml            # CI: lint · test · dependency-isolation guard
 ╰── tests/                              # pytest suite (mocks all network)
 ```
 
@@ -165,13 +169,34 @@ uv run pz_import_dataset dataset_import=flowcamnet
 uv run pz_import_dataset dataset_import=lensless
 ```
 
+Every importable source has a config in `configs/dataset_import/` — pass its filename (without
+the `.yaml`) as `dataset_import=`.
+
+### Build the composite dataset
+
+`planktonzilla-17M` is assembled from the imported sources by mapping each source's own labels
+onto the shared taxonomy in `planktonzilla/planktonzilla_dataset/planktonzilla_taxonomy.csv`.
+Both entry points are Hydra-configured (`configs/generate_planktonzilla.yaml`,
+`configs/update_planktonzilla.yaml`):
+
+```bash
+# Full build of the master composite dataset
+uv run pz_generate_planktonzilla
+
+# Incremental update of an existing build
+uv run pz_update_planktonzilla
+```
+
+> The published dataset and the models trained on it are frozen artifacts. These commands are
+> reproduction tooling — changing what they emit means republishing, not patching.
+
 ### Explore the label space (Sankey)
 
 `pz_sankey` writes one self-contained HTML file — no server, no CDN, no build step — that
 follows every source label from the dataset that produced it, through `root_class`, and down
 the Linnaean ranks:
 
-```
+```text
 Source dataset → root_class → Domain → Kingdom → Phylum → Class → Order → Family → Genus → Species
 ```
 
@@ -191,7 +216,17 @@ uv run pz_sankey --no-samples
 
 # Rescan the published dataset for fresh per-class counts and cache them
 uv run pz_sankey --dataset-repo project-oceania/planktonzilla-17M --save-samples samples.json
+
+# Name a different dataset on the page, with its version pinned instead of read from the Hub
+uv run pz_sankey --dataset-name org/plankton-9K --dataset-version v1.2
+
+# Fully offline: no font/logo fetch and no Hub lookup
+uv run pz_sankey --no-assets
 ```
+
+The page names the dataset it describes, links it back to the Hub, and stamps its own
+provenance — dataset version, revision and the UTC build time — so a downloaded copy still says
+which data it came from and when.
 
 Everything in the page recomputes in the browser: show or hide any column, pick the dimension
 that colours the ribbons, drag the **merge threshold** slider to pool small classes into a grey
@@ -266,22 +301,55 @@ flowchart TB
   TESTS["tests/<br/>smoke runs"]:::code
   CONSUMER(["AutoModelForImageClassification<br/>.from_pretrained"]):::consumer
 
+  SCRIPTS --> CLI
   CLI --> CFG
   CFG -.->|configures| DATA_IMPORT
   CFG -.->|configures| TRAIN_LOOP
   CFG -.->|selects| MODEL
   CFG -.->|selects + params| LOSS
+  DATA_IMPORT --> HF_DATA
+  HF_DATA --> DATA
+  DATA --> TRAIN_LOOP
+  MODEL --> TRAIN_LOOP
+  LOSS --> TRAIN_LOOP
+  TRAIN_LOOP --> OUTPUTS
+  TRAIN_LOOP -.->|metrics| TRACK
+  TRAIN_LOOP --> HF_MODEL
+  HF_MODEL --> CONSUMER
+  TESTS -.->|smoke| TRAIN_LOOP
+
+  classDef entry fill:#27348b,stroke:#1b2461,color:#fff
+  classDef cfg fill:#e8eaf3,stroke:#27348b,color:#1b2461
+  classDef code fill:#f4f5f7,stroke:#8a8f98,color:#2b2f36
+  classDef ext fill:#fff3e0,stroke:#c9191e,color:#7a1013
+  classDef consumer fill:#ffffff,stroke:#2b2f36,color:#2b2f36,stroke-dasharray:4 3
 ```
 
-- **ISIISNET**: In-Situ Ichthyoplankton Imaging System Network
-- **FlowCamNet**: FlowCam plankton dataset
-- **Lensless**: Lensless plankton microscopy dataset
-- **UVP6Net**: Underwater Vision Profiler 6 dataset
-- **WHOI-Plankton**: Woods Hole Oceanographic Institution plankton dataset
-- **ZooLake**: Lake Greifensee (Switzerland) zooplankton dataset
-- **ZooScanNet**: ZooScan plankton dataset
-- **JEDI-Oceans**: JEDI oceanic plankton dataset
-- **CIFAR-10**: Generic image classification benchmark (sanity-check / smoke-test runs)
+### Source datasets
+
+Fifteen public plankton-imaging sources are assembled into `planktonzilla-17M`. Each has an
+importer config in `configs/dataset_import/`:
+
+| Source | Description |
+| --- | --- |
+| **Global UVP5** | Underwater Vision Profiler 5, global deployment (largest contributor) |
+| **WHOI-Plankton** | Woods Hole Oceanographic Institution IFCB imagery |
+| **JEDI-Oceans** | JEDI oceanic plankton (CPICS) |
+| **ZooScanNet** | ZooScan scanned-sample plankton |
+| **ZooCamNet** | ZooCam in-situ imaging |
+| **UVP6Net** | Underwater Vision Profiler 6 |
+| **ISIISNET** | In-Situ Ichthyoplankton Imaging System Network |
+| **FlowCamNet** | FlowCam imaging flow cytometry |
+| **PlanktoScope** | PlanktoScope open-hardware microscopy |
+| **MedPlanktonSet** | Mediterranean plankton set |
+| **SYKE IFCB 2022** | Finnish Environment Institute, Imaging FlowCytobot |
+| **PlanktonSet 1.0** | NOAA/Kaggle PlanktonSet |
+| **SYKE ZooScan 2024** | Finnish Environment Institute, ZooScan |
+| **ZooLake** | Lake Greifensee (Switzerland) zooplankton |
+| **Lensless** | Lensless plankton microscopy (lab culture) |
+
+For training, `configs/dataset/` selects either the composite `planktonzilla` dataset or a single
+source; **CIFAR-10** is also configured there as a generic sanity-check/smoke-test target.
 
 ### Loss functions for imbalanced learning
 
@@ -317,6 +385,9 @@ uv run pz_train tracking.use_trackio=true
 # Run all tests
 uv run pytest
 
+# What CI runs — skips the slow HF Trainer / Hub integration matrices
+uv run pytest tests/ --ignore=tests/test_train.py --ignore=tests/test_datasets.py
+
 # Run with coverage
 uv run pytest --cov=planktonzilla
 
@@ -324,15 +395,27 @@ uv run pytest --cov=planktonzilla
 uv run pytest tests/test_datasets.py
 ```
 
+All tests mock the network: no run reaches NCBI, Wikidata, WHOI, EcoTaxa or the Hugging Face Hub.
+
 #### Code Quality
 
 ```bash
-# Lint code
-uv run ruff check
-
-# Format code
-uv run ruff format
+# Lint and format — the paths CI checks
+uv run ruff check planktonzilla/ tests/
+uv run ruff format planktonzilla/ tests/
 ```
+
+Pass the paths explicitly: `notebooks/` is inside ruff's `include` (so notebooks *can* be linted
+on demand) but CI checks only `planktonzilla/` and `tests/`, and the notebooks are not currently
+clean.
+
+#### Dependency isolation
+
+`tests/test_dependency_isolation.py` asserts that heavy visualization packages (`gradio`,
+`plotly`, `kaleido`) appear in **no** dependency group and at **no** module scope under
+`planktonzilla/`. `pz_sankey` renders its own SVG and embeds its own assets, so the training and
+dataset core stays free of a viz stack. Function-local imports remain compliant if an opt-in
+surface is ever reintroduced.
 
 #### Adding New Datasets
 
@@ -346,7 +429,6 @@ uv run ruff format
 2. Add configuration file in `configs/custom_loss/your_loss.yaml`  
 3. Loss functions must handle `ImageClassifierOutputWithNoAttention` input format
 4. Test with: `uv run pz_train custom_loss=your_loss`
-
 
 <div align="center">
   <strong>Built with ❤️ by <a href="https://inria.cl/">Inria</a>.</strong>
