@@ -101,17 +101,17 @@ planktonzilla/                          # repo root
 │   ├── paths/                          # path configs (PROJECT_ROOT etc.)
 │   ├── peft/                           # LoRA / PEFT adapter configs
 │   ├── tracking/                       # experiment tracking (W&B, MLflow, trackio)
-│   └── training_arguments/             # HF TrainingArguments configs
+│   ╰── training_arguments/             # HF TrainingArguments configs
 ├── planktonzilla/                      # main package
 │   ├── train.py                        # pz_train entry point (HF Trainer pipeline)
 │   ├── dataset.py                      # DatasetWrapper: load/split/transform
 │   ├── loss.py                         # imbalance-aware loss functions
 │   ├── clip_model.py                   # ClipClassifier (open_clip encoder + head)
 │   ├── dataset_import/                 # pz_import_dataset entry point + DatasetImporter subclasses
-│   │   └── public_data/                # bundled source-dataset metadata
+│   │   ╰── public_data/                # bundled source-dataset metadata
 │   ├── clip_train/                     # SLURM contrastive CLIP pretraining (main.py, train.py)
 │   ├── open_clip_ext/                  # forward-compat seam around open_clip factory/transform
-│   │   └── model_configs/              # open_clip model JSON configs
+│   │   ╰── model_configs/              # open_clip model JSON configs
 │   ├── planktonzilla_dataset/          # builds the master composite dataset from external sources
 │   │   ├── generate_planktonzilla.py        # main dataset build (Hydra entry)
 │   │   ├── gen_planktonzilla_only_plankton.py
@@ -120,10 +120,10 @@ planktonzilla/                          # repo root
 │   │   ├── generate_sankey.py               # taxonomy Sankey diagram
 │   │   ├── constants.py                     # shared constants
 │   │   ├── planktonzilla_taxonomy.csv       # taxonomy mapping table
-│   │   └── utils/                            # extract_cox.py, extract_taxon_ids.py, KNOWN_ISSUES.md
-│   └── utils/                           # hydra.py, resolvers.py, logger.py, rich_utils.py
+│   │   ╰── utils/                            # extract_cox.py, extract_taxon_ids.py, KNOWN_ISSUES.md
+│   ╰── utils/                           # hydra.py, resolvers.py, logger.py, rich_utils.py
 ├── scripts/                            # train.sh, train_clip.sh, push_dataset.sh (SLURM launchers)
-└── tests/                              # pytest suite (mocks all network)
+╰── tests/                              # pytest suite (mocks all network)
 ```
 
 ### Prerequisites
