@@ -12,11 +12,13 @@ dependencies = [
     "hydra-core>=1.3.2",
     "hydra-colorlog>=1.2.0",
     "hydra-submitit-launcher>=1.2.0",
-    "evaluate>=0.4.6",
+    "omegaconf>=2.3.0",
     "datasets>=4.4.0",
+    "pyarrow",
     "transformers[sentencepiece]>=5.3.0",
     "wandb>=0.22.2",
     "tqdm>=4.67.1",
+    "torch>=2.8.0",
     "torchvision>=0.23.0",
     "open-clip-torch>=3.3.0,<4.0.0",
     "pyrootutils>=1.0.4",
@@ -35,6 +37,7 @@ dependencies = [
     "webdataset>=0.2.5,<0.2.9",
     "pandas",
     "fsspec",
+    "aiohttp",
     "polars>=1.41.2",
     "requests>=2.34.2",
     "joblib>=1.5.3",
@@ -42,7 +45,6 @@ dependencies = [
     "orjson>=3.11.9",
     "numpy>=2.4.6",
     "pillow>=12.2.0",
-    "seaborn>=0.13.2",
 ]
 
 [project.urls]
@@ -56,6 +58,9 @@ pz_train = 'planktonzilla.train:main'
 pz_generate_planktonzilla = 'planktonzilla.planktonzilla_dataset.generate_planktonzilla:main'
 pz_update_planktonzilla = 'planktonzilla.planktonzilla_dataset.update_planktonzilla:main'
 pz_generate_sankey = 'planktonzilla.planktonzilla_dataset.generate_sankey:main'
+pz_build_sankey = 'planktonzilla.planktonzilla_dataset.build_sankey:main'
+pz_sankey_app = 'planktonzilla.planktonzilla_dataset.sankey_app:main'
+pz_sankey = 'planktonzilla.planktonzilla_dataset.sankey:main'
 
 [dependency-groups]
 dev = [
@@ -66,6 +71,7 @@ dev = [
     "ipykernel",
     "matplotlib>=3.11.0",
     "cartopy>=0.25.0",
+    "seaborn>=0.13.2",
 ]
 explorer = [
     "gradio>=6.0,<7",
@@ -82,9 +88,11 @@ packages = ["planktonzilla"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "configs" = "configs"
+"planktonzilla/planktonzilla_dataset/templates/sankey_template.html" = "planktonzilla/planktonzilla_dataset/templates/sankey_template.html"
 
 [tool.ruff]
 line-length = 128
+include = ["planktonzilla/**/*.py", "tests/**/*.py", "notebooks/**/*.ipynb", "notebooks/**/*.py"]
 lint.select = [
     "F",    # Pyflakes
     "E",    # Pycodestyle
@@ -101,9 +109,6 @@ lint.ignore = ["E402", "N806"]
 # generate_sankey.py embeds a self-contained HTML/CSS/JS page as a raw-string template;
 # its long style/script lines are not Python and cannot carry a line-level noqa.
 lint.per-file-ignores = { "planktonzilla/planktonzilla_dataset/generate_sankey.py" = ["E501"] }
-exclude = [
-    "notebooks/", # do not check notebooks
-]
 
 [tool.pytest.ini_options]
 # --doctest-modules removed: no doctests in planktonzilla/; testpaths=["tests"] alone is the gate. (INFRA-01, CONCERNS #13)

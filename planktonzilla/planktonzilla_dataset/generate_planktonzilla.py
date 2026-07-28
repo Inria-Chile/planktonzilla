@@ -596,9 +596,9 @@ def main(cfg: DictConfig) -> None:
         has_content = imagefolder_dir.exists() and bool(os.listdir(imagefolder_dir))
         if has_content:
             num_items = len(os.listdir(imagefolder_dir))
-            logger.info(f"└─ Using existing imagefolder with {num_items} categories in {imagefolder_dir}.")
+            logger.info(f"╰─ Using existing imagefolder with {num_items} categories in {imagefolder_dir}.")
         else:
-            logger.info("└─ Building imagefolder from the raw dataset.")
+            logger.info("╰─ Building imagefolder from the raw dataset.")
             dataset_importer.import_dataset()
 
         # Resolve the files for each split (accepts the val/validation alias).
@@ -619,10 +619,10 @@ def main(cfg: DictConfig) -> None:
         if not data_files:
             data_files = {"train": str(dataset_importer.imagefolder_dir / "*/*[!._]*")}
 
-        logger.info("└─ Loading dataset with the imagefolder loader.")
+        logger.info("╰─ Loading dataset with the imagefolder loader.")
         dataset = load_dataset("imagefolder", data_files=data_files)
 
-        logger.info("└─ Assigning taxonomy, IDs and metadata...")
+        logger.info("╰─ Assigning taxonomy, IDs and metadata...")
         dataset = ds_cfg["redefiner"].redefine(
             hf_dataset=dataset,
             dataset_name=dataset_name,

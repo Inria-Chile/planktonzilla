@@ -101,29 +101,30 @@ planktonzilla/                          # repo root
 │   ├── paths/                          # path configs (PROJECT_ROOT etc.)
 │   ├── peft/                           # LoRA / PEFT adapter configs
 │   ├── tracking/                       # experiment tracking (W&B, MLflow, trackio)
-│   └── training_arguments/             # HF TrainingArguments configs
+│   ╰── training_arguments/             # HF TrainingArguments configs
 ├── planktonzilla/                      # main package
 │   ├── train.py                        # pz_train entry point (HF Trainer pipeline)
 │   ├── dataset.py                      # DatasetWrapper: load/split/transform
 │   ├── loss.py                         # imbalance-aware loss functions
 │   ├── clip_model.py                   # ClipClassifier (open_clip encoder + head)
 │   ├── dataset_import/                 # pz_import_dataset entry point + DatasetImporter subclasses
-│   │   └── public_data/                # bundled source-dataset metadata
+│   │   ╰── public_data/                # bundled source-dataset metadata
 │   ├── clip_train/                     # SLURM contrastive CLIP pretraining (main.py, train.py)
 │   ├── open_clip_ext/                  # forward-compat seam around open_clip factory/transform
-│   │   └── model_configs/              # open_clip model JSON configs
+│   │   ╰── model_configs/              # open_clip model JSON configs
 │   ├── planktonzilla_dataset/          # builds the master composite dataset from external sources
 │   │   ├── generate_planktonzilla.py        # main dataset build (Hydra entry)
 │   │   ├── gen_planktonzilla_only_plankton.py
 │   │   ├── update_planktonzilla.py          # incremental dataset update (Hydra entry)
 │   │   ├── save_planktonzilla_for_clip.py   # export to WebDataset for CLIP
+│   │   ├── sankey.py                        # pz_sankey — live label-space Sankey (self-contained HTML)
 │   │   ├── generate_sankey.py               # taxonomy Sankey diagram
 │   │   ├── constants.py                     # shared constants
 │   │   ├── planktonzilla_taxonomy.csv       # taxonomy mapping table
-│   │   └── utils/                            # extract_cox.py, extract_taxon_ids.py, KNOWN_ISSUES.md
-│   └── utils/                           # hydra.py, resolvers.py, logger.py, rich_utils.py
+│   │   ╰── utils/                            # extract_cox.py, extract_taxon_ids.py, KNOWN_ISSUES.md
+│   ╰── utils/                           # hydra.py, resolvers.py, logger.py, rich_utils.py
 ├── scripts/                            # train.sh, train_clip.sh, push_dataset.sh (SLURM launchers)
-└── tests/                              # pytest suite (mocks all network)
+╰── tests/                              # pytest suite (mocks all network)
 ```
 
 ### Prerequisites
@@ -163,6 +164,39 @@ uv run pz_import_dataset dataset_import=isiisnet
 uv run pz_import_dataset dataset_import=flowcamnet
 uv run pz_import_dataset dataset_import=lensless
 ```
+
+### Explore the label space (Sankey)
+
+`pz_sankey` writes one self-contained HTML file — no server, no CDN, no build step — that
+follows every source label from the dataset that produced it, through `root_class`, and down
+the Linnaean ranks:
+
+```
+Source dataset → root_class → Domain → Kingdom → Phylum → Class → Order → Family → Genus → Species
+```
+
+Rows whose `root_class` is not `living` have no lineage, so their `proposed_label` sits at the
+**Domain** column and the ribbon ends there. Living ribbons also stop at the deepest rank the
+taxonomy actually fills, so nothing drains into a fictitious "blank" node.
+
+```bash
+# Defaults: bundled taxonomy CSV + ./samples.json if present
+uv run pz_sankey
+
+# Explicit counts and output, opened when done
+uv run pz_sankey --samples-json samples.json --out flow.html --open
+
+# No image counts: ribbons are weighted by label mappings instead
+uv run pz_sankey --no-samples
+
+# Rescan the published dataset for fresh per-class counts and cache them
+uv run pz_sankey --dataset-repo project-oceania/planktonzilla-17M --save-samples samples.json
+```
+
+Everything in the page recomputes in the browser: show or hide any column, pick the dimension
+that colours the ribbons, drag the **merge threshold** slider to pool small classes into a grey
+*Other* node per column, click any node to focus on that branch, and search for a taxon. Flow
+is conserved at every node on every change.
 
 ### Train a model
 

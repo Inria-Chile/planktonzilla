@@ -1,0 +1,734 @@
+<title>planktonzilla-17M · Taxonomic Sankey</title>
+<style>
+__FONTS__
+  :root {
+    /* Inria Palette 2024 — the five brand hexes are immutable in both themes */
+    --rouge:#c9191e; --framboise:#a60f79; --violet:#534b9a; --bleu-mat:#27348b; --bleu-canard:#1067a3;
+    /* root_class branch hues — fixed order (Bleu mat → Bleu canard → Violet → Framboise); Rouge is RESERVED as the UI signal */
+    --c-living:#27348b; --c-detritus:#1067a3; --c-artefact:#534b9a; --c-inert:#a60f79; --c-root:#8a939c;
+    /* neutrals — light; blanc tournant = white */
+    --bg:#ffffff; --panel:#ffffff; --panel-2:#f4f6f8; --ink:#171a1d; --ink-2:#3f474e;
+    --ink-3:#5c666f; --hair:#e0e5ea; --hair-2:#b9c1ca;
+    --accent:#c9191e; --focus:#1067a3;   /* accent = Rouge (text-safe on white); focus ring = Bleu canard */
+    --shadow:0 1px 2px rgba(23,26,29,.06),0 4px 16px rgba(23,26,29,.06);
+    --font-serif:"Inria Serif",Georgia,serif;
+    --font-sans:"Inria Sans",Tahoma,ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+    --font-mono:ui-monospace,"SF Mono","Cascadia Code","Roboto Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#121517; --panel:#1a1e21; --panel-2:#22272b; --ink:#e9edf0; --ink-2:#b7c0c8;
+      --ink-3:#8a939c; --hair:#2a3034; --hair-2:#414b52;
+      /* lighter tints of the four brand hues so fills read on the dark board (charter allows tints on dark) */
+      --c-living:#7482c9; --c-detritus:#4ea3c9; --c-artefact:#948cce; --c-inert:#cc6aad; --c-root:#8a939c;
+      --accent:#ec7b74; --focus:#6ac4d7;   /* lighter Rouge / Bleu-canard tints so text & ring stay legible on dark */
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 40px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#ffffff; --panel:#ffffff; --panel-2:#f4f6f8; --ink:#171a1d; --ink-2:#3f474e;
+    --ink-3:#5c666f; --hair:#e0e5ea; --hair-2:#b9c1ca; --accent:#c9191e; --focus:#1067a3;
+    --shadow:0 1px 2px rgba(23,26,29,.06),0 4px 16px rgba(23,26,29,.06);
+  }
+  :root[data-theme="dark"]{
+    --bg:#121517; --panel:#1a1e21; --panel-2:#22272b; --ink:#e9edf0; --ink-2:#b7c0c8;
+    --ink-3:#8a939c; --hair:#2a3034; --hair-2:#414b52; --accent:#ec7b74; --focus:#6ac4d7;
+    --c-living:#7482c9; --c-detritus:#4ea3c9; --c-artefact:#948cce; --c-inert:#cc6aad; --c-root:#8a939c;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 40px rgba(0,0,0,.4);
+  }
+
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1180px;margin:0 auto;padding:clamp(16px,3vw,40px);}
+
+  header.head{position:relative;border-radius:16px;overflow:hidden;background:var(--panel);
+    border:1px solid var(--hair);box-shadow:var(--shadow);padding:clamp(20px,3vw,34px);}
+  /* Rouge Inria brand rule */
+  header.head::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--rouge);}
+  /* signature Inria dot-grid motif, top-right corner (masked) */
+  header.head::after{content:"";position:absolute;top:0;right:0;width:280px;height:210px;pointer-events:none;
+    background-image:radial-gradient(currentColor 1px,transparent 1.6px);background-size:16px 16px;color:var(--bleu-mat);opacity:.10;
+    -webkit-mask-image:radial-gradient(230px 190px at 100% 0,#000,transparent 72%);mask-image:radial-gradient(230px 190px at 100% 0,#000,transparent 72%);}
+  /* emitter lockup — RÉPUBLIQUE FRANÇAISE + Inria, on a white plaque (State marques sit on white) */
+  .lockup{display:inline-flex;align-items:center;margin:0 0 16px;background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:9px 14px;position:relative;z-index:1;box-shadow:0 1px 2px rgba(0,0,0,.05);}
+  .lockup .rf-inria{height:42px;width:auto;display:block;}
+  .rf{display:flex;flex-direction:column;gap:1px;line-height:1.06;}
+  .rf .flag{display:flex;height:13px;width:20px;border-radius:1px;overflow:hidden;}
+  .rf .flag i{flex:1;} .rf .b{background:#000091;} .rf .w{background:#fff;box-shadow:0 0 0 .5px #ececec inset;} .rf .r{background:#e1000f;}
+  .rf .rfw{font-family:var(--font-sans);font-weight:800;font-size:8.5px;letter-spacing:.01em;color:#161616;margin-top:3px;}
+  .rf .dev{font-family:var(--font-serif);font-style:italic;font-size:7.5px;color:#3a3a3a;}
+  .lockup .rule{width:1px;height:32px;background:#dcdcdc;}
+  .lockup .inria{font-family:var(--font-serif);font-weight:700;font-style:italic;font-size:23px;color:#c9191e;letter-spacing:-.01em;}
+  .lockup .plh{font-family:var(--font-mono);font-size:8px;color:#9a9a9a;align-self:flex-start;line-height:1.3;}
+  .eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);margin:0 0 10px;position:relative;z-index:1;}
+  h1{font-family:var(--font-serif);font-weight:700;font-size:clamp(26px,4.4vw,40px);line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance;position:relative;z-index:1;}
+  h1 .glow{color:var(--accent);font-style:italic;}
+  .lede{margin:12px 0 0;max-width:66ch;color:var(--ink-2);font-size:15px;}
+
+  .stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px;}
+  .stat{flex:1 1 120px;min-width:118px;background:color-mix(in srgb,var(--bg) 55%,var(--panel));border:1px solid var(--hair);border-radius:11px;padding:12px 14px;}
+  .stat .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:22px;font-weight:600;letter-spacing:-.02em;line-height:1;}
+  .stat .lbl{display:block;margin-top:7px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);}
+  .stat.branch{border-left-width:3px;}
+  .stat.living{border-left-color:var(--c-living);} .stat.detritus{border-left-color:var(--c-detritus);}
+  .stat.artefact{border-left-color:var(--c-artefact);} .stat.inert{border-left-color:var(--c-inert);}
+  /* numbers stay ink (brand hues read as fills/borders, not as text — legible in both themes) */
+
+  .toolbar{margin:20px 0 0;padding:12px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;
+    background:var(--panel);border:1px solid var(--hair);border-radius:12px;box-shadow:var(--shadow);}
+  .crumbs{display:flex;flex-wrap:wrap;gap:2px;align-items:center;font-size:13px;min-width:0;flex:1 1 320px;}
+  .crumbs button{font-family:var(--font-sans);font-size:13px;color:var(--ink-2);background:transparent;border:0;cursor:pointer;
+    padding:4px 7px;border-radius:7px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .crumbs button:hover{background:var(--panel-2);color:var(--ink);}
+  .crumbs button.here{color:var(--ink);font-weight:600;cursor:default;}
+  .crumbs .sep{color:var(--ink-3);opacity:.6;user-select:none;}
+  .ctl{display:flex;align-items:center;gap:8px;margin-left:auto;}
+  .ctl label{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);}
+  .depthbtns{display:inline-flex;border:1px solid var(--hair-2);border-radius:8px;overflow:hidden;}
+  .depthbtns button{font-family:var(--font-mono);font-size:12px;color:var(--ink-2);background:var(--bg);border:0;border-left:1px solid var(--hair-2);padding:6px 10px;cursor:pointer;}
+  .depthbtns button:first-child{border-left:0;}
+  .depthbtns button.on{background:var(--rouge);color:#fff;}
+  .depthbtns button:not(.on):hover{color:var(--ink);}
+  .btn{font-family:var(--font-sans);font-size:13px;color:var(--ink-2);background:var(--bg);border:1px solid var(--hair-2);border-radius:9px;padding:7px 12px;cursor:pointer;}
+  .btn:hover{color:var(--ink);border-color:var(--accent);}
+
+  .legend{display:flex;flex-wrap:wrap;gap:12px;margin:12px 2px 0;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-2);}
+  .legend i{width:11px;height:11px;border-radius:3px;display:inline-block;}
+
+  .board{margin-top:12px;background:var(--panel);border:1px solid var(--hair);border-radius:14px;box-shadow:var(--shadow);padding:6px;overflow:auto;position:relative;}
+  svg.sankey{display:block;}
+  .link{fill-opacity:.26;stroke:none;transition:fill-opacity .12s ease;}
+  .link.agg{fill-opacity:.12;}
+  .node rect{stroke:color-mix(in srgb,var(--bg) 55%,transparent);stroke-width:1;transition:opacity .12s ease;}
+  .node.drillable{cursor:pointer;}
+  .node.agg rect{opacity:.55;}
+  .node:focus-visible{outline:none;}
+  .node:focus-visible rect{stroke:var(--focus);stroke-width:2;}
+  .nlabel{font-family:var(--font-serif);fill:var(--ink);font-size:12px;pointer-events:none;}
+  .nlabel.sci{font-style:italic;}
+  .nlabel.plain{font-family:var(--font-sans);}
+  .nlabel.branch{font-family:var(--font-sans);font-weight:650;}
+  .ncount{font-family:var(--font-mono);fill:var(--ink-3);font-size:10.5px;font-variant-numeric:tabular-nums;}
+  .dim{opacity:.16;} .dim-link{fill-opacity:.05;}
+  .colhead{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;fill:var(--ink-3);}
+  .cmplabel{font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;fill:var(--ink-3);}
+
+  .tip{position:fixed;z-index:30;pointer-events:none;max-width:320px;background:var(--panel);color:var(--ink);
+    border:1px solid var(--hair-2);border-radius:10px;box-shadow:var(--shadow);padding:9px 11px;font-size:12.5px;opacity:0;transition:opacity .1s;}
+  .tip .lin{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);word-break:break-word;margin-bottom:4px;line-height:1.45;}
+  .tip .tt{font-family:var(--font-serif);font-size:14px;font-weight:600;}
+  .tip .tt.sci{font-style:italic;}
+  .tip .row{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--ink-2);margin-top:3px;}
+  .tip .row b{color:var(--ink);}
+
+  .hint{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3);margin:10px 2px 0;}
+  footer.foot{margin:16px 0 8px;color:var(--ink-3);font-size:12.5px;line-height:1.6;display:grid;gap:6px;}
+  footer.foot b{color:var(--ink-2);font-weight:600;}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+  @media (max-width:560px){.ctl{margin-left:0;} .lede{font-size:14px;}}
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div class="lockup" title="Official Inria + République Française co-signature (inria.fr/…/logo.svg)">
+      <img class="rf-inria" alt="République Française · Inria" src="data:image/svg+xml;base64,__LOGO_B64__">
+    </div>
+    <p class="eyebrow">Project OcéanIA · plankton image classification</p>
+    <h1>planktonzilla<span class="glow">-17M</span> taxonomic sankey</h1>
+    <p class="lede">
+      The same label space as a flow diagram — size the bars by <b>Size by</b>: label mappings,
+      distinct taxa, or the <b>17.4M dataset images</b> (which tell very different stories). The
+      <b>living</b> branch fans out through the Linnaean ranks
+      (Kingdom → Species); <b>detritus</b>,
+      <b>artefact</b>, and <b>inert</b>
+      flow straight into their <em>proposed_label</em> values. Click a node to dive in.
+    </p>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="toolbar">
+    <nav class="crumbs" id="crumbs" aria-label="Focus path"></nav>
+    <div class="ctl">
+      <label>Source</label>
+      <div class="depthbtns" id="srcbtns" role="group" aria-label="Source dataset level"></div>
+      <label>Color by</label>
+      <div class="depthbtns" id="colorbtns" role="group" aria-label="Colour mode"></div>
+      <label>Layout</label>
+      <div class="depthbtns" id="layoutbtns" role="group" aria-label="Layout mode"></div>
+      <label>Size by</label>
+      <div class="depthbtns" id="metricbtns" role="group" aria-label="Size metric"></div>
+      <label>Levels</label>
+      <div class="depthbtns" id="depthbtns" role="group" aria-label="Levels shown"></div>
+      <button class="btn" id="reset">Reset</button>
+    </div>
+  </div>
+  <div class="legend" id="legend"></div>
+
+  <div class="board" id="board">
+    <svg class="sankey" id="svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Taxonomic Sankey diagram"></svg>
+  </div>
+  <p class="hint">Bar height &amp; ribbon width = the selected <b>Size by</b> metric (label mappings · distinct taxa · dataset images) · flip <b>Source</b> on to insert the source-dataset column right after the root · recolour by branch or source dataset with <b>Color by</b> · hover a node or flow for its lineage &amp; share · click a node to re-root.</p>
+
+  <footer class="foot">
+    <div><b>Reading it.</b> Every level is a column; a node's height and its outgoing ribbons are proportional to the selected <b>Size by</b> metric — <b>Mappings</b> (taxonomy rows, source-label → taxon), <b>Taxa</b> (distinct taxa in the subtree), or <b>Images</b> (real per-class sample counts from <code>planktonzilla-17M</code>, 17,404,047 images). The smallest siblings are pooled into a faded “+N more”; in <b>Images</b> mode, taxa with no dataset samples drop out. The three views diverge sharply — e.g. living dominates by taxa, but detritus is ~60% of the images.</div>
+    <div><b>Source.</b> <code>planktonzilla_dataset/planktonzilla_taxonomy.csv</code> — <span id="fRows"></span> mappings across <span id="fDs"></span> datasets (NCBI, Wikidata, WHOI, EcoTaxa, ZooLake, …).</div>
+    <div><b>Identity.</b> Styled to the Inria charte graphique (Palette 2024, Inria Sans/Serif) via the <code>/inria-ui</code> skill. Branch hues use the four non-red brand tones; Rouge Inria <code>#C9191E</code> is reserved as the UI signal. The top-left emitter lockup is the <b>official Inria + RÉPUBLIQUE FRANÇAISE co-signature SVG</b> (from <code>inria.fr/themes/custom/inria/logo/logo.svg</code>, embedded as a data-URI); the dot-grid motif is a simple stand-in for the official trame.</div>
+  </footer>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script id="treedata" type="application/json">__TREE__</script>
+<script id="treedata_src" type="application/json">__TREE_SRC__</script>
+<script>
+(function(){
+  "use strict";
+  const DATA=JSON.parse(document.getElementById("treedata").textContent);
+  const _srcEl=document.getElementById("treedata_src");
+  const DATA_SRC=(_srcEl&&_srcEl.textContent.trim().charAt(0)==="{")?JSON.parse(_srcEl.textContent):null;
+  let SHOW_SRC=false;
+  let MERGED=false;   // converging dataset-Sankey view (Source=On); derived client-side from DATA + DATA_SRC
+  let COLORBY="branch";   // "branch" | "dataset" — Branch is the default so on-load colouring is unchanged
+  let meta, root, byId={}, uid=0, focus;
+
+  const BRANCHES={living:"--c-living",detritus:"--c-detritus",artefact:"--c-artefact",inert:"--c-inert"};
+  // ---- size metric: bars/ribbons can be sized by any of these additive per-node values ----
+  const METRICS={
+    c:{label:"Mappings",unit:"mappings",desc:"taxonomy rows (source-label → taxon mappings)"},
+    t:{label:"Taxa",unit:"taxa",desc:"distinct taxa in the subtree"},
+    s:{label:"Images",unit:"images",desc:"dataset image samples (planktonzilla-17M)"}
+  };
+  let METRIC="c";
+  const V=n=>n?(n[METRIC]||0):0;
+  const munit=()=>METRICS[METRIC].unit;
+  const RANK_LABEL={dataset:"dataset",source:"datasets",root_class:"root class",group:"group",proposed_label:"label",
+    Kingdom:"kingdom",Phylum:"phylum",Class:"class",Order:"order",Family:"family",Genus:"genus",Species:"species"};
+  const SCI=new Set(["Genus","Species"]);
+  const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
+  const fmt=n=>n.toLocaleString("en-US");
+  const disp=node=>node.r==="Species"?node.n:cap(node.n);
+  const branchOf=node=>node.r==="root_class"?node.n:node._branch;
+  const sourceOf=node=>node.r==="source"?node.n:node._source;
+  const colorOf=b=>b&&BRANCHES[b]?`var(${BRANCHES[b]})`:"var(--c-root)";
+
+  // ---- dataset colouring (Dataset mode) — on-brand, Rouge-free -----------------------------------
+  // Fixed client-side palette generated from the four NON-RED Palette-2024 anchors only. Unlike the
+  // branch hues (theme-swapping CSS vars), these are FIXED hexes: a deliberate compromise so the same
+  // fill stays legible on BOTH the light and dark board. Rouge is never used for data.
+  const DATASET_ANCHORS=["#27348b","#1067a3","#534b9a","#a60f79"];   // bleu-mat · bleu-canard · violet · framboise
+  const _h2=v=>{const s=Math.max(0,Math.min(255,Math.round(v))).toString(16);return s.length<2?"0"+s:s;};
+  const mix=(hex,target,t)=>{   // linear RGB interpolation of two #rrggbb strings → #rrggbb
+    const a=parseInt(hex.slice(1),16), b=parseInt(target.slice(1),16);
+    const ar=(a>>16)&255, ag=(a>>8)&255, ab=a&255, br=(b>>16)&255, bg=(b>>8)&255, bb=b&255;
+    return "#"+_h2(ar+(br-ar)*t)+_h2(ag+(bg-ag)*t)+_h2(ab+(bb-ab)*t);
+  };
+  // 12 distinct tones, LEVEL-major: four saturated bases, four tints (→white ~.30), four shades (→black ~.20).
+  // Largest datasets sort first → get the fully-saturated bases; adjacent datasets differ in hue. Wraps at >12.
+  function buildDatasetPalette(n){
+    const ramp=[];
+    [x=>x, x=>mix(x,"#ffffff",0.30), x=>mix(x,"#000000",0.20)].forEach(fn=>DATASET_ANCHORS.forEach(a=>ramp.push(fn(a))));
+    const out=[]; for(let i=0;i<n;i++) out.push(ramp[i%ramp.length]); return out;
+  }
+  // Stable, deterministic order = the already-sorted (by -count, then name) source list from DATA_SRC.
+  const DS_ORDER=((DATA_SRC&&DATA_SRC.tree.k)||[]).filter(s=>s.r==="source").map(s=>s.n);
+  const DS_COLOR=(()=>{const p=buildDatasetPalette(DS_ORDER.length);return new Map(DS_ORDER.map((n,i)=>[n,p[i]]));})();
+  const datasetColor=src=>DS_COLOR.has(src)?DS_COLOR.get(src):"var(--c-root)";   // root bar / normal tree / pooled → neutral grey
+  function fillOf(rec){ return COLORBY==="dataset" ? datasetColor(rec.source) : colorOf(rec.branch); }
+
+  // ---- converging-source inflow model (per (source, root_class) raw {c,t,s}) --------------------
+  // Built once from DATA_SRC: each source node's root_class children carry that source's contribution
+  // to the SHARED root_class. The merged view converges these into ONE shared root_class column.
+  const SRC_INFLOW=(()=>{ const out={}; if(!DATA_SRC) return out;
+    (DATA_SRC.tree.k||[]).filter(s=>s.r==="source").forEach(s=>{ const rc={};
+      (s.k||[]).filter(c=>c.r==="root_class").forEach(c=>{ rc[c.n]={c:c.c||0,t:c.t||0,s:c.s||0}; });
+      out[s.n]=rc; }); return out; })();
+  // source-name -> the DATA_SRC source node (drillable subtree; annotated at load so ._id is set)
+  const SRC_NODE=(()=>{ const m={}; ((DATA_SRC&&DATA_SRC.tree.k)||[]).filter(s=>s.r==="source").forEach(s=>{ m[s.n]=s; }); return m; })();
+  // project SRC_INFLOW onto the ACTIVE metric -> { srcName: { rcName: value } }
+  function sourceInflows(){ const out={}; for(const src in SRC_INFLOW){ const rc={};
+    for(const name in SRC_INFLOW[src]) rc[name]=SRC_INFLOW[src][name][METRIC]||0; out[src]=rc; } return out; }
+  // summed active-metric inflow for one source
+  function srcTotal(src,inflow){ const rc=inflow[src]||{}; let s=0; for(const k in rc) s+=rc[k]; return s; }
+
+  // annotate tree with parent / branch / id (unchanged); a SHARED dual index holds BOTH trees at once so
+  // the merged view can reference DATA root_class nodes and DATA_SRC source nodes from one byId.
+  function annotate(n,parent,branch,source,pk){
+    n._id=uid++; n._parent=parent; n._branch=branch; n._source=source;
+    n._pk = n.r==="root_class" ? "rc:"+n.n.toLowerCase()
+          : (n.r==="dataset"||n.r==="source") ? null
+          : (pk!=null ? pk+"|"+n.r+":"+n.n.toLowerCase() : null);
+    (n.k||[]).forEach(c=>annotate(c,n,n.r==="root_class"?n.n:branch,n.r==="source"?n.n:source,n._pk));
+  }
+  function indexInto(n){ byId[n._id]=n; (n.k||[]).forEach(indexInto); }
+  // bindActive points meta/root/focus at an ALREADY-annotated tree — no re-annotation, no uid reset
+  function bindActive(data){ meta=data.meta; root=data.tree; focus=data.tree; }
+  // annotate BOTH trees into one continuous uid space so byId holds every node in both (no key collisions)
+  annotate(DATA.tree,null,null,null,null); indexInto(DATA.tree);
+  if(DATA_SRC){ annotate(DATA_SRC.tree,null,null,null,null); indexInto(DATA_SRC.tree); }
+  meta=DATA.meta; root=DATA.tree; focus=DATA.tree;
+
+  // ---- per-(pk, dataset) raw {c,t,s} — snapshotted ONCE, AFTER annotation so _pk/_source are set ----
+  // FULL-DEPTH walk (mirrors indexInto): visits root_class AND every taxonomy level, so dataset colours
+  // reach past the first hop. Must post-date annotate(DATA_SRC.tree,...) or _pk/_source are undefined.
+  const PATH_SRC=(()=>{ const out={}; if(!DATA_SRC) return out;
+    (function walk(n){ if(n._pk!=null && n._source!=null){ (out[n._pk]=out[n._pk]||{})[n._source]={c:n.c,t:n.t,s:n.s}; }
+      (n.k||[]).forEach(walk); })(DATA_SRC.tree); return out; })();
+  // returns [{src,v}] for a shared node (DS_ORDER preserved) on the ACTIVE metric, or null when the node
+  // has no per-dataset breakdown (col-0 dataset/source nodes, agg pools, or nodes absent from DATA_SRC).
+  function nodeSegments(node){
+    if(node._pk==null || !PATH_SRC[node._pk]) return null;
+    const out=[];
+    DS_ORDER.forEach(src=>{ const rec=PATH_SRC[node._pk][src]; const v=(rec && rec[METRIC] ? rec[METRIC] : 0)||0; if(v>0) out.push({src,v}); });
+    return out;
+  }
+
+  // one-time header bits (legend is now rebuilt per render via renderLegend so it can swap Branch⇄Dataset)
+  document.getElementById("fRows").textContent=fmt(meta.total_rows);
+  document.getElementById("fDs").textContent=meta.n_datasets;
+  // stat tiles reflect the ACTIVE size metric (total + per-branch value, + fixed tree-node count)
+  function buildStats(){
+    // sum the active metric per root_class across the whole tree (works with or without the source level)
+    const by={}; (function walk(n){ if(n.r==="root_class") by[n.n]=(by[n.n]||0)+V(n); (n.k||[]).forEach(walk); })(root);
+    const last=SHOW_SRC?{n:fmt(meta.n_datasets),l:"sources"}:{n:fmt(meta.tree_nodes),l:"tree nodes"};
+    const tiles=[
+      {c:"",n:fmt(V(root)),l:munit()},
+      {c:"branch living",n:fmt(by.living||0),l:"living"},
+      {c:"branch detritus",n:fmt(by.detritus||0),l:"detritus"},
+      {c:"branch artefact",n:fmt(by.artefact||0),l:"artefact"},
+      {c:"branch inert",n:fmt(by.inert||0),l:"inert"},
+      {c:"",n:last.n,l:last.l}
+    ];
+    document.getElementById("stats").innerHTML=tiles.map(t=>`<div class="stat ${t.c}"><span class="num">${t.n}</span><span class="lbl">${t.l}</span></div>`).join("");
+  }
+
+  // layout constants + state
+  const NS="http://www.w3.org/2000/svg";
+  const NODE_W=12, COL_GAP=186, PAD_X=22, PAD_TOP=26, PAD_BOT=16, GAP=3, MIN_H=3.4, TARGET_H=640, LABEL_PAD=162;
+  let maxDepth=4;
+  let LAYOUT="sankey";   // "sankey" (per-column, DEFAULT) | "tiled" (gentle-fan) | "compare" — Tiled/Compare stay available via the Layout control
+
+  // Layout core, extracted so the merged view can reuse it. Recurses from `focusNode`, pushing node/link
+  // recs into the passed arrays and mutating st={maxY,maxCol}. Pooling + constant-width ribbon logic is
+  // UNCHANGED from the original layout() — only maxY/maxCol became st.maxY/st.maxCol.
+  function layoutInto(focusNode,nodes,links,st){
+    const usableH=TARGET_H-PAD_TOP-PAD_BOT;
+    function place(node,x,yTop,h,col){
+      const rec={key:"n"+node._id,node,x,yTop,h,col,name:disp(node),count:V(node),branch:branchOf(node),source:sourceOf(node),rank:node.r,agg:false};
+      nodes.push(rec); st.maxY=Math.max(st.maxY,yTop+h); st.maxCol=Math.max(st.maxCol,col);
+      if(col>=maxDepth) return;
+      const kids=(node.k||[]).filter(c=>V(c)>0); if(!kids.length) return;   // drop branches with 0 of the active metric
+      const val=V(node);
+      let shown=kids.slice().sort((a,b)=>V(b)-V(a)), agg=[];
+      const MAXGAPFRAC=0.28;   // keep total inter-sibling gap ≤28% of the band so a small band can't be gap-dominated
+      for(let g=0;g<kids.length+2;g++){
+        const nn=shown.length+(agg.length?1:0), totalgap=GAP*Math.max(0,nn-1), usable=h-totalgap, unit=val>0?usable/val:0;
+        if(shown.length<=1) break;
+        if(unit<=0 || V(shown[shown.length-1])*unit<MIN_H || totalgap>MAXGAPFRAC*h){agg.push(shown.pop());continue;}
+        break;
+      }
+      const nn=shown.length+(agg.length?1:0), totalgap=GAP*Math.max(0,nn-1), usable=h-totalgap, unit=val>0?usable/val:0;
+      const childX=x+NODE_W+COL_GAP;
+      const seq=shown.map(c=>({cnt:V(c),node:c,agg:false}));
+      if(agg.length) seq.push({cnt:agg.reduce((s,c)=>s+V(c),0),node:null,agg:true,list:agg});
+      // Constant-width ribbons with a GENTLE FAN: the child column keeps its gapped tops (`top`),
+      // but each ribbon's parent-side edge is packed contiguously and centered on the parent bar
+      // (`ptop`, advancing by ch with no gaps). The small symmetric offset is bounded by the gap
+      // budget, so children never leave the parent's band — still crossing-free and constant-width.
+      // `fan` is disabled for degenerate sub-pixel bands (h < totalgap → unit<=0), which stay straight.
+      const fan=unit>0;
+      let top=yTop, ptop=yTop+totalgap/2;
+      seq.forEach((it,i)=>{
+        const ch=it.cnt*unit;
+        const childKey=it.agg?rec.key+"_agg":"n"+it.node._id;
+        links.push({parentKey:rec.key,childKey,x1:x+NODE_W,y1:fan?ptop:top,h1:ch,x2:childX,y2:top,h2:ch,
+          branch:it.agg?rec.branch:branchOf(it.node),source:it.agg?rec.source:sourceOf(it.node),count:it.cnt,agg:it.agg});
+        if(it.agg){
+          nodes.push({key:childKey,node:null,x:childX,yTop:top,h:ch,col:col+1,name:`+${it.list.length} more`,
+            count:it.cnt,branch:rec.branch,source:rec.source,rank:kids[0].r,agg:true,aggList:it.list,parentId:node._id});
+          st.maxY=Math.max(st.maxY,top+ch);
+        } else {
+          place(it.node,childX,top,ch,col+1);
+        }
+        top+=ch+(i<seq.length-1?GAP:0);
+        ptop+=ch;
+      });
+    }
+    place(focusNode,PAD_X,PAD_TOP,usableH,0);
+  }
+
+  // Full per-column SANKEY layout — a DROP-IN alternative to layoutInto: SAME signature and SAME
+  // node/link/agg record shapes, at the SAME column X. ONE global px-per-metric-unit scale (every node's
+  // height is V(node)*unit); DFS column build; per-parent tail pooling; TOP-ANCHORED columns (at PAD_TOP,
+  // matching tiled + merged so Compare stacks and the converging first hop stay aligned); contiguous
+  // parent-edge stacking (`pe` cursor, NO gaps) → constant-width curved "swoosh" ribbons. Crossing-free
+  // because r._kids follows the child column's top-to-bottom order and sum(child.h) <= parent.h (the
+  // additive-count invariant), so `pe` never leaves the parent band. `_kids` is a transient layout-only
+  // field (nothing downstream reads it; harmless once the rec is pushed to nodes).
+  function layoutSankeyInto(focusNode,nodes,links,st){
+    const usableH=TARGET_H-PAD_TOP-PAD_BOT;
+    const fv=V(focusNode);
+    const unit=fv>0?usableH/fv:0;
+    const cols=[];
+    function build(node,col){
+      const rec={key:"n"+node._id,node,x:PAD_X+col*(NODE_W+COL_GAP),yTop:0,h:V(node)*unit,col,name:disp(node),count:V(node),branch:branchOf(node),source:sourceOf(node),rank:node.r,agg:false};
+      cols[col]=cols[col]||[]; cols[col].push(rec); st.maxCol=Math.max(st.maxCol,col);
+      if(col>=maxDepth) return rec;
+      const kids=(node.k||[]).filter(c=>V(c)>0); if(!kids.length) return rec;
+      let shown=kids.slice().sort((a,b)=>V(b)-V(a)), agg=[];
+      while(shown.length>1 && V(shown[shown.length-1])*unit<MIN_H){ agg.push(shown.pop()); }
+      rec._kids=[];
+      shown.forEach(c=>{ rec._kids.push(build(c,col+1)); });
+      if(agg.length){
+        const cnt=agg.reduce((s,c)=>s+V(c),0);
+        const aggRec={key:rec.key+"_agg",node:null,x:PAD_X+(col+1)*(NODE_W+COL_GAP),yTop:0,h:cnt*unit,col:col+1,name:"+"+agg.length+" more",count:cnt,branch:rec.branch,source:rec.source,rank:kids[0].r,agg:true,aggList:agg,parentId:node._id};
+        cols[col+1]=cols[col+1]||[]; cols[col+1].push(aggRec); st.maxCol=Math.max(st.maxCol,col+1);
+        rec._kids.push(aggRec);
+      }
+      return rec;
+    }
+    build(focusNode,0);
+    // COLUMN LAYOUT — TOP-ALIGN at PAD_TOP (NOT centered). Centering would push the root/root_class column
+    // DOWN for deep taxonomies and DECOUPLE it from the PAD_TOP-anchored merged source column + the tiled
+    // Compare diagram. Top-aligning keeps tiled + sankey + merged all anchored at PAD_TOP. Flow-conservation
+    // and crossing-free are unaffected — they depend on DFS order + contiguous `pe` stacking, not anchoring.
+    // HEIGHT CAP — if the tallest stacked column would exceed SANKEY_MAXH, scale heights AND gaps by one
+    // uniform factor f (deep taxonomies no longer spread absurdly tall; ribbons stay constant-width because
+    // h1===h2===scaled c.h and sum(child.h) <= parent.h is preserved by the shared factor → crossing-free).
+    const SANKEY_MAXH=usableH*1.4, GAP_S=2;
+    let maxColH=0;
+    cols.forEach(list=>{ let h=GAP_S*Math.max(0,list.length-1); list.forEach(r=>h+=r.count*unit); maxColH=Math.max(maxColH,h); });
+    const f=(maxColH>SANKEY_MAXH&&maxColH>0)?SANKEY_MAXH/maxColH:1;
+    const uEff=unit*f, gEff=GAP_S*f;
+    cols.forEach(list=>{ let y=PAD_TOP; list.forEach(r=>{ r.h=Math.max(0,r.count*uEff); r.yTop=y; y+=r.h+gEff; }); });
+    cols.forEach(list=>list.forEach(r=>{ nodes.push(r); st.maxY=Math.max(st.maxY,r.yTop+r.h); }));
+    cols.forEach(list=>list.forEach(r=>{ if(!r._kids||!r._kids.length) return; let pe=r.yTop; r._kids.forEach(c=>{ links.push({parentKey:r.key,childKey:c.key,x1:r.x+NODE_W,y1:pe,h1:c.h,x2:c.x,y2:c.yTop,h2:c.h,branch:c.branch,source:c.source,count:c.count,agg:!!c.agg}); pe+=c.h; }); }));
+  }
+  function layout(kind="tiled"){
+    const nodes=[], links=[]; const st={maxY:PAD_TOP,maxCol:0};
+    (kind==="sankey"?layoutSankeyInto:layoutInto)(focus,nodes,links,st);
+    const numCols=st.maxCol+1;
+    const width=PAD_X*2+numCols*NODE_W+(numCols-1)*COL_GAP+LABEL_PAD;
+    return {nodes,links,width,height:st.maxY+PAD_BOT,numCols};
+  }
+
+  // MERGED converging-source view: reuse the DATA tree for columns >=1, DROP its synthetic root, and
+  // replace the root's first hop with converging ribbons from the individual source datasets — one ribbon
+  // per contributing dataset, tiling each SHARED root_class node's left edge. Derived 100% client-side.
+  function layoutMerged(kind="tiled"){
+    const nodes=[], links=[]; const st={maxY:PAD_TOP,maxCol:0};
+    (kind==="sankey"?layoutSankeyInto:layoutInto)(DATA.tree,nodes,links,st);
+    const rootKey="n"+DATA.tree._id;
+    const keptNodes=nodes.filter(r=>r.key!==rootKey);          // drop the col-0 synthetic root
+    const keptLinks=links.filter(l=>l.parentKey!==rootKey);    // drop the root's outgoing links; keep all downstream
+    // FIX 2: a pooled "+N more" node ALSO has rank "root_class" but node===null — skip it (name isn't a real rc)
+    const rcRecs=keptNodes.filter(r=>r.rank==="root_class"&&r.node);
+    const numCols=st.maxCol+1;
+    const width=PAD_X*2+numCols*NODE_W+(numCols-1)*COL_GAP+LABEL_PAD;
+    if(!rcRecs.length) return {nodes:keptNodes,links:keptLinks,width,height:st.maxY+PAD_BOT,numCols};
+    // shared pixel scale (all root_class siblings share it): pixels per active-metric unit
+    const unit=rcRecs[0].h/rcRecs[0].count;
+    const inflow=sourceInflows();
+    // FIRST COLUMN — the individual source datasets, stacked in DS_ORDER, using the SAME unit as the rc
+    // column (FIX 4: a per-column unit would taper the converging ribbons and misrepresent flow).
+    const sourceRecs=[], srcByName={};
+    let top=PAD_TOP;
+    DS_ORDER.forEach(srcName=>{
+      const tot=srcTotal(srcName,inflow); if(tot<=0) return;
+      const srcNode=SRC_NODE[srcName]; if(!srcNode) return;
+      const h=tot*unit;
+      const rec={key:"n"+srcNode._id,node:srcNode,x:PAD_X,yTop:top,h,col:0,name:disp(srcNode),count:tot,branch:null,source:srcName,rank:"source",agg:false};
+      sourceRecs.push(rec); srcByName[srcName]=rec; top+=h+GAP;
+    });
+    const srcColBottom=sourceRecs.length?top-GAP:PAD_TOP;   // source column may overhang the rc column (FIX 4) — expected
+    // CONVERGING RIBBONS — partition each rc LEFT edge contiguously in DS_ORDER; allocate each source's
+    // RIGHT edge by target rc.yTop ascending (fewer crossings). h1===h2 so ribbons are constant-width
+    // (flow-conserving: the per-source segments tile the rc node height exactly for Mappings/Images).
+    const segY2={}, segH={}, segCnt={};   // rc-left-edge y + segment height + raw value, keyed srcName|rcKey
+    rcRecs.forEach(rc=>{
+      let y=rc.yTop;
+      DS_ORDER.forEach(srcName=>{
+        if(!srcByName[srcName]) return;
+        const val=(inflow[srcName]&&inflow[srcName][rc.node.n])||0; if(val<=0) return;
+        const seg=val*unit, key=srcName+"|"+rc.key;
+        segY2[key]=y; segH[key]=seg; segCnt[key]=val; y+=seg;
+      });
+    });
+    const segY1={};
+    sourceRecs.forEach(srcRec=>{
+      const srcName=srcRec.source, rcOf=inflow[srcName]||{};
+      const targets=rcRecs.filter(rc=>(rcOf[rc.node.n]||0)>0).slice().sort((a,b)=>a.yTop-b.yTop);
+      let y=srcRec.yTop;
+      targets.forEach(rc=>{ const key=srcName+"|"+rc.key; segY1[key]=y; y+=segH[key]; });
+    });
+    const firstHop=[];
+    sourceRecs.forEach(srcRec=>{
+      const srcName=srcRec.source;
+      rcRecs.forEach(rc=>{
+        const key=srcName+"|"+rc.key; if(segH[key]===undefined) return;
+        // BLOCKER: every converging link MUST carry parentKey (source rec) + childKey (root_class rec), or
+        // the reused hover wiring (hiKeys / showLinkTip's byId[l.parentKey.slice(1)]) throws on hover.
+        firstHop.push({parentKey:srcRec.key,childKey:rc.key,
+          x1:PAD_X+NODE_W,y1:segY1[key],h1:segH[key],x2:rc.x,y2:segY2[key],h2:segH[key],
+          branch:rc.node.n,source:srcName,count:segCnt[key],agg:false});
+      });
+    });
+    return {nodes:keptNodes.concat(sourceRecs),links:keptLinks.concat(firstHop),
+      width,height:Math.max(st.maxY,srcColBottom)+PAD_BOT,numCols};
+  }
+  // Layout dispatch: merged (converging source) vs normal, each honouring the tiled/sankey `kind`.
+  function computeLayout(kind){ return MERGED ? layoutMerged(kind) : layout(kind); }
+
+  // ---- merged-view state helpers (defined here; wired into the toolbar in Task 2) ----------------
+  function enterMerged(){ SHOW_SRC=true; MERGED=true; focus=null; meta=DATA.meta; root=DATA.tree;
+    if(METRIC==="t") METRIC="c"; if(METRIC==="s"&&!meta.samples_available) METRIC="c"; maxDepth=4; }
+  function exitToNormal(){ SHOW_SRC=false; MERGED=false; bindActive(DATA); if(COLORBY==="dataset") COLORBY="branch"; maxDepth=4; }
+  function goMerged(){ MERGED=true; focus=null; if(METRIC==="t") METRIC="c"; buildStats(); render(); board.scrollTo({left:0,top:0}); }
+
+  const svg=document.getElementById("svg"), tip=document.getElementById("tip"), board=document.getElementById("board");
+  let LNK=[], NOD=[];
+
+  const ribbon=(l,dy=0)=>{const xm=(l.x1+l.x2)/2;return `M${l.x1},${l.y1+dy} C${xm},${l.y1+dy} ${xm},${l.y2+dy} ${l.x2},${l.y2+dy} L${l.x2},${l.y2+l.h2+dy} C${xm},${l.y2+l.h2+dy} ${xm},${l.y1+l.h1+dy} ${l.x1},${l.y1+l.h1+dy} Z`;};
+  function lineage(node){const out=[];let n=node;while(n){if(n.r!=="dataset")out.unshift(disp(n));n=n._parent;}return out;}
+  function el(tag,attrs,cls){const e=document.createElementNS(NS,tag);if(cls)e.setAttribute("class",cls);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
+  const labelClass=n=>n.agg?"plain":(n.rank==="root_class"?"branch":(n.rank==="proposed_label"||n.rank==="group"||n.rank==="dataset"||n.rank==="source"?"plain":(SCI.has(n.rank)?"sci":"")));
+
+  // Paint one computed layout L into the given groups at vertical offset dy. Extracted from render() so any
+  // layout can be drawn at an offset (Compare stacks two). colRank/colHeadDone are LOCAL to this function so
+  // each call redraws its own column heads (required so Compare draws heads for BOTH stacked layouts). Does
+  // NOT clear/size the svg and does NOT reset LNK/NOD — render() owns those. Every DRAWN y is offset by dy.
+  function paintLayout(L,dy,gLinks,gNodes){
+    const colRank={}, colHeadDone={};
+    L.nodes.forEach(n=>{ if(colRank[n.col]===undefined) colRank[n.col]=RANK_LABEL[n.rank]||n.rank; });
+
+    for(const l of L.links){
+      const childNode=(!l.agg && (""+l.childKey).charAt(0)==="n") ? byId[l.childKey.slice(1)] : null;
+      const csegs=(COLORBY==="dataset" && !l.source && childNode) ? nodeSegments(childNode) : null;
+      if(csegs && csegs.length){
+        let tot=0; csegs.forEach(s=>tot+=s.v); let py1=l.y1, py2=l.y2;
+        csegs.forEach(seg=>{
+          const sh1=seg.v/tot*l.h1, sh2=seg.v/tot*l.h2;
+          const sp=el("path",{d:ribbon({x1:l.x1,y1:py1,h1:sh1,x2:l.x2,y2:py2,h2:sh2},dy),fill:datasetColor(seg.src)},"link");
+          sp._l=l; gLinks.appendChild(sp); LNK.push(sp);
+          sp.addEventListener("mousemove",e=>showLinkTip(e,l));
+          sp.addEventListener("mouseenter",()=>hiKeys(l.parentKey,l.childKey));
+          sp.addEventListener("mouseleave",clearHi);
+          py1+=sh1; py2+=sh2;
+        });
+      } else {
+        const p=el("path",{d:ribbon(l,dy),fill:fillOf(l)},"link"+(l.agg?" agg":""));
+        p._l=l; gLinks.appendChild(p); LNK.push(p);
+        p.addEventListener("mousemove",e=>showLinkTip(e,l));
+        p.addEventListener("mouseenter",()=>hiKeys(l.parentKey,l.childKey));
+        p.addEventListener("mouseleave",clearHi);
+      }
+    }
+
+    for(const n of L.nodes){
+      const hasKids=!n.agg&&n.node&&n.node.k&&n.node.k.length;
+      const g=el("g",{},"node"+(n.agg?" agg":"")+(hasKids?" drillable":""));
+      // Dataset mode: paint each SHARED downstream node as a vertical DS_ORDER stack of dataset-coloured
+      // segments (heights proportional to each dataset's contribution). Every other case — Branch mode,
+      // agg pools, col-0 dataset nodes, drilled-into-dataset subtrees (n.source set) — falls through to
+      // the single rect. The existing `.node rect` stroke draws the hairline dividers between segments.
+      const segs=(COLORBY==="dataset" && !n.agg && n.node && !n.source) ? nodeSegments(n.node) : null;
+      if(segs && segs.length){
+        const H=Math.max(1,n.h); let tot=0; segs.forEach(s=>tot+=s.v); let sy=n.yTop+dy;
+        segs.forEach(seg=>{ const sh=seg.v/tot*H;
+          g.appendChild(el("rect",{x:n.x,y:sy.toFixed(2),width:NODE_W,height:sh.toFixed(2),fill:datasetColor(seg.src)})); sy+=sh; });
+      } else {
+        g.appendChild(el("rect",{x:n.x,y:(n.yTop+dy).toFixed(2),width:NODE_W,height:Math.max(1,n.h).toFixed(2),fill:n.agg?"var(--ink-3)":fillOf(n),rx:2}));
+      }
+
+      if(!colHeadDone[n.col]){ const t=el("text",{x:n.x,y:PAD_TOP-12+dy,"text-anchor":"start"},"colhead"); t.textContent=colRank[n.col]||""; gNodes.appendChild(t); colHeadDone[n.col]=1; }
+
+      if(n.h>=10){
+        const lx=n.x+NODE_W+6, tall=n.h>=24;
+        let nm=n.name; if(nm.length>22) nm=nm.slice(0,21)+"…";
+        const t=el("text",{x:lx,y:(n.yTop+n.h/2-(tall?4:0)+dy).toFixed(2),"text-anchor":"start"},"nlabel "+labelClass(n));
+        t.textContent=nm; g.appendChild(t);
+        if(tall){ const c=el("text",{x:lx,y:(n.yTop+n.h/2+11+dy).toFixed(2),"text-anchor":"start"},"ncount"); c.textContent=fmt(n.count); g.appendChild(c); }
+      }
+
+      g._n=n; gNodes.appendChild(g); NOD.push(g);
+      if(hasKids){ g.setAttribute("tabindex","0"); g.setAttribute("role","button"); }
+      g.addEventListener("click",()=>{ if(hasKids){ MERGED=false; focus=n.node; render(); board.scrollTo({left:0,top:0}); } });
+      g.addEventListener("keydown",e=>{ if(hasKids&&(e.key==="Enter"||e.key===" ")){ e.preventDefault(); MERGED=false; focus=n.node; render(); board.scrollTo({left:0,top:0}); } });
+      g.addEventListener("mousemove",e=>showNodeTip(e,n));
+      g.addEventListener("mouseenter",()=>hiNode(n));
+      g.addEventListener("mouseleave",clearHi);
+    }
+  }
+
+  function render(){
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+    const gLinks=el("g",{}), gNodes=el("g",{}); svg.appendChild(gLinks); svg.appendChild(gNodes);
+    LNK=[]; NOD=[];
+    if(LAYOUT!=="compare"){
+      const L=computeLayout(LAYOUT==="sankey"?"sankey":"tiled");
+      svg.setAttribute("width",L.width); svg.setAttribute("height",L.height); svg.setAttribute("viewBox",`0 0 ${L.width} ${L.height}`);
+      paintLayout(L,0,gLinks,gNodes);
+    } else {
+      // COMPARE: tiled ABOVE, full-sankey BELOW, in one SVG. LNK/NOD accumulate across both paintLayout draws.
+      const A=computeLayout("tiled"), B=computeLayout("sankey");
+      const la=el("text",{x:PAD_X,y:14},"cmplabel"); la.textContent="Tiled — gentle fan"; gNodes.appendChild(la);
+      paintLayout(A,22,gLinks,gNodes);
+      const bDy=22+A.height+40;
+      gNodes.appendChild(el("line",{x1:PAD_X,y1:bDy-20,x2:Math.max(A.width,B.width)-PAD_X,y2:bDy-20,stroke:"var(--hair)"}));
+      const lb=el("text",{x:PAD_X,y:bDy-8},"cmplabel"); lb.textContent="Full Sankey (per-column)"; gNodes.appendChild(lb);
+      paintLayout(B,bDy,gLinks,gNodes);
+      const W=Math.max(A.width,B.width), H=bDy+B.height+PAD_BOT;
+      svg.setAttribute("width",W); svg.setAttribute("height",H); svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+    }
+    renderCrumbs(); renderDepth(); renderMetric(); renderSource(); renderColor(); renderLayout(); renderLegend();
+  }
+
+  function hiNode(n){
+    // FIX 3: merged col-0 dataset hover — n.node is the DATA_SRC source node whose descendants are a
+    // PRIVATE subtree, NOT the shared DATA nodes drawn downstream. Build the keep-set from the FIRST-HOP
+    // links instead: keep the hovered dataset + the root_class recs it feeds (do NOT walk downstream).
+    if(MERGED && n.col===0 && n.node){
+      const keep=new Set([n.key]);
+      LNK.forEach(p=>{ if(p._l.source===n.source) keep.add(p._l.childKey); });
+      NOD.forEach(g=>g.classList.toggle("dim",!keep.has(g._n.key)));
+      LNK.forEach(p=>p.classList.toggle("dim-link",!(keep.has(p._l.parentKey)&&keep.has(p._l.childKey))));
+      return;
+    }
+    const keep=new Set();
+    if(n.node){ let a=n.node; while(a){keep.add("n"+a._id);a=a._parent;} (function ds(m){keep.add("n"+m._id);(m.k||[]).forEach(ds);})(n.node); }
+    else { keep.add(n.key); if(n.parentId!=null) keep.add("n"+n.parentId); }
+    NOD.forEach(g=>g.classList.toggle("dim",!keep.has(g._n.key)));
+    LNK.forEach(p=>p.classList.toggle("dim-link",!(keep.has(p._l.parentKey)&&keep.has(p._l.childKey))));
+  }
+  function hiKeys(pk,ck){
+    NOD.forEach(g=>g.classList.toggle("dim",g._n.key!==pk&&g._n.key!==ck));
+    LNK.forEach(p=>p.classList.toggle("dim-link",!(p._l.parentKey===pk&&p._l.childKey===ck)));
+  }
+  function clearHi(){ NOD.forEach(g=>g.classList.remove("dim")); LNK.forEach(p=>p.classList.remove("dim-link")); tip.style.opacity=0; }
+
+  function placeTip(e){ let x=e.clientX+14, y=e.clientY+14; const r=tip.getBoundingClientRect();
+    if(x+r.width>innerWidth-8) x=e.clientX-r.width-14; if(y+r.height>innerHeight-8) y=e.clientY-r.height-14;
+    tip.style.left=x+"px"; tip.style.top=y+"px"; tip.style.opacity=1; }
+
+  function showNodeTip(e,n){
+    const total=V(root);
+    const parentCount=n.node?(n.node._parent?V(n.node._parent):total):(byId[n.parentId]?V(byId[n.parentId]):total);
+    const lin=n.node?lineage(n.node):(byId[n.parentId]?lineage(byId[n.parentId]).concat(n.name):[n.name]);
+    const sci=n.node&&SCI.has(n.rank)?" sci":"";
+    let s=`<div class="lin">${lin.join(" › ")}</div><div class="tt${sci}">${n.name}${n.agg?` <span style="color:var(--ink-3);font-family:var(--font-mono);font-size:11px">(${n.aggList.length} taxa)</span>`:""}</div>`;
+    s+=`<div class="row"><b>${fmt(n.count)}</b> ${munit()} · ${(n.count/total*100).toFixed(1)}% of all`;
+    if(parentCount&&parentCount!==n.count) s+=` · ${(n.count/parentCount*100).toFixed(0)}% of parent`;
+    s+=`</div>`;
+    if(!n.agg&&n.node&&n.node.k&&n.node.k.length) s+=`<div class="row" style="color:var(--accent)">click to focus →</div>`;
+    if(n.agg){ s+=`<div class="row" style="color:var(--ink-3);font-size:11px">${n.aggList.slice(0,6).map(disp).join(", ")}${n.aggList.length>6?", …":""}</div>`; }
+    tip.innerHTML=s; placeTip(e);
+  }
+  function showLinkTip(e,l){
+    const parent=byId[l.parentKey.slice(1)]; const total=V(root);
+    const childNode=l.agg?null:byId[l.childKey.slice(1)];
+    const name=l.agg?"pooled taxa":disp(childNode);
+    const lin=parent?lineage(parent).concat(name):[name];
+    const sci=childNode&&SCI.has(childNode.r)?" sci":"";
+    let s=`<div class="lin">${lin.join(" › ")}</div><div class="tt${sci}">${parent?cap(disp(parent)):""} → ${name}</div>`;
+    s+=`<div class="row"><b>${fmt(l.count)}</b> ${munit()} · ${(l.count/total*100).toFixed(1)}% of all`;
+    if(parent) s+=` · ${(l.count/V(parent)*100).toFixed(0)}% of ${disp(parent)}`;
+    s+=`</div>`;
+    tip.innerHTML=s; placeTip(e);
+  }
+
+  function renderCrumbs(){
+    const c=document.getElementById("crumbs"); c.innerHTML="";
+    if(MERGED){ const b=document.createElement("button"); b.className="here"; b.textContent="Datasets"; c.appendChild(b); return; }
+    const chain=[]; let n=focus; while(n){chain.unshift(n);n=n._parent;}
+    chain.forEach((node,i)=>{
+      const b=document.createElement("button");
+      b.textContent=node.r==="dataset"?(SHOW_SRC?"Datasets":"planktonzilla-17M"):disp(node);   // textContent only (T-tws-01)
+      if(i===chain.length-1){ b.className="here"; }
+      else if(node.r==="dataset" && SHOW_SRC){ b.onclick=()=>{goMerged();}; }   // breadcrumb root returns to the merged view
+      else { b.onclick=()=>{focus=node;render();board.scrollTo({left:0,top:0});}; }
+      c.appendChild(b);
+      if(i<chain.length-1){ const s=document.createElement("span"); s.className="sep"; s.textContent="›"; c.appendChild(s); }
+    });
+  }
+  function renderDepth(){
+    const d=document.getElementById("depthbtns"); d.innerHTML="";
+    [2,3,4,5,6].forEach(v=>{ const b=document.createElement("button"); b.textContent=v; if(v===maxDepth)b.className="on";
+      b.onclick=()=>{maxDepth=v;render();}; d.appendChild(b); });
+  }
+  function renderMetric(){
+    const d=document.getElementById("metricbtns"); if(!d) return; d.innerHTML="";
+    ["c","t","s"].forEach(m=>{
+      if(m==="s" && !meta.samples_available) return;
+      const b=document.createElement("button"); b.textContent=METRICS[m].label;
+      if(m==="t" && (MERGED || COLORBY==="dataset")){   // Taxa can't converge (a taxon appears in several datasets) → greyed while merged or dataset-coloured
+        b.disabled=true; b.style.opacity=".45"; b.style.cursor="not-allowed";
+        b.title="Taxa can't be partitioned across converging datasets";
+        d.appendChild(b); return;
+      }
+      b.title="Size bars by "+METRICS[m].desc;
+      if(m===METRIC) b.className="on";
+      b.onclick=()=>{ METRIC=m; buildStats(); render(); board.scrollTo({left:0,top:0}); };
+      d.appendChild(b);
+    });
+  }
+  function renderSource(){
+    const d=document.getElementById("srcbtns"); if(!d) return; d.innerHTML="";
+    [["Off",false],["On",true]].forEach(([lbl,on])=>{
+      const b=document.createElement("button"); b.textContent=lbl;
+      if(on===SHOW_SRC) b.className="on";
+      if(on && !DATA_SRC){ b.disabled=true; b.title="source-level data unavailable"; b.style.opacity=".45"; b.style.cursor="not-allowed"; }
+      else b.title=on?"Converge the source datasets into the shared label space":"Hide the source-dataset level";
+      b.onclick=()=>{ if(on!==SHOW_SRC && !(on&&!DATA_SRC)){
+        if(on) enterMerged(); else exitToNormal();   // enterMerged/exitToNormal own SHOW_SRC/MERGED/metric/depth
+        buildStats(); render(); board.scrollTo({left:0,top:0}); } };
+      d.appendChild(b);
+    });
+  }
+  function renderColor(){
+    const d=document.getElementById("colorbtns"); if(!d) return; d.innerHTML="";
+    [["Branch","branch"],["Dataset","dataset"]].forEach(([lbl,mode])=>{
+      const b=document.createElement("button"); b.textContent=lbl;
+      if(mode===COLORBY) b.className="on";
+      if(mode==="dataset" && !DATA_SRC){ b.disabled=true; b.title="source-level colouring unavailable"; b.style.opacity=".45"; b.style.cursor="not-allowed"; }
+      else b.title=mode==="dataset"?"Recolour every bar & ribbon by its source dataset":"Colour by taxonomic branch";
+      b.onclick=()=>{
+        if(mode==="dataset"){
+          if(!DATA_SRC || COLORBY==="dataset") return;
+          if(!SHOW_SRC || !MERGED) enterMerged();   // dataset colouring is defined in the converging view → enter it
+          COLORBY="dataset"; buildStats(); render(); board.scrollTo({left:0,top:0});
+        } else if(COLORBY!=="branch"){
+          COLORBY="branch"; render();   // stay in the current mode — branch colouring is valid merged or not
+        }
+      };
+      d.appendChild(b);
+    });
+  }
+  function renderLayout(){
+    const d=document.getElementById("layoutbtns"); if(!d) return; d.innerHTML="";
+    [["Tiled","tiled"],["Sankey","sankey"],["Compare","compare"]].forEach(([lbl,mode])=>{
+      const b=document.createElement("button"); b.textContent=lbl;
+      if(mode===LAYOUT) b.className="on";
+      b.title=mode==="tiled"?"Tiled gentle-fan layout":(mode==="sankey"?"Full per-column sankey layout":"Compare tiled above / sankey below");
+      b.onclick=()=>{ LAYOUT=mode; render(); board.scrollTo({left:0,top:0}); };
+      d.appendChild(b);
+    });
+  }
+  function renderLegend(){
+    const lg=document.getElementById("legend"); if(!lg) return; lg.innerHTML="";
+    const add=(color,label,dim)=>{
+      const s=document.createElement("span");
+      const i=document.createElement("i"); i.style.background=color; if(dim) i.style.opacity=".5"; s.appendChild(i);
+      s.appendChild(document.createTextNode(label));   // names via textContent — never innerHTML interpolation (T-js7-01)
+      lg.appendChild(s);
+    };
+    if(COLORBY==="dataset") DS_ORDER.forEach(name=>add(DS_COLOR.get(name),name,false));
+    else Object.keys(BRANCHES).forEach(b=>add(`var(${BRANCHES[b]})`,b,false));
+    add("var(--ink-3)","pooled “+N more”",true);
+  }
+  document.getElementById("reset").onclick=()=>{ maxDepth=4; if(SHOW_SRC){ goMerged(); } else { focus=root; render(); board.scrollTo({left:0,top:0}); } };
+
+  buildStats();
+  render();
+})();
+</script>
