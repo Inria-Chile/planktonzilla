@@ -130,8 +130,9 @@ jobs:
       - name: Install project deps + explorer group (uv sync --group explorer)
         run: uv sync --group explorer
 
-      # Run the explorer-group view tests (figure/render/export actually execute
-      # here). Phase 12 (hierarchy) and Phase 13 (map) have landed; Phase 14 adds
-      # the app.py composition smoke (4 tabs + About caveat + Map loading affordance).
-      - name: Run explorer view tests
-        run: uv run --group explorer pytest tests/test_explorer_sankey.py tests/test_explorer_hierarchy.py tests/test_explorer_geomap.py tests/test_app_compose.py -q
+      # Run the viz-group tests (figure/render/export actually execute here rather
+      # than skipping). The explorer teardown removed test_explorer_{sankey,hierarchy,
+      # geomap}.py and test_app_compose.py; test_sankey_app.py is what still guards
+      # the plotly/gradio seam behind pytest.importorskip, so it is what this job runs.
+      - name: Run viz-group view tests
+        run: uv run --group explorer pytest tests/test_sankey_app.py -q
