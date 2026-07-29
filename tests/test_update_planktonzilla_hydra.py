@@ -354,8 +354,8 @@ def test_add_license_columns_rejects_an_unrecorded_source():
 def test_add_license_columns_never_reads_the_image_column(monkeypatch, tmp_path):
     """The image column is never materialized — the property that makes this affordable.
 
-    A ``map`` over the full example would decode and re-encode all 17M images, changing
-    the published bytes. This pins the cheap path: only ``dataset`` is ever read.
+    A ``map`` over the full example would decode all 17M images to PIL and rewrite the
+    whole table. This pins the cheap path: only ``dataset`` is ever read.
     """
     image_path = tmp_path / "img.png"
     PILImage.new("RGB", (2, 2)).save(image_path)

@@ -13,6 +13,10 @@ set, pushes it to the Hub.
 The taxonomy/ID re-sync only updates columns that already exist. The license columns
 are the one addition, and they are appended without reading the image column at all
 (see ``add_license_columns``). No rows are added or removed by either step.
+
+Note that the re-sync is a full-table ``map``: it rewrites every row, taxonomy columns
+included, from the current CSV. Running this to obtain *only* the license columns also
+re-applies whatever the CSV now says about the taxonomy.
 """
 
 import math
@@ -134,10 +138,14 @@ def add_license_columns(ds: Dataset) -> Dataset:
     """Add the per-image ``license`` / ``license_url`` columns from the ``dataset`` column.
 
     Both values are a pure function of the source dataset (``DATASET_LICENSES``), so this
-    reads *only* the ``dataset`` column and appends the results with ``add_column``. The
-    image column is never materialized. That is deliberate and load-bearing on a 17M-image
-    dataset: a ``map`` over the whole example would decode and re-encode every image,
-    which is both ruinously slow and a change to the published image bytes.
+    reads *only* the ``dataset`` column and appends the results with ``add_column``, which
+    is a zero-copy Arrow ``concat_tables(axis=1)``. The image column is never materialized.
+
+    That is deliberate and load-bearing on a 17M-image dataset. The alternative — a ``map``
+    over the whole example — would decode all 17M images to PIL and rewrite the entire
+    table, image bytes included, to a fresh Arrow cache. (It would *not* corrupt them:
+    datasets 5.0.1 round-trips the original bytes through ``map``, single- and
+    multi-process alike. The cost is the decode and the rewrite, not the encoding.)
 
     Peak extra memory is the source-name list plus two lists of pointers into the fifteen
     interned license strings — a few GB on the full dataset, well under what the

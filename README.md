@@ -191,10 +191,11 @@ uv run pz_update_planktonzilla
 > reproduction tooling — changing what they emit means republishing, not patching.
 
 Both entry points stamp every image with its source's `license` / `license_url`
-(see [Licensing](#licensing-of-the-composite-dataset)). `pz_update_planktonzilla` adds the two
-columns to an existing build without ever reading the image column, so no image byte is
-re-encoded. Because that changes the published schema, publish it onto its own revision rather
-than over the one the paper and the released models are pinned to:
+(see [Licensing](#licensing-of-the-composite-dataset)). `pz_update_planktonzilla` appends the
+two columns with a zero-copy Arrow column concat, without ever reading the image column.
+Note that the same run also re-syncs the taxonomy from the CSV, which is a full-table rewrite.
+Because the added columns change the published schema, publish onto a new revision rather than
+over the one the paper and the released models are pinned to:
 
 ```bash
 # Add the license columns and publish them on a v1.1 branch, leaving the default revision alone
