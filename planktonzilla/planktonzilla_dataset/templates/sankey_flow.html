@@ -1,0 +1,1040 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__DATASET_NAME__ · label-space Sankey</title>
+<style>
+__FONTS__
+:root{
+  /* Inria Palette 2024 — the five brand hexes are immutable across themes */
+  --rouge:#c9191e; --framboise:#a60f79; --violet:#534b9a; --bleu-mat:#27348b; --bleu-canard:#1067a3;
+  --data-other:#aab3bf;
+  --page:#ffffff; --panel:#ffffff; --sunken:#f4f6f8;
+  --ink:#171a1d; --ink-2:#3f474e; --ink-muted:#5c666f; --hair:#e0e5ea; --border-strong:#b9c1ca;
+  --accent:#c9191e; --focus:#1067a3;
+  --shadow:0 1px 2px rgba(23,26,29,.06),0 6px 22px rgba(23,26,29,.07);
+  --serif:"Inria Serif",Georgia,serif;
+  --sans:"Inria Sans",Tahoma,ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+  --r-sm:6px; --r-md:10px; --r-lg:16px; --r-pill:999px;
+}
+@media (prefers-color-scheme:dark){:root{
+  --page:#121517; --panel:#1a1e21; --sunken:#0e1113;
+  --ink:#e9edf0; --ink-2:#b7c0c8; --ink-muted:#8a939c; --hair:#2a3034; --border-strong:#414b52;
+  --accent:#ec7b74; --focus:#6ac4d7;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 40px rgba(0,0,0,.45);
+}}
+:root[data-theme="light"]{
+  --page:#ffffff; --panel:#ffffff; --sunken:#f4f6f8;
+  --ink:#171a1d; --ink-2:#3f474e; --ink-muted:#5c666f; --hair:#e0e5ea; --border-strong:#b9c1ca;
+  --accent:#c9191e; --focus:#1067a3;
+  --shadow:0 1px 2px rgba(23,26,29,.06),0 6px 22px rgba(23,26,29,.07);
+}
+:root[data-theme="dark"]{
+  --page:#121517; --panel:#1a1e21; --sunken:#0e1113;
+  --ink:#e9edf0; --ink-2:#b7c0c8; --ink-muted:#8a939c; --hair:#2a3034; --border-strong:#414b52;
+  --accent:#ec7b74; --focus:#6ac4d7;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 40px rgba(0,0,0,.45);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--page);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+.wrap{max-width:1480px;margin:0 auto;padding:clamp(16px,2.6vw,40px)}         /* blanc tournant */
+:where(button,select,input,summary,[tabindex]):focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:var(--r-sm)}
+
+/* ───────────────────────── header ───────────────────────── */
+header.head{position:relative;border-radius:var(--r-lg);overflow:hidden;background:var(--panel);
+  border:1px solid var(--hair);box-shadow:var(--shadow);padding:clamp(20px,3vw,32px)}
+header.head::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--rouge)}
+header.head::after{content:"";position:absolute;top:0;right:0;width:300px;height:220px;pointer-events:none;
+  background-image:radial-gradient(currentColor 1px,transparent 1.6px);background-size:16px 16px;
+  color:var(--bleu-mat);opacity:.10;
+  -webkit-mask-image:radial-gradient(240px 190px at 100% 0,#000,transparent 72%);
+  mask-image:radial-gradient(240px 190px at 100% 0,#000,transparent 72%)}
+/* logo left, wordmark + title right — no plaque around the co-signature */
+.masthead{display:flex;align-items:center;gap:clamp(16px,2.4vw,30px);margin:0 0 14px;flex-wrap:wrap;position:relative;z-index:1}
+.masthead .titles{flex:1 1 340px;min-width:0}
+.masthead .eyebrow{margin:0 0 5px}
+.masthead h1{margin:0}
+.masthead h1 .ds{white-space:nowrap}  /* never break the dataset name across lines */
+.lockup{display:inline-flex;align-items:center;gap:11px;flex:0 0 auto}
+.lockup img{height:clamp(54px,6.4vw,74px);width:auto;display:block}
+.lockup .rf{display:flex;flex-direction:column;gap:1px;line-height:1.06}
+.lockup .flag{display:flex;height:19px;width:29px;border-radius:1px;overflow:hidden}
+.lockup .flag i{flex:1}.lockup .b{background:#000091}.lockup .w{background:#fff;box-shadow:0 0 0 .5px #ececec inset}.lockup .r{background:#e1000f}
+.lockup .rfw{font-weight:700;font-size:12px;letter-spacing:.01em;color:#161616;margin-top:4px}
+.lockup .dev{font-family:var(--serif);font-style:italic;font-size:10.5px;color:#3a3a3a}
+.lockup .rule{width:1px;height:46px;background:#dcdcdc}
+.lockup .inria{font-family:var(--serif);font-weight:700;font-style:italic;font-size:33px;color:#c9191e;letter-spacing:-.01em}
+/* the SVG carries its own white plate; the text facsimile needs one to stay legible on dark */
+#logo-fb{background:#fff;padding:9px 14px}
+.eyebrow{margin:0 0 6px;font-size:11.5px;letter-spacing:.10em;text-transform:uppercase;color:var(--ink-muted);font-weight:700;position:relative;z-index:1}
+/* the repo id links to the dataset on the Hub — underlined on the hairline, Rouge on hover */
+.eyebrow a{color:inherit;text-decoration:none;border-bottom:1px solid var(--border-strong);
+  transition:color .12s,border-color .12s}
+.eyebrow a:hover{color:var(--accent);border-bottom-color:var(--accent)}
+.eyebrow a::after{content:"↗";margin-left:4px;font-size:10px;border:0;vertical-align:.05em}
+h1{margin:0 0 10px;font-size:clamp(24px,3.4vw,36px);line-height:1.12;font-weight:700;letter-spacing:-.015em;position:relative;z-index:1}
+h1 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--violet)}
+.lede{margin:0;max-width:92%;color:var(--ink-2);font-size:15px;position:relative;z-index:1}
+.lede b{color:var(--ink);font-weight:700}
+.stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;position:relative;z-index:1}
+.tile{background:var(--sunken);border:1px solid var(--hair);border-radius:var(--r-md);padding:9px 14px;min-width:118px}
+.tile .k{display:block;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-muted);font-weight:700}
+.tile .v{display:block;font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.25}
+.tile .v.sm{font-size:15px;line-height:1.6}   /* provenance tiles: text, not a headline figure */
+
+/* ───────────────────────── controls box ───────────────────────── */
+.controls{margin-top:18px;background:var(--panel);border:1px solid var(--hair);border-radius:var(--r-lg);
+  box-shadow:var(--shadow);overflow:hidden}
+.ctl-row{display:flex;flex-wrap:wrap;gap:18px 26px;padding:16px 20px;border-bottom:1px solid var(--hair)}
+.ctl-row:last-child{border-bottom:0}
+.field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.field>.lab{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted);font-weight:700;display:flex;align-items:center;gap:7px}
+.field.grow{flex:1 1 340px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:7px;padding:5px 11px 5px 8px;border-radius:var(--r-pill);
+  border:1px solid var(--border-strong);background:var(--panel);color:var(--ink-2);font:inherit;font-size:12.5px;
+  cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+.chip .dot{width:9px;height:9px;border-radius:50%;background:var(--border-strong);flex:0 0 auto;transition:background .12s}
+.chip[aria-pressed="true"]{background:var(--sunken);border-color:var(--bleu-mat);color:var(--ink);font-weight:700}
+.chip[aria-pressed="true"] .dot{background:var(--bleu-mat)}
+.chip:hover{border-color:var(--focus)}
+.chip .n{font-size:10.5px;color:var(--ink-muted);font-variant-numeric:tabular-nums}
+select,input[type=search]{font:inherit;font-size:13.5px;color:var(--ink);background:var(--panel);
+  border:1px solid var(--border-strong);border-radius:var(--r-sm);padding:7px 10px;min-width:170px}
+input[type=search]{min-width:220px}
+input[type=range]{width:100%;min-width:240px;accent-color:var(--rouge);margin:0}
+.slider-wrap{display:flex;align-items:center;gap:12px}
+.thr-out{font-variant-numeric:tabular-nums;font-weight:700;font-size:13px;white-space:nowrap;
+  background:var(--sunken);border:1px solid var(--hair);border-radius:var(--r-sm);padding:5px 10px;min-width:132px;text-align:right}
+.btn{font:inherit;font-size:13px;padding:7px 13px;border-radius:var(--r-sm);border:1px solid var(--border-strong);
+  background:var(--panel);color:var(--ink-2);cursor:pointer;transition:border-color .12s,color .12s}
+.btn:hover{border-color:var(--focus);color:var(--ink)}
+.btn.primary{background:var(--rouge);border-color:var(--rouge);color:#fff;font-weight:700}
+.btn.primary:hover{filter:brightness(1.08);color:#fff}
+.btn-row{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.hint{font-size:11.5px;color:var(--ink-muted);margin:0}
+
+/* legend */
+.legend{display:flex;flex-wrap:wrap;gap:5px 16px;padding:12px 20px;background:var(--sunken);border-bottom:1px solid var(--hair)}
+.lg{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-2);cursor:default}
+.lg .sw{width:12px;height:12px;border-radius:3px;flex:0 0 auto;box-shadow:0 0 0 1px rgba(0,0,0,.10) inset}
+.lg .amt{color:var(--ink-muted);font-variant-numeric:tabular-nums;font-size:11px}
+
+/* focus breadcrumb */
+.crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:11px 20px;background:var(--sunken);
+  border-bottom:1px solid var(--hair);font-size:12.5px;color:var(--ink-2)}
+.crumbs[hidden]{display:none}
+.crumb{display:inline-flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--rouge);
+  color:var(--accent);font-weight:700;border-radius:var(--r-pill);padding:4px 6px 4px 12px}
+.crumb button{border:0;background:transparent;color:inherit;cursor:pointer;font:inherit;font-size:15px;line-height:1;padding:2px 6px;border-radius:50%}
+.crumb button:hover{background:var(--sunken)}
+
+/* ───────────────────────── chart ───────────────────────── */
+.board{margin-top:18px;background:var(--panel);border:1px solid var(--hair);border-radius:var(--r-lg);
+  box-shadow:var(--shadow);overflow:hidden}
+.board-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;
+  padding:14px 20px 0}
+.board-head h2{margin:0;font-size:14px;font-weight:700;letter-spacing:-.01em}
+.board-head .sub{font-size:12px;color:var(--ink-muted)}
+/* The board takes the height the diagram asks for, so the page scrolls and the box never
+   does. A viewport narrower than the diagram's intrinsic width scales the SVG down through
+   its viewBox instead of growing a horizontal scrollbar. */
+.scroller{overflow:visible;padding:6px 20px 20px}
+svg.sankey{display:block;max-width:100%;height:auto;font-family:var(--sans)}
+svg.sankey .rib{transition:opacity .13s ease}
+svg.sankey.dimmed .rib{opacity:.05}
+svg.sankey.dimmed .rib.hi{opacity:.82}
+svg.sankey.dimmed .node{opacity:.16}
+svg.sankey.dimmed .node.hi{opacity:1}
+svg.sankey.dimmed .nlab{opacity:.14}
+svg.sankey.dimmed .nlab.hi{opacity:1}
+svg.sankey .nbar{cursor:pointer}
+svg.sankey .nbar:hover{stroke:var(--rouge);stroke-width:1.6px}
+svg.sankey .hit{fill:transparent;cursor:pointer}
+.empty{padding:60px 20px;text-align:center;color:var(--ink-muted)}
+
+#tip{position:fixed;z-index:60;pointer-events:none;opacity:0;transition:opacity .1s;max-width:340px;
+  background:var(--panel);border:1px solid var(--border-strong);border-radius:var(--r-md);box-shadow:var(--shadow);
+  padding:10px 12px;font-size:12.5px;color:var(--ink);line-height:1.45}
+#tip.on{opacity:1}
+#tip .t{font-weight:700;font-size:13.5px;display:block;margin-bottom:3px}
+#tip .m{color:var(--ink-muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+#tip .n{font-variant-numeric:tabular-nums;font-weight:700}
+#tip .path{margin-top:6px;padding-top:6px;border-top:1px solid var(--hair);color:var(--ink-2);font-size:11.5px}
+#tip .cta{margin-top:6px;color:var(--ink-muted);font-size:11px}
+
+footer.note{margin:18px 0 8px;color:var(--ink-muted);font-size:12.5px;line-height:1.65}
+footer.note h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin:0 0 8px}
+footer.note p{margin:0 0 8px;max-width:96ch}
+footer.note code{font-family:var(--mono);font-size:11.5px;background:var(--sunken);border:1px solid var(--hair);
+  border-radius:4px;padding:1px 5px;color:var(--ink-2)}
+footer.note .rule{height:1px;background:var(--hair);margin:14px 0}
+.corner{width:26px;height:4px;background:var(--rouge);margin-left:auto;border-radius:2px}
+/* signature: centred on the page, Rouge corner stacked under the line rather than beside it */
+footer.note .sig{display:flex;flex-direction:column;align-items:center;gap:10px;margin:0;max-width:none;text-align:center}
+footer.note .sig .corner{margin-left:0}
+@media (max-width:760px){ .ctl-row{gap:14px} .field.grow{flex-basis:100%} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div class="masthead">
+      <div class="lockup" title="Official Inria + République Française co-signature">
+        <img id="logo" alt="République Française · Inria" src="data:image/svg+xml;base64,__LOGO_B64__">
+        <span id="logo-fb" hidden style="display:none;align-items:center;gap:11px">
+          <span class="rf">
+            <span class="flag"><i class="b"></i><i class="w"></i><i class="r"></i></span>
+            <span class="rfw">RÉPUBLIQUE<br>FRANÇAISE</span>
+            <span class="dev">Liberté · Égalité · Fraternité</span>
+          </span>
+          <span class="rule"></span>
+          <span class="inria">Inria</span>
+        </span>
+      </div>
+      <div class="titles">
+        <p class="eyebrow"><a href="__DATASET_URL__" target="_blank" rel="noopener noreferrer">__DATASET_REPO__</a></p>
+        <h1><span class="ds">__DATASET_NAME__</span> dataset taxonomy explorer</h1>
+      </div>
+    </div>
+    <p class="lede">
+      Part of <a href="https://oceania.inria.cl" target="_blank" rel="noopener noreferrer">Inria Challenge OcéanIA 🌊</a> - <a href="https://www.inria.cl" target="_blank" rel="noopener noreferrer">Inria Chile Research Center</a> and collaborators.<br/>
+      <b>GitHub:</b> <a href="https://github.com/Inria-Chile/planktonzilla" target="_blank" rel="noopener noreferrer">https://github.com/Inria-Chile/planktonzilla</a> - <b>Hugging Face:</b> <a href="https://huggingface.co/collections/project-oceania/planktonzilla" target="_blank" rel="noopener noreferrer">https://huggingface.co/collections/project-oceania/planktonzilla</a>
+    </p>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <!-- ─────────── control box (top) ─────────── -->
+  <section class="controls" aria-label="Diagram controls">
+    <div class="ctl-row">
+      <div class="field grow">
+        <span class="lab">Columns <span class="hint" style="text-transform:none;letter-spacing:0;font-weight:400">— click to show or hide</span></span>
+        <div class="chips" id="chips"></div>
+      </div>
+    </div>
+
+    <div class="ctl-row">
+      <div class="field">
+        <label class="lab" for="colorBy">Colour by</label>
+        <select id="colorBy"></select>
+      </div>
+      <div class="field">
+        <label class="lab" for="sizeBy">Size by</label>
+        <select id="sizeBy">
+          <option value="img">Dataset images</option>
+          <option value="map">Label mappings</option>
+        </select>
+      </div>
+      <div class="field grow">
+        <label class="lab" for="thr">Merge threshold <span class="hint" style="text-transform:none;letter-spacing:0;font-weight:400">— classes under it pool into “Other”</span></label>
+        <div class="slider-wrap">
+          <input type="range" id="thr" min="0" max="100" step="1" value="0" aria-describedby="thrOut">
+          <output class="thr-out" id="thrOut">off</output>
+        </div>
+      </div>
+      <div class="field">
+        <label class="lab" for="q">Find a class</label>
+        <input type="search" id="q" placeholder="e.g. chaetoceros, detritus…" autocomplete="off">
+      </div>
+      <div class="field">
+        <span class="lab">Actions</span>
+        <div class="btn-row">
+          <button class="btn" id="reset" type="button">Reset</button>
+          <button class="btn" id="theme" type="button" aria-live="polite">Dark</button>
+          <button class="btn" id="export" type="button">💾 SVG</button>
+          <button class="btn" id="exportPng" type="button">💾 PNG</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend" id="legend"></div>
+    <div class="crumbs" id="crumbs" hidden></div>
+  </section>
+
+  <!-- ─────────── the diagram ─────────── -->
+  <section class="board">
+    <div class="board-head">
+      <h2 id="boardTitle">Flow</h2>
+      <span class="sub" id="boardSub"></span>
+    </div>
+    <div class="scroller" id="scroller"><div id="chart"></div></div>
+  </section>
+
+  <footer class="note">
+    <h3>How to read this</h3>
+    <p style="max-width: 92%;">
+      A ribbon’s <b>thickness is the same everywhere it goes</b> — one global scale — so the flow you see
+      leaving a column is the flow that genuinely continues. Where a column’s stack is shorter than the one
+      before it, that difference is material whose lineage <em>stops</em> at that rank (the taxonomy fills
+      <code>Species</code> for roughly a fifth of living labels), not material that was dropped.
+    </p>
+    <pstyle="max-width: 92%;">
+      <b>Merging.</b> The threshold is applied column by column, left to right: any class carrying less than
+      the threshold is pooled into that column’s grey <b>Other</b> node and its ribbon ends there. Pooling one
+      column changes what is left for the next, so the sweep re-measures at every column. Nothing is discarded —
+      the pooled total is exactly the sum of what went into it.
+    </p>
+    <p style="max-width: 92%;">
+      <b>Converging flow.</b> A node is identified by its column and its value, so the same taxon reached from
+      several datasets is one node, and the ribbons visibly merge into it. Node and link values are re-derived
+      from surviving ribbons on every change, so the diagram conserves flow at each node by construction.
+    </p>
+    <div class="rule"></div>
+    <p class="sig">
+      <span>Made with ❤️ by Inria</span>
+      <span class="corner" aria-hidden="true"></span>
+    </p>
+  </footer>
+</div>
+
+<div id="tip" role="tooltip"></div>
+
+<script id="payload" type="application/json">__PAYLOAD__</script>
+<script>
+"use strict";
+/* ════════════════════════════════════════════════════════════════════════
+   planktonzilla label-space Sankey — ribbon model + purpose-built SVG renderer
+   ════════════════════════════════════════════════════════════════════════ */
+const DATA   = JSON.parse(document.getElementById('payload').textContent);
+const COLS   = DATA.cols;
+const VOCAB  = DATA.vocab;
+const RIB    = DATA.ribbons;
+const META   = DATA.meta;
+const NC     = COLS.length;
+const W_IMG  = NC, W_MAP = NC + 1;
+const ABSENT = -1, POOL = -2;
+const OTHER_LABEL = 'Other';
+
+/* ── Inria data-viz palette: fixed hue order, sanctioned tints, Rouge reserved ── */
+const HUES  = ['#27348b','#1067a3','#534b9a','#a60f79'];  // Bleu mat, Bleu canard, Violet, Framboise
+const TINTS = [1, .70, .50, .34];
+const GREY  = '#aab3bf';
+
+const state = {
+  visible : COLS.map(() => true),
+  colorBy : 'root_class',
+  sizeBy  : META.samples_available ? 'img' : 'map',
+  slider  : 0,
+  focus   : null,          // {col, id}
+  query   : '',
+  theme   : 'auto'
+};
+
+/* ───────────────────────── helpers ───────────────────────── */
+const fmt  = n => n >= 1e6 ? (n/1e6).toFixed(n >= 1e7 ? 0 : 1)+'M'
+                : n >= 1e3 ? (n/1e3).toFixed(n >= 1e4 ? 0 : 1)+'k'
+                : String(Math.round(n));
+const full = n => Math.round(n).toLocaleString('en-US');
+const esc  = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function hex2rgb(h){ const n = parseInt(h.slice(1),16); return [n>>16&255, n>>8&255, n&255]; }
+function mixHex(a,b,t){                       // t = share of b
+  const A = hex2rgb(a), B = hex2rgb(b);
+  const c = A.map((v,i) => Math.round(v + (B[i]-v)*t));
+  return '#' + c.map(v => v.toString(16).padStart(2,'0')).join('');
+}
+const isDark = () => (document.documentElement.dataset.theme || 'auto') === 'dark' ||
+  (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme:dark)').matches);
+
+/** Series colour for rank i of the active colour dimension, per the charter's tint ladder. */
+function seriesColor(i){
+  const hue  = HUES[i % HUES.length];
+  const tier = Math.floor(i / HUES.length) % TINTS.length;
+  const t    = TINTS[tier];
+  return isDark()
+    ? mixHex(hue, '#ffffff', .30 + (1-t) * .34)   // lighten on dark so fills stay legible
+    : mixHex(hue, '#ffffff', 1 - t);              // sanctioned 70/50/34 % tints on light
+}
+function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+/* ───────────────────────── threshold scale ─────────────────────────
+   Weights span 1 → 17M, so the slider is logarithmic: 0 disables pooling and
+   100 pools everything below 2 % of the total. */
+let TOTAL_W = 1;
+function thrOf(slider){
+  if (slider <= 0) return 0;
+  const hi = Math.max(10, TOTAL_W * 0.02);
+  return Math.max(1, Math.round(Math.pow(hi, slider/100)));
+}
+
+/* ═════════════════════ 1. ribbons → graph ═════════════════════ */
+function buildGraph(){
+  const vis = [];
+  for (let c = 0; c < NC; c++) if (state.visible[c]) vis.push(c);
+  const V = vis.length;
+  if (V < 2) return { empty:'Show at least two columns to draw a flow.' };
+
+  const wSlot = state.sizeBy === 'img' ? W_IMG : W_MAP;
+
+  /* — select ribbons (focus filter) and project onto the visible columns — */
+  const rows = [];
+  for (const r of RIB){
+    const w = r[wSlot];
+    if (w <= 0) continue;
+    if (state.focus && r[state.focus.col] !== state.focus.id) continue;
+    const at = new Int32Array(V);
+    let stops = 0;
+    for (let i = 0; i < V; i++){ at[i] = r[vis[i]]; if (at[i] !== ABSENT) stops++; }
+    if (!stops) continue;
+    rows.push({ src:r, at, cut:-1, w });
+  }
+  if (!rows.length) return { empty:'Nothing flows through the current selection.' };
+
+  TOTAL_W = rows.reduce((s,x) => s + x.w, 0);
+  const thr = thrOf(state.slider);
+
+  /* — threshold pooling, one left-to-right sweep —
+     Pooling a column shrinks what reaches the next, so totals are re-measured at
+     every column from the ribbons that are still running. */
+  const alive = new Uint8Array(rows.length).fill(1);
+  if (thr > 0){
+    for (let i = 0; i < V; i++){
+      const tot = new Map();
+      for (let j = 0; j < rows.length; j++){
+        if (!alive[j]) continue;
+        const v = rows[j].at[i];
+        if (v === ABSENT) continue;
+        tot.set(v, (tot.get(v) || 0) + rows[j].w);
+      }
+      for (let j = 0; j < rows.length; j++){
+        if (!alive[j]) continue;
+        const v = rows[j].at[i];
+        if (v === ABSENT) continue;
+        if (tot.get(v) < thr){ rows[j].cut = i; alive[j] = 0; }
+      }
+    }
+  }
+
+  /* — colour key per ribbon — */
+  const cbIdx = COLS.findIndex(c => c.key === state.colorBy);
+  const byColumn = state.colorBy === '__column';
+  const keyOf = r => {
+    if (byColumn) return null;
+    const id = r.src[cbIdx];
+    return id === ABSENT ? '—' : VOCAB[cbIdx][id];
+  };
+
+  /* — accumulate nodes and links from whatever survived — */
+  const nodes = new Map(), links = new Map(), weightByKey = new Map();
+  const nodeAt = (pos, id) => {
+    const key = pos + ':' + id;
+    let n = nodes.get(key);
+    if (!n){
+      n = { key, pos, id, col:vis[pos],
+            label: id === POOL ? OTHER_LABEL : VOCAB[vis[pos]][id],
+            value:0, comp:new Map(), merged:new Set(), inL:[], outL:[] };
+      nodes.set(key, n);
+    }
+    return n;
+  };
+  const bump = (m, k, w) => m.set(k, (m.get(k) || 0) + w);
+
+  for (const r of rows){
+    const chain = [];
+    const limit = r.cut < 0 ? V : r.cut;
+    for (let i = 0; i < limit; i++) if (r.at[i] !== ABSENT) chain.push(nodeAt(i, r.at[i]));
+    if (r.cut >= 0){
+      const p = nodeAt(r.cut, POOL);
+      p.merged.add(r.at[r.cut]);
+      chain.push(p);
+    }
+    if (!chain.length) continue;
+
+    const ck = keyOf(r);
+    // Series weight is counted ONCE per ribbon — summing node compositions would count a
+    // ribbon again at every column it crosses and inflate the legend past the true total.
+    if (ck !== null) bump(weightByKey, ck, r.w);
+    for (const n of chain){ n.value += r.w; if (ck !== null) bump(n.comp, ck, r.w); }
+    for (let i = 0; i + 1 < chain.length; i++){
+      const a = chain[i], b = chain[i+1], lk = a.key + '|' + b.key;
+      let l = links.get(lk);
+      if (!l){ l = { key:lk, src:a, dst:b, value:0, bands:new Map() }; links.set(lk, l); a.outL.push(l); b.inL.push(l); }
+      l.value += r.w;
+      bump(l.bands, ck === null ? String(a.pos) : ck, r.w);
+    }
+  }
+
+  /* — colour scale over the active dimension, ordered by weight so the heaviest
+       series get the pure brand hues and the tail gets the tints — */
+  const order = byColumn
+    ? vis.map((_,i) => String(i))
+    : [...weightByKey.entries()].sort((a,b) => b[1]-a[1]).map(e => e[0]);
+
+  const colorOf = new Map();
+  if (byColumn){
+    for (let i = 0; i < V; i++) colorOf.set(String(i), seriesColor(i));
+  } else {
+    order.forEach((k,i) => colorOf.set(k, k === '—' ? GREY : seriesColor(i)));
+  }
+  const rank = new Map(order.map((k,i) => [k,i]));
+
+  /* — per column bookkeeping — */
+  const byPos = Array.from({length:V}, () => []);
+  for (const n of nodes.values()) byPos[n.pos].push(n);
+
+  return { V, vis, nodes, links, byPos, colorOf, rank, order, weightByKey,
+           byColumn, thr, total:TOTAL_W, wSlot,
+           poolCount: [...nodes.values()].filter(n => n.id === POOL).reduce((s,n) => s + n.merged.size, 0) };
+}
+
+/* ═════════════════════ 2. layout ═════════════════════ */
+const NODE_W = 11, PAD_L = 4, PAD_R = 196, PAD_T = 26, MIN_H = .7;
+
+function layout(g, width){
+  const V = g.V;
+  const inner = Math.max(360, width - PAD_L - PAD_R - NODE_W);
+  const colX  = i => PAD_L + (V === 1 ? 0 : inner * i / (V - 1));
+
+  const counts = g.byPos.map(a => a.length);
+  const gaps   = counts.map(n => Math.max(1.2, Math.min(6, 420 / Math.max(1,n))));
+  const totals = g.byPos.map(a => a.reduce((s,n) => s + n.value, 0));
+  const maxN   = Math.max(...counts, 1);
+
+  // Board height grows with the busiest column so dense ranks get real room.
+  const H = Math.max(560, Math.min(2600, maxN * 17 + 40));
+
+  // ONE global scale — a ribbon must keep its thickness across the whole diagram.
+  let scale = Infinity;
+  for (let i = 0; i < V; i++){
+    if (!totals[i]) continue;
+    const avail = H - (counts[i]-1) * gaps[i] - counts[i] * MIN_H;
+    scale = Math.min(scale, Math.max(avail, 40) / totals[i]);
+  }
+  if (!isFinite(scale) || scale <= 0) scale = H / Math.max(1, g.total);
+
+  /* Order each column by its dominant parent's vertical position (barycentre), then by
+     weight. Processing left to right means parents are already placed. Pooled Other sinks
+     to the bottom of its column. */
+  for (let i = 0; i < V; i++){
+    const arr = g.byPos[i];
+    if (i === 0){
+      arr.sort((a,b) => (a.id===POOL) - (b.id===POOL) || b.value - a.value || a.label.localeCompare(b.label));
+    } else {
+      for (const n of arr){
+        let bv = -1, py = Infinity;
+        for (const l of n.inL) if (l.value > bv){ bv = l.value; py = l.src.y + l.src.h/2; }
+        n._py = py; n._pv = -bv;
+      }
+      arr.sort((a,b) => (a.id===POOL) - (b.id===POOL) || a._py - b._py || a._pv - b._pv ||
+                        b.value - a.value || a.label.localeCompare(b.label));
+    }
+    const used = arr.reduce((s,n) => s + Math.max(n.value*scale, MIN_H), 0) + (arr.length-1)*gaps[i];
+    let y = Math.max(0, (H - used) / 2);                      // centre each column's stack
+    for (const n of arr){
+      n.h = Math.max(n.value * scale, MIN_H);
+      n.x = colX(i); n.y = y;
+      y += n.h + gaps[i];
+    }
+  }
+
+  /* Link slots: outgoing stacked by target position, incoming by source position — the
+     pairing that keeps a bundle from twisting. Outgoing may total less than the node's
+     height; that remainder is flow whose lineage ends here. */
+  for (const n of g.nodes.values()){
+    n.outL.sort((a,b) => a.dst.y - b.dst.y || b.value - a.value);
+    let c = n.y; for (const l of n.outL){ l.sy = c; c += l.value * scale; }
+    n.inL.sort((a,b) => a.src.y - b.src.y || b.value - a.value);
+    c = n.y; for (const l of n.inL){ l.ty = c; c += l.value * scale; }
+  }
+
+  g.scale = scale; g.H = H; g.width = width; g.colX = colX; g.inner = inner;
+  return g;
+}
+
+/* ═════════════════════ 3. render ═════════════════════ */
+function ribbonPath(x0,y0a,y0b,x1,y1a,y1b){
+  const xm = (x0 + x1) / 2;
+  return `M${x0.toFixed(1)},${y0a.toFixed(2)}C${xm.toFixed(1)},${y0a.toFixed(2)} ${xm.toFixed(1)},${y1a.toFixed(2)} ${x1.toFixed(1)},${y1a.toFixed(2)}`
+       + `L${x1.toFixed(1)},${y1b.toFixed(2)}C${xm.toFixed(1)},${y1b.toFixed(2)} ${xm.toFixed(1)},${y0b.toFixed(2)} ${x0.toFixed(1)},${y0b.toFixed(2)}Z`;
+}
+
+/** Dominant colour key of a composition map (used for node fills and single-colour links). */
+function dominant(m){ let bk=null, bv=-1; for (const [k,v] of m) if (v > bv){ bv=v; bk=k; } return bk; }
+
+let G = null, LINK_EL = [], NODE_EL = [];
+
+function render(){
+  const host = document.getElementById('chart');
+  const g = buildGraph();
+  if (g.empty){ host.innerHTML = `<p class="empty">${esc(g.empty)}</p>`; G = null; paintLegend(null); paintBoard(null); return; }
+
+  const width = Math.max(760, document.getElementById('scroller').clientWidth - 40);
+  layout(g, width);
+  G = g;
+
+  const ink = cssVar('--ink') || '#171a1d';
+  const inkMuted = cssVar('--ink-muted') || '#5c666f';
+  const page = cssVar('--page') || '#ffffff';
+  const hair = cssVar('--hair') || '#e0e5ea';
+  const totalH = g.H + PAD_T + 26;
+  // Ribbons need a little more body on dark, where they sit on a near-black board.
+  const RIB_OPACITY = isDark() ? '.46' : '.42';
+
+  const out = [];
+  out.push(`<svg class="sankey" id="svg" width="${width}" height="${totalH}" viewBox="0 0 ${width} ${totalH}" `
+         + `xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sankey of the __DATASET_NAME__ label space">`);
+  out.push(`<rect width="${width}" height="${totalH}" fill="${page}"/>`);
+
+  /* column headers */
+  for (let i = 0; i < g.V; i++){
+    const x = g.colX(i), n = g.byPos[i].length;
+    const anchor = i === g.V - 1 ? 'end' : 'start';
+    const tx = i === g.V - 1 ? x + NODE_W : x;
+    out.push(`<text x="${tx.toFixed(1)}" y="13" text-anchor="${anchor}" font-size="11" font-weight="700" `
+           + `letter-spacing=".07em" fill="${ink}">${esc(COLS[g.vis[i]].label.toUpperCase())}</text>`);
+    out.push(`<text x="${tx.toFixed(1)}" y="25" text-anchor="${anchor}" font-size="10" fill="${inkMuted}">${n} ${n===1?'class':'classes'}</text>`);
+  }
+  out.push(`<line x1="0" y1="${PAD_T + 3}" x2="${width}" y2="${PAD_T + 3}" stroke="${hair}" stroke-width="1"/>`);
+
+  /* ribbons — split into colour bands so a bundle shows its true composition */
+  const T = PAD_T + 8;
+  const ribs = [];
+  let li = 0;
+  const linkList = [...g.links.values()];
+  for (const l of linkList){
+    const x0 = l.src.x + NODE_W, x1 = l.dst.x;
+    const bands = [...l.bands.entries()].sort((a,b) => (g.rank.get(a[0]) ?? 1e9) - (g.rank.get(b[0]) ?? 1e9));
+    let cs = l.sy, ct = l.ty;
+    // Fold sub-pixel bands into the dominant one so a dense diagram stays fast.
+    const keep = [], dom = dominant(l.bands);
+    let crumbs = 0;
+    for (const [k,v] of bands){ if (v * g.scale < .45 && k !== dom) crumbs += v; else keep.push([k,v]); }
+    if (crumbs > 0){
+      const at = keep.findIndex(e => e[0] === dom);
+      if (at >= 0) keep[at] = [dom, keep[at][1] + crumbs]; else keep.push([dom, crumbs]);
+    }
+    l.idx = li;
+    for (const [k,v] of keep){
+      const h = v * g.scale;
+      const col = g.colorOf.get(k) || GREY;
+      ribs.push(`<path class="rib" data-l="${li}" d="${ribbonPath(x0, cs+T, cs+h+T, x1, ct+T, ct+h+T)}" `
+              + `fill="${col}" fill-opacity="${RIB_OPACITY}"/>`);
+      cs += h; ct += h;
+    }
+    li++;
+  }
+  out.push(`<g class="ribs">${ribs.join('')}</g>`);
+
+  /* nodes + labels */
+  const bars = [], labs = [], hits = [];
+  let ni = 0;
+  const nodeList = [...g.nodes.values()];
+  for (const n of nodeList){
+    n.idx = ni;
+    const fill = n.id === POOL ? GREY
+               : g.byColumn ? (g.colorOf.get(String(n.pos)) || GREY)
+               : (g.colorOf.get(dominant(n.comp)) || GREY);
+    bars.push(`<rect class="node nbar" data-n="${ni}" x="${n.x.toFixed(1)}" y="${(n.y+T).toFixed(2)}" `
+            + `width="${NODE_W}" height="${Math.max(n.h,1).toFixed(2)}" rx="1.5" fill="${fill}"/>`);
+    // A generous transparent hit area so 1-px nodes are still reachable.
+    hits.push(`<rect class="hit" data-n="${ni}" x="${(n.x-2).toFixed(1)}" y="${(n.y+T-2.5).toFixed(2)}" `
+            + `width="${NODE_W+4}" height="${(Math.max(n.h,1)+5).toFixed(2)}"/>`);
+    if (n.h >= 7.5){
+      const last = n.pos === g.V - 1;
+      const lx = last ? n.x + NODE_W + 7 : n.x + NODE_W + 6;
+      const label = n.id === POOL ? `${OTHER_LABEL} · ${n.merged.size} classes` : n.label;
+      const size = n.h >= 15 ? 11.5 : 10;
+      labs.push(`<text class="nlab" data-n="${ni}" x="${lx.toFixed(1)}" y="${(n.y+T+n.h/2).toFixed(2)}" `
+              + `dy=".33em" font-size="${size}" fill="${ink}" paint-order="stroke" stroke="${page}" `
+              + `stroke-width="3.2" stroke-linejoin="round">${esc(label)}`
+              + `<tspan fill="${inkMuted}" font-size="${(size-1.2).toFixed(1)}"> ${esc(fmt(n.value))}</tspan></text>`);
+    }
+    ni++;
+  }
+  out.push(`<g class="nodes">${bars.join('')}</g><g class="labels">${labs.join('')}</g><g class="hits">${hits.join('')}</g>`);
+  out.push(`</svg>`);
+  host.innerHTML = out.join('');
+
+  const svg = document.getElementById('svg');
+  LINK_EL = Array.from({length: linkList.length}, () => []);
+  svg.querySelectorAll('.rib').forEach(el => LINK_EL[+el.dataset.l].push(el));
+  NODE_EL = new Array(nodeList.length);
+  svg.querySelectorAll('.node').forEach(el => NODE_EL[+el.dataset.n] = { bar:el, lab:null });
+  svg.querySelectorAll('.nlab').forEach(el => { const s = NODE_EL[+el.dataset.n]; if (s) s.lab = el; });
+  g.linkList = linkList; g.nodeList = nodeList;
+
+  wireEvents(svg, g);
+  paintLegend(g);
+  paintBoard(g);
+  applyQuery();
+}
+
+/* ═════════════════════ 4. interaction ═════════════════════ */
+const tip = document.getElementById('tip');
+function showTip(html, ev){
+  tip.innerHTML = html; tip.classList.add('on');
+  const r = tip.getBoundingClientRect();
+  let x = ev.clientX + 16, y = ev.clientY + 16;
+  if (x + r.width  > innerWidth  - 12) x = ev.clientX - r.width  - 16;
+  if (y + r.height > innerHeight - 12) y = ev.clientY - r.height - 16;
+  tip.style.left = Math.max(8,x) + 'px'; tip.style.top = Math.max(8,y) + 'px';
+}
+const hideTip = () => tip.classList.remove('on');
+
+/** Every link reachable from a node, walking both directions. */
+function reachable(n){
+  const L = new Set(), N = new Set([n.idx]);
+  const walk = (node, dir) => {
+    for (const l of (dir < 0 ? node.inL : node.outL)){
+      if (L.has(l.idx)) continue;
+      L.add(l.idx);
+      const nxt = dir < 0 ? l.src : l.dst;
+      N.add(nxt.idx);
+      walk(nxt, dir);
+    }
+  };
+  walk(n, -1); walk(n, 1);
+  return { L, N };
+}
+
+function highlight(sel){
+  const svg = document.getElementById('svg');
+  if (!svg) return;
+  if (!sel){ svg.classList.remove('dimmed');
+    svg.querySelectorAll('.hi').forEach(e => e.classList.remove('hi')); return; }
+  svg.querySelectorAll('.hi').forEach(e => e.classList.remove('hi'));
+  svg.classList.add('dimmed');
+  for (const i of sel.L) for (const el of (LINK_EL[i] || [])) el.classList.add('hi');
+  for (const i of sel.N){ const s = NODE_EL[i]; if (s){ s.bar.classList.add('hi'); if (s.lab) s.lab.classList.add('hi'); } }
+}
+
+function nodeTip(n, g){
+  const pct = g.total ? (100 * n.value / g.total) : 0;
+  const unit = state.sizeBy === 'img' ? 'images' : 'label mappings';
+  const parts = [];
+  parts.push(`<span class="t">${esc(n.id === POOL ? `${OTHER_LABEL} · ${n.merged.size} classes pooled` : n.label)}</span>`);
+  parts.push(`<span class="m">${esc(COLS[n.col].label)}</span><br>`);
+  parts.push(`<span class="n">${full(n.value)}</span> ${unit} · ${pct.toFixed(pct < 1 ? 2 : 1)}% of view`);
+  const out = n.outL.reduce((s,l) => s + l.value, 0);
+  if (n.value - out > 0.5 && n.pos < g.V - 1){
+    const ends = n.value - out;
+    parts.push(`<div class="path">${full(ends)} (${(100*ends/n.value).toFixed(0)}%) has no deeper rank — it ends here.</div>`);
+  }
+  if (!g.byColumn && n.comp.size){
+    const top = [...n.comp.entries()].sort((a,b) => b[1]-a[1]).slice(0,4)
+      .map(([k,v]) => `<div><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${g.colorOf.get(k)||GREY};margin-right:6px"></span>${esc(k)} <span class="n">${fmt(v)}</span></div>`).join('');
+    parts.push(`<div class="path">${top}${n.comp.size > 4 ? `<div style="color:var(--ink-muted)">+${n.comp.size-4} more</div>` : ''}</div>`);
+  }
+  if (n.id !== POOL) parts.push(`<div class="cta">Click to focus on this branch</div>`);
+  return parts.join('');
+}
+
+function linkTip(l, g){
+  const unit = state.sizeBy === 'img' ? 'images' : 'label mappings';
+  const bands = [...l.bands.entries()].sort((a,b) => b[1]-a[1]).slice(0,4)
+    .map(([k,v]) => `<div><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${g.colorOf.get(g.byColumn?String(l.src.pos):k)||GREY};margin-right:6px"></span>${esc(g.byColumn ? COLS[l.src.col].label : k)} <span class="n">${fmt(v)}</span></div>`).join('');
+  return `<span class="t">${esc(l.src.label)} → ${esc(l.dst.label)}</span>`
+       + `<span class="m">${esc(COLS[l.src.col].label)} → ${esc(COLS[l.dst.col].label)}</span><br>`
+       + `<span class="n">${full(l.value)}</span> ${unit}`
+       + (l.bands.size ? `<div class="path">${bands}</div>` : '');
+}
+
+function wireEvents(svg, g){
+  let cur = null;
+  svg.addEventListener('mousemove', ev => {
+    const t = ev.target;
+    if (t.dataset && t.dataset.n !== undefined){
+      const n = g.nodeList[+t.dataset.n];
+      if (cur !== 'n' + n.idx){ cur = 'n' + n.idx; highlight(reachable(n)); }
+      showTip(nodeTip(n, g), ev);
+    } else if (t.dataset && t.dataset.l !== undefined){
+      const l = g.linkList[+t.dataset.l];
+      if (cur !== 'l' + l.idx){ cur = 'l' + l.idx; highlight({ L:new Set([l.idx]), N:new Set([l.src.idx, l.dst.idx]) }); }
+      showTip(linkTip(l, g), ev);
+    } else if (cur !== null){ cur = null; hideTip(); highlight(null); applyQuery(); }
+  });
+  svg.addEventListener('mouseleave', () => { cur = null; hideTip(); highlight(null); applyQuery(); });
+  svg.addEventListener('click', ev => {
+    const t = ev.target;
+    if (!t.dataset || t.dataset.n === undefined) return;
+    const n = g.nodeList[+t.dataset.n];
+    if (n.id === POOL) return;                       // a pool is not a single class
+    state.focus = { col:n.col, id:n.id, label:n.label };
+    hideTip(); render(); paintCrumbs();
+  });
+}
+
+/* ═════════════════════ 5. chrome ═════════════════════ */
+function paintChips(){
+  const box = document.getElementById('chips');
+  box.innerHTML = COLS.map((c,i) =>
+    `<button class="chip" type="button" role="switch" data-c="${i}" aria-pressed="${state.visible[i]}">`
+    + `<span class="dot"></span>${esc(c.label)}<span class="n">${META.column_cardinality[i]}</span></button>`).join('');
+  box.querySelectorAll('.chip').forEach(btn => btn.addEventListener('click', () => {
+    const i = +btn.dataset.c;
+    const on = state.visible.filter(Boolean).length;
+    if (state.visible[i] && on <= 2) return;         // never fall below a drawable flow
+    state.visible[i] = !state.visible[i];
+    btn.setAttribute('aria-pressed', String(state.visible[i]));
+    render();
+  }));
+}
+
+function paintColorBy(){
+  const sel = document.getElementById('colorBy');
+  const opts = [`<option value="__column">Column (position in the flow)</option>`]
+    .concat(COLS.map(c => `<option value="${c.key}">${esc(c.label)}</option>`));
+  sel.innerHTML = opts.join('');
+  sel.value = state.colorBy;
+}
+
+function paintLegend(g){
+  const box = document.getElementById('legend');
+  if (!g){ box.innerHTML = ''; return; }
+  let items;
+  if (g.byColumn){
+    items = g.vis.map((c,i) => [COLS[c].label, g.colorOf.get(String(i)), null]);
+  } else {
+    // Show the tail inline when it is only a row or two — "+1 more" next to 15 named
+    // series is worse than simply naming all 16.
+    const cap = g.order.length <= 20 ? g.order.length : 18;
+    items = g.order.slice(0, cap).map(k => [k, g.colorOf.get(k), g.weightByKey.get(k) || 0]);
+    if (g.order.length > cap){
+      const rest = g.order.slice(cap).reduce((s,k) => s + (g.weightByKey.get(k) || 0), 0);
+      items.push([`+${g.order.length-cap} more`, GREY, rest]);
+    }
+  }
+  if (g.poolCount) items.push([`Other (pooled, ${g.poolCount} classes)`, GREY, null]);
+  box.innerHTML = items.map(([k,c,v]) =>
+    `<span class="lg"><span class="sw" style="background:${c}"></span>${esc(k)}`
+    + (v != null ? `<span class="amt">${fmt(v)}</span>` : '') + `</span>`).join('');
+}
+
+function paintBoard(g){
+  const sub = document.getElementById('boardSub');
+  const title = document.getElementById('boardTitle');
+  if (!g){ sub.textContent = ''; return; }
+  const unit = state.sizeBy === 'img' ? 'images' : 'label mappings';
+  title.textContent = state.focus ? `Flow through ${state.focus.label}` : 'Flow';
+  const ends = g.byPos[g.V-1].reduce((s,n) => s + n.value, 0);
+  sub.textContent = `${full(g.total)} ${unit} · ${g.nodes.size} nodes · ${g.links.size} links · `
+    + `${full(ends)} (${(100*ends/g.total).toFixed(1)}%) reach ${COLS[g.vis[g.V-1]].label}`;
+}
+
+/* `2026-07-28T14:22:07Z` → `2026-07-28 14:22`; the tile label already says UTC. */
+function stampText(iso){ return iso ? iso.replace('T', ' ').replace(/:\d\dZ?$/, '') : '—'; }
+
+/* Full provenance for the version tile's tooltip: the commit the version names, and when
+   that commit was written. Both are absent on an offline or pinned build. */
+function versionTip(){
+  const bits = [];
+  if (META.dataset_revision) bits.push(`revision ${META.dataset_revision}`);
+  if (META.dataset_modified) bits.push(`last modified ${META.dataset_modified}`);
+  return bits.join(' · ');
+}
+
+function paintStats(){
+  const box = document.getElementById('stats');
+  const tiles = [
+    {k:'Images', v: META.samples_available ? full(META.total_images) : '—'},
+    {k:'Label mappings', v: full(META.total_mappings)},
+    {k:'Source datasets', v: String(META.n_datasets)},
+    {k:'Distinct paths', v: full(META.n_ribbons)},
+    {k:'Columns', v: `${NC}`},
+    {k:'Dataset version', v: META.dataset_version || '—', sm:true, title: versionTip()},
+    {k:'Generated (UTC)', v: stampText(META.generated_at), sm:true, title: META.generated_at || ''},
+  ];
+  box.innerHTML = tiles.map(t =>
+    `<div class="tile"${t.title ? ` title="${esc(t.title)}"` : ''}>`
+    + `<span class="k">${esc(t.k)}</span><span class="v${t.sm ? ' sm' : ''}">${esc(t.v)}</span></div>`).join('');
+}
+
+function paintThr(){
+  const t = thrOf(state.slider);
+  const out = document.getElementById('thrOut');
+  if (!t){ out.textContent = 'off — show all'; return; }
+  const pct = TOTAL_W ? (100 * t / TOTAL_W) : 0;
+  const unit = state.sizeBy === 'img' ? 'img' : 'maps';
+  out.textContent = `< ${full(t)} ${unit} (${pct < 0.01 ? '<0.01' : pct.toFixed(2)}%)`;
+}
+
+function paintCrumbs(){
+  const box = document.getElementById('crumbs');
+  if (!state.focus){ box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+  box.innerHTML = `<span>Focused on</span><span class="crumb">${esc(COLS[state.focus.col].label)}: ${esc(state.focus.label)}`
+    + `<button type="button" id="unfocus" aria-label="Clear focus">×</button></span>`
+    + `<span class="hint">Only ribbons passing through this class are shown.</span>`;
+  document.getElementById('unfocus').addEventListener('click', () => { state.focus = null; render(); paintCrumbs(); });
+}
+
+/** Search: outline matches in Rouge (the reserved signal hue) and dim the rest. */
+function applyQuery(){
+  const svg = document.getElementById('svg');
+  if (!svg || !G) return;
+  const q = state.query.trim().toLowerCase();
+  svg.querySelectorAll('[data-hit]').forEach(e => { e.removeAttribute('data-hit'); e.removeAttribute('stroke'); e.removeAttribute('stroke-width'); });
+  if (!q){ svg.classList.remove('dimmed'); svg.querySelectorAll('.hi').forEach(e => e.classList.remove('hi')); return; }
+  const hits = G.nodeList.filter(n => n.label.toLowerCase().includes(q));
+  if (!hits.length){ svg.classList.remove('dimmed'); return; }
+  const L = new Set(), N = new Set();
+  for (const n of hits){ const r = reachable(n); r.L.forEach(i => L.add(i)); r.N.forEach(i => N.add(i)); }
+  highlight({ L, N });
+  const rouge = cssVar('--rouge') || '#c9191e';
+  for (const n of hits){
+    const s = NODE_EL[n.idx];
+    if (s){ s.bar.setAttribute('stroke', rouge); s.bar.setAttribute('stroke-width', '2'); s.bar.setAttribute('data-hit','1'); }
+  }
+}
+
+/* Pick an opening threshold that lands on a legible first view rather than 600 hairlines.
+   The corpus spans six orders of magnitude, so no threshold shows every class legibly at
+   once — the opening view is an overview and the slider (or clicking into a branch, which
+   re-normalises the scale to that subtree) is how you go deeper. */
+function autoThreshold(){
+  const keep = state.slider;
+  for (let s = 0; s <= 100; s += 2){
+    state.slider = s;
+    const g = buildGraph();
+    if (g.empty) break;
+    if (Math.max(...g.byPos.map(a => a.length)) <= 46){ state.slider = keep; return s; }
+  }
+  state.slider = keep;
+  return 64;
+}
+
+/* ═════════════════════ 6. boot + wiring ═════════════════════ */
+function setTheme(mode){
+  state.theme = mode;
+  if (mode === 'auto') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = mode;
+  document.getElementById('theme').textContent = isDark() ? 'Light' : 'Dark';
+  render();
+}
+
+let raf = 0;
+const scheduleRender = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; render(); }); };
+
+document.getElementById('colorBy').addEventListener('change', e => { state.colorBy = e.target.value; render(); });
+document.getElementById('sizeBy').addEventListener('change', e => { state.sizeBy = e.target.value; paintThr(); render(); });
+document.getElementById('thr').addEventListener('input', e => { state.slider = +e.target.value; paintThr(); scheduleRender(); });
+document.getElementById('q').addEventListener('input', e => { state.query = e.target.value; applyQuery(); });
+document.getElementById('theme').addEventListener('click', () => setTheme(isDark() ? 'light' : 'dark'));
+document.getElementById('reset').addEventListener('click', () => {
+  state.visible = COLS.map(() => true);
+  state.focus = null; state.query = ''; state.colorBy = 'root_class';
+  state.sizeBy = META.samples_available ? 'img' : 'map';
+  document.getElementById('q').value = '';
+  document.getElementById('colorBy').value = state.colorBy;
+  document.getElementById('sizeBy').value = state.sizeBy;
+  paintChips(); render();
+  state.slider = autoThreshold();
+  document.getElementById('thr').value = state.slider;
+  paintThr(); render(); paintCrumbs();
+});
+/* ═════════════════════ export ═════════════════════
+   The typeface reaches the diagram through the page's stylesheet, so a bare copy of the
+   live <svg> loses it the moment it leaves the page. Both exports therefore carry the
+   embedded Inria faces and the resolved family inline — which is also what makes the
+   rasterised PNG match what is on screen. */
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function svgForExport(){
+  const live = document.getElementById('svg');
+  if (!live) return null;
+  const clone = live.cloneNode(true);
+  clone.classList.remove('dimmed');                       // export the whole diagram, not a hover state
+  // The hit areas are click targets kept invisible by a page CSS rule, so outside the page
+  // they would paint as solid black rectangles over every node. A static file has no use
+  // for them anyway.
+  clone.querySelector('g.hits')?.remove();
+  const faces = (document.querySelector('style').textContent.match(/@font-face\s*\{[^}]*\}/g) || []).join('');
+  const style = document.createElementNS(SVG_NS, 'style');
+  style.textContent = `${faces}svg{font-family:${getComputedStyle(live).fontFamily}}`;
+  clone.insertBefore(style, clone.firstChild);
+  return {
+    markup: '<?xml version="1.0" encoding="UTF-8"?>\n' + clone.outerHTML,
+    width: +live.getAttribute('width'),
+    height: +live.getAttribute('height'),
+  };
+}
+
+function saveBlob(blob, name){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+/* UTF-8 → base64, chunked: the labels carry accents and btoa alone only takes latin-1. */
+function b64utf8(str){
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+document.getElementById('export').addEventListener('click', () => {
+  const out = svgForExport();
+  if (out) saveBlob(new Blob([out.markup], { type:'image/svg+xml' }), '__DATASET_NAME__-sankey.svg');
+});
+
+/* PNG: rasterise that same markup through an <img>. The source has to be a data: URI — a
+   blob: URL inherits this page's origin, which is opaque when the file is opened from disk,
+   and an opaque-origin image taints the canvas so toBlob() would throw. */
+const PNG_SCALE = 2, MAX_SIDE = 16384;   // 2× for a crisp raster, capped at the canvas limit
+document.getElementById('exportPng').addEventListener('click', async ev => {
+  const out = svgForExport();
+  if (!out) return;
+  const btn = ev.currentTarget, label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Rendering…';
+  let failed = false;
+  try {
+    const img = new Image();
+    await new Promise((ok, no) => {
+      img.onload = ok;
+      img.onerror = () => no(new Error('the diagram could not be rasterised'));
+      img.src = 'data:image/svg+xml;base64,' + b64utf8(out.markup);
+    });
+    const k = Math.min(PNG_SCALE, MAX_SIDE / out.width, MAX_SIDE / out.height);
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(out.width * k);
+    cv.height = Math.round(out.height * k);
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = cssVar('--page') || '#ffffff';        // the SVG paints its own ground, but PNG alpha is unforgiving
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
+    const blob = await new Promise(ok => cv.toBlob(ok, 'image/png'));
+    if (!blob) throw new Error('the canvas could not be encoded');
+    saveBlob(blob, '__DATASET_NAME__-sankey.png');
+  } catch (err) {
+    failed = true;
+    console.error(err);
+  }
+  btn.disabled = false;
+  btn.textContent = failed ? 'PNG failed' : label;
+  if (failed) setTimeout(() => { btn.textContent = label; }, 2500);
+});
+addEventListener('resize', () => scheduleRender());
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => { if (state.theme === 'auto') render(); });
+
+/* Missing logo (offline build) → sanctioned Inria-Serif-at-Rouge text facsimile. An empty
+   data-URI does not reliably fire `error`, so the payload is also checked directly. */
+function logoFallback(){
+  const img = document.getElementById('logo'), fb = document.getElementById('logo-fb');
+  img.style.display = 'none';
+  fb.hidden = false; fb.style.display = 'inline-flex';
+}
+document.getElementById('logo').addEventListener('error', logoFallback);
+if (/base64,\s*$/.test(document.getElementById('logo').getAttribute('src'))) logoFallback();
+
+paintStats();
+paintChips();
+paintColorBy();
+document.getElementById('sizeBy').value = state.sizeBy;
+if (!META.samples_available) document.querySelector('#sizeBy option[value="img"]').disabled = true;
+render();                                     // seed TOTAL_W
+state.slider = autoThreshold();
+document.getElementById('thr').value = state.slider;
+paintThr();
+render();
+document.getElementById('theme').textContent = isDark() ? 'Light' : 'Dark';
+</script>
+</body>
+</html>

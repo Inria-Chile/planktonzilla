@@ -278,3 +278,9 @@ evidence/
 wheat-manifest.json
 uv.lock
 .understand-anything/
+
+# ── Stray tooling / OS files ──
+.DS_Store
+.agents/
+skills-lock.json
+planktonzilla/planktonzilla_dataset/planktonzilla_taxonomy copy.csv
