@@ -233,6 +233,45 @@ Document only.
 
 ---
 
+## Source-license transcription (KI-14 – KI-15)
+
+The `license` / `license_url` columns are transcribed verbatim from the `license:` field of
+each `configs/dataset_import/*.yaml` into `constants.DATASET_LICENSES`, and
+`tests/test_dataset_licenses.py` fails if the two ever disagree. Faithfulness to the importer
+configs is the guarantee; whether each *config* states the right thing is a separate question,
+and for two of the fifteen sources it is genuinely open. Both are recorded as stated and
+carry a `license_url` pointing at the authoritative source record so a consumer can check
+the real terms rather than act on a slug that does not carry them.
+
+## KI-14 — `whoi` is recorded as `mit`, the license of a *code* repository
+
+**Where:** `configs/dataset_import/whoi-plankton.yaml` (`license: "mit"`,
+`source_url: https://github.com/hsosik/WHOI-Plankton`); 3,563,595 images, **20.5% of the
+corpus** — the second-largest source.
+
+**Today:** MIT is a software license, and the `source_url` it was taken from is a GitHub
+repository. The repository's terms need not be the terms of the IFCB imagery hosted at
+`ifcb-data.whoi.edu` and fetched by `retrieve_whoi_metadata`. `license_url` therefore points
+at the repository rather than at a license deed.
+
+**Risk: downstream-legal.** A fifth of the corpus is currently advertised as MIT — the most
+permissive value in the table — on the strength of a code license. Confirm upstream before
+anyone relies on it for redistribution. Correcting the slug changes a published column.
+
+## KI-15 — `planktonset1.0` is recorded as `other`, which states nothing
+
+**Where:** `configs/dataset_import/planktonset1.yaml` (`license: other`); 60,736 images, 0.35%.
+
+**Today:** `other` is the HuggingFace placeholder for "not one of the known slugs" and gives a
+consumer no terms at all. `license_url` therefore points at the NOAA NCEI DOI for accession
+0127422 (`https://doi.org/10.7289/v5d21vjd`, already recorded in the config's citation), which
+is the authoritative record for the actual terms.
+
+**Risk: downstream-legal, bounded.** The smallest ambiguity in the table, but it is the one
+value a license filter cannot act on: `other` can be neither included nor excluded on merit.
+
+---
+
 ## Verified non-issues (checked and dismissed — do not re-open)
 
 The audit tested and *rejected* these as legitimate conventions, not defects:
