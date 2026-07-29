@@ -193,17 +193,28 @@ uv run pz_update_planktonzilla
 Both entry points stamp every image with its source's `license` / `license_url`
 (see [Licensing](#licensing-of-the-composite-dataset)). `pz_update_planktonzilla` appends the
 two columns with a zero-copy Arrow column concat, without ever reading the image column.
-Note that the same run also re-syncs the taxonomy from the CSV, which is a full-table rewrite.
-Because the added columns change the published schema, publish onto a new revision rather than
-over the one the paper and the released models are pinned to:
+
+By default that run *also* re-syncs the taxonomy from the CSV — a full-table rewrite that
+re-applies whatever the CSV says today. To annotate the frozen dataset with its terms and
+change nothing else, turn the re-sync off. The CSV is then never read and every published
+taxonomy/ID value is carried through untouched:
 
 ```bash
-# Add the license columns and publish them on a v1.1 branch, leaving the default revision alone
-uv run pz_update_planktonzilla push_to_hub=true push_revision=v1.1
+# Strictly additive: license columns only, published on a v1.1 branch
+uv run pz_update_planktonzilla sync_taxonomy=false push_to_hub=true push_revision=v1.1
 ```
 
-Then tag that revision on the Hub (`HfApi().create_tag(..., repo_type="dataset")`), leaving the
-existing tag on the frozen bytes.
+Publishing onto its own revision is what keeps the schema change off the revision the paper
+and the released models are pinned to. Tag the frozen state *first*, then the new one:
+
+```python
+from huggingface_hub import HfApi
+api = HfApi()
+api.create_tag("project-oceania/planktonzilla-17M", tag="v1.0", revision="main", repo_type="dataset")
+api.create_tag("project-oceania/planktonzilla-17M", tag="v1.1", revision="v1.1", repo_type="dataset")
+```
+
+Drop `sync_taxonomy=false` only when you actually intend to republish the taxonomy too.
 
 ### Explore the label space (Sankey)
 

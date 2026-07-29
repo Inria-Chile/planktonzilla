@@ -298,6 +298,90 @@ def test_push_revision_targets_a_branch_when_set(monkeypatch, tmp_path):
     assert push.call_args.kwargs.get("revision") == "v1.1"
 
 
+def _drive_main_recording_sync(monkeypatch, cfg, tmp_path):
+    """Run ``main`` with the CSV read and the re-sync both recorded rather than executed.
+
+    Returns ``(calls, saved)`` where ``calls`` names the steps that actually ran and
+    ``saved`` is the dataset handed to ``save_to_disk``.
+    """
+    columns = {"dataset": ["lensless"], "original_label": ["y"]}
+    for col in up.SYNC_COLS:
+        columns[col] = [True] if col == "plankton" else ["frozen-value"]
+    tiny = Dataset.from_dict(columns)
+
+    calls = []
+    saved = {}
+
+    def _build_sync_dict(csv_path):
+        calls.append("build_sync_dict")
+        return {}
+
+    def _sync_columns(ds, sync_dict, num_proc):
+        calls.append("sync_columns")
+        return ds
+
+    monkeypatch.setattr(up, "load_dataset", lambda *a, **k: tiny)
+    monkeypatch.setattr(up, "build_sync_dict", _build_sync_dict)
+    monkeypatch.setattr(up, "sync_columns", _sync_columns)
+    monkeypatch.setattr(up.Dataset, "save_to_disk", lambda self, path: saved.update(ds=self))
+
+    up.main(cfg)
+    return calls, saved["ds"]
+
+
+def _compose_update_cfg(tmp_path, job_name, extra_overrides=()):
+    """Compose the real update config with a writable data_dir and a tiny CSV."""
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "lensless", "y")
+
+    GlobalHydra.instance().clear()
+    hydra.initialize(config_path="../configs", version_base="1.3", job_name=job_name)
+    return hydra.compose(
+        config_name="update_planktonzilla",
+        overrides=[f"taxonomy_csv_path={csv_path}", f"data_dir={tmp_path / 'out'}", *extra_overrides],
+    )
+
+
+def test_sync_taxonomy_defaults_true_and_runs_the_resync(monkeypatch, tmp_path):
+    """PIN zero-drift: the default run still re-syncs, exactly as it always has."""
+    cfg = _compose_update_cfg(tmp_path, "test_update_sync_default")
+    assert cfg.get("sync_taxonomy") is True
+
+    calls, saved = _drive_main_recording_sync(monkeypatch, cfg, tmp_path)
+    GlobalHydra.instance().clear()
+
+    assert calls == ["build_sync_dict", "sync_columns"]
+    # The license columns are added on top of the re-sync, not instead of it.
+    assert set(up.LICENSE_COLS) <= set(saved.column_names)
+
+
+def test_sync_taxonomy_false_adds_only_the_license_columns(monkeypatch, tmp_path):
+    """``sync_taxonomy=false`` is strictly additive: no CSV read, no re-sync, no rewrite.
+
+    This is the path for annotating the frozen dataset with its terms without
+    re-applying whatever the taxonomy CSV happens to say today.
+    """
+    cfg = _compose_update_cfg(tmp_path, "test_update_sync_off", ["sync_taxonomy=false"])
+
+    calls, saved = _drive_main_recording_sync(monkeypatch, cfg, tmp_path)
+    GlobalHydra.instance().clear()
+
+    # Neither the CSV lookup nor the full-table map ran.
+    assert calls == []
+
+    # The license columns are still there...
+    assert saved["license"] == ["cc-by-4.0"]
+    assert saved["license_url"] == ["https://creativecommons.org/licenses/by/4.0/"]
+
+    # ...and every published taxonomy/ID value came through untouched.
+    for col in up.SYNC_COLS:
+        expected = [True] if col == "plankton" else ["frozen-value"]
+        assert saved[col] == expected, f"{col} was modified by a license-only run"
+
+    # The only new columns are the two license ones.
+    assert set(saved.column_names) == {"dataset", "original_label", *up.SYNC_COLS, *up.LICENSE_COLS}
+
+
 def test_add_license_columns_stamps_each_source():
     """Each row gets the license/license_url of its own source dataset."""
     ds = Dataset.from_dict(

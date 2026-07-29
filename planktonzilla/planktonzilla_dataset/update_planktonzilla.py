@@ -14,9 +14,9 @@ The taxonomy/ID re-sync only updates columns that already exist. The license col
 are the one addition, and they are appended without reading the image column at all
 (see ``add_license_columns``). No rows are added or removed by either step.
 
-Note that the re-sync is a full-table ``map``: it rewrites every row, taxonomy columns
-included, from the current CSV. Running this to obtain *only* the license columns also
-re-applies whatever the CSV now says about the taxonomy.
+The re-sync is a full-table ``map``: it rewrites every row, taxonomy columns included,
+from the current CSV. To add *only* the license columns — leaving the published taxonomy
+exactly as it is, and never even reading the CSV — run with ``sync_taxonomy=false``.
 """
 
 import math
@@ -198,6 +198,10 @@ def main(cfg: DictConfig) -> None:
     ``cfg.repo_id`` (visibility from ``push_as_private``, token from ``hf_token`` /
     the ``HF_TOKEN`` env var).
 
+    Set ``cfg.sync_taxonomy`` false to skip the re-sync entirely and add only the license
+    columns — a strictly additive run that never reads the CSV and leaves every published
+    taxonomy/ID value exactly as it is. It defaults true, which is the historical behavior.
+
     Set ``cfg.push_revision`` to publish onto a branch other than the repo default,
     which is how a schema change reaches the Hub without overwriting the revision the
     paper and the released models are pinned to.
@@ -207,13 +211,22 @@ def main(cfg: DictConfig) -> None:
     num_proc = cfg.num_proc if cfg.get("num_proc") is not None else default_num_proc()
     output_dir = cfg.data_dir
 
-    logger.info(f"Updating Planktonzilla dataset on {repo_id} with taxonomy CSV {taxo_csv_path}.")
+    sync_taxonomy = cfg.get("sync_taxonomy", True)
 
     logger.info(f"Loading dataset {repo_id}.")
     ds = load_dataset(repo_id, split="train")
 
-    sync_dict = build_sync_dict(taxo_csv_path)
-    dataset_final = sync_columns(ds, sync_dict, num_proc)
+    if sync_taxonomy:
+        logger.info(f"Re-syncing taxonomy and external IDs on {repo_id} from taxonomy CSV {taxo_csv_path}.")
+        sync_dict = build_sync_dict(taxo_csv_path)
+        dataset_final = sync_columns(ds, sync_dict, num_proc)
+    else:
+        # The CSV is never even read: no lookup is built, no full-table map runs, and the
+        # published taxonomy/ID columns are carried through byte for byte. This makes the
+        # run strictly additive — the license columns are the only change.
+        logger.info("sync_taxonomy=false: leaving the published taxonomy and external IDs untouched.")
+        dataset_final = ds
+
     # After the re-sync, so the frozen taxonomy/ID path keeps operating on exactly the
     # columns it always has and the license columns simply ride along to disk.
     dataset_final = add_license_columns(dataset_final)
