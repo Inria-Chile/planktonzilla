@@ -248,6 +248,7 @@ footer.note .sig .corner{margin-left:0}
           <button class="btn" id="theme" type="button" aria-live="polite">Dark</button>
           <button class="btn" id="export" type="button">💾 SVG</button>
           <button class="btn" id="exportPng" type="button">💾 PNG</button>
+          <button class="btn" id="exportMermaid" type="button" title="Download the current view as Mermaid sankey-beta source">💾 Mermaid</button>
         </div>
       </div>
     </div>
@@ -1011,6 +1012,105 @@ document.getElementById('exportPng').addEventListener('click', async ev => {
   btn.textContent = failed ? 'PNG failed' : label;
   if (failed) setTimeout(() => { btn.textContent = label; }, 2500);
 });
+
+/* Mermaid: the same diagram as text, `source,target,value` per link, so the exported source
+   carries exactly what is on screen — visible columns, size dimension, merge threshold and
+   focus included — and can be pasted into a Markdown document that renders Mermaid.
+
+   Mermaid identifies a sankey node BY ITS PRINTED NAME, so two nodes spelling the same
+   string fuse into one and forge links this diagram never had. That is not hypothetical
+   here: every column pools its own grey Other, and a taxonomy is free to reuse a name at
+   two ranks. Names are therefore qualified by column until they are unique before a single
+   row is written. */
+function mermaidNames(g){
+  const raw = g.nodeList.map(n => n.id === POOL
+    ? `${OTHER_LABEL} (${COLS[n.col].label}, ${n.merged.size} classes)`   // one pool per column, so already distinct
+    : mermaidField(n.label));
+  const shared = new Map();
+  for (const s of raw) shared.set(s, (shared.get(s) || 0) + 1);
+  const used = new Map();
+  return raw.map((s,i) => {
+    const name = shared.get(s) > 1 ? `${s} (${COLS[g.nodeList[i].col].label})` : s;
+    const k = (used.get(name) || 0) + 1;   // backstop: a qualified name must not collide either
+    used.set(name, k);
+    return k > 1 ? `${name} #${k}` : name;
+  });
+}
+
+/* Mermaid's sankey lexer tokenises a field as printable ASCII only, so a name is folded into
+   that range: accents are decomposed and dropped rather than handed to a parser that has no
+   rule for them. The taxonomy is Latin binomials, so in practice this changes nothing. */
+function mermaidField(label){
+  const s = String(label).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\u0020-\u007e]/g, '').trim();
+  return s || '(unnamed)';
+}
+
+/* Rows are CSV: a field carrying a comma or a quote is quoted, and a quote inside it doubled. */
+const csvField = s => /[",]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+/* Front-matter YAML — quoted, so a ':' in a taxon name cannot break the block. */
+const yamlStr = s => `"${String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+
+function mermaidForExport(){
+  const g = G;
+  if (!g) return null;
+  const names = mermaidNames(g);
+  const records = [];
+  for (const l of g.linkList){
+    const v = Math.round(l.value);
+    if (v > 0) records.push(`${csvField(names[l.src.idx])},${csvField(names[l.dst.idx])},${v}`);
+  }
+  if (!records.length) return null;              // a view with no link is not a Sankey
+
+  const unit = state.sizeBy === 'img' ? 'dataset images' : 'label mappings';
+  const thr = thrOf(state.slider);
+  // Comments are stripped before Mermaid lexes the CSV, so the provenance rides along freely.
+  const notes = [
+    `%% __DATASET_REPO__ — label-space Sankey, exported from the interactive explorer`,
+    `%% Columns: ${g.vis.map(c => COLS[c].label).join(' → ')}`,
+    `%% Values: ${unit} · ${full(g.total)} in view · ${g.nodes.size} nodes · ${g.links.size} links`,
+    `%% Merge threshold: ${thr ? `under ${full(thr)} pooled into Other (${g.poolCount} classes)` : 'off — every class shown'}`,
+  ];
+  if (state.focus) notes.push(`%% Focus: ${COLS[state.focus.col].label} = ${state.focus.label}`);
+  notes.push(`%% Dataset version ${META.dataset_version || '—'} · page generated ${stampText(META.generated_at)} UTC`);
+
+  // Mermaid lays the diagram out itself, so it is given room derived from the graph rather
+  // than from this browser window — the busiest column sets the height, the column count the
+  // width. The same view therefore exports the same file whatever size the window happens to be.
+  const tallest = Math.max(...g.byPos.map(a => a.length));
+  return [
+    '---',
+    `title: ${yamlStr('__DATASET_NAME__ label space' + (state.focus ? ` — ${state.focus.label}` : ''))}`,
+    'config:',
+    '  sankey:',
+    `    width: ${Math.min(2400, Math.max(760, g.V * 170))}`,
+    `    height: ${Math.min(6000, Math.max(400, tallest * 28))}`,
+    '    useMaxWidth: true',
+    '    showValues: true',
+    // `left` keeps every node at its own rank; `justify` (the default) would drag every
+    // ribbon that ends early — a genus with no species — into the last column.
+    '    nodeAlignment: left',
+    '---',
+    'sankey-beta',
+    '',
+    ...notes,
+    '',
+    ...records,
+    '',
+  ].join('\n');
+}
+
+document.getElementById('exportMermaid').addEventListener('click', ev => {
+  const btn = ev.currentTarget, label = btn.textContent;
+  const text = mermaidForExport();
+  if (!text){                                    // disabled while it says so: a second click would capture the message as the label
+    btn.disabled = true;
+    btn.textContent = 'Nothing to export';
+    setTimeout(() => { btn.disabled = false; btn.textContent = label; }, 2500);
+    return;
+  }
+  saveBlob(new Blob([text], { type:'text/plain;charset=utf-8' }), '__DATASET_NAME__-sankey.mmd');
+});
+
 addEventListener('resize', () => scheduleRender());
 matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => { if (state.theme === 'auto') render(); });
 

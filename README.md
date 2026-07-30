@@ -233,6 +233,12 @@ that colours the ribbons, drag the **merge threshold** slider to pool small clas
 *Other* node per column, click any node to focus on that branch, and search for a taxon. Flow
 is conserved at every node on every change.
 
+Whatever view is on screen exports three ways: **SVG** and **PNG** (both carrying the embedded
+Inria typefaces, so they travel), and **Mermaid** — a `.mmd` file of `sankey-beta` source with
+the same nodes, links and weights as text, ready to paste into any Markdown that renders
+Mermaid. Names that would collide there (each column's pooled *Other*, a taxon a rank reuses)
+are qualified by column, since Mermaid identifies a node by the string it prints.
+
 ### Train a model
 
 ```bash
