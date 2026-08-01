@@ -8,7 +8,7 @@ The instantiation test is a guard, not a formality: before it existed, two confi
 named ``_target_`` classes that do not exist —
 ``medplanktonset.yaml`` pointed at ``MedPlanktonSetDatasetImporter`` (never written)
 and ``sykezooscan2024.yaml`` at ``SYKEZooScan2024`` (missing the
-``DatasetImporter`` suffix). ``medplanktonset`` is the 5th of the 12 active entries
+``DatasetImporter`` suffix). ``medplanktonset`` is the 5th of the active entries
 in ``configs/generate_planktonzilla.yaml``, so a full build died partway through,
 after four sources had already been downloaded and processed. Both are fixed; this
 test fails the moment a config names a class that cannot be located.

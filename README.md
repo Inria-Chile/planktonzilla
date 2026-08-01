@@ -193,7 +193,7 @@ There is no mode switch. The run is described by three orthogonal parameters:
 | `sync_taxonomy` | re-apply the CSV to carried-over rows | `true` · `false` |
 
 ```bash
-# Create the whole dataset from scratch (all 12 sources) — the default
+# Create the whole dataset from scratch (all 14 registry sources) — the default
 uv run pz_planktonzilla
 
 # The taxonomy CSV changed: re-sync every row, rebuild nothing
@@ -483,7 +483,11 @@ source; **CIFAR-10** is also configured there as a generic sanity-check/smoke-te
 
 `planktonzilla-17M` aggregates sources under **five different sets of terms**, so it has no single
 license. Every image therefore carries its source's terms in two columns — `license` (the slug,
-verbatim from that source's importer config) and `license_url` (where those terms are stated):
+verbatim from that source's importer config) and `license_url` (where those terms are stated).
+
+The shares below describe the **published** dataset, which draws on all 15 sources. A rebuild
+from the current registry covers 14 of them — `sykezooscan2024` is importable but not yet an
+active entry — so its mix is the same minus that source's rows.
 
 | License | Images | Share | Reuse |
 | --- | ---: | ---: | --- |

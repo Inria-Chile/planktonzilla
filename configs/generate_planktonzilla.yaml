@@ -32,26 +32,23 @@ num_proc: null
 # Source datasets to import + redefine, in build order (concatenation follows it).
 # `redefiner` is a key into the REDEFINERS map in generate_planktonzilla.py
 # (none -> NoMetadataRedefiner, whoi -> WHOIRedefiner, ecotaxa -> EcoTaxaRedefiner).
-# Three sources are omitted here, long described as "requires a manual .zip download"
-# because of anti-bot protection. Checked against the live services on 2026-08-01:
-# NONE of them does.
-#   - zoolake         direct `download_uris`, no manual override. Serves a 492 MB zip.
-#   - jedioceans      direct `download_uris` that a manual override used to shadow;
-#                     the override now defaults to null. Serves the expected nested
-#                     CPICS_Validated/*.zip.
-#   - sykezooscan2024 the one real case: no direct URL, because Fairdata packages on
-#                     demand. Its importer resolves that via the Download API
-#                     (`fairdata_pid`), verified end to end.
-# Adding any of them here is a separate decision — jedioceans is CC-BY-SA-4.0, which
-# does not combine with the CC-BY-NC-4.0 sources already in the table.
+# Three sources were long described as "requires a manual .zip download" because of
+# anti-bot protection. Checked against the live services on 2026-08-01: NONE of them
+# does. `zoolake` and `jedioceans` are now active entries at the end of the table.
+#
+# `sykezooscan2024` remains omitted, but no longer for that reason: Fairdata packages it
+# on demand rather than serving a direct URL, and its importer resolves that through the
+# Download API (`fairdata_pid`) — verified end to end, including its 20 class folders /
+# 22,753 images. Add it the same way the other two were when you want it in a build.
 #
 # Each entry carries THREE distinct identifiers — do not interchange them:
 #   name        the source's identity. It is the `dataset` column value AND the
 #               taxonomy CSV `Dataset` value, so it must match the CSV exactly.
 #   import_name the configs/dataset_import/<stem>.yaml filename.
 #   redefiner   a key into the REDEFINERS map above.
-# For 4 of the 12 active entries name != import_name (whoi/whoi-plankton,
-# zooscan/zooscannet, planktonset1.0/planktonset1, global_uvp5/global_uvp5net).
+# For 5 of the 14 active entries name != import_name (whoi/whoi-plankton,
+# zooscan/zooscannet, planktonset1.0/planktonset1, global_uvp5/global_uvp5net,
+# jedioceans/jedi_oceans_cpics).
 #
 #   name             import_name          redefiner  archive
 #   ---------------  -------------------  ---------  ------------------------------
@@ -109,4 +106,19 @@ datasets:
       import_name: global_uvp5net,
       cleanup: false,
       redefiner: ecotaxa,
+    }
+  # Appended, not inserted: registry order is the concatenation order of the output, so
+  # adding these at the end leaves every existing source at the index it already had.
+  # Both download automatically (checked 2026-08-01); cleanup:false keeps the large raw
+  # archives (zoolake is 492 MB) for reuse across runs.
+  - { name: zoolake, import_name: zoolake, cleanup: false, redefiner: none }
+  # NOTE: jedioceans is CC-BY-SA-4.0. It is the only ShareAlike source here, and it does
+  # not combine with the five CC-BY-NC-4.0 sources above into a single redistributable
+  # licence — see the Licensing section of the README. Per-image `license` /
+  # `license_url` columns record each row's terms, which is what makes the mix tractable.
+  - {
+      name: jedioceans,
+      import_name: jedi_oceans_cpics,
+      cleanup: false,
+      redefiner: jedi,
     }

@@ -4,7 +4,7 @@
 #
 # The `datasets` registry, repo_id, data_dir, push_* and the null-defaulted
 # taxonomy_csv_path / num_proc are INHERITED from generate_planktonzilla.yaml, so the
-# frozen 12-row table has exactly one definition in the repo. When the deprecated
+# frozen `datasets` table has exactly one definition in the repo. When the deprecated
 # generate config is removed, move that table here verbatim.
 defaults:
   - generate_planktonzilla

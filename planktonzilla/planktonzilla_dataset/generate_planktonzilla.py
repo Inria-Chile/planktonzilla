@@ -568,9 +568,10 @@ class WHOIRedefiner(RedefineDataset):
 class JediRedefiner(RedefineDataset):
     """JEDI Oceans dataset: fixed metadata for all the examples.
 
-    Kept for reference: JEDI Oceans needs a manual ``.zip`` download, so it has no
-    active entry in ``cfg.datasets`` — its config stays commented out in
-    ``configs/generate_planktonzilla.yaml``.
+    Active in ``cfg.datasets`` as ``jedioceans`` since 2026-08-01, once its download was
+    shown not to need the manual ``.zip`` its config had long forced. Note the three
+    distinct identifiers: ``name`` is ``jedioceans`` (matching the taxonomy CSV),
+    ``import_name`` is ``jedi_oceans_cpics``, and ``jedi`` is this redefiner's key.
     """
 
     def __init__(self, csv_taxonomies_path):

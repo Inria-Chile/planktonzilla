@@ -333,17 +333,51 @@ now fails during derivation rather than being carried over with a warning. That 
 deliberate — a license cannot be guessed — but it means the carry-over of unregistered
 sources only works on a base that already has the columns.
 
+## KI-24 — `zoolake` and `jedioceans` joined the registry; the licence mix widened
+
+**Where:** `configs/generate_planktonzilla.yaml` `datasets`.
+
+**Change (2026-08-01, maintainer decision).** Both were added as active entries once
+KI-21 established that neither needs a hand-downloaded archive. They are **appended, not
+inserted**: registry order is the concatenation order of the output, so every existing
+source keeps the index it already had.
+
+The registry now carries 14 of the 15 sources in the published dataset.
+`sykezooscan2024` remains out — importable (its Fairdata resolver is verified end to
+end) but not yet an active entry.
+
+**Licence consequence, stated plainly.** `jedioceans` is **CC-BY-SA-4.0** and is the only
+ShareAlike source. A rebuild therefore mixes:
+
+| terms | sources |
+| --- | ---: |
+| `cc-by-4.0` | 6 |
+| `cc-by-nc-4.0` | 5 |
+| `cc-by-sa-4.0` | 1 |
+| `mit` | 1 |
+| `other` | 1 |
+
+ShareAlike and NonCommercial cannot both be satisfied by a single licence on a combined
+work, so the aggregate **cannot** be relicensed as one thing — it could not before
+either, but this makes it unambiguous. What makes the mix tractable is that every row
+carries its own `license` / `license_url`, so a consumer filters rather than relying on a
+dataset-level statement. The published dataset already contained all three of these
+sources, so this changes what a *rebuild* produces, not what is published.
+
+**Still open:** the aggregate has no declared licence of its own on the Hub. Per-row
+provenance makes that answerable now; the declaration itself remains a maintainer call.
+
 ---
 
 *Recorded 2026-06-17 during the v1.0 `dataset_generation` cleanup (Phase 7, `KNOWN-01`).
 See `.planning/REQUIREMENTS.md` `HARDEN-01` / `HARDEN-02` for the deferred v2 work.
-KI-16 through KI-23 recorded 2026-08-01 during the `pz_planktonzilla` consolidation.*
+KI-16 through KI-24 recorded 2026-08-01 during the `pz_planktonzilla` consolidation.*
 
 ---
 
 ## Data inconsistencies in `planktonzilla_taxonomy.csv` (KI-8 – KI-13)
 
-KI-1..KI-7 and KI-16..KI-23 above concern **code behavior**. KI-8..KI-13 below concern **data** defects in the
+KI-1..KI-7 and KI-16..KI-24 above concern **code behavior**. KI-8..KI-13 below concern **data** defects in the
 frozen `planktonzilla_taxonomy.csv` itself, found by a two-method audit on **2026-07-13**
 (deterministic checks + a 27-agent adversarially-verified multi-lens audit; every finding
 below survived independent re-verification, and candidate findings explained by a legitimate

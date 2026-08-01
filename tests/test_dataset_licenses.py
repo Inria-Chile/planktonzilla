@@ -196,6 +196,8 @@ def test_generate_config_datasets_are_all_covered():
     assert not configured - set(DATASET_LICENSES), (
         f"cfg.datasets source(s) with no recorded license: {sorted(configured - set(DATASET_LICENSES))}"
     )
-    # The build config carries 12 of the 15; the other three need a manual .zip download
-    # and are commented out there, which is exactly why the table is not derived from it.
-    assert len(configured) == 12
+    # The build config carries 14 of the 15. Only sykezooscan2024 is still omitted —
+    # not for lack of a licence, but because Fairdata packages it on demand — which is
+    # exactly why this table is not derived from cfg.datasets.
+    assert len(configured) == 14
+    assert set(DATASET_LICENSES) - configured == {"sykezooscan2024"}

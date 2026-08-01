@@ -7,7 +7,7 @@ Network-free tests for ``planktonzilla.planktonzilla_dataset.make_planktonzilla`
 These pin the CONTRACT of the consolidated command:
 
   (a) the config composes with the expected key contract, and inherits the frozen
-      12-row `datasets` table from generate_planktonzilla.yaml intact,
+      `datasets` registry from generate_planktonzilla.yaml intact,
   (b) the DEFAULT no-argument run is byte-equivalent to pz_generate_planktonzilla —
       same per-source override blocks in the same order, same redefiner classes, same
       save target, no Hub read, no push,
@@ -125,7 +125,7 @@ def test_config_composes_with_expected_keys():
 
 
 def test_datasets_table_inherited_intact():
-    """The frozen 12-row registry reaches the new config unchanged, in order.
+    """The frozen registry reaches the new config unchanged, in order.
 
     Guards the inheritance: the table has ONE definition in the repo, in
     generate_planktonzilla.yaml, and this config pulls it in through `defaults`.
