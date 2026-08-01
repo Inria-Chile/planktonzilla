@@ -339,7 +339,14 @@ def atomic_replace(final: Dataset, output_dir: Path) -> None:
     previous = output_dir.with_name(f"{output_dir.name}.old-{os.getpid()}")
 
     logger.info(f"Output exists; staging the new dataset in {staged} before swapping it in.")
-    final.save_to_disk(str(staged))
+    try:
+        final.save_to_disk(str(staged))
+    except BaseException:
+        # A half-written staging tree helps nobody and would accumulate on every retry
+        # (running out of disk on a 17M-image write is the realistic way to get here).
+        # output_dir has not been touched yet, so the existing dataset is intact.
+        shutil.rmtree(staged, ignore_errors=True)
+        raise
 
     output_dir.rename(previous)
     staged.rename(output_dir)
@@ -413,12 +420,48 @@ def _report_dry_run(selected, cfg) -> list:
     return blockers
 
 
+def _refuse_empty_result(*, dropped, fresh_names, base_source_names=None) -> None:
+    """Raise a clear error when the assembled dataset would have no rows at all.
+
+    Reachable two ways, both of which used to surface as something opaque: with no base
+    and nothing rebuilt (``concatenate_datasets`` on an empty list), and with every
+    source the base holds listed in ``drop`` (an ``IndexError`` picking a reference
+    part). Neither loses data — the save never happens — but this command's whole
+    contract is to fail understandably before doing work, so say what happened.
+    """
+    detail = [f"rebuilt sources {sorted(fresh_names)}" if fresh_names else "no sources selected for rebuild"]
+    if dropped:
+        detail.append(f"drop={sorted(dropped)}")
+    if base_source_names is not None:
+        detail.append(f"base holds {sorted(base_source_names) or 'no sources'}")
+
+    raise ValueError(
+        "The run would produce an EMPTY dataset, so nothing was written: "
+        + "; ".join(detail)
+        + ". Check `sources` and `drop` — dropping every source the base holds leaves nothing to save."
+    )
+
+
+def _reference_features(parts):
+    """Features every part is conformed to: those of the LARGEST part.
+
+    Conforming can cast, and a cast rewrites the whole table. Taking the reference from
+    the biggest part keeps any cast on the smaller side. Using ``parts[0]`` instead made
+    it depend on registry position: rebuilding the first entry made the small fresh part
+    the reference, so every carried-over base block — up to ~13.6M rows — would be cast
+    rather than the new one.
+    """
+    return max(parts, key=len).features
+
+
 def assemble(*, base, fresh, registry, dropped, sync_dict, cfg, num_proc_arg) -> Dataset:
     """Reassemble the output in registry order from rebuilt parts and carried-over rows."""
     registry_names = [entry["name"] for entry in registry]
 
     if base is None:
         parts = [fresh[name] for name in registry_names if name in fresh]
+        if not parts:
+            _refuse_empty_result(dropped=dropped, fresh_names=fresh)
         logger.info(f"Concatenating {len(parts)} freshly built sources.")
         return concatenate_datasets(parts)
 
@@ -493,6 +536,9 @@ def assemble(*, base, fresh, registry, dropped, sync_dict, cfg, num_proc_arg) ->
             blocks.append(("base", name))
     blocks += [("base", name) for name in unknown_in_base]
 
+    if not blocks:
+        _refuse_empty_result(dropped=dropped, fresh_names=fresh, base_source_names=base_indices)
+
     parts = []
     for kind, name in blocks:
         if kind == "fresh":
@@ -501,7 +547,7 @@ def assemble(*, base, fresh, registry, dropped, sync_dict, cfg, num_proc_arg) ->
             start, end = offsets[name]
             parts.append(kept.select(range(start, end)))
 
-    reference = parts[0].features
+    reference = _reference_features(parts)
     parts = [conform_schema(part, reference) for part in parts]
 
     for kind, name in blocks:

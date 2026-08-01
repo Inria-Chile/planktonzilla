@@ -28,6 +28,7 @@ root = pyrootutils.setup_root(
 )
 
 
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import hydra
@@ -612,3 +613,167 @@ def test_tag_hub_release_overwrite_deletes_then_recreates(monkeypatch):
     mk.tag_hub_release("org/ds", "1.4.0", token=None, overwrite=True)
 
     assert calls == [("delete", "org/ds", "1.4.0"), ("create", "org/ds", "1.4.0")]
+
+
+# --- Empty-result guard (finding 1) -------------------------------------------------
+
+
+def _bare_cfg(overrides, job_name):
+    cfg = _compose(overrides, job_name=job_name)
+    GlobalHydra.instance().clear()
+    OmegaConf.set_struct(cfg, False)
+    return cfg
+
+
+def test_assemble_refuses_an_empty_result_with_no_base(tmp_path):
+    """sources=[] + drop=, with no base, is an empty output — say so, don't crash.
+
+    This slips past main()'s "Nothing to do" guard because `drop` is non-empty, and
+    used to reach concatenate_datasets([]) -> "Unable to concatenate an empty list".
+    """
+    cfg = _bare_cfg([f"data_dir={tmp_path}", "sources=[]", "drop=[whoi]"], "test_empty_nobase")
+
+    with pytest.raises(ValueError, match="EMPTY dataset"):
+        mk.assemble(
+            base=None,
+            fresh={},
+            registry=list(cfg.datasets),
+            dropped={"whoi"},
+            sync_dict={},
+            cfg=cfg,
+            num_proc_arg=1,
+        )
+
+
+def test_assemble_refuses_when_every_base_source_is_dropped(tmp_path):
+    """Dropping every source the base holds leaves nothing; used to be an IndexError."""
+    cfg = _bare_cfg([f"data_dir={tmp_path}", "sources=[]", "drop=[whoi]"], "test_empty_alldropped")
+    base = Dataset.from_dict({"dataset": ["whoi"] * 3, "x": [1, 2, 3]})
+
+    with pytest.raises(ValueError, match="EMPTY dataset"):
+        mk.assemble(
+            base=base,
+            fresh={},
+            registry=list(cfg.datasets),
+            dropped={"whoi"},
+            sync_dict={},
+            cfg=cfg,
+            num_proc_arg=1,
+        )
+
+
+def test_empty_result_error_names_what_caused_it(tmp_path):
+    """The message identifies the drop set, so the mistake is obvious from the error."""
+    cfg = _bare_cfg([f"data_dir={tmp_path}", "sources=[]", "drop=[whoi]"], "test_empty_msg")
+
+    with pytest.raises(ValueError) as excinfo:
+        mk.assemble(
+            base=None,
+            fresh={},
+            registry=list(cfg.datasets),
+            dropped={"whoi"},
+            sync_dict={},
+            cfg=cfg,
+            num_proc_arg=1,
+        )
+
+    message = str(excinfo.value)
+    assert "whoi" in message
+    assert "nothing was written" in message.lower()
+
+
+# --- Reference-feature selection (finding 2) ----------------------------------------
+
+
+def test_reference_features_come_from_the_largest_part():
+    """Conforming casts the SMALL side: the reference is the biggest part's features.
+
+    Order-independent on purpose. Taking parts[0] meant that rebuilding the first
+    registry entry (isiisnet) made the fresh part the reference, so every carried-over
+    base block — up to ~13.6M rows — would be cast instead of the small new one.
+    """
+    # The two must differ in FEATURES, not just size — otherwise every possible
+    # reference choice compares equal and the assertion proves nothing.
+    small = Dataset.from_dict({"a": [1]})
+    large = Dataset.from_dict({"a": ["x"] * 50})
+    assert small.features != large.features, "fixture must be able to tell the two apart"
+
+    # Largest wins whichever position it occupies.
+    assert mk._reference_features([small, large]) == large.features
+    assert mk._reference_features([large, small]) == large.features
+    assert mk._reference_features([small, large]) != small.features
+
+
+def test_conform_schema_does_not_cast_when_features_already_match(monkeypatch):
+    """A part whose features already match is returned untouched, never cast."""
+    ds = Dataset.from_dict({"a": [1, 2]})
+
+    def _boom(self, *a, **k):
+        raise AssertionError("cast must not run when features already match")
+
+    monkeypatch.setattr(Dataset, "cast", _boom)
+
+    assert mk.conform_schema(ds, ds.features) is ds
+
+
+# --- atomic_replace staging cleanup (finding 3) -------------------------------------
+
+
+def test_atomic_replace_cleans_up_staging_when_the_save_fails(tmp_path, monkeypatch):
+    """A failed save leaves no .new-<pid> residue and does not touch the existing output."""
+    output_dir = tmp_path / "planktonzilla-17M"
+    output_dir.mkdir()
+    (output_dir / "marker.txt").write_text("original")
+
+    ds = Dataset.from_dict({"a": [1]})
+
+    def _failing_save(self, path):
+        # Write something first, so the staging dir genuinely exists when we blow up.
+        Path(path).mkdir(parents=True, exist_ok=True)
+        (Path(path) / "partial.arrow").write_bytes(b"partial")
+        raise OSError("No space left on device")
+
+    monkeypatch.setattr(Dataset, "save_to_disk", _failing_save)
+
+    with pytest.raises(OSError, match="No space left"):
+        mk.atomic_replace(ds, output_dir)
+
+    residue = [p.name for p in tmp_path.iterdir() if ".new-" in p.name or ".old-" in p.name]
+    assert residue == [], f"staging left behind: {residue}"
+    assert (output_dir / "marker.txt").read_text() == "original", "existing output must be intact"
+
+
+def test_assemble_conforms_to_the_largest_part_not_the_first(tmp_path):
+    """assemble() takes its reference from the largest part — WIRING, not just the helper.
+
+    Discriminating by construction: the carried-over base part (5 rows) types its `n`
+    column int64 while the freshly rebuilt part (3 rows) types it int32, and isiisnet is
+    registry index 0. With `reference = parts[0].features` the small fresh part won and
+    the result came out int32 — casting the big side on the real dataset. The assertion
+    below fails in that case, which a test that only calls _reference_features directly
+    cannot detect.
+    """
+    from datasets import Features, Value
+
+    cfg = _bare_cfg([f"data_dir={tmp_path}", "sync_taxonomy=false"], "test_assemble_ref")
+
+    base_features = Features({"dataset": Value("string"), "n": Value("int64")})
+    fresh_features = Features({"dataset": Value("string"), "n": Value("int32")})
+
+    base = Dataset.from_dict({"dataset": ["lensless"] * 5, "n": list(range(5))}, features=base_features)
+    fresh = {"isiisnet": Dataset.from_dict({"dataset": ["isiisnet"] * 3, "n": [0, 1, 2]}, features=fresh_features)}
+
+    registry = [{"name": "isiisnet"}, {"name": "lensless"}]
+
+    final = mk.assemble(
+        base=base,
+        fresh=fresh,
+        registry=registry,
+        dropped=set(),
+        sync_dict={},
+        cfg=cfg,
+        num_proc_arg=1,
+    )
+
+    assert final.features["n"] == Value("int64"), "reference should come from the 5-row base part"
+    assert [r["dataset"] for r in final] == ["isiisnet"] * 3 + ["lensless"] * 5

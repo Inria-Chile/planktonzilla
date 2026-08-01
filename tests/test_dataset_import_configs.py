@@ -679,12 +679,14 @@ def test_syke_prepare_imagefolder_unwraps_the_nested_archive(tmp_path):
         assert len(list((importer.imagefolder_dir / class_name).glob("*.png"))) == 2
 
 
-def test_syke_class_names_match_the_taxonomy_csv():
-    """The archive's 20 class folders are exactly the CSV's 20 sykezooscan2024 labels.
+def test_taxonomy_csv_still_matches_the_recorded_syke_class_names():
+    """The CSV's 20 sykezooscan2024 labels still equal the class names last seen in the archive.
 
-    Verified against the real download: taking the class names from the live archive and
-    the labels from planktonzilla_taxonomy.csv gives the same set, which is what makes
-    the taxonomy lookup resolve for every row of this source.
+    SCOPE: this pins the CSV against a RECORDED snapshot of the archive's class folders,
+    captured from the live download on 2026-08-01. It cannot detect a change to the
+    archive itself — CI has no network — so it catches CSV edits that would break the
+    taxonomy lookup for this source, not upstream re-releases. Re-run the importer
+    against a fresh download to revalidate the other direction.
     """
     import polars as pl
 

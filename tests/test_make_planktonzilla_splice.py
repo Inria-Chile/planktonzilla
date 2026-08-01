@@ -582,3 +582,94 @@ def test_spliced_rows_keep_the_licenses_of_the_base(offline, two_source_env, tmp
     assert {r["license"] for r in rows if r["dataset"] == "isiisnet"} == {"cc-by-nc-4.0"}
     assert {r["license"] for r in rows if r["dataset"] == "lensless"} == {"cc-by-4.0"}
     assert all(r["license_url"] for r in rows), "no row may carry a null license_url"
+
+
+def test_dropping_the_only_remaining_source_is_refused_end_to_end(offline, two_source_env, tmp_path):
+    """The empty-result guard fires through the real CLI path, not just in isolation.
+
+    Builds a real one-source dataset, then asks for a run that would drop it entirely.
+    Nothing is written and the existing output is left alone.
+    """
+    data_dir, csv_path = two_source_env
+    common = [f"taxonomy_csv_path={csv_path}", f"data_dir={data_dir}", "num_proc=1"]
+
+    cfg = _compose([*common, f"output_dir={tmp_path / 'base'}", "sources=[lensless]"], "test_empty_e2e_base")
+    _restrict_registry(cfg, ["isiisnet", "lensless"])
+    _run(cfg)
+
+    before = len(_load(tmp_path / "base"))
+    assert before == 5
+
+    cfg2 = _compose(
+        [*common, f"output_dir={tmp_path / 'after'}", "sources=[]", f"base={tmp_path / 'base'}", "drop=[lensless]"],
+        "test_empty_e2e",
+    )
+    _restrict_registry(cfg2, ["isiisnet", "lensless"])
+
+    with pytest.raises(ValueError, match="EMPTY dataset"):
+        mk.main(cfg2)
+    GlobalHydra.instance().clear()
+
+    assert not (tmp_path / "after").exists(), "nothing should have been written"
+    assert len(_load(tmp_path / "base")) == before, "the base must be untouched"
+
+
+def test_a_drop_that_leaves_rows_still_works(offline, two_source_env, tmp_path):
+    """The guard must not fire on a legitimate drop — regression cover for the fix."""
+    data_dir, csv_path = two_source_env
+    common = [f"taxonomy_csv_path={csv_path}", f"data_dir={data_dir}", "num_proc=1"]
+
+    cfg = _compose([*common, f"output_dir={tmp_path / 'base'}"], "test_drop_ok_base")
+    _restrict_registry(cfg, ["isiisnet", "lensless"])
+    _run(cfg)
+
+    cfg2 = _compose(
+        [*common, f"output_dir={tmp_path / 'after'}", "sources=[]", f"base={tmp_path / 'base'}", "drop=[isiisnet]"],
+        "test_drop_ok",
+    )
+    _restrict_registry(cfg2, ["isiisnet", "lensless"])
+    _run(cfg2)
+
+    after = _load(tmp_path / "after")
+    assert {r["dataset"] for r in after} == {"lensless"}
+    assert len(after) == 5
+
+
+def test_every_part_is_conformed_to_one_shared_reference(offline, two_source_env, tmp_path, monkeypatch):
+    """All parts are conformed to a single reference before concatenation.
+
+    SCOPE: in this fixture every part already shares a schema, so this cannot show
+    WHICH part supplies the reference — that is pinned non-vacuously by
+    test_reference_features_come_from_the_largest_part, which uses parts whose features
+    genuinely differ. What this adds is that the real pipeline conforms every part
+    against one reference and still produces the right rows in the right order.
+    """
+    data_dir, csv_path = two_source_env
+    common = [f"taxonomy_csv_path={csv_path}", f"data_dir={data_dir}", "num_proc=1"]
+
+    cfg = _compose([*common, f"output_dir={tmp_path / 'base'}"], "test_castref_base")
+    _restrict_registry(cfg, ["isiisnet", "lensless"])
+    _run(cfg)
+
+    seen = []
+    real_conform = mk.conform_schema
+
+    def spy(ds, reference_features):
+        seen.append((len(ds), reference_features))
+        return real_conform(ds, reference_features)
+
+    monkeypatch.setattr(mk, "conform_schema", spy)
+
+    # isiisnet is registry index 0 — the ordering that used to pick the fresh part.
+    cfg2 = _compose(
+        [*common, f"output_dir={tmp_path / 'after'}", "sources=[isiisnet]", f"base={tmp_path / 'base'}", "refresh=rebuild"],
+        "test_castref",
+    )
+    _restrict_registry(cfg2, ["isiisnet", "lensless"])
+    _run(cfg2)
+
+    assert sorted(size for size, _ in seen) == [3, 5], "both parts should be conformed"
+    references = [ref for _, ref in seen]
+    assert all(ref == references[0] for ref in references), "every part must share one reference"
+
+    assert [r["dataset"] for r in _load(tmp_path / "after")] == ["isiisnet"] * 3 + ["lensless"] * 5
