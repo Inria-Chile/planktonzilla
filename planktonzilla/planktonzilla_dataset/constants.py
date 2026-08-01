@@ -56,6 +56,129 @@ QUALIFIERS = (
 ID_STR_COLS = ("wikidata_ID", "ecotaxa_ID")  # already text in the CSV
 ID_NUM_COLS = ("aphia_ID", "NCBI_ID", "BOLD_ID")  # numeric in the CSV -> text without decimals
 
+# Provenance columns describing the terms each image is redistributed under. Both are
+# a pure function of the ``dataset`` column (see DATASET_LICENSES) and are stored as
+# string, like every other text column in the consolidated dataset.
+LICENSE_COLS = ("license", "license_url")
+
+# ``dataset`` column value -> ``configs/dataset_import/<stem>.yaml``.
+#
+# Five of the fifteen do NOT match: the value written into the ``dataset`` column is
+# the `name` field of a `cfg.datasets` entry in configs/generate_planktonzilla.yaml
+# (or, for the manual-download sources below, whatever the frozen build used), while
+# the importer config is named after the source. No naming rule recovers the
+# difference, so it is written down here and pinned by tests/test_dataset_licenses.py.
+#
+# The last three are present in the published planktonzilla-17M (1.96M images, 11.2%)
+# but are NOT in cfg.datasets: they need a manual .zip download and are kept commented
+# out there. That is why this table cannot be derived from cfg.datasets. Note also
+# that the commented reference block calls the JEDI source `jedi`, while the frozen
+# data uses `jedioceans` — the value below is the one that actually appears in the data.
+DATASET_IMPORT_CONFIGS = {
+    "isiisnet": "isiisnet",
+    "whoi": "whoi-plankton",
+    "flowcamnet": "flowcamnet",
+    "lensless": "lensless",
+    "medplanktonset": "medplanktonset",
+    "uvp6net": "uvp6net",
+    "zoocamnet": "zoocamnet",
+    "zooscan": "zooscannet",
+    "planktonset1.0": "planktonset1",
+    "syke_ifcb_2022": "syke_ifcb_2022",
+    "planktoscope": "planktoscope",
+    "global_uvp5": "global_uvp5net",
+    # Manual .zip download — no entry in cfg.datasets, but present in the frozen data.
+    "jedioceans": "jedi_oceans_cpics",
+    "sykezooscan2024": "sykezooscan2024",
+    "zoolake": "zoolake",
+}
+
+# Canonical deed URL per license slug, used to fill ``license_url`` for the standard
+# licenses. Slugs that are not a self-describing standard license (``mit`` here names
+# a repository's code license, ``other`` names nothing at all) are NOT listed and must
+# give an explicit per-dataset URL in DATASET_LICENSES below.
+_LICENSE_DEEDS = {
+    "cc-by-4.0": "https://creativecommons.org/licenses/by/4.0/",
+    "cc-by-nc-4.0": "https://creativecommons.org/licenses/by-nc/4.0/",
+    "cc-by-sa-4.0": "https://creativecommons.org/licenses/by-sa/4.0/",
+}
+
+# ``dataset`` column value -> the license fields emitted for every image of that source.
+#
+# The slugs are inherited VERBATIM from the ``license:`` field of the matching
+# configs/dataset_import/*.yaml — that file stays the upstream source of truth, and
+# tests/test_dataset_licenses.py fails if the two ever disagree. This table exists
+# because the three manual-download sources have no reachable importer config at
+# update time, and because update_planktonzilla never composes importer configs at all.
+#
+# Two entries carry a URL that is not a license deed, because their slug alone is not
+# actionable (see KI-14/KI-15 in utils/KNOWN_ISSUES.md):
+#   - whoi: `mit` is the license of the hsosik/WHOI-Plankton *code* repository named by
+#     the config's source_url; the URL points there so a consumer can check the terms
+#     that actually cover the IFCB imagery.
+#   - planktonset1.0: `other` names nothing, so the URL is the NOAA NCEI DOI for
+#     accession 0127422 already recorded in the config's citation.
+DATASET_LICENSES = {
+    name: {"license": slug, "license_url": url or _LICENSE_DEEDS[slug]}
+    for name, slug, url in (
+        ("isiisnet", "cc-by-nc-4.0", None),
+        ("whoi", "mit", "https://github.com/hsosik/WHOI-Plankton"),
+        ("flowcamnet", "cc-by-nc-4.0", None),
+        ("lensless", "cc-by-4.0", None),
+        ("medplanktonset", "cc-by-4.0", None),
+        ("uvp6net", "cc-by-nc-4.0", None),
+        ("zoocamnet", "cc-by-4.0", None),
+        ("zooscan", "cc-by-nc-4.0", None),
+        ("planktonset1.0", "other", "https://doi.org/10.7289/v5d21vjd"),
+        ("syke_ifcb_2022", "cc-by-4.0", None),
+        ("planktoscope", "cc-by-nc-4.0", None),
+        ("global_uvp5", "cc-by-4.0", None),
+        ("jedioceans", "cc-by-sa-4.0", None),
+        ("sykezooscan2024", "cc-by-4.0", None),
+        ("zoolake", "cc-by-4.0", None),
+    )
+}
+
+
+def license_fields(dataset_name: str) -> dict:
+    """Return the ``{license, license_url}`` pair for one ``dataset`` column value.
+
+    A fresh dict per call, so callers can hand it straight to ``datasets.map`` without
+    risking a shared-mutable-state bug across processes.
+
+    Raises:
+        KeyError: If ``dataset_name`` has no entry in DATASET_LICENSES. Missing is
+            always a bug (a new source was wired up without recording its terms), and
+            it must not silently degrade to a null license on published images.
+    """
+    try:
+        return dict(DATASET_LICENSES[dataset_name])
+    except KeyError:
+        raise KeyError(
+            f"No license recorded for dataset «{dataset_name}». Add it to "
+            f"DATASET_LICENSES in {__name__} (and its importer config to "
+            f"DATASET_IMPORT_CONFIGS) before building or updating the dataset."
+        ) from None
+
+
+def validate_license_coverage(dataset_names) -> None:
+    """Fail fast if any of ``dataset_names`` has no recorded license.
+
+    Called before the expensive work starts so a missing entry surfaces in seconds
+    rather than after a multi-hour build has already written unlicensed rows.
+
+    Raises:
+        KeyError: Listing every unrecorded dataset name at once.
+    """
+    missing = sorted({name for name in dataset_names if name not in DATASET_LICENSES})
+    if missing:
+        raise KeyError(
+            f"No license recorded for dataset(s) {missing}. Add them to "
+            f"DATASET_LICENSES in {__name__} (and their importer configs to "
+            f"DATASET_IMPORT_CONFIGS) before building or updating the dataset."
+        )
+
+
 # Provenance columns written by RedefineDataset._taxonomy_row: which source an example
 # came from, the label that source gave it, and its path inside that source's
 # imagefolder. ``dataset`` is the splice key — its values are the ``name`` field of the
@@ -87,6 +210,7 @@ CONSOLIDATED_COLUMNS = (
     *ID_STR_COLS,
     *ID_NUM_COLS,
     *METADATA_COLS,
+    *LICENSE_COLS,
 )
 
 

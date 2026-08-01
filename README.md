@@ -260,6 +260,34 @@ Two guards worth knowing, both of which stop a run before it does any I/O:
 > The published dataset and the models trained on it are frozen artifacts. These commands are
 > reproduction tooling — changing what they emit means republishing, not patching.
 
+### Licensing and schema changes
+
+Every image is stamped with its source's `license` / `license_url`
+(see [Licensing](#licensing-of-the-composite-dataset)). A from-scratch build writes them
+alongside the taxonomy, in the same pass — no extra sweep over the images.
+
+Adding those columns to the *published* dataset changes its schema, so publish it onto its own
+Hub branch rather than over the revision the paper and the released models are pinned to:
+
+```bash
+# Strictly additive: annotate the frozen data, change nothing else, publish to a v1.1 branch
+uv run pz_planktonzilla base=hub sources=[] sync_taxonomy=false \
+  push_to_hub=true push_revision=v1.1 version=1.1.0
+```
+
+`sync_taxonomy=false` is what makes that run additive: the taxonomy CSV is never read and every
+published taxonomy/ID value is carried through untouched. Drop it only when you actually intend
+to republish the taxonomy too.
+
+`push_revision` targets a branch; `version` tags it. Tag the frozen state *first* so `v1.0`
+keeps pointing at the original bytes:
+
+```python
+from huggingface_hub import HfApi
+api = HfApi()
+api.create_tag("project-oceania/planktonzilla-17M", tag="v1.0", revision="main", repo_type="dataset")
+```
+
 <details>
 <summary>Deprecated: <code>pz_generate_planktonzilla</code> and <code>pz_update_planktonzilla</code></summary>
 
@@ -268,10 +296,14 @@ Both still work and behave exactly as before, but are removed in the next minor 
 ```bash
 uv run pz_generate_planktonzilla   # == uv run pz_planktonzilla
 uv run pz_update_planktonzilla     # == uv run pz_planktonzilla base=hub sources=[] output_dir='${data_dir}'
+
+# license-columns-only run, on the old command and the new one
+uv run pz_update_planktonzilla sync_taxonomy=false
+uv run pz_planktonzilla base=hub sources=[] sync_taxonomy=false output_dir='${data_dir}'
 ```
 
-The `output_dir` override in the second line matters: `pz_update_planktonzilla` saved to the
-bare `data_dir`, whereas `pz_planktonzilla` saves to `<data_dir>/planktonzilla-17M` (where
+The `output_dir` override matters: `pz_update_planktonzilla` saved to the bare `data_dir`,
+whereas `pz_planktonzilla` saves to `<data_dir>/planktonzilla-17M` (where
 `pz_generate_planktonzilla` wrote, and where `base=local` reads back).
 
 </details>
@@ -422,26 +454,64 @@ flowchart TB
 Fifteen public plankton-imaging sources are assembled into `planktonzilla-17M`. Each has an
 importer config in `configs/dataset_import/`:
 
-| Source | Description |
-| --- | --- |
-| **Global UVP5** | Underwater Vision Profiler 5, global deployment (largest contributor) |
-| **WHOI-Plankton** | Woods Hole Oceanographic Institution IFCB imagery |
-| **JEDI-Oceans** | JEDI oceanic plankton (CPICS) |
-| **ZooScanNet** | ZooScan scanned-sample plankton |
-| **ZooCamNet** | ZooCam in-situ imaging |
-| **UVP6Net** | Underwater Vision Profiler 6 |
-| **ISIISNET** | In-Situ Ichthyoplankton Imaging System Network |
-| **FlowCamNet** | FlowCam imaging flow cytometry |
-| **PlanktoScope** | PlanktoScope open-hardware microscopy |
-| **MedPlanktonSet** | Mediterranean plankton set |
-| **SYKE IFCB 2022** | Finnish Environment Institute, Imaging FlowCytobot |
-| **PlanktonSet 1.0** | NOAA/Kaggle PlanktonSet |
-| **SYKE ZooScan 2024** | Finnish Environment Institute, ZooScan |
-| **ZooLake** | Lake Greifensee (Switzerland) zooplankton |
-| **Lensless** | Lensless plankton microscopy (lab culture) |
+| Source | `dataset` value | Images | Description | License |
+| --- | --- | ---: | --- | --- |
+| **Global UVP5** | `global_uvp5` | 7,414,467 | Underwater Vision Profiler 5, global deployment (largest contributor) | `cc-by-4.0` |
+| **WHOI-Plankton** | `whoi` | 3,563,595 | Woods Hole Oceanographic Institution IFCB imagery | `mit` ⚠️ |
+| **JEDI-Oceans** | `jedioceans` | 1,915,882 | JEDI oceanic plankton (CPICS) | `cc-by-sa-4.0` |
+| **ZooScanNet** | `zooscan` | 1,451,745 | ZooScan scanned-sample plankton | `cc-by-nc-4.0` |
+| **ZooCamNet** | `zoocamnet` | 1,286,590 | ZooCam in-situ imaging | `cc-by-4.0` |
+| **UVP6Net** | `uvp6net` | 634,459 | Underwater Vision Profiler 6 | `cc-by-nc-4.0` |
+| **ISIISNET** | `isiisnet` | 408,166 | In-Situ Ichthyoplankton Imaging System Network | `cc-by-nc-4.0` |
+| **FlowCamNet** | `flowcamnet` | 301,247 | FlowCam imaging flow cytometry | `cc-by-nc-4.0` |
+| **PlanktoScope** | `planktoscope` | 179,720 | PlanktoScope open-hardware microscopy | `cc-by-nc-4.0` |
+| **MedPlanktonSet** | `medplanktonset` | 77,271 | Mediterranean plankton set | `cc-by-4.0` |
+| **SYKE IFCB 2022** | `syke_ifcb_2022` | 63,074 | Finnish Environment Institute, Imaging FlowCytobot | `cc-by-4.0` |
+| **PlanktonSet 1.0** | `planktonset1.0` | 60,736 | NOAA/Kaggle PlanktonSet | `other` ⚠️ |
+| **SYKE ZooScan 2024** | `sykezooscan2024` | 22,753 | Finnish Environment Institute, ZooScan | `cc-by-4.0` |
+| **ZooLake** | `zoolake` | 17,942 | Lake Greifensee (Switzerland) zooplankton | `cc-by-4.0` |
+| **Lensless** | `lensless` | 6,400 | Lensless plankton microscopy (lab culture) | `cc-by-4.0` |
+
+Note that the `dataset` column value does not always match the importer config stem (`whoi` vs
+`whoi-plankton.yaml`, `zooscan` vs `zooscannet.yaml`, and three more). The mapping is recorded in
+`constants.DATASET_IMPORT_CONFIGS`.
 
 For training, `configs/dataset/` selects either the composite `planktonzilla` dataset or a single
 source; **CIFAR-10** is also configured there as a generic sanity-check/smoke-test target.
+
+### Licensing of the composite dataset
+
+`planktonzilla-17M` aggregates sources under **five different sets of terms**, so it has no single
+license. Every image therefore carries its source's terms in two columns — `license` (the slug,
+verbatim from that source's importer config) and `license_url` (where those terms are stated):
+
+| License | Images | Share | Reuse |
+| --- | ---: | ---: | --- |
+| `cc-by-4.0` | 8,888,497 | 51.07% | attribution |
+| `mit` ⚠️ | 3,563,595 | 20.48% | attribution — but see KI-14 |
+| `cc-by-nc-4.0` | 2,975,337 | 17.10% | attribution, **non-commercial only** |
+| `cc-by-sa-4.0` | 1,915,882 | 11.01% | attribution, **share-alike** |
+| `other` ⚠️ | 60,736 | 0.35% | unstated — see KI-15 |
+
+The practical consequence: **17.1% of the corpus may not be used commercially** and a further
+11.0% imposes share-alike on derivatives. Filter before you train:
+
+```python
+from datasets import load_dataset
+
+ds = load_dataset("project-oceania/planktonzilla-17M", split="train")
+commercial = ds.filter(lambda row: row["license"] in {"cc-by-4.0", "mit"})  # 12,452,092 images
+```
+
+Two entries deserve a second look before you rely on them — `whoi` (`mit` is the license of a
+*code* repository, and it covers a fifth of the corpus) and `planktonset1.0` (`other` states
+nothing at all). Both are recorded exactly as their importer config states them, and both are
+written up as **KI-14 / KI-15** in
+[`KNOWN_ISSUES.md`](planktonzilla/planktonzilla_dataset/utils/KNOWN_ISSUES.md).
+
+The slugs live in `constants.DATASET_LICENSES`, transcribed from `configs/dataset_import/*.yaml`,
+which stay the upstream source of truth: `tests/test_dataset_licenses.py` fails if the two ever
+drift apart, or if a source in the published dataset has no recorded terms.
 
 ### Loss functions for imbalanced learning
 

@@ -534,3 +534,51 @@ def test_non_embeddable_version_still_builds(offline, two_source_env, tmp_path):
     ds = _load(tmp_path / "out")
     assert len(ds) == 8
     assert ds.info.version is None, "a non-x.y.z version is not embedded"
+
+
+def test_built_rows_carry_their_source_license(offline, two_source_env, tmp_path):
+    """Every row a build produces is stamped with its source's redistribution terms.
+
+    Guards the merge of the license work into the consolidated command: the license
+    columns are part of constants.CONSOLIDATED_COLUMNS, so a build that stopped
+    emitting them would also trip the schema guard — but this asserts the VALUES, not
+    just the columns' presence.
+    """
+    data_dir, csv_path = two_source_env
+    cfg = _compose(
+        [f"taxonomy_csv_path={csv_path}", f"data_dir={data_dir}", "num_proc=1", f"output_dir={tmp_path / 'out'}"],
+        "test_splice_license",
+    )
+    _restrict_registry(cfg, ["isiisnet", "lensless"])
+    _run(cfg)
+
+    ds = _load(tmp_path / "out")
+
+    by_source = {}
+    for row in ds:
+        by_source.setdefault(row["dataset"], set()).add((row["license"], row["license_url"]))
+
+    assert by_source["isiisnet"] == {("cc-by-nc-4.0", "https://creativecommons.org/licenses/by-nc/4.0/")}
+    assert by_source["lensless"] == {("cc-by-4.0", "https://creativecommons.org/licenses/by/4.0/")}
+
+
+def test_spliced_rows_keep_the_licenses_of_the_base(offline, two_source_env, tmp_path):
+    """A per-source refresh preserves the license columns of the rows it carries over."""
+    data_dir, csv_path = two_source_env
+    common = [f"taxonomy_csv_path={csv_path}", f"data_dir={data_dir}", "num_proc=1"]
+
+    cfg = _compose([*common, f"output_dir={tmp_path / 'base'}"], "test_splice_license_base")
+    _restrict_registry(cfg, ["isiisnet", "lensless"])
+    _run(cfg)
+
+    cfg2 = _compose(
+        [*common, f"output_dir={tmp_path / 'after'}", "sources=[lensless]", f"base={tmp_path / 'base'}", "refresh=rebuild"],
+        "test_splice_license_refresh",
+    )
+    _restrict_registry(cfg2, ["isiisnet", "lensless"])
+    _run(cfg2)
+
+    rows = list(_load(tmp_path / "after"))
+    assert {r["license"] for r in rows if r["dataset"] == "isiisnet"} == {"cc-by-nc-4.0"}
+    assert {r["license"] for r in rows if r["dataset"] == "lensless"} == {"cc-by-4.0"}
+    assert all(r["license_url"] for r in rows), "no row may carry a null license_url"

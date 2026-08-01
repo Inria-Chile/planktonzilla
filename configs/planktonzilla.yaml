@@ -44,6 +44,15 @@ version_strict: false
 # Message attached to the Hub tag. null -> a generated one naming the run.
 version_message: null
 
+# Branch to push onto. null (the default) targets the repo's default revision.
+# A run that changes the published SCHEMA — adding the license columns, say — should go
+# onto its own branch rather than over the revision the paper and the released models
+# are pinned to:
+#   pz_planktonzilla base=hub sources=[] sync_taxonomy=false \
+#     push_to_hub=true push_revision=v1.1 version=1.1.0
+# `version` then tags that branch, leaving the existing v1.0 tag on the frozen bytes.
+push_revision: null
+
 # Move the tag if it already exists on the repo. Default false: re-tagging a different
 # commit silently would make an existing version name point at different data.
 version_overwrite: false

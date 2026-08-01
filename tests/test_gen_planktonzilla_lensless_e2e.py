@@ -169,6 +169,14 @@ def test_lensless_only_e2e_generation_is_offline_and_pins_behavior(monkeypatch, 
         assert row["Phylum"] is None
         assert row["plankton"] is None
 
+    # Every row carries lensless' redistribution terms, stamped in the same pass that
+    # assigns the taxonomy. Unlike the taxonomy, these never depend on a CSV match, so
+    # the unmatched "diatom" class is licensed exactly like the matched "copepoda" one.
+    assert all(row["license"] == "cc-by-4.0" for row in rows)
+    assert all(row["license_url"] == "https://creativecommons.org/licenses/by/4.0/" for row in rows)
+    for col in constants.LICENSE_COLS:
+        assert ds.features[col].dtype == "string"
+
     # (finding 1) NoMetadataRedefiner emits {} -> flattened metadata columns exist
     # and are None for ALL lensless rows.
     metadata_cols = ["Latitude", "Longitude", "Depth_max", "Depth_min", "timestamp", "ObjID"]

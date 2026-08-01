@@ -4,11 +4,12 @@
 Build the full planktonzilla dataset from scratch.
 
 For each source dataset it builds the imagefolder with Hydra, assigns the
-taxonomy and external IDs from the taxonomy CSV, fetches the metadata through the
-APIs (latitude, longitude, depth, temperature, humidity and date) and, at the
-end, concatenates everything, drops the corrupt examples and saves the result to
-disk. When ``push_to_hub`` is set it then also pushes the consolidated dataset to
-the HuggingFace Hub.
+taxonomy and external IDs from the taxonomy CSV, stamps the source's redistribution
+terms (``license`` / ``license_url``, from ``constants.DATASET_LICENSES``), fetches
+the metadata through the APIs (latitude, longitude, depth, temperature, humidity and
+date) and, at the end, concatenates everything, drops the corrupt examples and saves
+the result to disk. When ``push_to_hub`` is set it then also pushes the consolidated
+dataset to the HuggingFace Hub.
 
 Prerequisites:
 
@@ -270,13 +271,17 @@ def retrieve_ecotaxa_metadata(obj_id, session: requests.Session | None = None) -
 
 
 # Assigning taxonomy, IDs and metadata
-def _taxonomy_row(example, *, class_names, n_splits, dataset_name, lookup, lookup_cols):
+def _taxonomy_row(example, *, class_names, n_splits, dataset_name, lookup, lookup_cols, license_fields):
     """Map one example to its dataset/original_label/original_path + taxonomy fields.
 
     Hoisted out of ``RedefineDataset.redefine``'s per-split loop so it can be bound
     with ``functools.partial`` and reused across splits. Behavior is identical to
     the former ``process_row`` closure, including the ``n_splits >= 2`` short-path
     slicing and the ``(dataset_name, label_str)`` lookup default.
+
+    ``license_fields`` is the ``{license, license_url}`` pair for ``dataset_name``,
+    resolved once by the caller. It rides along in this existing pass rather than in
+    a second ``map``, so recording the terms costs no extra sweep over the images.
     """
     label_str = class_names[example["label"]]
     full_path = example["image"]["path"]
@@ -293,6 +298,7 @@ def _taxonomy_row(example, *, class_names, n_splits, dataset_name, lookup, looku
         "dataset": dataset_name,
         "original_label": label_str,
         "original_path": short_path,
+        **license_fields,
         **tax,
     }
 
@@ -418,6 +424,7 @@ class RedefineDataset:
             "original_path",
             "ObjID",
             "timestamp",
+            *constants.LICENSE_COLS,
             *self.ID_STR_COLS,
             *self.ID_NUM_COLS,
         ]
@@ -451,6 +458,8 @@ class RedefineDataset:
                 dataset_name=dataset_name,
                 lookup=self.lookup,
                 lookup_cols=self.lookup_cols,
+                # Resolved once per split, not per row; raises for an unrecorded source.
+                license_fields=constants.license_fields(dataset_name),
             )
 
             logger.info(f"Processing split {split}...")
@@ -728,6 +737,11 @@ def main(cfg: DictConfig) -> None:
     disk. When ``cfg.push_to_hub`` is set it also pushes the consolidated dataset
     to ``cfg.repo_id`` after the (unconditional) save.
     """
+
+    # Checked before any download or API call: a source wired into cfg.datasets without
+    # a recorded license would otherwise only surface hours in, having already written
+    # rows we cannot state the terms for.
+    constants.validate_license_coverage(d["name"] for d in cfg.datasets)
 
     taxo_csv_path = (
         cfg.taxonomy_csv_path if cfg.get("taxonomy_csv_path") is not None else str(constants.DEFAULT_TAXONOMY_CSV_FILENAME)

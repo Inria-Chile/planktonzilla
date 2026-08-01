@@ -291,10 +291,12 @@ def apply_version(ds: Dataset, version: str, embeddable: bool) -> Dataset:
     return ds
 
 
-def tag_hub_release(repo_id: str, version: str, *, token, message=None, overwrite=False) -> None:
+def tag_hub_release(repo_id: str, version: str, *, token, message=None, overwrite=False, revision=None) -> None:
     """Create (or move) a git tag on the Hub dataset repo for this version.
 
     Runs only after a successful push, so the tag always points at data that exists.
+    ``revision`` names the branch to tag — pass the same value as ``push_revision`` so a
+    schema-change run tags the branch it actually wrote, not the repo default.
     """
     api = HfApi(token=token)
     tag_message = message or f"planktonzilla dataset version {version}"
@@ -307,7 +309,7 @@ def tag_hub_release(repo_id: str, version: str, *, token, message=None, overwrit
             pass
 
     try:
-        api.create_tag(repo_id, tag=version, tag_message=tag_message, repo_type="dataset")
+        api.create_tag(repo_id, tag=version, tag_message=tag_message, repo_type="dataset", revision=revision)
     except Exception as e:
         # Broad on purpose: the push already happened, so whatever went wrong here the
         # user needs to be told the data IS uploaded but is not tagged — otherwise they
@@ -532,6 +534,12 @@ def main(cfg: DictConfig) -> None:
     dropped = {str(name) for name in (cfg.get("drop") or [])}
     base_location = resolve_base_location(cfg, output_dir)
 
+    # Checked before any download or API call: a source wired into cfg.datasets without a
+    # recorded license would otherwise only surface hours in, having already written rows
+    # whose redistribution terms we cannot state. Only the sources this run rebuilds are
+    # checked — rows carried over from the base already carry their own license columns.
+    constants.validate_license_coverage(entry["name"] for entry in selected)
+
     if not selected and base_location is None and not dropped:
         raise ValueError("Nothing to do: `sources` selects no source and `base` is null.")
 
@@ -612,10 +620,22 @@ def main(cfg: DictConfig) -> None:
     atomic_replace(ds, output_dir)
 
     if cfg.get("push_to_hub", False):
-        logger.info(f"Pushing consolidated Planktonzilla dataset to HuggingFace Hub as «{cfg.repo_id}».")
-        ds.push_to_hub(cfg.repo_id, private=cfg.get("push_as_private", True), token=cfg.get("hf_token", None))
+        # A schema change (adding the license columns, say) belongs on its own branch,
+        # not over the revision the paper and the released models are pinned to.
+        push_revision = cfg.get("push_revision", None)
+        revision_kwargs = {"revision": push_revision} if push_revision else {}
+        target = f"{cfg.repo_id}@{push_revision}" if push_revision else str(cfg.repo_id)
 
-        # Tagged only after a successful push, so the tag always points at real data.
+        logger.info(f"Pushing consolidated Planktonzilla dataset to HuggingFace Hub as «{target}».")
+        ds.push_to_hub(
+            cfg.repo_id,
+            private=cfg.get("push_as_private", True),
+            token=cfg.get("hf_token", None),
+            **revision_kwargs,
+        )
+
+        # Tagged only after a successful push, so the tag always points at real data —
+        # and at the revision this run actually wrote, not the repo default.
         if version is not None:
             tag_hub_release(
                 cfg.repo_id,
@@ -623,6 +643,7 @@ def main(cfg: DictConfig) -> None:
                 token=cfg.get("hf_token", None),
                 message=cfg.get("version_message"),
                 overwrite=cfg.get("version_overwrite", False),
+                revision=push_revision,
             )
     else:
         logger.warning("Skipping pushing dataset to HuggingFace Hub, set push_to_hub=True to change this.")
