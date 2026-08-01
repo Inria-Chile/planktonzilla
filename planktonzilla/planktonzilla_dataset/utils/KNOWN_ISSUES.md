@@ -301,17 +301,49 @@ inside `extract()` naming neither the file nor its source. `missing_manual_downl
 for a whole build via `pz_planktonzilla dry_run=true`, which lists every blocking archive
 before anything is downloaded.
 
+## KI-23 — The consolidated command could not perform the license migration
+
+**Where:** `make_planktonzilla.py` `main`, against
+`update_planktonzilla.add_license_columns`.
+
+**Was:** an integration gap between the two changesets that landed together, invisible in
+either one alone. `pz_planktonzilla` requires every part to match
+`constants.CONSOLIDATED_COLUMNS`, which now includes `license` / `license_url`. The
+**published** planktonzilla-17M predates those columns, so
+`assert_consolidated_schema` rejected it as a base — and `add_license_columns` was only
+ever called from `pz_update_planktonzilla`, never from the command that replaces it.
+
+The documented migration was therefore broken end to end:
+
+    pz_planktonzilla base=hub sources=[] sync_taxonomy=false   # -> Schema mismatch
+
+and the deprecation warning on `pz_update_planktonzilla` pointed at that same failing
+invocation.
+
+**Resolved.** `ensure_license_columns` derives the pair from the `dataset` column when a
+base lacks it, applied **before** the schema check and before any `select` —
+`add_column` flattens an indices mapping, which on the full dataset would rewrite ~13.6M
+rows for nothing. It is derivation, not invention (both values are a pure function of
+the source), but it does change the published schema, so it logs a warning pointing at
+`push_revision`. Pinned by two tests in `test_make_planktonzilla_splice.py` covering both
+the pure-resync fast path and the splice path.
+
+**Consequence worth knowing:** a base holding a source absent from `DATASET_LICENSES`
+now fails during derivation rather than being carried over with a warning. That is
+deliberate — a license cannot be guessed — but it means the carry-over of unregistered
+sources only works on a base that already has the columns.
+
 ---
 
 *Recorded 2026-06-17 during the v1.0 `dataset_generation` cleanup (Phase 7, `KNOWN-01`).
 See `.planning/REQUIREMENTS.md` `HARDEN-01` / `HARDEN-02` for the deferred v2 work.
-KI-16 through KI-22 recorded 2026-08-01 during the `pz_planktonzilla` consolidation.*
+KI-16 through KI-23 recorded 2026-08-01 during the `pz_planktonzilla` consolidation.*
 
 ---
 
 ## Data inconsistencies in `planktonzilla_taxonomy.csv` (KI-8 – KI-13)
 
-KI-1..KI-7 and KI-16..KI-22 above concern **code behavior**. KI-8..KI-13 below concern **data** defects in the
+KI-1..KI-7 and KI-16..KI-23 above concern **code behavior**. KI-8..KI-13 below concern **data** defects in the
 frozen `planktonzilla_taxonomy.csv` itself, found by a two-method audit on **2026-07-13**
 (deterministic checks + a 27-agent adversarially-verified multi-lens audit; every finding
 below survived independent re-verification, and candidate findings explained by a legitimate

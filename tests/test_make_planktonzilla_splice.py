@@ -673,3 +673,70 @@ def test_every_part_is_conformed_to_one_shared_reference(offline, two_source_env
     assert all(ref == references[0] for ref in references), "every part must share one reference"
 
     assert [r["dataset"] for r in _load(tmp_path / "after")] == ["isiisnet"] * 3 + ["lensless"] * 5
+
+
+def test_a_base_predating_the_license_columns_is_migrated_not_rejected(offline, two_source_env, tmp_path):
+    """`base=<frozen> sources=[]` adds the license columns instead of failing on them.
+
+    The published planktonzilla-17M was built before per-image licensing, so it has no
+    license columns. assert_consolidated_schema requires them, so without deriving them
+    first the documented migration —
+    `pz_planktonzilla base=hub sources=[] sync_taxonomy=false` — was rejected outright by
+    the very command that replaces pz_update_planktonzilla.
+    """
+    data_dir, csv_path = two_source_env
+    common = [f"taxonomy_csv_path={csv_path}", f"data_dir={data_dir}", "num_proc=1"]
+
+    cfg = _compose([*common, f"output_dir={tmp_path / 'built'}"], "test_licmig_build")
+    _restrict_registry(cfg, ["isiisnet", "lensless"])
+    _run(cfg)
+
+    # Strip the license columns to reproduce the frozen artifact's schema.
+    frozen = _load(tmp_path / "built").remove_columns(list(constants.LICENSE_COLS))
+    frozen.save_to_disk(str(tmp_path / "frozen"))
+    assert not any(c in frozen.column_names for c in constants.LICENSE_COLS)
+
+    cfg2 = _compose(
+        [*common, f"output_dir={tmp_path / 'migrated'}", "sources=[]", f"base={tmp_path / 'frozen'}", "sync_taxonomy=false"],
+        "test_licmig",
+    )
+    _restrict_registry(cfg2, ["isiisnet", "lensless"])
+    _run(cfg2)
+
+    out = _load(tmp_path / "migrated")
+
+    assert set(out.column_names) == set(constants.CONSOLIDATED_COLUMNS)
+    assert len(out) == len(frozen), "a strictly additive run must not change the row count"
+
+    by_source = {}
+    for row in out:
+        by_source.setdefault(row["dataset"], set()).add((row["license"], row["license_url"]))
+    assert by_source["isiisnet"] == {("cc-by-nc-4.0", "https://creativecommons.org/licenses/by-nc/4.0/")}
+    assert by_source["lensless"] == {("cc-by-4.0", "https://creativecommons.org/licenses/by/4.0/")}
+
+
+def test_migrating_a_licenseless_base_while_refreshing_a_source(offline, two_source_env, tmp_path):
+    """The migration also works on the splice path, not just the pure-resync fast path."""
+    data_dir, csv_path = two_source_env
+    common = [f"taxonomy_csv_path={csv_path}", f"data_dir={data_dir}", "num_proc=1"]
+
+    cfg = _compose([*common, f"output_dir={tmp_path / 'built'}"], "test_licmig2_build")
+    _restrict_registry(cfg, ["isiisnet", "lensless"])
+    _run(cfg)
+
+    frozen = _load(tmp_path / "built").remove_columns(list(constants.LICENSE_COLS))
+    frozen.save_to_disk(str(tmp_path / "frozen"))
+
+    cfg2 = _compose(
+        [*common, f"output_dir={tmp_path / 'out'}", "sources=[lensless]", f"base={tmp_path / 'frozen'}", "refresh=rebuild"],
+        "test_licmig2",
+    )
+    _restrict_registry(cfg2, ["isiisnet", "lensless"])
+    _run(cfg2)
+
+    rows = list(_load(tmp_path / "out"))
+    assert [r["dataset"] for r in rows] == ["isiisnet"] * 3 + ["lensless"] * 5
+    # Carried rows got their licence derived; rebuilt rows got theirs at build time.
+    assert {r["license"] for r in rows if r["dataset"] == "isiisnet"} == {"cc-by-nc-4.0"}
+    assert {r["license"] for r in rows if r["dataset"] == "lensless"} == {"cc-by-4.0"}
+    assert all(r["license_url"] for r in rows)

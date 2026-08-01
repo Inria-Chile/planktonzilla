@@ -57,7 +57,11 @@ from planktonzilla.planktonzilla_dataset.generate_planktonzilla import (
     clean_corrupt_examples_optimized,
     import_and_redefine_source,
 )
-from planktonzilla.planktonzilla_dataset.update_planktonzilla import build_sync_dict, sync_columns
+from planktonzilla.planktonzilla_dataset.update_planktonzilla import (
+    add_license_columns,
+    build_sync_dict,
+    sync_columns,
+)
 from planktonzilla.utils.logger import get_pylogger
 
 root = pyrootutils.setup_root(
@@ -176,6 +180,35 @@ def source_row_indices(ds: Dataset) -> dict:
         positions = pc.indices_nonzero(pc.equal(column, name)).to_numpy(zero_copy_only=False)
         indices[name] = positions.astype(np.int64, copy=False)
     return indices
+
+
+def ensure_license_columns(ds: Dataset, *, where: str) -> Dataset:
+    """Derive the ``license`` / ``license_url`` columns when a base predates them.
+
+    The published planktonzilla-17M was built before per-image license provenance
+    existed, so it has none. Freshly built rows always carry them (``_taxonomy_row``
+    stamps them during the taxonomy pass), which means without this a run that carries
+    rows over from the frozen dataset would be rejected outright by
+    :func:`assert_consolidated_schema` — making the very migration that adds the columns
+    impossible to express with this command.
+
+    Both values are a pure function of the ``dataset`` column, so this is derivation, not
+    invention. It is applied to the base BEFORE any ``select``: ``add_column`` flattens an
+    indices mapping, which on the full dataset would rewrite ~13.6M rows for nothing.
+
+    It DOES change the published schema, so it is logged loudly and the caller is pointed
+    at ``push_revision``.
+    """
+    missing = [col for col in constants.LICENSE_COLS if col not in ds.column_names]
+    if not missing:
+        return ds
+
+    logger.warning(
+        f"{where} predates the license columns {missing}; deriving them from the `dataset` column. "
+        f"This CHANGES the published schema — publish it with push_revision=<branch> rather than over "
+        f"the revision the paper and released models are pinned to."
+    )
+    return add_license_columns(ds)
 
 
 def assert_consolidated_schema(ds: Dataset, *, where: str, reference=None) -> None:
@@ -667,6 +700,9 @@ def main(cfg: DictConfig) -> None:
     base = None
     if base_location is not None:
         base = load_base(base_location)
+        # Before the schema check, so a base that predates per-image licensing can still
+        # be brought up to date rather than rejected for lacking the columns.
+        base = ensure_license_columns(base, where="the base dataset")
         assert_consolidated_schema(base, where="the base dataset")
 
     ds = assemble(
