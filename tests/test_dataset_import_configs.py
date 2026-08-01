@@ -35,11 +35,10 @@ import pytest
 from hydra.core.global_hydra import GlobalHydra
 from PIL import Image as PILImage
 
-from planktonzilla.dataset_import.dataset_importer import (
-    MAX_CLASS_ROOT_DEPTH,
-    DatasetImporter,
-    find_class_root,
-)
+# Bound as a module rather than pulling names out of it: several tests monkeypatch its
+# attributes, which needs the module object anyway, and mixing `import x` with
+# `from x import y` for the same module is the inconsistency the code-quality bot flags.
+from planktonzilla.dataset_import import dataset_importer as di
 
 # Every config in the group except the abstract base, which has `_target_: null`.
 IMPORT_CONFIG_NAMES = sorted(f[:-5] for f in os.listdir(root / "configs" / "dataset_import") if f.endswith(".yaml"))
@@ -90,7 +89,7 @@ def test_every_import_config_instantiates(config_name, tmp_path):
 
     GlobalHydra.instance().clear()
 
-    assert isinstance(importer, DatasetImporter)
+    assert isinstance(importer, di.DatasetImporter)
     # imagefolder_dir is namespaced by the lowercased class name, which is what keeps
     # a per-source rebuild from touching another source's folder.
     assert importer.imagefolder_dir == tmp_path / f"{type(importer).__name__.lower()}_imagefolder"
@@ -99,21 +98,21 @@ def test_every_import_config_instantiates(config_name, tmp_path):
 def test_find_class_root_classes_at_root(tmp_path):
     """Class folders directly under the extraction root."""
     _make_classes(tmp_path, ["akashiwo_sanguinea", "centric_diatoms"])
-    assert find_class_root(tmp_path) == tmp_path
+    assert di.find_class_root(tmp_path) == tmp_path
 
 
 def test_find_class_root_single_wrapper(tmp_path):
     """The common case: the archive wraps everything in one top-level folder."""
     wrapper = tmp_path / "IFCB_images"
     _make_classes(wrapper, ["akashiwo_sanguinea", "centric_diatoms", "chaetoceros_spp"])
-    assert find_class_root(tmp_path) == wrapper
+    assert di.find_class_root(tmp_path) == wrapper
 
 
 def test_find_class_root_deeply_nested(tmp_path):
     """A path as deep as SYKE ZooScan 2024's is still found."""
     deep = tmp_path / "0127422" / "2.3" / "data" / "FINAL_Plankton_Segments_12082014"
     _make_classes(deep, ["copepoda", "diatom"])
-    assert find_class_root(tmp_path) == deep
+    assert di.find_class_root(tmp_path) == deep
 
 
 def test_find_class_root_prefers_the_level_with_most_class_folders(tmp_path):
@@ -121,7 +120,7 @@ def test_find_class_root_prefers_the_level_with_most_class_folders(tmp_path):
     _make_classes(tmp_path / "thumbnails", ["a", "b"])
     real = tmp_path / "images" / "labeled"
     _make_classes(real, ["c", "d", "e", "f", "g"])
-    assert find_class_root(tmp_path) == real
+    assert di.find_class_root(tmp_path) == real
 
 
 def test_find_class_root_breaks_ties_toward_the_shallowest(tmp_path):
@@ -129,14 +128,14 @@ def test_find_class_root_breaks_ties_toward_the_shallowest(tmp_path):
     outer = tmp_path / "outer"
     _make_classes(outer, ["a", "b"])
     _make_classes(outer / "a" / "nested", ["c", "d"])
-    assert find_class_root(tmp_path) == outer
+    assert di.find_class_root(tmp_path) == outer
 
 
 def test_find_class_root_ignores_dot_directories(tmp_path):
     """macOS/VCS junk directories are not mistaken for class folders."""
     _make_classes(tmp_path / "data", ["real_class_a", "real_class_b"])
     _make_classes(tmp_path / ".hidden", ["x", "y", "z", "w", "v"])
-    assert find_class_root(tmp_path) == tmp_path / "data"
+    assert di.find_class_root(tmp_path) == tmp_path / "data"
 
 
 def test_find_class_root_raises_when_there_are_no_images(tmp_path):
@@ -145,16 +144,16 @@ def test_find_class_root_raises_when_there_are_no_images(tmp_path):
     (tmp_path / "docs" / "notes" / "readme.txt").write_text("no images here")
 
     with pytest.raises(RuntimeError, match="No class folders found"):
-        find_class_root(tmp_path)
+        di.find_class_root(tmp_path)
 
 
 def test_find_class_root_respects_the_depth_cap(tmp_path):
     """Class folders past MAX_CLASS_ROOT_DEPTH are not scanned, so the scan stays bounded."""
-    too_deep = tmp_path.joinpath(*[f"level{i}" for i in range(MAX_CLASS_ROOT_DEPTH + 2)])
+    too_deep = tmp_path.joinpath(*[f"level{i}" for i in range(di.MAX_CLASS_ROOT_DEPTH + 2)])
     _make_classes(too_deep, ["a", "b"])
 
     with pytest.raises(RuntimeError, match="No class folders found"):
-        find_class_root(tmp_path)
+        di.find_class_root(tmp_path)
 
 
 def test_medplanktonset_prepare_imagefolder_normalizes_any_layout(tmp_path):
@@ -230,10 +229,8 @@ def test_integrity_check_handles_a_split_layout(tmp_path):
     candidates = [p for p in importer.imagefolder_dir.rglob("*") if p.is_file()]
     assert corrupt in candidates
 
-    from planktonzilla.dataset_import.dataset_importer import is_valid_image_file
-
     for path in candidates:
-        if not is_valid_image_file(path):
+        if not di.is_valid_image_file(path):
             path.unlink()
 
     assert not corrupt.exists(), "the corrupt file should have been removed"
@@ -243,10 +240,9 @@ def test_integrity_check_handles_a_split_layout(tmp_path):
 
 def test_is_valid_image_file_rejects_a_directory(tmp_path):
     """A directory is not a valid image — the property the old walk tripped over."""
-    from planktonzilla.dataset_import.dataset_importer import is_valid_image_file
 
     (tmp_path / "a_class").mkdir()
-    assert is_valid_image_file(tmp_path / "a_class") is False
+    assert di.is_valid_image_file(tmp_path / "a_class") is False
 
 
 def test_push_to_hub_raises_after_exhausting_retries(tmp_path, monkeypatch):
@@ -478,11 +474,10 @@ class _FakeFairdata:
 
 def test_fairdata_reuses_an_already_generated_package():
     """A ready package is downloaded straight away, without requesting a new one."""
-    from planktonzilla.dataset_import.dataset_importer import resolve_fairdata_download_url
 
     api = _FakeFairdata(statuses=[LIVE_REQUESTS_RESPONSE])
 
-    url = resolve_fairdata_download_url("pid-1", session=api, sleep=lambda s: None)
+    url = di.resolve_fairdata_download_url("pid-1", session=api, sleep=lambda s: None)
 
     # The service hands back a complete single-use URL; it must be returned as-is.
     assert url == LIVE_AUTHORIZE_RESPONSE["url"]
@@ -495,12 +490,11 @@ def test_fairdata_reuses_an_already_generated_package():
 
 def test_fairdata_requests_then_polls_until_ready():
     """No ready package -> request one, poll until it appears."""
-    from planktonzilla.dataset_import.dataset_importer import resolve_fairdata_download_url
 
     pending = {**LIVE_REQUESTS_RESPONSE, "status": "PENDING"}
     api = _FakeFairdata(statuses=[{}, pending, LIVE_REQUESTS_RESPONSE])
 
-    url = resolve_fairdata_download_url("pid-2", session=api, sleep=lambda s: None)
+    url = di.resolve_fairdata_download_url("pid-2", session=api, sleep=lambda s: None)
 
     assert url == LIVE_AUTHORIZE_RESPONSE["url"]
     assert api.posts[0] == (f"{_DEFAULT_BASE}/requests", {"cr_id": "pid-2"}), "should request generation"
@@ -508,15 +502,11 @@ def test_fairdata_requests_then_polls_until_ready():
 
 def test_fairdata_gives_up_with_the_manual_fallback():
     """A package that never becomes ready raises, naming the manual route."""
-    from planktonzilla.dataset_import.dataset_importer import (
-        FairdataResolutionError,
-        resolve_fairdata_download_url,
-    )
 
     api = _FakeFairdata(statuses=[{}] * 10)
 
-    with pytest.raises(FairdataResolutionError, match="manual_download_local_file_names"):
-        resolve_fairdata_download_url(
+    with pytest.raises(di.FairdataResolutionError, match="manual_download_local_file_names"):
+        di.resolve_fairdata_download_url(
             "pid-3",
             session=api,
             sleep=lambda s: None,
@@ -527,68 +517,49 @@ def test_fairdata_gives_up_with_the_manual_fallback():
 
 def test_fairdata_unrecognised_shape_does_not_guess():
     """An unfamiliar response shape raises rather than inventing a package name."""
-    from planktonzilla.dataset_import.dataset_importer import (
-        FairdataResolutionError,
-        resolve_fairdata_download_url,
-    )
 
     # Plausible-looking, but no recognisable package entry.
     api = _FakeFairdata(statuses=[{"data": {"files": ["a.zip", "b.zip"]}}] * 6)
 
-    with pytest.raises(FairdataResolutionError):
-        resolve_fairdata_download_url("pid-4", session=api, sleep=lambda s: None, poll_attempts=2)
+    with pytest.raises(di.FairdataResolutionError):
+        di.resolve_fairdata_download_url("pid-4", session=api, sleep=lambda s: None, poll_attempts=2)
 
 
 def test_fairdata_http_error_is_actionable():
     """A non-OK response says which step failed and what to do instead."""
-    from planktonzilla.dataset_import.dataset_importer import (
-        FairdataResolutionError,
-        resolve_fairdata_download_url,
-    )
 
     class _Failing:
         def get(self, url, params=None, timeout=None):
             return _FakeResponse({}, ok=False, status_code=503)
 
-    with pytest.raises(FairdataResolutionError, match="HTTP 503"):
-        resolve_fairdata_download_url("pid-5", session=_Failing(), sleep=lambda s: None)
+    with pytest.raises(di.FairdataResolutionError, match="HTTP 503"):
+        di.resolve_fairdata_download_url("pid-5", session=_Failing(), sleep=lambda s: None)
 
 
 def test_fairdata_missing_url_is_an_error():
     """Authorization without a url is a failure, not a broken URL built from parts."""
-    from planktonzilla.dataset_import.dataset_importer import (
-        FairdataResolutionError,
-        resolve_fairdata_download_url,
-    )
 
     api = _FakeFairdata(statuses=[LIVE_REQUESTS_RESPONSE], authorize={"detail": "denied"})
 
-    with pytest.raises(FairdataResolutionError, match="no download url"):
-        resolve_fairdata_download_url("pid-6", session=api, sleep=lambda s: None)
+    with pytest.raises(di.FairdataResolutionError, match="no download url"):
+        di.resolve_fairdata_download_url("pid-6", session=api, sleep=lambda s: None)
 
 
 def test_fairdata_network_failure_is_wrapped():
     """A transport error becomes a FairdataResolutionError with the fallback."""
     import requests as _requests
 
-    from planktonzilla.dataset_import.dataset_importer import (
-        FairdataResolutionError,
-        resolve_fairdata_download_url,
-    )
-
     class _Offline:
         def get(self, url, params=None, timeout=None):
             raise _requests.ConnectionError("dns failure")
 
-    with pytest.raises(FairdataResolutionError, match="Could not reach"):
-        resolve_fairdata_download_url("pid-7", session=_Offline(), sleep=lambda s: None)
+    with pytest.raises(di.FairdataResolutionError, match="Could not reach"):
+        di.resolve_fairdata_download_url("pid-7", session=_Offline(), sleep=lambda s: None)
 
 
 def test_syke_importer_uses_the_resolver_then_delegates(tmp_path, monkeypatch):
     """The importer swaps the resolved URL into download_uris and reuses the base path."""
     importer = _importer("sykezooscan2024", tmp_path)
-
-    import planktonzilla.dataset_import.dataset_importer as di
 
     monkeypatch.setattr(di, "resolve_fairdata_download_url", lambda pid, **kw: f"https://example.invalid/{pid}.zip")
 
@@ -612,8 +583,6 @@ def test_syke_manual_override_skips_the_resolver(tmp_path, monkeypatch):
         tmp_path,
         extra=[f"dataset_import.manual_download_local_file_names={archive}"],
     )
-
-    import planktonzilla.dataset_import.dataset_importer as di
 
     def _boom(*a, **k):
         raise AssertionError("resolver must not run when a manual archive is given")

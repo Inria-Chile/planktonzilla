@@ -339,7 +339,10 @@ def tag_hub_release(repo_id: str, version: str, *, token, message=None, overwrit
             api.delete_tag(repo_id, tag=version, repo_type="dataset")
             logger.warning(f"Deleted the existing Hub tag «{version}» before re-tagging (version_overwrite=true).")
         except RevisionNotFoundError:
-            pass
+            # No such tag yet, which is the normal case for a first release — there is
+            # nothing to move aside, so fall through to create_tag below. Only this one
+            # exception means "absent"; anything else is a real failure and propagates.
+            logger.info(f"No existing Hub tag «{version}» to replace; creating it.")
 
     try:
         api.create_tag(repo_id, tag=version, tag_message=tag_message, repo_type="dataset", revision=revision)
