@@ -43,6 +43,9 @@ import numpy as np
 import pyarrow.compute as pc
 import pyrootutils
 from datasets import Dataset, concatenate_datasets, load_dataset, load_from_disk
+from datasets.utils import Version
+from huggingface_hub import HfApi
+from huggingface_hub.errors import RevisionNotFoundError
 from omegaconf import DictConfig
 
 from planktonzilla.planktonzilla_dataset import constants
@@ -231,6 +234,93 @@ def log_lookup_coverage(part: Dataset, source_name: str, lookup: dict) -> None:
     )
 
 
+def resolve_version(cfg):
+    """Validate ``cfg.version`` and report whether it can be embedded in the artifact.
+
+    Called before any build work so a malformed version costs seconds, not hours.
+
+    Returns:
+        ``(version, embeddable)`` — the version string (``None`` when unset) and
+        whether it has the ``x.y.z`` form ``datasets.utils.Version`` accepts. A
+        non-embeddable version is still valid as a Hub tag, which is free-form.
+
+    Raises:
+        ValueError: If the version is blank, or is not ``x.y.z`` while
+            ``version_strict`` is set.
+    """
+    version = cfg.get("version")
+    if version is None:
+        return None, False
+
+    version = str(version).strip()
+    if not version:
+        raise ValueError("version is set but empty; use null to build an unversioned dataset.")
+
+    try:
+        normalised = str(Version(version))
+        embeddable = True
+    except ValueError:
+        normalised, embeddable = version, False
+
+    if not embeddable:
+        if cfg.get("version_strict", False):
+            raise ValueError(
+                f"version={version!r} is not the x.y.z form required to embed it in the dataset, and "
+                f"version_strict=true. Use a version like 1.4.0, or set version_strict=false to use it "
+                f"as a Hub tag only."
+            )
+        logger.warning(
+            f"version={version!r} is not the x.y.z form datasets.utils.Version accepts, so it will NOT be "
+            f"embedded in the saved artifact. It will still be pushed as a Hub tag. "
+            f"Set version_strict=true to make this an error."
+        )
+    elif normalised != version:
+        # e.g. "2026.08.01" -> "2026.8.1". The Hub tag keeps the string the user typed.
+        logger.warning(f"version={version!r} normalises to {normalised!r} when embedded in the dataset.")
+
+    return version, embeddable
+
+
+def apply_version(ds: Dataset, version: str, embeddable: bool) -> Dataset:
+    """Stamp ``version`` into the dataset's ``DatasetInfo`` when it can be embedded."""
+    if version is None or not embeddable:
+        return ds
+
+    ds.info.version = version
+    logger.info(f"Embedded version {str(ds.info.version)!r} in the dataset info.")
+    return ds
+
+
+def tag_hub_release(repo_id: str, version: str, *, token, message=None, overwrite=False) -> None:
+    """Create (or move) a git tag on the Hub dataset repo for this version.
+
+    Runs only after a successful push, so the tag always points at data that exists.
+    """
+    api = HfApi(token=token)
+    tag_message = message or f"planktonzilla dataset version {version}"
+
+    if overwrite:
+        try:
+            api.delete_tag(repo_id, tag=version, repo_type="dataset")
+            logger.warning(f"Deleted the existing Hub tag «{version}» before re-tagging (version_overwrite=true).")
+        except RevisionNotFoundError:
+            pass
+
+    try:
+        api.create_tag(repo_id, tag=version, tag_message=tag_message, repo_type="dataset")
+    except Exception as e:
+        # Broad on purpose: the push already happened, so whatever went wrong here the
+        # user needs to be told the data IS uploaded but is not tagged — otherwise they
+        # would reasonably assume the whole run failed and repeat it.
+        raise RuntimeError(
+            f"The dataset was pushed to «{repo_id}», but tagging it {version!r} failed: {e}. "
+            f"The upload itself succeeded — do not re-run the build. The tag may already exist; "
+            f"pick a new version, or set version_overwrite=true to move it."
+        ) from e
+
+    logger.info(f"Tagged «{repo_id}» as «{version}» on the HuggingFace Hub.")
+
+
 def atomic_replace(final: Dataset, output_dir: Path) -> None:
     """Save to ``output_dir``, tolerating that it may be the dataset's own source.
 
@@ -274,6 +364,7 @@ def log_plan(*, selected, registry, base_location, output_dir, cfg, dropped) -> 
     logger.info(f"Dropping      : {', '.join(sorted(dropped)) if dropped else '(nothing)'}")
     logger.info(f"Taxonomy sync : {'carried-over rows, unmatched=' + cfg.sync_unmatched if cfg.sync_taxonomy else 'off'}")
     logger.info(f"Corrupt scan  : {cfg.clean}")
+    logger.info(f"Version       : {cfg.get('version') or '(unversioned)'}")
     logger.info(f"Output        : {output_dir}")
     logger.info(f"Hub push      : {cfg.repo_id if cfg.get('push_to_hub', False) else '(no push)'}")
     logger.info("=" * 78)
@@ -434,6 +525,8 @@ def main(cfg: DictConfig) -> None:
     if cfg.sync_unmatched not in UNMATCHED_POLICIES:
         raise ValueError(f"sync_unmatched must be one of {UNMATCHED_POLICIES}, got {cfg.sync_unmatched!r}")
 
+    version, version_embeddable = resolve_version(cfg)
+
     registry = list(cfg.datasets)
     selected = select_sources(cfg)
     dropped = {str(name) for name in (cfg.get("drop") or [])}
@@ -513,14 +606,28 @@ def main(cfg: DictConfig) -> None:
         logger.info("Cleaning up corrupt examples across the whole assembled dataset.")
         ds = clean_corrupt_examples_optimized(ds, batch_size=1000, n_jobs=-1)
 
+    ds = apply_version(ds, version, version_embeddable)
+
     logger.info(f"Saving consolidated Planktonzilla dataset ({len(ds)} rows) to {output_dir}.")
     atomic_replace(ds, output_dir)
 
     if cfg.get("push_to_hub", False):
         logger.info(f"Pushing consolidated Planktonzilla dataset to HuggingFace Hub as «{cfg.repo_id}».")
         ds.push_to_hub(cfg.repo_id, private=cfg.get("push_as_private", True), token=cfg.get("hf_token", None))
+
+        # Tagged only after a successful push, so the tag always points at real data.
+        if version is not None:
+            tag_hub_release(
+                cfg.repo_id,
+                version,
+                token=cfg.get("hf_token", None),
+                message=cfg.get("version_message"),
+                overwrite=cfg.get("version_overwrite", False),
+            )
     else:
         logger.warning("Skipping pushing dataset to HuggingFace Hub, set push_to_hub=True to change this.")
+        if version is not None:
+            logger.warning(f"Version {version!r} was not pushed as a Hub tag: this run did not push (push_to_hub=false).")
 
     logger.info("Process completed!")
 

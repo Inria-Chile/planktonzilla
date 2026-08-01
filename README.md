@@ -207,7 +207,30 @@ uv run pz_planktonzilla base=local sources=[whoi,zooscan] refresh=redownload num
 
 # Pre-flight: resolve the plan and report it, touching nothing
 uv run pz_planktonzilla base=hub sources=[whoi] dry_run=true
+
+# Stamp a version on the build, and tag it on the Hub
+uv run pz_planktonzilla version=1.4.0 push_to_hub=true
 ```
+
+### Versioning a build
+
+`version=` (default `null`, unversioned) is applied in two places:
+
+- **Embedded in the saved artifact** as `DatasetInfo.version`, so a copy on disk or pulled from
+  the Hub knows which version it is. This needs the `x.y.z` form `datasets.utils.Version`
+  accepts — note it *normalises*, so `2026.08.01` becomes `2026.8.1`.
+- **Pushed as a git tag** on the Hub repo, after a successful push. Hub tags are free-form, so
+  any non-empty string works.
+
+A version that isn't `x.y.z` is therefore still a valid Hub tag but can't be embedded; the run
+says so rather than dropping it silently. `version_strict=true` rejects anything non-embeddable.
+The version is validated before any build work, so a malformed one fails in seconds rather than
+after hours.
+
+Tagging happens only after the push succeeds, so a tag always points at data that exists. An
+existing tag is an error by default — re-tagging silently would make a version name point at
+different data; `version_overwrite=true` moves it deliberately. If the push succeeds but tagging
+fails, the error says so explicitly: the upload is done, don't re-run the build.
 
 Source names are the `name` field of the `datasets` entries (`whoi`, `zooscan`,
 `planktonset1.0`, `global_uvp5`) — *not* the `configs/dataset_import/` stems

@@ -475,3 +475,62 @@ def test_clean_scope_none_skips_the_corrupt_scan(offline, two_source_env, tmp_pa
     _run(cfg2)
     assert len(calls) == 1
     assert calls[0] == {"batch_size": 1000, "n_jobs": -1}
+
+
+def test_version_is_embedded_in_the_saved_artifact(offline, two_source_env, tmp_path):
+    """A version survives the real save/load round-trip as DatasetInfo.version.
+
+    End-to-end proof that `version=` reaches disk: a copy of the dataset can say which
+    version it is without consulting the Hub.
+    """
+    data_dir, csv_path = two_source_env
+    cfg = _compose(
+        [
+            f"taxonomy_csv_path={csv_path}",
+            f"data_dir={data_dir}",
+            "num_proc=1",
+            f"output_dir={tmp_path / 'out'}",
+            "version=1.4.0",
+        ],
+        "test_splice_version",
+    )
+    _restrict_registry(cfg, ["isiisnet", "lensless"])
+    _run(cfg)
+
+    ds = _load(tmp_path / "out")
+    assert str(ds.info.version) == "1.4.0"
+
+
+def test_unversioned_run_leaves_the_default_version(offline, two_source_env, tmp_path):
+    """Not setting a version changes nothing about the artifact."""
+    data_dir, csv_path = two_source_env
+    cfg = _compose(
+        [f"taxonomy_csv_path={csv_path}", f"data_dir={data_dir}", "num_proc=1", f"output_dir={tmp_path / 'out'}"],
+        "test_splice_noversion",
+    )
+    _restrict_registry(cfg, ["isiisnet", "lensless"])
+    _run(cfg)
+
+    ds = _load(tmp_path / "out")
+    assert ds.info.version is None
+
+
+def test_non_embeddable_version_still_builds(offline, two_source_env, tmp_path):
+    """A Hub-tag-only version does not block the build or corrupt the artifact."""
+    data_dir, csv_path = two_source_env
+    cfg = _compose(
+        [
+            f"taxonomy_csv_path={csv_path}",
+            f"data_dir={data_dir}",
+            "num_proc=1",
+            f"output_dir={tmp_path / 'out'}",
+            "version=v1.2",
+        ],
+        "test_splice_version_freeform",
+    )
+    _restrict_registry(cfg, ["isiisnet", "lensless"])
+    _run(cfg)
+
+    ds = _load(tmp_path / "out")
+    assert len(ds) == 8
+    assert ds.info.version is None, "a non-x.y.z version is not embedded"

@@ -187,11 +187,53 @@ hold images. That is layout-independent and covered by tests, but **the first re
 still be checked**: its reported class count should match the 139 `medplanktonset` rows in
 `planktonzilla_taxonomy.csv`. A mismatch means the scan picked the wrong level.
 
+## KI-16 — A Hub push that never succeeded reported success
+
+**Where:** `dataset_importer.py` `_push_to_hub`.
+
+**Was:** the retry loop caught every exception per attempt and logged a warning. After the
+last attempt it fell through to `update_dataset_metadata()` and returned normally, so a push
+that never succeeded looked like a successful one — and the dataset card was refreshed for a
+dataset that was never uploaded.
+
+**Resolved.** The last error is retained and re-raised as a `RuntimeError` naming the attempt
+count; `update_dataset_metadata()` is not reached on failure. Pinned by
+`tests/test_dataset_import_configs.py::test_push_to_hub_raises_after_exhausting_retries`.
+
+## KI-17 — `check_image_file_integrity` crashed on the layouts that need it
+
+**Where:** `dataset_importer.py` `import_dataset`, the `check_image_file_integrity` block.
+
+**Was:** a fixed two-level walk (`os.listdir(imagefolder)` then
+`os.listdir(imagefolder / class_dir)`). On a **split** layout (`train/<class>/<image>`), which
+`LenslessDatasetImporter` and `ZooLakeDatasetImporter` both produce, the inner entries are class
+**directories**. `is_valid_image_file` returns False for a directory (`IsADirectoryError`
+subclasses `OSError`, which `IOError` aliases), so the next line called `os.remove` on a
+directory and raised uncaught. The adjacent warning was also missing its `f` prefix, so it
+logged the literal text `{file}` / `{class_dir}`.
+
+**Resolved.** The walk is now `rglob("*")` filtered to files, so it is layout-independent;
+empty class folders left behind are cleaned up afterwards. Both fixed together since they sit
+on adjacent lines. Off by default, so no published artifact is affected.
+
+## KI-18 — The manual-download comment conflated three different identifiers
+
+**Where:** `configs/generate_planktonzilla.yaml`, the commented block above `datasets`.
+
+**Was:** the bullet read `jedi_oceans_cpics (import_name: jedi, redefiner: jedi, ...)`. The
+leading token was actually the `import_name`, `import_name: jedi` was actually the *redefiner*
+key, and the real `name` — which must equal the taxonomy CSV `Dataset` value — is a third
+string, `jedioceans` (95 rows). Following the comment produced an entry that could not resolve.
+
+**Resolved.** Replaced with a table naming all three identifiers per row, plus a note that 4 of
+the 12 active entries have `name != import_name`. Comment only; the `datasets` table itself is
+unchanged.
+
 ---
 
 *Recorded 2026-06-17 during the v1.0 `dataset_generation` cleanup (Phase 7, `KNOWN-01`).
 See `.planning/REQUIREMENTS.md` `HARDEN-01` / `HARDEN-02` for the deferred v2 work.
-KI-14 and KI-15 recorded 2026-08-01 during the `pz_planktonzilla` consolidation.*
+KI-14 through KI-18 recorded 2026-08-01 during the `pz_planktonzilla` consolidation.*
 
 ---
 

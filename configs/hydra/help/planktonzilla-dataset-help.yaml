@@ -44,6 +44,11 @@ template: |-
     pz_planktonzilla base=local sources=[whoi,zooscan] refresh=redownload num_proc=8
     pz_planktonzilla base=hub   sources=[whoi] dry_run=true      # pre-flight, touches nothing
     pz_planktonzilla sources=[lensless] output_dir=/scratch/pz   # single-source dev build
+    pz_planktonzilla version=1.4.0 push_to_hub=true              # stamp + tag a release
+
+  version= is embedded in the artifact as DatasetInfo.version (needs the x.y.z form)
+  and pushed as a Hub git tag after a successful push (free-form). It is validated
+  before any build work, so a malformed version fails in seconds, not hours.
 
   Source names are the `name` field of the `datasets` entries (whoi, zooscan,
   planktonset1.0, global_uvp5), not the import config stems.

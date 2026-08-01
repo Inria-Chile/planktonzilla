@@ -466,3 +466,149 @@ def test_build_overrides_is_module_level_and_frozen_by_default():
     ]
 
     assert gp.build_overrides("/data", "lensless", False, import_overrides=["a=b"])[-1] == "a=b"
+
+
+def test_version_defaults_to_unset():
+    """No version is the default: the run produces an unversioned dataset."""
+    cfg = _compose(job_name="test_make_ver_default")
+    assert cfg.version is None
+    assert cfg.version_strict is False
+    assert cfg.version_overwrite is False
+    assert cfg.version_message is None
+    GlobalHydra.instance().clear()
+
+
+@pytest.mark.parametrize(
+    "value,embeddable",
+    [
+        ("1.4.0", True),
+        ("2026.08.01", True),  # accepted, but normalises to 2026.8.1 when embedded
+        ("v1.2", False),  # valid Hub tag, not embeddable
+        ("release-candidate", False),
+    ],
+)
+def test_resolve_version_classifies_embeddability(value, embeddable):
+    """A version is embeddable only in the x.y.z form datasets.utils.Version accepts."""
+    cfg = _compose([f"version={value}"], job_name="test_make_ver_kinds")
+    GlobalHydra.instance().clear()
+
+    version, is_embeddable = mk.resolve_version(cfg)
+    assert version == value, "the string the user typed is preserved for the Hub tag"
+    assert is_embeddable is embeddable
+
+
+def test_resolve_version_strict_rejects_non_embeddable():
+    """version_strict=true refuses anything that cannot be embedded in the artifact."""
+    cfg = _compose(["version=v1.2", "version_strict=true"], job_name="test_make_ver_strict")
+    GlobalHydra.instance().clear()
+
+    with pytest.raises(ValueError, match="version_strict"):
+        mk.resolve_version(cfg)
+
+
+def test_resolve_version_rejects_a_blank_string():
+    """An empty version is a mistake; null is how you ask for unversioned."""
+    cfg = _compose(["version=''"], job_name="test_make_ver_blank")
+    GlobalHydra.instance().clear()
+
+    with pytest.raises(ValueError, match="empty"):
+        mk.resolve_version(cfg)
+
+
+def test_bad_version_fails_before_any_build_work(monkeypatch, tmp_path):
+    """A malformed version costs seconds, not the hours a full build takes."""
+    cfg = _compose(
+        [f"data_dir={tmp_path}", "version=nope", "version_strict=true"],
+        job_name="test_make_ver_earlyfail",
+    )
+    GlobalHydra.instance().clear()
+
+    composed = []
+    monkeypatch.setattr(gp.hydra, "compose", lambda *a, **k: composed.append(k) or MagicMock())
+
+    with pytest.raises(ValueError, match="version_strict"):
+        mk.main(cfg)
+
+    assert composed == [], "validation must happen before any source is composed"
+
+
+def test_version_is_tagged_on_the_hub_after_a_successful_push(monkeypatch, tmp_path):
+    """The Hub tag is created only after the push, so it always points at real data."""
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "x", "y")
+
+    cfg = _compose(
+        [f"taxonomy_csv_path={csv_path}", f"data_dir={tmp_path}", "push_to_hub=true", "version=1.4.0"],
+        job_name="test_make_ver_push",
+    )
+    GlobalHydra.instance().clear()
+
+    order = []
+    push = MagicMock(side_effect=lambda *a, **k: order.append("push"))
+    monkeypatch.setattr(mk, "tag_hub_release", lambda *a, **k: order.append(("tag", a, k)))
+
+    _drive(monkeypatch, cfg, tmp_path, mk.main, push_mock=push)
+
+    assert order[0] == "push", "the tag must not be created before the push"
+    assert order[1][0] == "tag"
+    assert order[1][1] == (cfg.repo_id, "1.4.0")
+    assert order[1][2]["overwrite"] is False
+
+
+def test_version_is_not_tagged_when_the_run_does_not_push(monkeypatch, tmp_path):
+    """Without a push there is no Hub repo to tag; the run says so instead of failing."""
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "x", "y")
+
+    cfg = _compose(
+        [f"taxonomy_csv_path={csv_path}", f"data_dir={tmp_path}", "version=1.4.0"],
+        job_name="test_make_ver_nopush",
+    )
+    GlobalHydra.instance().clear()
+
+    tags = []
+    monkeypatch.setattr(mk, "tag_hub_release", lambda *a, **k: tags.append(a))
+
+    _drive(monkeypatch, cfg, tmp_path, mk.main)
+
+    assert tags == []
+
+
+def test_tag_hub_release_reports_a_conflict_actionably(monkeypatch):
+    """A tag that already exists explains that the push succeeded and how to proceed."""
+
+    class _Api:
+        def __init__(self, token=None):
+            pass
+
+        def create_tag(self, repo_id, **kwargs):
+            raise OSError("409 Conflict: tag already exists")
+
+    monkeypatch.setattr(mk, "HfApi", _Api)
+
+    with pytest.raises(RuntimeError, match="version_overwrite") as excinfo:
+        mk.tag_hub_release("org/ds", "1.4.0", token=None)
+
+    # The push already happened, so the message must stop the user re-running the build.
+    assert "do not re-run" in str(excinfo.value).lower()
+
+
+def test_tag_hub_release_overwrite_deletes_then_recreates(monkeypatch):
+    """version_overwrite=true moves an existing tag instead of failing."""
+    calls = []
+
+    class _Api:
+        def __init__(self, token=None):
+            pass
+
+        def delete_tag(self, repo_id, **kwargs):
+            calls.append(("delete", repo_id, kwargs["tag"]))
+
+        def create_tag(self, repo_id, **kwargs):
+            calls.append(("create", repo_id, kwargs["tag"]))
+
+    monkeypatch.setattr(mk, "HfApi", _Api)
+
+    mk.tag_hub_release("org/ds", "1.4.0", token=None, overwrite=True)
+
+    assert calls == [("delete", "org/ds", "1.4.0"), ("create", "org/ds", "1.4.0")]

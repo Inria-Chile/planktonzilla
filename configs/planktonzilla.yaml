@@ -22,6 +22,32 @@ tags: ["dev"]
 # that quirk lives on only in that command.
 output_dir: null
 
+# VERSION TAG for the dataset this run produces. null -> unversioned (unchanged
+# behavior). Validated up front, before any build work, so a malformed version fails in
+# seconds rather than after hours.
+#
+# It is applied in two places:
+#   - embedded in the saved artifact as DatasetInfo.version, so a copy on disk or
+#     pulled from the Hub says which version it is. This requires the `x.y.z` form
+#     datasets.utils.Version accepts (note it NORMALISES: "2026.08.01" -> "2026.8.1").
+#   - pushed as a git tag on the Hub repo, after a successful push. Hub tags are
+#     free-form, so any non-empty string works here.
+#
+# A version that is not `x.y.z` is therefore still usable as a Hub tag but cannot be
+# embedded in the artifact; the run says so explicitly rather than silently dropping it.
+# Set version_strict=true to require the embeddable form and reject anything else.
+#
+#   pz_planktonzilla version=1.4.0 push_to_hub=true
+version: null
+version_strict: false
+
+# Message attached to the Hub tag. null -> a generated one naming the run.
+version_message: null
+
+# Move the tag if it already exists on the repo. Default false: re-tagging a different
+# commit silently would make an existing version name point at different data.
+version_overwrite: false
+
 # ============================================================ what this run does ===
 # Three orthogonal parameters describe the run. There is no mode switch:
 #

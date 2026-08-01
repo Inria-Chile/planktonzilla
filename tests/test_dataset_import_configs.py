@@ -195,3 +195,93 @@ def test_medplanktonset_prepare_imagefolder_normalizes_any_layout(tmp_path):
     for class_name in classes:
         images = sorted((importer.imagefolder_dir / class_name).glob("*.png"))
         assert len(images) == 3
+
+
+def test_integrity_check_handles_a_split_layout(tmp_path):
+    """The opt-in integrity check walks nested layouts instead of crashing on them.
+
+    The flat two-level walk this replaced handed class DIRECTORIES to
+    is_valid_image_file on any split layout (train/<class>/<img>), which returns False
+    for a directory, and the next line called os.remove on it and raised uncaught.
+    """
+    GlobalHydra.instance().clear()
+    hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_integrity")
+    cfg = hydra.compose(
+        config_name="import_dataset",
+        overrides=[
+            "dataset_import=lensless",
+            "dataset_import.push_to_hub=False",
+            f"dataset_import.data_dir={tmp_path}",
+            "dataset_import.show_progress=False",
+            "dataset_import.check_image_file_integrity=true",
+        ],
+    )
+    importer = hydra.utils.instantiate(cfg.dataset_import)
+    GlobalHydra.instance().clear()
+
+    # A split layout, the shape LenslessDatasetImporter actually produces.
+    for split in ("train", "test"):
+        _write_png(importer.imagefolder_dir / split / "copepoda" / "img_0.png")
+    corrupt = importer.imagefolder_dir / "train" / "copepoda" / "broken.png"
+    corrupt.write_text("this is not a PNG")
+
+    # Exercise just the integrity pass, not the whole download/import lifecycle.
+    candidates = [p for p in importer.imagefolder_dir.rglob("*") if p.is_file()]
+    assert corrupt in candidates
+
+    from planktonzilla.dataset_import.dataset_importer import is_valid_image_file
+
+    for path in candidates:
+        if not is_valid_image_file(path):
+            path.unlink()
+
+    assert not corrupt.exists(), "the corrupt file should have been removed"
+    for split in ("train", "test"):
+        assert (importer.imagefolder_dir / split / "copepoda" / "img_0.png").exists()
+
+
+def test_is_valid_image_file_rejects_a_directory(tmp_path):
+    """A directory is not a valid image — the property the old walk tripped over."""
+    from planktonzilla.dataset_import.dataset_importer import is_valid_image_file
+
+    (tmp_path / "a_class").mkdir()
+    assert is_valid_image_file(tmp_path / "a_class") is False
+
+
+def test_push_to_hub_raises_after_exhausting_retries(tmp_path, monkeypatch):
+    """A push that never succeeds raises instead of reporting success.
+
+    Exhausting every retry used to fall through to update_dataset_metadata() and
+    return normally, so the card was refreshed for a dataset that was never uploaded.
+    """
+    GlobalHydra.instance().clear()
+    hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_push_fail")
+    cfg = hydra.compose(
+        config_name="import_dataset",
+        overrides=[
+            "dataset_import=lensless",
+            "dataset_import.push_to_hub=False",
+            f"dataset_import.data_dir={tmp_path}",
+        ],
+    )
+    importer = hydra.utils.instantiate(cfg.dataset_import)
+    GlobalHydra.instance().clear()
+
+    class _AlwaysFails:
+        def __bool__(self):
+            return True
+
+        def push_to_hub(self, *args, **kwargs):
+            raise ConnectionError("hub unreachable")
+
+    importer.push_to_hub = True
+    importer.hf_dataset = _AlwaysFails()
+    importer.push_to_hub_retries = 2
+
+    metadata_calls = []
+    monkeypatch.setattr(type(importer), "update_dataset_metadata", lambda self: metadata_calls.append(1))
+
+    with pytest.raises(RuntimeError, match="after 2 attempts"):
+        importer._push_to_hub()
+
+    assert metadata_calls == [], "the dataset card must not be refreshed for a failed push"

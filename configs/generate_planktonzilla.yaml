@@ -33,10 +33,22 @@ num_proc: null
 # `redefiner` is a key into the REDEFINERS map in generate_planktonzilla.py
 # (none -> NoMetadataRedefiner, whoi -> WHOIRedefiner, ecotaxa -> EcoTaxaRedefiner).
 # Datasets that require a manual .zip download are intentionally omitted here; they
-# match the commented-for-reference blocks below and in the script:
-#   - jedi_oceans_cpics (import_name: jedi,            redefiner: jedi,    CPICS_Validated.zip)
-#   - sykezooscan2024   (import_name: sykezooscan2024, redefiner: none,    SYKE-plankton_ZooScan_2024.zip)
-#   - zoolake           (import_name: zoolake,         redefiner: none,    zoolake_data.zip)
+# match the commented-for-reference blocks below and in the script.
+#
+# Each entry carries THREE distinct identifiers — do not interchange them:
+#   name        the source's identity. It is the `dataset` column value AND the
+#               taxonomy CSV `Dataset` value, so it must match the CSV exactly.
+#   import_name the configs/dataset_import/<stem>.yaml filename.
+#   redefiner   a key into the REDEFINERS map above.
+# For 4 of the 12 active entries name != import_name (whoi/whoi-plankton,
+# zooscan/zooscannet, planktonset1.0/planktonset1, global_uvp5/global_uvp5net).
+#
+#   name             import_name          redefiner  archive
+#   ---------------  -------------------  ---------  ------------------------------
+#   jedioceans       jedi_oceans_cpics    jedi       CPICS_Validated.zip
+#   sykezooscan2024  sykezooscan2024      none       SYKE-plankton_ZooScan_2024.zip
+#   zoolake          zoolake              none       zoolake_data.zip
+#
 # To enable one, add an entry with an extra override, e.g.:
 #   - {name: zoolake, import_name: zoolake, cleanup: true, redefiner: none,
 #      extra_overrides: ["dataset_import.manual_download_local_file_names=${data_dir}/zoolake_data.zip"]}

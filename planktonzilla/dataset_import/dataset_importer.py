@@ -477,6 +477,7 @@ class DatasetImporter:
                 logger.info(
                     f"Pushing «{self.human_readable_name}» to HuggingFace Hub as «{self.hf_org_name}/{self.hf_dataset_name}»."
                 )
+                last_error = None
                 for attempt in range(self.push_to_hub_retries):
                     try:
                         self.hf_dataset.push_to_hub(
@@ -484,11 +485,23 @@ class DatasetImporter:
                             token=self.hf_token,
                             private=self.hf_private,
                         )
+                        last_error = None
                         break
                     except Exception as e:
+                        last_error = e
                         logger.warning(
                             f"Push to hub attempt {attempt + 1}/{self.push_to_hub_retries} failed, retrying. Cause: {e}."
                         )
+
+                # Exhausting every retry used to fall through to update_dataset_metadata()
+                # and return normally, so a push that never succeeded reported success and
+                # the card was refreshed for a dataset that was never uploaded.
+                if last_error is not None:
+                    raise RuntimeError(
+                        f"Failed to push «{self.hf_dataset_name}» to the HuggingFace Hub after "
+                        f"{self.push_to_hub_retries} attempts. Last error: {last_error}"
+                    ) from last_error
+
                 self.update_dataset_metadata()
             else:
                 logger.error("No dataset to push.")
@@ -561,20 +574,27 @@ class DatasetImporter:
             )
 
         if self.check_image_file_integrity:
-            for class_dir in tqdm(
-                os.listdir(self.imagefolder_dir),
-                desc="Validating classes.",
+            # rglob rather than a two-level listdir: importers that produce a split
+            # layout (LenslessDatasetImporter's train/ + test/, ZooLakeDatasetImporter's
+            # train_split/ ...) nest images one level deeper, and the flat version of
+            # this walk handed those class DIRECTORIES to is_valid_image_file. That
+            # returns False for a directory (IsADirectoryError subclasses OSError,
+            # which IOError aliases), so the next line called os.remove on a directory
+            # and raised uncaught — turning an opt-in integrity check into a crash on
+            # exactly the layouts that need it most.
+            candidates = [path for path in self.imagefolder_dir.rglob("*") if path.is_file()]
+
+            for path in tqdm(
+                candidates,
+                desc="Validating images.",
                 disable=not self.show_progress,
                 leave=False,
             ):
-                for file in tqdm(
-                    os.listdir(self.imagefolder_dir / class_dir),
-                    disable=not self.show_progress,
-                    leave=False,
-                ):
-                    if not is_valid_image_file(self.imagefolder_dir / class_dir / file):
-                        logger.warning("Invalid file {file} in class {class_dir} detected. Removing it from dataset.")
-                        os.remove(self.imagefolder_dir / class_dir / file)
+                if not is_valid_image_file(path):
+                    logger.warning(f"Invalid file {path} detected. Removing it from the dataset.")
+                    os.remove(path)
+
+            cleanup_imagefolder_empty_dirs(self.imagefolder_dir)
 
         logger.info(f"Loading imagefolder in {self.imagefolder_dir} as HuggingFace dataset.")
 
