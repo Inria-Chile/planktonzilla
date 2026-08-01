@@ -17,12 +17,23 @@ Prerequisites:
     (wikidata_ID, ecotaxa_ID, aphia_ID, NCBI_ID, BOLD_ID), indexed by
     (Dataset, Raw_Labels).
 
-  - Some datasets have anti-bot protection on their download, so you have to
-    download the .zip by hand and pass its path in the Hydra overrides. Until that
-    path is given they stay commented out below:
-      * Zoolake: https://opendata.eawag.ch/dataset/.../download/data.zip
-      * SYKE ZooScan 2024: https://etsin.fairdata.fi/dataset/.../data
-      * JEDI CPICS: https://dbarchive.biosciencedbc.jp/data/jedisystem-oceansdb/LATEST/CPICS_Validated.zip
+  - Three sources are omitted from ``cfg.datasets`` as needing a hand-downloaded
+    .zip. Only one of them still clearly does — the other two are configured to
+    download automatically and appear never to have been tried:
+
+      * Zoolake — `download_uris` already points straight at the .zip and there is
+        no manual override. Nothing forces it manual; it just is not in the table.
+      * JEDI CPICS — has a direct `download_uris` too, but its
+        `manual_download_local_file_names` shadows it, so the automatic path never
+        runs. Clear that override to try it.
+      * SYKE ZooScan 2024 — genuinely has no direct URL: Fairdata serves a generated
+        package instead. `SYKEZooScan2024DatasetImporter` resolves that through the
+        Download API when `fairdata_pid` is set (contract unverified against the live
+        service — it fails loudly with the manual fallback if it differs).
+
+    Whichever route a source takes, a missing hand-downloaded archive is now reported
+    up front — by ``pz_planktonzilla dry_run=true`` for a whole build, and by the
+    importer itself with the file wanted and where to get it.
 
   - Internet access for the WHOI and EcoTaxa APIs. EcoTaxa objects in private
     projects do not return metadata and stay null.

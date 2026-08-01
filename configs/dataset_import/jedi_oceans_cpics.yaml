@@ -3,8 +3,14 @@ defaults:
 
 _target_: planktonzilla.dataset_import.dataset_importer.JEDISystemsOceansCPICSDatasetImporter
 hf_dataset_name: jedi_system_oceans_cpics
-# It is best to download CPICS manually and then import it.
+# download_uris below is a direct link to the same archive, and it is NOT known to be
+# blocked — this manual override simply shadows it, so the automatic path has likely
+# never been tried. To attempt it, clear the override:
+#   pz_import_dataset dataset_import=jedi_oceans_cpics dataset_import.manual_download_local_file_names=null
 manual_download_local_file_names: ${paths.data_dir}/manual_downloads/CPICS_Validated.zip
+manual_download_url: "https://dbarchive.biosciencedbc.jp/data/jedisystem-oceansdb/LATEST/CPICS_Validated.zip"
+manual_download_notes: |
+  The archive contains further per-class .zip files, which the importer unpacks itself.
 push_to_hub: true
 
 human_readable_name: JEDI System/OCEANS_CPICS

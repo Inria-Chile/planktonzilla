@@ -285,3 +285,286 @@ def test_push_to_hub_raises_after_exhausting_retries(tmp_path, monkeypatch):
         importer._push_to_hub()
 
     assert metadata_calls == [], "the dataset card must not be refreshed for a failed push"
+
+
+# --- Manual downloads and the Fairdata resolver ------------------------------------
+
+
+def _importer(config_name, tmp_path, extra=()):
+    """Instantiate one dataset_import config against a temporary data_dir.
+
+    ``paths.data_dir`` is overridden as well as ``dataset_import.data_dir``: manual
+    archive paths interpolate ``${paths.data_dir}``, so overriding only the importer's
+    own data_dir leaves them pointing at the REAL repository ``data/`` — which a test
+    that writes one would then pollute.
+    """
+    GlobalHydra.instance().clear()
+    hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_manual_dl")
+    cfg = hydra.compose(
+        config_name="import_dataset",
+        overrides=[
+            f"dataset_import={config_name}",
+            "dataset_import.push_to_hub=False",
+            f"paths.data_dir={tmp_path}",
+            f"dataset_import.data_dir={tmp_path}",
+            *extra,
+        ],
+    )
+    importer = hydra.utils.instantiate(cfg.dataset_import)
+    GlobalHydra.instance().clear()
+
+    for path in importer.manual_download_paths():
+        assert str(path).startswith(str(tmp_path)), f"test would touch a real path: {path}"
+
+    return importer
+
+
+def test_zoolake_is_not_actually_a_manual_download(tmp_path):
+    """zoolake has a direct download URL and no manual override.
+
+    Pins the finding behind the documentation fix: it was listed for years as needing a
+    hand-downloaded .zip, but nothing in its config forces that.
+    """
+    importer = _importer("zoolake", tmp_path)
+
+    assert importer.download_uris, "zoolake should have a direct download URL"
+    assert importer.manual_download_local_file_names is None
+    assert importer.missing_manual_downloads() == []
+
+
+def test_jedi_manual_override_shadows_a_direct_url(tmp_path):
+    """JEDI declares BOTH a direct URL and a manual archive; the manual one wins."""
+    importer = _importer("jedi_oceans_cpics", tmp_path)
+
+    assert importer.download_uris, "the direct URL is still declared"
+    assert importer.manual_download_local_file_names, "and is shadowed by the manual archive"
+    # Nothing downloaded in this tmp_path, so the manual archive registers as missing.
+    assert len(importer.missing_manual_downloads()) == 1
+
+
+def test_missing_manual_download_reports_instructions_not_a_stack_trace(tmp_path):
+    """A missing hand-downloaded archive names the file and where to get it."""
+    importer = _importer("jedi_oceans_cpics", tmp_path)
+
+    with pytest.raises(FileNotFoundError) as excinfo:
+        importer._download_and_extract()
+
+    message = str(excinfo.value)
+    assert "CPICS_Validated.zip" in message, "the wanted file must be named"
+    assert "dbarchive.biosciencedbc.jp" in message, "and where to get it"
+    assert "re-run" in message
+
+
+def test_present_manual_download_is_not_reported_missing(tmp_path):
+    """Once the archive is in place, the preflight is satisfied."""
+    importer = _importer("jedi_oceans_cpics", tmp_path)
+
+    expected = importer.manual_download_paths()[0]
+    expected.parent.mkdir(parents=True, exist_ok=True)
+    expected.write_bytes(b"not really a zip, but it exists")
+
+    assert importer.missing_manual_downloads() == []
+    assert importer.manual_download_instructions() == ""
+
+
+def test_source_with_no_url_and_no_manual_file_fails_clearly(tmp_path):
+    """Neither a URL nor a manual archive is an explicit error, not an obscure one."""
+    importer = _importer("sykezooscan2024", tmp_path, extra=["dataset_import.fairdata_pid=null"])
+
+    with pytest.raises(ValueError, match="nothing to fetch"):
+        importer._download_and_extract()
+
+
+def test_sykezooscan2024_is_configured_for_fairdata(tmp_path):
+    """SYKE ZooScan 2024 resolves through Fairdata, with a manual route documented."""
+    importer = _importer("sykezooscan2024", tmp_path)
+
+    assert importer.fairdata_pid == "6fa42787-9772-41a5-a6fc-0dde489ed908"
+    assert importer.fairdata_api_base.startswith("https://")
+    assert "etsin.fairdata.fi" in importer.manual_download_url
+
+
+class _FakeResponse:
+    def __init__(self, payload, ok=True, status_code=200):
+        self._payload = payload
+        self.ok = ok
+        self.status_code = status_code
+
+    def json(self):
+        if isinstance(self._payload, Exception):
+            raise self._payload
+        return self._payload
+
+
+class _FakeFairdata:
+    """Scripted stand-in for the Fairdata Download API."""
+
+    def __init__(self, statuses, authorize=None, fail_post=False):
+        self._statuses = list(statuses)
+        self._authorize = authorize if authorize is not None else {"token": "tok-123"}
+        self._fail_post = fail_post
+        self.posts = []
+
+    def get(self, url, params=None, timeout=None):
+        return _FakeResponse(self._statuses.pop(0) if self._statuses else {})
+
+    def post(self, url, json=None, timeout=None):
+        self.posts.append((url, json))
+        if self._fail_post:
+            return _FakeResponse({}, ok=False, status_code=500)
+        if url.endswith("/authorize"):
+            return _FakeResponse(self._authorize)
+        return _FakeResponse({"status": "accepted"})
+
+
+def test_fairdata_reuses_an_already_generated_package():
+    """A ready package is downloaded straight away, without requesting a new one."""
+    from planktonzilla.dataset_import.dataset_importer import resolve_fairdata_download_url
+
+    api = _FakeFairdata(statuses=[{"partial": {"all": {"package": "syke.zip", "status": "SUCCESS"}}}])
+
+    url = resolve_fairdata_download_url("pid-1", session=api, sleep=lambda s: None)
+
+    assert "package=syke.zip" in url
+    assert "dataset=pid-1" in url
+    assert "token=tok-123" in url
+    assert not any(u.endswith("/requests") for u, _ in api.posts), "should not request a new package"
+
+
+def test_fairdata_requests_then_polls_until_ready():
+    """No ready package -> request one, poll until it appears."""
+    from planktonzilla.dataset_import.dataset_importer import resolve_fairdata_download_url
+
+    api = _FakeFairdata(
+        statuses=[
+            {},  # nothing yet
+            {"partial": {"all": {"package": "syke.zip", "status": "PENDING"}}},  # not ready
+            {"partial": {"all": {"package": "syke.zip", "status": "SUCCESS"}}},  # ready
+        ]
+    )
+
+    url = resolve_fairdata_download_url("pid-2", session=api, sleep=lambda s: None)
+
+    assert "package=syke.zip" in url
+    assert any(u.endswith("/requests") for u, _ in api.posts), "should have requested generation"
+
+
+def test_fairdata_gives_up_with_the_manual_fallback():
+    """A package that never becomes ready raises, naming the manual route."""
+    from planktonzilla.dataset_import.dataset_importer import (
+        FairdataResolutionError,
+        resolve_fairdata_download_url,
+    )
+
+    api = _FakeFairdata(statuses=[{}] * 10)
+
+    with pytest.raises(FairdataResolutionError, match="manual_download_local_file_names"):
+        resolve_fairdata_download_url(
+            "pid-3",
+            session=api,
+            sleep=lambda s: None,
+            poll_attempts=3,
+            source_url="https://etsin.fairdata.fi/dataset/pid-3",
+        )
+
+
+def test_fairdata_unrecognised_shape_does_not_guess():
+    """An unfamiliar response shape raises rather than inventing a package name."""
+    from planktonzilla.dataset_import.dataset_importer import (
+        FairdataResolutionError,
+        resolve_fairdata_download_url,
+    )
+
+    # Plausible-looking, but no recognisable package entry.
+    api = _FakeFairdata(statuses=[{"data": {"files": ["a.zip", "b.zip"]}}] * 6)
+
+    with pytest.raises(FairdataResolutionError):
+        resolve_fairdata_download_url("pid-4", session=api, sleep=lambda s: None, poll_attempts=2)
+
+
+def test_fairdata_http_error_is_actionable():
+    """A non-OK response says which step failed and what to do instead."""
+    from planktonzilla.dataset_import.dataset_importer import (
+        FairdataResolutionError,
+        resolve_fairdata_download_url,
+    )
+
+    class _Failing:
+        def get(self, url, params=None, timeout=None):
+            return _FakeResponse({}, ok=False, status_code=503)
+
+    with pytest.raises(FairdataResolutionError, match="HTTP 503"):
+        resolve_fairdata_download_url("pid-5", session=_Failing(), sleep=lambda s: None)
+
+
+def test_fairdata_missing_token_is_an_error():
+    """Authorization without a token is a failure, not a URL with token=None."""
+    from planktonzilla.dataset_import.dataset_importer import (
+        FairdataResolutionError,
+        resolve_fairdata_download_url,
+    )
+
+    api = _FakeFairdata(
+        statuses=[{"partial": {"all": {"package": "syke.zip", "status": "SUCCESS"}}}],
+        authorize={"detail": "no token for you"},
+    )
+
+    with pytest.raises(FairdataResolutionError, match="no token"):
+        resolve_fairdata_download_url("pid-6", session=api, sleep=lambda s: None)
+
+
+def test_fairdata_network_failure_is_wrapped():
+    """A transport error becomes a FairdataResolutionError with the fallback."""
+    import requests as _requests
+
+    from planktonzilla.dataset_import.dataset_importer import (
+        FairdataResolutionError,
+        resolve_fairdata_download_url,
+    )
+
+    class _Offline:
+        def get(self, url, params=None, timeout=None):
+            raise _requests.ConnectionError("dns failure")
+
+    with pytest.raises(FairdataResolutionError, match="Could not reach"):
+        resolve_fairdata_download_url("pid-7", session=_Offline(), sleep=lambda s: None)
+
+
+def test_syke_importer_uses_the_resolver_then_delegates(tmp_path, monkeypatch):
+    """The importer swaps the resolved URL into download_uris and reuses the base path."""
+    importer = _importer("sykezooscan2024", tmp_path)
+
+    import planktonzilla.dataset_import.dataset_importer as di
+
+    monkeypatch.setattr(di, "resolve_fairdata_download_url", lambda pid, **kw: f"https://example.invalid/{pid}.zip")
+
+    delegated = {}
+    monkeypatch.setattr(
+        di.DatasetImporter, "_download_and_extract", lambda self: delegated.setdefault("uris", self.download_uris)
+    )
+
+    importer._download_and_extract()
+
+    assert delegated["uris"] == "https://example.invalid/6fa42787-9772-41a5-a6fc-0dde489ed908.zip"
+
+
+def test_syke_manual_override_skips_the_resolver(tmp_path, monkeypatch):
+    """Pointing at a hand-downloaded archive bypasses the Fairdata flow entirely."""
+    archive = tmp_path / "SYKE.zip"
+    archive.write_bytes(b"zip")
+
+    importer = _importer(
+        "sykezooscan2024",
+        tmp_path,
+        extra=[f"dataset_import.manual_download_local_file_names={archive}"],
+    )
+
+    import planktonzilla.dataset_import.dataset_importer as di
+
+    def _boom(*a, **k):
+        raise AssertionError("resolver must not run when a manual archive is given")
+
+    monkeypatch.setattr(di, "resolve_fairdata_download_url", _boom)
+    monkeypatch.setattr(di.DatasetImporter, "_download_and_extract", lambda self: None)
+
+    importer._download_and_extract()

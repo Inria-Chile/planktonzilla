@@ -229,17 +229,53 @@ string, `jedioceans` (95 rows). Following the comment produced an entry that cou
 the 12 active entries have `name != import_name`. Comment only; the `datasets` table itself is
 unchanged.
 
+## KI-21 — "Requires a manual download" was true of one source, not three
+
+**Where:** `configs/generate_planktonzilla.yaml` (comment above `datasets`),
+`generate_planktonzilla.py` (module docstring), `configs/dataset_import/{zoolake,
+jedi_oceans_cpics,sykezooscan2024}.yaml`.
+
+**Was:** all three omitted sources were documented as needing a hand-downloaded `.zip`
+because of "anti-bot protection". The configs say otherwise:
+
+- **`zoolake`** has a direct `download_uris` and **no** manual override. Nothing forces it
+  manual — it is simply absent from the `datasets` table. The automatic path appears never
+  to have been tried.
+- **`jedioceans`** has a direct `download_uris` **and** a
+  `manual_download_local_file_names` that shadows it (the manual branch is checked first in
+  `_download_and_extract`), so the direct URL is never attempted either.
+- **`sykezooscan2024`** is the only genuine case: `download_uris` was the empty string.
+  Fairdata serves a generated package rather than a stable URL, so there was nothing to
+  fetch.
+
+**Resolved (partly).** `SYKEZooScan2024DatasetImporter` now resolves the archive through
+the Fairdata Download API when `fairdata_pid` is set. Both stale claims are corrected in
+the docs, with the exact override to try the automatic path recorded on each config.
+
+**Not verified:** whether `zoolake` and `jedioceans` actually download without a browser.
+All three hosts are blocked from the environment this was written in, so the claim is only
+*unsupported*, not *disproven*. Likewise the Fairdata flow is written against the service's
+documented contract and has never run against the live service — it fails loudly with the
+manual fallback if the contract differs. One real run on an unrestricted network settles
+all three.
+
+**Related improvement.** A missing hand-downloaded archive used to surface as an error from
+inside `extract()` naming neither the file nor its source. `missing_manual_downloads()` /
+`manual_download_instructions()` now report it up front — per source at import time, and
+for a whole build via `pz_planktonzilla dry_run=true`, which lists every blocking archive
+before anything is downloaded.
+
 ---
 
 *Recorded 2026-06-17 during the v1.0 `dataset_generation` cleanup (Phase 7, `KNOWN-01`).
 See `.planning/REQUIREMENTS.md` `HARDEN-01` / `HARDEN-02` for the deferred v2 work.
-KI-16 through KI-20 recorded 2026-08-01 during the `pz_planktonzilla` consolidation.*
+KI-16 through KI-21 recorded 2026-08-01 during the `pz_planktonzilla` consolidation.*
 
 ---
 
 ## Data inconsistencies in `planktonzilla_taxonomy.csv` (KI-8 – KI-13)
 
-KI-1..KI-7 and KI-16..KI-20 above concern **code behavior**. KI-8..KI-13 below concern **data** defects in the
+KI-1..KI-7 and KI-16..KI-21 above concern **code behavior**. KI-8..KI-13 below concern **data** defects in the
 frozen `planktonzilla_taxonomy.csv` itself, found by a two-method audit on **2026-07-13**
 (deterministic checks + a 27-agent adversarially-verified multi-lens audit; every finding
 below survived independent re-verification, and candidate findings explained by a legitimate

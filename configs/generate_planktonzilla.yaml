@@ -32,8 +32,15 @@ num_proc: null
 # Source datasets to import + redefine, in build order (concatenation follows it).
 # `redefiner` is a key into the REDEFINERS map in generate_planktonzilla.py
 # (none -> NoMetadataRedefiner, whoi -> WHOIRedefiner, ecotaxa -> EcoTaxaRedefiner).
-# Datasets that require a manual .zip download are intentionally omitted here; they
-# match the commented-for-reference blocks below and in the script.
+# Three sources are omitted here, long described as "requires a manual .zip download".
+# That is only clearly true of ONE of them:
+#   - zoolake    already has a direct `download_uris` and NO manual override; nothing
+#                forces it manual, it simply is not in the table below.
+#   - jedioceans has a direct `download_uris` too, shadowed by its
+#                `manual_download_local_file_names`. Clear that override to try it.
+#   - sykezooscan2024 genuinely has no direct URL — Fairdata serves a generated package.
+#                Its importer resolves that via the Download API (`fairdata_pid`).
+# `pz_planktonzilla dry_run=true` reports any archive still needing a hand download.
 #
 # Each entry carries THREE distinct identifiers — do not interchange them:
 #   name        the source's identity. It is the `dataset` column value AND the

@@ -21,16 +21,19 @@ import os
 import re
 import shutil
 import stat
+import time
 from dataclasses import dataclass
 from multiprocessing import cpu_count
 from pathlib import Path
 from shutil import copy2, copytree, move, rmtree
 from typing import ClassVar, Dict, Final, Optional, Union
+from urllib.parse import quote
 from zipfile import ZipFile
 
 import aiohttp
 import numpy as np
 import plotext as plt
+import requests
 from datasets import (
     Dataset,
     DatasetDict,
@@ -247,6 +250,154 @@ def find_class_root(extraction_root: Path) -> Path:
     return best_dir
 
 
+class FairdataResolutionError(RuntimeError):
+    """The Fairdata Download API did not yield a usable download URL.
+
+    Always carries the manual fallback, because that is what the caller has to do next.
+    """
+
+
+def _find_ready_package(payload) -> str | None:
+    """Pull the name of a generated, ready-to-download package out of an API response.
+
+    Deliberately tolerant about SHAPE (which key nests the packages, whether the value
+    is a dict keyed by scope or a list) while strict about MEANING: only a package whose
+    status says it is generated/successful is accepted. The Fairdata response layout is
+    the part of the contract most likely to differ from what this was written against,
+    so a shape this does not recognise returns None and the caller raises with the
+    manual fallback — it never guesses a package name.
+    """
+    if not isinstance(payload, dict):
+        return None
+
+    candidates = []
+    for key in ("partial", "complete", "packages"):
+        value = payload.get(key)
+        if isinstance(value, dict):
+            candidates.extend(value.values())
+        elif isinstance(value, list):
+            candidates.extend(value)
+    # A single top-level package object, rather than a collection of them.
+    if "package" in payload:
+        candidates.append(payload)
+
+    for entry in candidates:
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("package") or entry.get("filename") or entry.get("name")
+        if not name:
+            continue
+        status = str(entry.get("status", "SUCCESS")).upper()
+        if status in ("SUCCESS", "SUCCESSFUL", "COMPLETE", "COMPLETED", "READY", "GENERATED"):
+            return name
+
+    return None
+
+
+def resolve_fairdata_download_url(
+    pid: str,
+    *,
+    api_base: str = "https://download.fairdata.fi",
+    timeout: int = 3600,
+    poll_attempts: int = 60,
+    poll_interval: int = 10,
+    source_url: str | None = None,
+    session=None,
+    sleep=time.sleep,
+) -> str:
+    """Resolve a Fairdata dataset PID to a direct, authorized download URL.
+
+    Fairdata does not serve a stable ``.zip`` link. A dataset is downloaded by asking
+    the Download API to *generate a package*, waiting for it, then authorizing a
+    one-shot download. This walks that flow:
+
+      1. ``GET  {api_base}/requests?dataset=<pid>``  — reuse a ready package if there is one
+      2. ``POST {api_base}/requests``                — otherwise ask for one
+      3. poll (1) until a package reports success
+      4. ``POST {api_base}/authorize``               — exchange it for a token
+      5. return ``{api_base}/download?dataset=…&package=…&token=…``
+
+    .. warning::
+       Written against the service's documented contract but NOT verified against the
+       live service. Every step that does not return what this expects raises
+       :class:`FairdataResolutionError` naming the manual fallback, so a contract
+       mismatch is one clear failure rather than a wrong or partial import.
+
+    Args:
+        pid: The dataset persistent identifier (the Etsin dataset id).
+        api_base: Download API root. Overridable so a contract change, a mirror or a
+            test double needs no code edit.
+        timeout: Per-request timeout in seconds.
+        poll_attempts: How many times to poll for package generation before giving up.
+        poll_interval: Seconds between polls.
+        source_url: Landing page, quoted in the error so the fallback is actionable.
+        session: ``requests``-compatible session; defaults to a fresh one.
+        sleep: Injected for tests, so polling does not actually wait.
+
+    Returns:
+        A URL that downloads the packaged dataset.
+
+    Raises:
+        FairdataResolutionError: On any unexpected response, or if the package is not
+            ready within ``poll_attempts * poll_interval`` seconds.
+    """
+    manual_hint = (
+        f"Download the archive by hand from {source_url or 'the dataset landing page'} and point "
+        f"dataset_import.manual_download_local_file_names at it."
+    )
+    requester = session or requests
+
+    def _json(response, what):
+        if not response.ok:
+            raise FairdataResolutionError(
+                f"Fairdata {what} returned HTTP {response.status_code} for dataset «{pid}». {manual_hint}"
+            )
+        try:
+            return response.json()
+        except ValueError as e:
+            raise FairdataResolutionError(f"Fairdata {what} returned a non-JSON body for «{pid}». {manual_hint}") from e
+
+    try:
+        status = _json(requester.get(f"{api_base}/requests", params={"dataset": pid}, timeout=timeout), "request status")
+        package = _find_ready_package(status)
+
+        if package is None:
+            _json(
+                requester.post(f"{api_base}/requests", json={"dataset": pid, "scope": []}, timeout=timeout),
+                "package request",
+            )
+
+            for _ in range(poll_attempts):
+                sleep(poll_interval)
+                status = _json(
+                    requester.get(f"{api_base}/requests", params={"dataset": pid}, timeout=timeout),
+                    "request status",
+                )
+                package = _find_ready_package(status)
+                if package is not None:
+                    break
+
+        if package is None:
+            raise FairdataResolutionError(
+                f"Fairdata did not report a ready package for «{pid}» after "
+                f"{poll_attempts * poll_interval}s. Large datasets can take longer — raise "
+                f"dataset_import.fairdata_poll_attempts, or {manual_hint[0].lower() + manual_hint[1:]}"
+            )
+
+        authorized = _json(
+            requester.post(f"{api_base}/authorize", json={"dataset": pid, "package": package}, timeout=timeout),
+            "authorization",
+        )
+        token = authorized.get("token") if isinstance(authorized, dict) else None
+        if not token:
+            raise FairdataResolutionError(f"Fairdata authorization returned no token for «{pid}». {manual_hint}")
+
+    except requests.RequestException as e:
+        raise FairdataResolutionError(f"Could not reach the Fairdata API for «{pid}»: {e}. {manual_hint}") from e
+
+    return f"{api_base}/download?dataset={quote(str(pid))}&package={quote(str(package))}&token={quote(str(token))}"
+
+
 def is_valid_image_file(image_filename):
     """Return True if PIL can open and crop the file, i.e. it is a readable image.
 
@@ -324,6 +475,21 @@ class DatasetImporter:
     # if we have manually downloaded the files add the archives here
     manual_download_local_file_names: str | list[str] = None
 
+    # Where a human obtains the archives named above, and anything they need to know to
+    # do it (a login, a "request access" step, an unstable direct link). Purely
+    # informational: it is what missing_manual_downloads() reports, so a missing file
+    # produces instructions instead of an error from inside extract().
+    manual_download_url: str = None
+    manual_download_notes: str = None
+
+    # Fairdata (Etsin) sources publish through a package API rather than a stable direct
+    # URL. Set fairdata_pid to resolve the download automatically; leave it null to use
+    # the manual route. See resolve_fairdata_download_url.
+    fairdata_pid: str = None
+    fairdata_api_base: str = "https://download.fairdata.fi"
+    fairdata_poll_attempts: int = 60
+    fairdata_poll_interval: int = 10
+
     cleanup_after_processing: Optional[bool] = False
 
     description: str = ""
@@ -363,6 +529,41 @@ class DatasetImporter:
         self.download_manager = None
         self.hf_dataset = None
 
+    def manual_download_paths(self) -> list[Path]:
+        """The archives this importer expects to have been fetched by hand, if any."""
+        declared = self.manual_download_local_file_names
+        if not declared:
+            return []
+        if isinstance(declared, str):
+            declared = [declared]
+        return [Path(path) for path in declared]
+
+    def missing_manual_downloads(self) -> list[Path]:
+        """Declared manual archives that are not on disk yet.
+
+        Cheap and side-effect free, so a caller can pre-flight a whole build and report
+        every missing archive at once rather than discovering them one failed source at
+        a time, hours apart.
+        """
+        return [path for path in self.manual_download_paths() if not path.exists()]
+
+    def manual_download_instructions(self) -> str:
+        """Human-readable instructions for obtaining this importer's manual archives."""
+        missing = self.missing_manual_downloads()
+        if not missing:
+            return ""
+
+        lines = [f"«{self.human_readable_name or self.hf_dataset_name}» needs {len(missing)} file(s) downloaded by hand:"]
+        lines.extend(f"  - {path}" for path in missing)
+        if self.manual_download_url:
+            lines.append(f"Get them from: {self.manual_download_url}")
+        elif self.source_url:
+            lines.append(f"Start from the dataset page: {self.source_url}")
+        if self.manual_download_notes:
+            lines.append(self.manual_download_notes.strip())
+        lines.append("Create the parent directory if needed, then re-run. Nothing else is required.")
+        return "\n".join(lines)
+
     def _download_and_extract(self):
         """Download ``download_uris`` (or use manual files) and extract them.
 
@@ -386,9 +587,23 @@ class DatasetImporter:
             ),
         )
         if self.manual_download_local_file_names:
+            # Checked here rather than left to extract(), which fails on a missing path
+            # with an error that names neither the file wanted nor where to get it.
+            missing = self.missing_manual_downloads()
+            if missing:
+                raise FileNotFoundError(self.manual_download_instructions())
+
             logger.info(f"Using manually downloaded file {self.manual_download_local_file_names}.")
             downloaded_paths = self.manual_download_local_file_names
         else:
+            if not self.download_uris:
+                raise ValueError(
+                    f"«{self.human_readable_name or self.hf_dataset_name}» has neither download_uris nor "
+                    f"manual_download_local_file_names set, so there is nothing to fetch. Give it a download URL, "
+                    f"or point manual_download_local_file_names at an archive you downloaded yourself"
+                    + (f" from {self.source_url}." if self.source_url else ".")
+                )
+
             logger.info(f"Downloading files to {self.raw_dir}.")
             downloaded_paths = self.download_manager.download(self.download_uris)
 
@@ -1053,7 +1268,37 @@ class SYKEZooScan2024DatasetImporter(DatasetImporter):
 
     Copies each class folder from
     ``0127422/2.3/data/FINAL_Plankton_Segments_12082014``.
+
+    The archive is published through Fairdata (Etsin) rather than at a stable direct
+    URL, so ``download_uris`` cannot simply name a ``.zip``. Set ``fairdata_pid`` and
+    this importer asks the Fairdata Download API to package the dataset and downloads
+    the result; leave it unset and it falls back to the usual
+    ``manual_download_local_file_names`` route, which now reports exactly which file is
+    missing and where to get it.
+
+    .. warning::
+       The Fairdata API flow below is written against the service's documented
+       package-download contract but has NOT been exercised against the live service —
+       it was unreachable from the environment this was written in. It is deliberately
+       fail-loud: any unexpected response raises with the manual fallback spelled out,
+       so a contract mismatch costs one clear error rather than a corrupt import.
     """
+
+    def _download_and_extract(self):
+        """Resolve the archive through the Fairdata API when a PID is configured."""
+        if self.fairdata_pid and not self.manual_download_local_file_names:
+            resolved = resolve_fairdata_download_url(
+                self.fairdata_pid,
+                api_base=self.fairdata_api_base,
+                timeout=self.http_timeout,
+                poll_attempts=self.fairdata_poll_attempts,
+                poll_interval=self.fairdata_poll_interval,
+                source_url=self.source_url,
+            )
+            logger.info(f"Fairdata resolved «{self.fairdata_pid}» to a download URL.")
+            self.download_uris = resolved
+
+        return super()._download_and_extract()
 
     def _prepare_imagefolder(self):
         for plankton_class_dir in tqdm(

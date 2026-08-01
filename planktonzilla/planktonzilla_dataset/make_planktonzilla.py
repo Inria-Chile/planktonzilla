@@ -372,9 +372,14 @@ def log_plan(*, selected, registry, base_location, output_dir, cfg, dropped) -> 
     logger.info("=" * 78)
 
 
-def _report_dry_run(selected, cfg) -> None:
-    """Instantiate each selected importer and report what a real run would touch."""
+def _report_dry_run(selected, cfg) -> list:
+    """Instantiate each selected importer and report what a real run would touch.
+
+    Returns the archives a real run would block on — sources whose imagefolder must be
+    built but whose hand-downloaded input is not on disk.
+    """
     logger.info("DRY RUN: resolving the plan only. Nothing is read, written or pushed.")
+    blockers = []
 
     for entry in selected:
         overrides = build_overrides(
@@ -394,6 +399,18 @@ def _report_dry_run(selected, cfg) -> None:
         removal = " (would be REMOVED first)" if cfg.refresh == "redownload" and imagefolder.exists() else ""
 
         logger.info(f"╰─ {entry['name']:16s} {imagefolder} [{state}]{removal}")
+
+        # A source that needs a hand-downloaded archive only fails once the run reaches
+        # it, which on a full build can be hours in. Report it now, while the whole plan
+        # is on screen and nothing has been downloaded yet.
+        if not exists or cfg.refresh == "redownload":
+            missing = importer.missing_manual_downloads()
+            if missing:
+                blockers.extend(missing)
+                for line in importer.manual_download_instructions().splitlines():
+                    logger.warning(f"   {line}")
+
+    return blockers
 
 
 def assemble(*, base, fresh, registry, dropped, sync_dict, cfg, num_proc_arg) -> Dataset:
@@ -565,8 +582,14 @@ def main(cfg: DictConfig) -> None:
     )
 
     if cfg.dry_run:
-        _report_dry_run(selected, cfg)
-        logger.info("DRY RUN complete; nothing was modified.")
+        blockers = _report_dry_run(selected, cfg)
+        if blockers:
+            logger.warning(
+                f"DRY RUN complete; nothing was modified. {len(blockers)} archive(s) must be downloaded by "
+                f"hand before a real run can get past them (listed above)."
+            )
+        else:
+            logger.info("DRY RUN complete; nothing was modified.")
         return
 
     lookup = build_taxonomy_lookup(taxo_csv_path)
