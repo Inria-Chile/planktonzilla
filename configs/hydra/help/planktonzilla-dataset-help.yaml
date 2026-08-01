@@ -1,0 +1,60 @@
+# Help page for pz_planktonzilla (configs/planktonzilla.yaml).
+#
+# Separate from planktonzilla-help.yaml because the three orthogonal run parameters
+# need worked examples: $CONFIG strips YAML comments, so the config's own explanation
+# of `base` / `sources` / `sync_taxonomy` does not reach --help.
+app_name: ${task_name}
+
+header: == pz_${hydra.help.app_name} ==
+
+footer: |-
+  Made with ❤️  by
+
+                ▓▓░
+
+            ▓▓▓
+          ▓▓▓                           ▓▓▒
+        ▓▓▓                           ▓▓
+       ▓▓▒     ▓▓▒ ▓▓▓▓    ▓▓▓▓▓▓   ▓▓▒    ▓▓▓▓▓
+     ░▓▓     ░▓▓ ▓ ░▓▓   ▓   ▓▓░  ▒▓▓   ▓▓▓   ▓▓░
+     ▓▓    ▓▓▓▓   ▓▓   ▓░  ▓▓▓  ░▓▓  ░▓▓▓   ▓▓▓     ▒▓▓▓▓▓▓▓▓▓▓▓
+     ▓▓▓▓▒ ▓▓    ░▓▓▓▒     ▓▓▓▓░ ▓▓▓▒  ▓▓▓▓  ▓▓▓▓▓░
+
+           Part of OcéanIA <https://oceania.inria.cl>.
+
+template: |-
+  ${hydra.help.header}
+
+  Create or update the consolidated planktonzilla dataset. One command; the run is
+  described by three orthogonal parameters:
+
+    base            where already-built rows come from   null | hub | local | <path>
+    sources         which sources are rebuilt now        all  | []   | [whoi]
+    sync_taxonomy   re-apply the CSV to carried rows     true | false
+
+  The output holds exactly one contribution per source — freshly built for the
+  sources in `sources`, carried over from `base` for the rest — in the `datasets`
+  declaration order.
+
+  Examples:
+    pz_planktonzilla                                             # full build (default)
+    pz_planktonzilla push_to_hub=true
+    pz_planktonzilla base=hub   sources=[]                       # taxonomy CSV changed
+    pz_planktonzilla base=local sources=[whoi] refresh=redownload
+    pz_planktonzilla base=local sources=[whoi,zooscan] refresh=redownload num_proc=8
+    pz_planktonzilla base=hub   sources=[whoi] dry_run=true      # pre-flight, touches nothing
+    pz_planktonzilla sources=[lensless] output_dir=/scratch/pz   # single-source dev build
+
+  Source names are the `name` field of the `datasets` entries (whoi, zooscan,
+  planktonset1.0, global_uvp5), not the import config stems.
+
+  Compose your configuration from these options:
+
+  $APP_CONFIG_GROUPS
+
+  $HYDRA_CONFIG_GROUPS
+
+  == Current (default) config ==
+
+  $CONFIG
+  ${hydra.help.footer}

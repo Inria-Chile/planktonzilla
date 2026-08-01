@@ -85,8 +85,9 @@ planktonzilla/                          # repo root
 ├── configs/                            # Hydra configuration tree (bundled into wheel)
 │   ├── train.yaml                      # root config for pz_train
 │   ├── import_dataset.yaml             # root config for pz_import_dataset
-│   ├── generate_planktonzilla.yaml     # root config for dataset generation
-│   ├── update_planktonzilla.yaml       # root config for dataset update
+│   ├── planktonzilla.yaml              # root config for pz_planktonzilla (create or update)
+│   ├── generate_planktonzilla.yaml     # deprecated; still owns the `datasets` registry
+│   ├── update_planktonzilla.yaml       # deprecated root config for dataset update
 │   ├── augmentation/                   # data augmentation strategies
 │   ├── custom_loss/                    # imbalance-aware loss configs
 │   ├── dataset/                        # dataset-specific configs
@@ -113,9 +114,10 @@ planktonzilla/                          # repo root
 │   ├── open_clip_ext/                  # forward-compat seam around open_clip factory/transform
 │   │   ╰── model_configs/              # open_clip model JSON configs
 │   ├── planktonzilla_dataset/          # builds the master composite dataset from external sources
-│   │   ├── generate_planktonzilla.py        # main dataset build (Hydra entry)
+│   │   ├── make_planktonzilla.py            # pz_planktonzilla — create or update (Hydra entry)
+│   │   ├── generate_planktonzilla.py        # deprecated build entry; hosts the shared pipeline
 │   │   ├── gen_planktonzilla_only_plankton.py
-│   │   ├── update_planktonzilla.py          # incremental dataset update (Hydra entry)
+│   │   ├── update_planktonzilla.py          # deprecated taxonomy re-sync (Hydra entry)
 │   │   ├── save_planktonzilla_for_clip.py   # export to WebDataset for CLIP
 │   │   ├── sankey.py                        # pz_sankey — live label-space Sankey (self-contained HTML)
 │   │   ├── templates/sankey_flow.html       # the page pz_sankey fills in
@@ -176,19 +178,80 @@ the `.yaml`) as `dataset_import=`.
 
 `planktonzilla-17M` is assembled from the imported sources by mapping each source's own labels
 onto the shared taxonomy in `planktonzilla/planktonzilla_dataset/planktonzilla_taxonomy.csv`.
-Both entry points are Hydra-configured (`configs/generate_planktonzilla.yaml`,
-`configs/update_planktonzilla.yaml`):
+One command creates or updates it (`configs/planktonzilla.yaml`):
 
 ```bash
-# Full build of the master composite dataset
-uv run pz_generate_planktonzilla
-
-# Incremental update of an existing build
-uv run pz_update_planktonzilla
+uv run pz_planktonzilla
 ```
+
+There is no mode switch. The run is described by three orthogonal parameters:
+
+| Parameter | Meaning | Values |
+| --- | --- | --- |
+| `base` | where already-built rows come from | `null` · `hub` · `local` · a path |
+| `sources` | which sources are rebuilt this run | `all` · `[]` · `[whoi]` |
+| `sync_taxonomy` | re-apply the CSV to carried-over rows | `true` · `false` |
+
+```bash
+# Create the whole dataset from scratch (all 12 sources) — the default
+uv run pz_planktonzilla
+
+# The taxonomy CSV changed: re-sync every row, rebuild nothing
+uv run pz_planktonzilla base=hub sources=[]
+
+# Re-import one source and splice it into what is already there
+uv run pz_planktonzilla base=local sources=[whoi] refresh=redownload
+
+# Same, plus a taxonomy re-sync of everything else (sync_taxonomy defaults true)
+uv run pz_planktonzilla base=local sources=[whoi,zooscan] refresh=redownload num_proc=8
+
+# Pre-flight: resolve the plan and report it, touching nothing
+uv run pz_planktonzilla base=hub sources=[whoi] dry_run=true
+```
+
+Source names are the `name` field of the `datasets` entries (`whoi`, `zooscan`,
+`planktonset1.0`, `global_uvp5`) — *not* the `configs/dataset_import/` stems
+(`whoi-plankton`, `zooscannet`, …). Passing a stem by mistake is rejected with the name to
+use instead.
+
+**The output holds exactly one contribution per source** — freshly built for the sources in
+`sources`, carried over from `base` for the rest — concatenated in the `datasets` declaration
+order. Reassembling in registry order rather than appending rebuilt rows at the end is what
+makes an incremental run row-for-row identical to a from-scratch one, which
+`tests/test_make_planktonzilla_splice.py` asserts directly.
+
+A per-source refresh needs `refresh=redownload` (or `rebuild`) to do anything: a non-empty
+imagefolder short-circuits the import, and every `_prepare_imagefolder` except Lensless *merges*
+into the existing tree, so without it a "refresh" could only add files, never drop ones deleted
+upstream.
+
+Two guards worth knowing, both of which stop a run before it does any I/O:
+
+- A **partial** rebuild (`sources` a strict subset) with `base=null` refuses to overwrite an
+  existing `output_dir`, because `save_to_disk` replaces a dataset directory silently — a
+  forgotten `base=` would swap the 17M-row artifact for a fragment and report success. Use
+  `base=local`, a fresh `output_dir=`, or `allow_partial_overwrite=true`.
+- A base whose columns diverge from the consolidated schema is a hard error, because
+  `concatenate_datasets` null-fills a missing column instead of raising.
 
 > The published dataset and the models trained on it are frozen artifacts. These commands are
 > reproduction tooling — changing what they emit means republishing, not patching.
+
+<details>
+<summary>Deprecated: <code>pz_generate_planktonzilla</code> and <code>pz_update_planktonzilla</code></summary>
+
+Both still work and behave exactly as before, but are removed in the next minor release:
+
+```bash
+uv run pz_generate_planktonzilla   # == uv run pz_planktonzilla
+uv run pz_update_planktonzilla     # == uv run pz_planktonzilla base=hub sources=[] output_dir='${data_dir}'
+```
+
+The `output_dir` override in the second line matters: `pz_update_planktonzilla` saved to the
+bare `data_dir`, whereas `pz_planktonzilla` saves to `<data_dir>/planktonzilla-17M` (where
+`pz_generate_planktonzilla` wrote, and where `base=local` reads back).
+
+</details>
 
 ### Explore the label space (Sankey)
 

@@ -118,10 +118,80 @@ not uniform.
 **Frozen-output risk: MEDIUM.** Shifts null/dtype representation in the produced CSVs. →
 `HARDEN-01`.
 
+**Partially resolved (taxonomy-CSV half).** The `generate` vs `update` divergence is gone:
+both now read `planktonzilla_taxonomy.csv` through the single polars reader
+`generate_planktonzilla.build_taxonomy_lookup`, and `update_planktonzilla.build_sync_dict`
+is a thin projection of it. The pandas implementation was deleted, so the two paths **cannot**
+drift again — there is only one.
+
+This was provably zero-drift: over the shipped CSV the two implementations agree on all 16
+synced columns × 1485 rows, in value **and** Python type.
+`tests/test_taxonomy_lookup_equivalence.py` pins that against a verbatim copy of the deleted
+pandas reader, and keeps pinning it forward — the two would *not* agree on every possible CSV
+(a numeric-only `ecotaxa_ID` column with blanks makes polars infer `Int64` → `328` where
+pandas infers `float64` → `"328.0"`, exactly the KI-12 shape), so a future CSV edit that
+enters that regime turns the test red instead of silently rewriting ID values.
+
+One deliberate behavior change came with it: a duplicate `(Dataset, Raw_Labels)` key used to
+hard-raise in the pandas path and be silently last-wins in the polars path. It now **warns and
+keeps the last row** — the generation path's long-standing behavior, made visible. The shipped
+CSV has no duplicates.
+
+**Still open:** the `extract_taxon_ids.py` output CSVs (empty-string vs `null` asymmetry) and
+the `";"` vs `","` separator convention. Those are untouched. → `HARDEN-01`.
+
+## KI-14 — The split probe in the build path reads the repository root, not the imagefolder
+
+**Where:** `generate_planktonzilla.py`, `import_and_redefine_source` — the `split_path = root /
+alias` probe.
+
+**Today:** `root` there is the module-level pyrootutils **repository** root, not the source's
+`imagefolder_dir`. `DatasetImporter.import_dataset` runs the identical probe correctly rooted at
+its own imagefolder, so this is a copy-paste slip. No `train/`, `validation/`, `val/` or `test/`
+directory exists at the repository root, so `data_files` is always empty and control always
+reaches the single-split fallback. Consequences:
+
+- `n_splits` is always `1`, so `original_path` is always the last **two** path chunks
+  (`/<class>/<file>`) rather than three. Pinned by
+  `tests/test_gen_planktonzilla_lensless_e2e.py`.
+- A stray `train/` directory at the repository root would hijack `data_files` for **every**
+  source at once.
+- The depth-2 fallback glob cannot read the split layouts `LenslessDatasetImporter` (renames
+  `TRAIN_IMAGE`/`TEST_IMAGE` → `train`/`test`) and `ZooLakeDatasetImporter` produce.
+
+**Do NOT fix.** `original_path` values are frozen in the published dataset, and a per-source
+refresh places rebuilt rows *beside* rows carried over from that published dataset — correcting
+the probe would make the two disagree within one artifact. Carried verbatim into
+`import_and_redefine_source` under a `# KNOWN ISSUE:` comment. → gate any correction on a golden
+diff (`HARDEN-01`).
+
+## KI-15 — Two `dataset_import` configs named classes that do not exist
+
+**Where:** `configs/dataset_import/medplanktonset.yaml`, `configs/dataset_import/sykezooscan2024.yaml`.
+
+**Was:** `medplanktonset.yaml` targeted `MedPlanktonSetDatasetImporter`, which had never been
+written, and `sykezooscan2024.yaml` targeted `SYKEZooScan2024` instead of
+`SYKEZooScan2024DatasetImporter`. `medplanktonset` is the **5th of the 12 active entries** in
+the `datasets` registry, so a full build died partway through — after four sources had already
+been downloaded and processed.
+
+**Resolved.** The `sykezooscan2024` target is corrected, and `MedPlanktonSetDatasetImporter` is
+implemented. `tests/test_dataset_import_configs.py` now instantiates every config in the group,
+so a `_target_` naming a missing class fails in CI instead of mid-build.
+
+**Caveat on the new importer:** the internal layout of MedPlanktonSet's `IFCB_images.zip` could
+not be verified — Zenodo was unreachable from the environment it was written in. Rather than
+hard-code a guessed path from the extraction root to the class folders (as its sibling importers
+do), it locates them with `find_class_root`, which scans for the directory whose subdirectories
+hold images. That is layout-independent and covered by tests, but **the first real run should
+still be checked**: its reported class count should match the 139 `medplanktonset` rows in
+`planktonzilla_taxonomy.csv`. A mismatch means the scan picked the wrong level.
+
 ---
 
 *Recorded 2026-06-17 during the v1.0 `dataset_generation` cleanup (Phase 7, `KNOWN-01`).
-See `.planning/REQUIREMENTS.md` `HARDEN-01` / `HARDEN-02` for the deferred v2 work.*
+See `.planning/REQUIREMENTS.md` `HARDEN-01` / `HARDEN-02` for the deferred v2 work.
+KI-14 and KI-15 recorded 2026-08-01 during the `pz_planktonzilla` consolidation.*
 
 ---
 

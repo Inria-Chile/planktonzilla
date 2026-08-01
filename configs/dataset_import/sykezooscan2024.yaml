@@ -1,7 +1,7 @@
 defaults:
   - default.yaml
 
-_target_: planktonzilla.dataset_import.dataset_importer.SYKEZooScan2024
+_target_: planktonzilla.dataset_import.dataset_importer.SYKEZooScan2024DatasetImporter
 hf_dataset_name: sykezooscan2024
 push_to_hub: true
 

@@ -1,0 +1,115 @@
+# @package _global_
+#
+# Create OR update the consolidated planktonzilla dataset. One command.
+#
+# The `datasets` registry, repo_id, data_dir, push_* and the null-defaulted
+# taxonomy_csv_path / num_proc are INHERITED from generate_planktonzilla.yaml, so the
+# frozen 12-row table has exactly one definition in the repo. When the deprecated
+# generate config is removed, move that table here verbatim.
+defaults:
+  - generate_planktonzilla
+  - _self_
+  - override hydra/help: planktonzilla-dataset-help.yaml
+
+task_name: "planktonzilla"
+tags: ["dev"]
+
+# ================================================================== the target ===
+# Local save_to_disk target, written unconditionally before any push.
+# null -> <data_dir>/planktonzilla-17M (constants.DEFAULT_PLANKTONZILLA_DATASET_NAME),
+# i.e. the path pz_generate_planktonzilla wrote and `base: local` reads back.
+# The deprecated pz_update_planktonzilla wrote the BARE data_dir, one level above;
+# that quirk lives on only in that command.
+output_dir: null
+
+# ============================================================ what this run does ===
+# Three orthogonal parameters describe the run. There is no mode switch:
+#
+#   create from scratch     base=null   sources=all                     (the default)
+#   taxonomy CSV changed    base=hub    sources=[]
+#   re-import one source    base=local  sources=[whoi] refresh=redownload
+#   both at once            base=local  sources=[whoi] refresh=redownload
+#                                       (sync_taxonomy defaults true)
+#
+# INVARIANT: the output holds exactly one contribution per source — freshly built for
+# the sources in `sources`, carried over from `base` for every other one —
+# concatenated in the `datasets` declaration order. That ordering is what makes an
+# incremental run row-for-row identical to a from-scratch one.
+
+# WHICH SOURCES ARE REBUILT FROM THEIR IMAGEFOLDER THIS RUN.
+#   all             -> every entry of `datasets`
+#   []              -> none; only the base is carried over / re-synced
+#   [whoi, zooscan] -> just those, spliced into the base
+#   whoi            -> shorthand for [whoi]
+# Names are `datasets[].name` values (whoi, zooscan, planktonset1.0, global_uvp5),
+# NOT `import_name` config stems (whoi-plankton, zooscannet, planktonset1,
+# global_uvp5net). That same string is the `dataset` column value and the taxonomy
+# CSV `Dataset` value, which is exactly why it can be the splice key.
+sources: all
+
+# SOURCES REMOVED FROM THE OUTPUT ENTIRELY (dropped from `base`, never rebuilt).
+# A name may not appear in both `sources` and `drop`.
+drop: []
+
+# WHERE THE ROWS OF THE SOURCES NOT IN `sources` COME FROM.
+#   null   -> nothing; the run produces only what `sources` rebuilds
+#   hub    -> load_dataset(base_repo_id, split="train")
+#   local  -> load_from_disk(output_dir)
+#   <path> -> load_from_disk(<path>)   (for a literal ./hub or ./local dir, say ./hub)
+base: null
+
+# Hub READ source, split from the push target so a rebuild can read the published
+# dataset and stage the result elsewhere instead of read-modify-writing production.
+base_repo_id: ${repo_id}
+
+# HOW DEEP A REBUILD GOES, for the sources selected by `sources`.
+#   reuse      -> reuse the imagefolder on disk when non-empty (legacy behavior)
+#   rebuild    -> force dataset_import.force_imagefolder_preparation=True
+#   redownload -> also force_download=True, AND remove that source's own
+#                 imagefolder_dir first. REQUIRED for a true re-import: every
+#                 _prepare_imagefolder except Lensless merges into the existing tree,
+#                 so without the removal a "refresh" can only ADD files, never drop
+#                 ones deleted upstream. Only the class-namespaced
+#                 <data_dir>/<classname>_imagefolder is removed.
+refresh: reuse
+
+# WHETHER THE CARRIED-OVER BASE ROWS GET THEIR TAXONOMY RE-READ FROM THE CSV.
+# Freshly rebuilt rows always carry the current CSV, so this only affects base rows.
+# Inert when `base` is null. NOTE: it maps over every carried row, which re-encodes
+# their images; the run banner prints the row count before starting.
+sync_taxonomy: true
+
+# What happens to a base row whose (dataset, original_label) is absent from the CSV.
+#   keep  -> keep its current taxonomy, null only the external IDs (legacy pz_update)
+#   clear -> null the taxonomy too     (what a from-scratch rebuild does for that row)
+# Names the one real semantic gap between the two former scripts instead of leaving it
+# implicit. Default `keep` = zero drift with pz_update_planktonzilla.
+sync_unmatched: keep
+
+# =================================================================== integrity ===
+# Corrupt-image pass. It reads every image it covers, so scope matters.
+#   fresh -> only the sources rebuilt this run (default). On a full build every part
+#            is fresh, so this is identical to the legacy single pass over the
+#            concatenation: a batch read succeeds iff every row in it decodes, so
+#            batching never changes the kept set.
+#   all   -> the whole assembled dataset, base rows included
+#   none  -> skip
+clean: fresh
+
+# ====================================================================== safety ===
+# Refuse to write a PARTIAL rebuild (a strict subset of `sources`, no `base`) over an
+# existing output_dir. datasets.save_to_disk overwrites a different dataset directory
+# silently, so without this a slip like `sources=[whoi]` (forgetting `base=`) would
+# replace the 17M-row artifact with a whoi-only one and report success.
+# Set true only when you really mean to shrink the target in place.
+allow_partial_overwrite: false
+
+# Resolve the plan, instantiate every selected importer, report each imagefolder and
+# everything that would be removed / written / pushed, then exit. Reads and writes
+# nothing. Cheap pre-flight for a run that can take hours.
+dry_run: false
+
+# Extra overrides appended to EVERY per-source import_dataset override block, e.g.
+# ["dataset_import.check_image_file_integrity=true"]. Per-source extras stay in the
+# `datasets` entries as `extra_overrides`.
+import_overrides: []

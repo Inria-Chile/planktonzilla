@@ -56,6 +56,39 @@ QUALIFIERS = (
 ID_STR_COLS = ("wikidata_ID", "ecotaxa_ID")  # already text in the CSV
 ID_NUM_COLS = ("aphia_ID", "NCBI_ID", "BOLD_ID")  # numeric in the CSV -> text without decimals
 
+# Provenance columns written by RedefineDataset._taxonomy_row: which source an example
+# came from, the label that source gave it, and its path inside that source's
+# imagefolder. ``dataset`` is the splice key — its values are the ``name`` field of the
+# entries in the ``datasets`` table and the ``Dataset`` column of the taxonomy CSV.
+IDENTITY_COLS = ("dataset", "original_label", "original_path")
+
+# Columns flattened out of the per-source metadata JSON, in the exact order
+# RedefineDataset._flatten_metadata produces them.
+METADATA_COLS = (
+    "Latitude",
+    "Humidity",
+    "Temperature",
+    "Longitude",
+    "ObjID",
+    "Depth_max",
+    "Depth_min",
+    "timestamp",
+)
+
+# Every column of the consolidated dataset. Used to check that a base dataset and a
+# freshly built part agree before they are concatenated: datasets.concatenate_datasets
+# silently NULL-FILLS a column missing from one side rather than raising, which would
+# blank the column for exactly the rows just rebuilt.
+CONSOLIDATED_COLUMNS = (
+    "image",
+    *IDENTITY_COLS,
+    *TAXONOMY_RANKS,
+    *EXTRA_COLS,
+    *ID_STR_COLS,
+    *ID_NUM_COLS,
+    *METADATA_COLS,
+)
+
 
 def default_num_proc() -> int:
     """Return half the available CPUs, at least 1.

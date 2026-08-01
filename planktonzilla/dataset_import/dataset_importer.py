@@ -176,6 +176,77 @@ def cleanup_imagefolder_empty_dirs(imagefolder_dir: Path) -> None:
             shutil.rmtree(dir)
 
 
+# Suffixes treated as images when locating class folders. Suffix-only on purpose:
+# find_class_root walks the whole extracted tree, so opening every candidate with PIL
+# (as is_valid_image_file does) would be far too slow. Readability is checked later,
+# behind check_image_file_integrity.
+IMAGE_SUFFIXES: Final = frozenset({".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".gif", ".ppm", ".webp"})
+
+# Depth cap for find_class_root, counted from the extraction root. Every bundled
+# source nests its class folders at most 4 levels down (the deepest is SYKE ZooScan
+# 2024's "0127422/2.3/data/FINAL_Plankton_Segments_12082014"), so 6 leaves headroom
+# without letting a pathological tree turn the scan into a full-disk walk.
+MAX_CLASS_ROOT_DEPTH: Final = 6
+
+
+def _subdirectories(dir: Path) -> list[Path]:
+    """Immediate subdirectories of ``dir``, sorted, skipping dot-directories."""
+    return sorted(p for p in dir.iterdir() if p.is_dir() and not p.name.startswith("."))
+
+
+def _holds_images(dir: Path) -> bool:
+    """Return True if ``dir`` directly contains at least one image file."""
+    return any(p.is_file() and p.suffix.lower() in IMAGE_SUFFIXES for p in dir.iterdir())
+
+
+def find_class_root(extraction_root: Path) -> Path:
+    """Locate the directory whose immediate subdirectories are the class folders.
+
+    Most importers hard-code the path from the extraction root down to the class
+    folders (e.g. ``ZooScanNet/imgs``), which means a re-release that adds or renames
+    a wrapper directory breaks them. This finds it instead: it scans the tree and
+    returns the directory with the most immediate subdirectories that directly hold
+    images, which is what a torchvision-style ``<class>/<image>`` layout looks like.
+
+    Use it when the archive's internal layout is not pinned by a checksum, so a
+    wrapper folder appearing or disappearing upstream is not a silent breakage.
+
+    Args:
+        extraction_root: Directory the archive was extracted into.
+
+    Returns:
+        The directory holding the class folders (may be ``extraction_root`` itself).
+
+    Raises:
+        RuntimeError: If no directory in the tree has an image-bearing subdirectory.
+    """
+    best_dir, best_count = None, 0
+
+    queue = [(extraction_root, 0)]
+    while queue:
+        dir, depth = queue.pop(0)
+        subdirs = _subdirectories(dir)
+
+        # Ties keep the shallowest candidate: BFS reaches it first and the comparison
+        # is strict, so a nested duplicate of the same layout cannot displace it.
+        count = sum(1 for sub in subdirs if _holds_images(sub))
+        if count > best_count:
+            best_dir, best_count = dir, count
+
+        if depth < MAX_CLASS_ROOT_DEPTH:
+            queue.extend((sub, depth + 1) for sub in subdirs)
+
+    if best_dir is None:
+        raise RuntimeError(
+            f"No class folders found under {extraction_root}: no directory within "
+            f"{MAX_CLASS_ROOT_DEPTH} levels has a subdirectory containing images "
+            f"({', '.join(sorted(IMAGE_SUFFIXES))})."
+        )
+
+    logger.info(f"Located {best_count} class folders under {best_dir}.")
+    return best_dir
+
+
 def is_valid_image_file(image_filename):
     """Return True if PIL can open and crop the file, i.e. it is a readable image.
 
@@ -972,3 +1043,48 @@ class SYKEZooScan2024DatasetImporter(DatasetImporter):
             disable=not self.show_progress,
         ):
             copytree_filtered(plankton_class_dir, self.imagefolder_dir / plankton_class_dir.name)
+
+
+class MedPlanktonSetDatasetImporter(DatasetImporter):
+    """Importer for MedPlanktonSet — labeled IFCB images from the Mediterranean Sea.
+
+    Source: ``IFCB_images.zip`` from Zenodo record 15471023 (see
+    ``configs/dataset_import/medplanktonset.yaml``). The archive holds one folder per
+    labeled class; ``planktonzilla_taxonomy.csv`` maps 139 ``medplanktonset``
+    ``Raw_Labels`` (``Akashiwo_sanguinea``, ``Centric_diatoms``, ``Chaetoceros_spp``,
+    …) onto the shared taxonomy, and those names are the class folder names.
+
+    Unlike its sibling importers this one does not hard-code the path from the
+    extraction root to the class folders — it locates them with
+    :func:`find_class_root`, so a wrapper directory in the archive does not matter.
+
+    .. warning::
+       The archive's internal layout has NOT been verified against the real download:
+       Zenodo was unreachable from the environment this importer was written in. The
+       layout-independent scan is what makes that acceptable rather than a guess, but
+       the first real run should be done with ``show_progress=true`` and its reported
+       class count checked against the 139 ``medplanktonset`` rows in the taxonomy CSV.
+       A mismatch means the scan found the wrong level, not that the CSV is wrong.
+    """
+
+    def _prepare_imagefolder(self):
+        class_root = find_class_root(Path(self.extracted_dirs))
+
+        # find_class_root scores a directory by how many subdirectories hold images, so
+        # the winner may still have image-free siblings (a stray "metadata/" folder, a
+        # "docs/"). Copying those would create class folders whose only members are
+        # non-image files, which the imagefolder loader then tries to decode — so
+        # select on image content here, the same test the scan itself used.
+        class_dirs = [dir for dir in _subdirectories(class_root) if _holds_images(dir)]
+
+        for plankton_class_dir in tqdm(
+            class_dirs,
+            desc="Progress",
+            leave=False,
+            disable=not self.show_progress,
+        ):
+            copytree_filtered(plankton_class_dir, self.imagefolder_dir / plankton_class_dir.name)
+
+        # Belt and braces: a class folder whose every image was a macOS junk file is
+        # dropped by copytree_filtered's ignore patterns and arrives empty.
+        cleanup_imagefolder_empty_dirs(self.imagefolder_dir)
