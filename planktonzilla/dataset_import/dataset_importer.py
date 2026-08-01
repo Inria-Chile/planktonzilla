@@ -27,7 +27,6 @@ from multiprocessing import cpu_count
 from pathlib import Path
 from shutil import copy2, copytree, move, rmtree
 from typing import ClassVar, Dict, Final, Optional, Union
-from urllib.parse import quote
 from zipfile import ZipFile
 
 import aiohttp
@@ -185,10 +184,11 @@ def cleanup_imagefolder_empty_dirs(imagefolder_dir: Path) -> None:
 # behind check_image_file_integrity.
 IMAGE_SUFFIXES: Final = frozenset({".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".gif", ".ppm", ".webp"})
 
-# Depth cap for find_class_root, counted from the extraction root. Every bundled
-# source nests its class folders at most 4 levels down (the deepest is SYKE ZooScan
-# 2024's "0127422/2.3/data/FINAL_Plankton_Segments_12082014"), so 6 leaves headroom
-# without letting a pathological tree turn the scan into a full-disk walk.
+# Depth cap for find_class_root, counted from the extraction root. Every bundled source
+# nests its class folders at most 4 levels down — the deepest measured is SYKE ZooScan
+# 2024 at 3 ("SYKE-plankton_ZooScan_2024/images/SYKE-plankton_ZooScan_2024/<class>",
+# after its nested zip is unwrapped) — so 6 leaves headroom without letting a
+# pathological tree turn the scan into a full-disk walk.
 MAX_CLASS_ROOT_DEPTH: Final = 6
 
 
@@ -260,12 +260,16 @@ class FairdataResolutionError(RuntimeError):
 def _find_ready_package(payload) -> str | None:
     """Pull the name of a generated, ready-to-download package out of an API response.
 
-    Deliberately tolerant about SHAPE (which key nests the packages, whether the value
-    is a dict keyed by scope or a list) while strict about MEANING: only a package whose
-    status says it is generated/successful is accepted. The Fairdata response layout is
-    the part of the contract most likely to differ from what this was written against,
-    so a shape this does not recognise returns None and the caller raises with the
-    manual fallback — it never guesses a package name.
+    The live service returns a flat object::
+
+        {"package": "<pid>_nhungsie.zip", "status": "SUCCESS", "size": 79363785,
+         "checksum": "sha256:…", "generated": "…", "initiated": "…", "dataset": "<pid>"}
+
+    which the ``"package" in payload`` branch below handles. The nested forms are kept
+    because the endpoint is undocumented and its shape is the part most likely to move.
+    Tolerant about SHAPE, strict about MEANING: only a package whose status says it is
+    generated is accepted, and an unrecognised shape returns None so the caller raises
+    with the manual fallback rather than guessing a package name.
     """
     if not isinstance(payload, dict):
         return None
@@ -297,7 +301,7 @@ def _find_ready_package(payload) -> str | None:
 def resolve_fairdata_download_url(
     pid: str,
     *,
-    api_base: str = "https://download.fairdata.fi",
+    api_base: str = "https://etsin.fairdata.fi/api/download",
     timeout: int = 3600,
     poll_attempts: int = 60,
     poll_interval: int = 10,
@@ -307,21 +311,34 @@ def resolve_fairdata_download_url(
 ) -> str:
     """Resolve a Fairdata dataset PID to a direct, authorized download URL.
 
-    Fairdata does not serve a stable ``.zip`` link. A dataset is downloaded by asking
-    the Download API to *generate a package*, waiting for it, then authorizing a
-    one-shot download. This walks that flow:
+    Fairdata serves no stable ``.zip`` link. A dataset is downloaded by asking the
+    Download API to *package* it, waiting for that, then authorizing a single-use
+    download. This walks that flow:
 
-      1. ``GET  {api_base}/requests?dataset=<pid>``  — reuse a ready package if there is one
-      2. ``POST {api_base}/requests``                — otherwise ask for one
-      3. poll (1) until a package reports success
-      4. ``POST {api_base}/authorize``               — exchange it for a token
-      5. return ``{api_base}/download?dataset=…&package=…&token=…``
+      1. ``GET  {api_base}/requests?cr_id=<pid>``  — reuse a ready package if there is one
+      2. ``POST {api_base}/requests``              — otherwise ask for one
+      3. poll (1) until a package reports SUCCESS
+      4. ``POST {api_base}/authorize``             — exchange it for a single-use URL
+      5. return that URL
 
-    .. warning::
-       Written against the service's documented contract but NOT verified against the
-       live service. Every step that does not return what this expects raises
-       :class:`FairdataResolutionError` naming the manual fallback, so a contract
-       mismatch is one clear failure rather than a wrong or partial import.
+    VERIFIED end to end against the live service on 2026-08-01 with
+    ``6fa42787-9772-41a5-a6fc-0dde489ed908`` (SYKE ZooScan 2024): the flow resolved and
+    downloaded the full 79,363,785-byte package, whose size and name matched what step
+    (1) reported. Recorded shapes::
+
+        GET  /requests?cr_id=<pid>
+          -> {"package": "<pid>_nhungsie.zip", "status": "SUCCESS", "size": 79363785,
+              "checksum": "sha256:…", "generated": "…", "initiated": "…",
+              "dataset": "<pid>"}
+        POST /requests  {"cr_id": "<pid>"}
+          -> the same object plus "created": false when a package already exists
+        POST /authorize {"cr_id": "<pid>", "package": "<name>"}
+          -> {"url": "https://download.fairdata.fi:443/download?token=<jwt>"}
+
+    Two details worth keeping: the query/body parameter is ``cr_id`` (``dataset`` is
+    rejected as an unknown field), and ``authorize`` returns a ready ``url`` rather than
+    a bare token — ``/download`` accepts only ``token``, so the URL must not be
+    reassembled from parts.
 
     Args:
         pid: The dataset persistent identifier (the Etsin dataset id).
@@ -335,7 +352,7 @@ def resolve_fairdata_download_url(
         sleep: Injected for tests, so polling does not actually wait.
 
     Returns:
-        A URL that downloads the packaged dataset.
+        A single-use URL that downloads the packaged dataset.
 
     Raises:
         FairdataResolutionError: On any unexpected response, or if the package is not
@@ -358,24 +375,27 @@ def resolve_fairdata_download_url(
             raise FairdataResolutionError(f"Fairdata {what} returned a non-JSON body for «{pid}». {manual_hint}") from e
 
     try:
-        status = _json(requester.get(f"{api_base}/requests", params={"dataset": pid}, timeout=timeout), "request status")
+        status = _json(requester.get(f"{api_base}/requests", params={"cr_id": pid}, timeout=timeout), "request status")
         package = _find_ready_package(status)
 
         if package is None:
-            _json(
-                requester.post(f"{api_base}/requests", json={"dataset": pid, "scope": []}, timeout=timeout),
+            # Asking for a package that already exists is harmless — the service returns
+            # the existing one with "created": false — so this is safe to reach.
+            created = _json(
+                requester.post(f"{api_base}/requests", json={"cr_id": pid}, timeout=timeout),
                 "package request",
             )
+            package = _find_ready_package(created)
 
             for _ in range(poll_attempts):
+                if package is not None:
+                    break
                 sleep(poll_interval)
                 status = _json(
-                    requester.get(f"{api_base}/requests", params={"dataset": pid}, timeout=timeout),
+                    requester.get(f"{api_base}/requests", params={"cr_id": pid}, timeout=timeout),
                     "request status",
                 )
                 package = _find_ready_package(status)
-                if package is not None:
-                    break
 
         if package is None:
             raise FairdataResolutionError(
@@ -385,17 +405,22 @@ def resolve_fairdata_download_url(
             )
 
         authorized = _json(
-            requester.post(f"{api_base}/authorize", json={"dataset": pid, "package": package}, timeout=timeout),
+            requester.post(f"{api_base}/authorize", json={"cr_id": pid, "package": package}, timeout=timeout),
             "authorization",
         )
-        token = authorized.get("token") if isinstance(authorized, dict) else None
-        if not token:
-            raise FairdataResolutionError(f"Fairdata authorization returned no token for «{pid}». {manual_hint}")
+        # The service hands back a complete single-use URL. Do NOT rebuild it from
+        # parts: /download accepts only `token`, and rejects `dataset` and `file` as
+        # unknown fields, so a reassembled URL is a 400.
+        url = authorized.get("url") if isinstance(authorized, dict) else None
+        if not url:
+            raise FairdataResolutionError(
+                f"Fairdata authorization returned no download url for «{pid}» (package {package!r}). {manual_hint}"
+            )
 
     except requests.RequestException as e:
         raise FairdataResolutionError(f"Could not reach the Fairdata API for «{pid}»: {e}. {manual_hint}") from e
 
-    return f"{api_base}/download?dataset={quote(str(pid))}&package={quote(str(package))}&token={quote(str(token))}"
+    return url
 
 
 def is_valid_image_file(image_filename):
@@ -1276,12 +1301,19 @@ class SYKEZooScan2024DatasetImporter(DatasetImporter):
     ``manual_download_local_file_names`` route, which now reports exactly which file is
     missing and where to get it.
 
-    .. warning::
-       The Fairdata API flow below is written against the service's documented
-       package-download contract but has NOT been exercised against the live service —
-       it was unreachable from the environment this was written in. It is deliberately
-       fail-loud: any unexpected response raises with the manual fallback spelled out,
-       so a contract mismatch costs one clear error rather than a corrupt import.
+    The package is a zip containing another zip, so the outer extraction must be
+    unwrapped before the class folders are reachable — verified against the real
+    archive on 2026-08-01::
+
+        <package>.zip
+          SYKE-plankton_ZooScan_2024/readme.md
+          SYKE-plankton_ZooScan_2024/SYKE-plankton_ZooScan_2024.zip
+            SYKE-plankton_ZooScan_2024/images/SYKE-plankton_ZooScan_2024/<class>/*.png
+            SYKE-plankton_ZooScan_2024/class_splits/…
+            __MACOSX/…                       (junk; copytree_filtered drops it)
+
+    The 20 class folders that produces match the 20 ``sykezooscan2024`` ``Raw_Labels``
+    in ``planktonzilla_taxonomy.csv`` exactly.
     """
 
     def _download_and_extract(self):
@@ -1301,13 +1333,31 @@ class SYKEZooScan2024DatasetImporter(DatasetImporter):
         return super()._download_and_extract()
 
     def _prepare_imagefolder(self):
+        root = Path(self.extracted_dirs)
+
+        # Unwrap the nested archive. The previous implementation instead globbed
+        # "0127422/2.3/data/FINAL_Plankton_Segments_12082014" — the NOAA accession path
+        # belonging to PlanktonSet1, which does not exist anywhere in this archive, so
+        # the loop silently iterated nothing and produced an EMPTY imagefolder.
+        for nested in sorted(root.rglob("*.zip")):
+            logger.info(f"Extracting nested archive {nested.name}.")
+            unzip(nested, nested.parent, show_progress=self.show_progress)
+
+        # Located rather than hard-coded: the class folders sit three levels down, under
+        # images/<dataset name>/, and a re-release that renames a wrapper would break a
+        # fixed path again.
+        class_root = find_class_root(root)
+
+        class_dirs = [dir for dir in _subdirectories(class_root) if _holds_images(dir)]
         for plankton_class_dir in tqdm(
-            (Path(self.extracted_dirs) / "0127422" / "2.3" / "data" / "FINAL_Plankton_Segments_12082014").glob("*"),
+            class_dirs,
             desc="Progress",
             leave=False,
             disable=not self.show_progress,
         ):
             copytree_filtered(plankton_class_dir, self.imagefolder_dir / plankton_class_dir.name)
+
+        cleanup_imagefolder_empty_dirs(self.imagefolder_dir)
 
 
 class MedPlanktonSetDatasetImporter(DatasetImporter):

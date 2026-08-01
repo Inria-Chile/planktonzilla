@@ -24,13 +24,15 @@ description: |
     For more details about the data collection and composition, as well as, the comparison of OSR methods on both dataset, see the 
     paper.
 # Published through Fairdata (Etsin), which serves no stable direct .zip URL: a dataset
-# is downloaded by asking the Download API to generate a package, waiting for it, then
-# authorizing a one-shot download. Setting fairdata_pid runs that flow automatically.
+# is downloaded by asking the Download API to package it, waiting for that, then
+# authorizing a single-use download. Setting fairdata_pid runs that flow automatically.
 #
-# NOTE: the API flow is written against Fairdata's documented contract but has not been
-# exercised against the live service. It fails loudly with the manual fallback spelled
-# out, so if the contract differs you get one clear error, not a broken import. If that
-# happens, download the archive by hand and use the manual route instead:
+# Verified end to end against the live service on 2026-08-01: resolved and downloaded
+# the 79,363,785-byte package, whose 20 class folders (22,753 images) match the 20
+# sykezooscan2024 rows in planktonzilla_taxonomy.csv exactly.
+#
+# If the service is down or the contract moves, the resolver fails loudly with the
+# manual fallback rather than importing something wrong:
 #   pz_import_dataset dataset_import=sykezooscan2024 \
 #     dataset_import.fairdata_pid=null \
 #     dataset_import.manual_download_local_file_names=${paths.data_dir}/manual_downloads/SYKE-plankton_ZooScan_2024.zip

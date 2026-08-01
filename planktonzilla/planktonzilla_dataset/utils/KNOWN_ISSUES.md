@@ -248,16 +248,52 @@ because of "anti-bot protection". The configs say otherwise:
   Fairdata serves a generated package rather than a stable URL, so there was nothing to
   fetch.
 
-**Resolved (partly).** `SYKEZooScan2024DatasetImporter` now resolves the archive through
-the Fairdata Download API when `fairdata_pid` is set. Both stale claims are corrected in
-the docs, with the exact override to try the automatic path recorded on each config.
+**Resolved, and verified against the live services on 2026-08-01. None of the three needs
+a manual download.**
 
-**Not verified:** whether `zoolake` and `jedioceans` actually download without a browser.
-All three hosts are blocked from the environment this was written in, so the claim is only
-*unsupported*, not *disproven*. Likewise the Fairdata flow is written against the service's
-documented contract and has never run against the live service — it fails loudly with the
-manual fallback if the contract differs. One real run on an unrestricted network settles
-all three.
+- **`sykezooscan2024`** — `SYKEZooScan2024DatasetImporter` resolves the archive through
+  the Fairdata Download API (`fairdata_pid`). Exercised end to end: resolved, downloaded
+  the 79,363,785-byte package, unwrapped it, and produced 20 class folders / 22,753
+  images matching the 20 `sykezooscan2024` rows in the taxonomy CSV exactly.
+- **`zoolake`** — its `download_uris` serves a 492 MB `application/zip` whose first entry
+  is `data/Fig_All_plankton_images.png`. Reachability and archive shape verified; a full
+  import was not run.
+- **`jedioceans`** — its `download_uris` serves a zip whose first entry is
+  `CPICS_Validated/20141001-07.zip`, the nested layout its importer expects. The manual
+  override that shadowed this now defaults to null. Same caveat: reachability and shape
+  verified, full import not run.
+
+The "anti-bot protection" premise was wrong for all three. What was actually true is that
+one source (`sykezooscan2024`) had no direct URL because Fairdata packages on demand.
+
+## KI-22 — `SYKEZooScan2024DatasetImporter` globbed PlanktonSet1's path
+
+**Where:** `dataset_importer.py` `SYKEZooScan2024DatasetImporter._prepare_imagefolder`.
+
+**Was:** it globbed `0127422/2.3/data/FINAL_Plankton_Segments_12082014` — the NOAA
+accession path belonging to **PlanktonSet1**, almost certainly copy-pasted. No such path
+exists anywhere in the SYKE archive, so the loop iterated **nothing** and produced an
+**empty imagefolder without raising**. Undetectable until now, because the source could
+not be downloaded at all (KI-21), so the broken path was never reached.
+
+**Today's real layout**, captured from the live download::
+
+    <package>.zip
+      SYKE-plankton_ZooScan_2024/readme.md
+      SYKE-plankton_ZooScan_2024/SYKE-plankton_ZooScan_2024.zip     <- nested
+        SYKE-plankton_ZooScan_2024/images/SYKE-plankton_ZooScan_2024/<class>/*.png
+        SYKE-plankton_ZooScan_2024/class_splits/…
+        __MACOSX/…
+
+**Resolved.** The importer unwraps the nested archive, then locates the class folders with
+`find_class_root` rather than a fixed path, so a re-release that renames a wrapper cannot
+break it the same way. Pinned by
+`tests/test_dataset_import_configs.py::test_syke_prepare_imagefolder_unwraps_the_nested_archive`
+and by a test asserting the archive's 20 class names equal the CSV's 20 labels.
+
+**Frozen-output risk: none.** `sykezooscan2024` is not in the active `datasets` table, and
+its 20 CSV rows are 20 of the 1,485 — the published dataset's rows for this source came
+from a build that must have used a hand-downloaded archive.
 
 **Related improvement.** A missing hand-downloaded archive used to surface as an error from
 inside `extract()` naming neither the file nor its source. `missing_manual_downloads()` /
@@ -269,13 +305,13 @@ before anything is downloaded.
 
 *Recorded 2026-06-17 during the v1.0 `dataset_generation` cleanup (Phase 7, `KNOWN-01`).
 See `.planning/REQUIREMENTS.md` `HARDEN-01` / `HARDEN-02` for the deferred v2 work.
-KI-16 through KI-21 recorded 2026-08-01 during the `pz_planktonzilla` consolidation.*
+KI-16 through KI-22 recorded 2026-08-01 during the `pz_planktonzilla` consolidation.*
 
 ---
 
 ## Data inconsistencies in `planktonzilla_taxonomy.csv` (KI-8 – KI-13)
 
-KI-1..KI-7 and KI-16..KI-21 above concern **code behavior**. KI-8..KI-13 below concern **data** defects in the
+KI-1..KI-7 and KI-16..KI-22 above concern **code behavior**. KI-8..KI-13 below concern **data** defects in the
 frozen `planktonzilla_taxonomy.csv` itself, found by a two-method audit on **2026-07-13**
 (deterministic checks + a 27-agent adversarially-verified multi-lens audit; every finding
 below survived independent re-verification, and candidate findings explained by a legitimate

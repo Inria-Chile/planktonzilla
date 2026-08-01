@@ -32,15 +32,18 @@ num_proc: null
 # Source datasets to import + redefine, in build order (concatenation follows it).
 # `redefiner` is a key into the REDEFINERS map in generate_planktonzilla.py
 # (none -> NoMetadataRedefiner, whoi -> WHOIRedefiner, ecotaxa -> EcoTaxaRedefiner).
-# Three sources are omitted here, long described as "requires a manual .zip download".
-# That is only clearly true of ONE of them:
-#   - zoolake    already has a direct `download_uris` and NO manual override; nothing
-#                forces it manual, it simply is not in the table below.
-#   - jedioceans has a direct `download_uris` too, shadowed by its
-#                `manual_download_local_file_names`. Clear that override to try it.
-#   - sykezooscan2024 genuinely has no direct URL — Fairdata serves a generated package.
-#                Its importer resolves that via the Download API (`fairdata_pid`).
-# `pz_planktonzilla dry_run=true` reports any archive still needing a hand download.
+# Three sources are omitted here, long described as "requires a manual .zip download"
+# because of anti-bot protection. Checked against the live services on 2026-08-01:
+# NONE of them does.
+#   - zoolake         direct `download_uris`, no manual override. Serves a 492 MB zip.
+#   - jedioceans      direct `download_uris` that a manual override used to shadow;
+#                     the override now defaults to null. Serves the expected nested
+#                     CPICS_Validated/*.zip.
+#   - sykezooscan2024 the one real case: no direct URL, because Fairdata packages on
+#                     demand. Its importer resolves that via the Download API
+#                     (`fairdata_pid`), verified end to end.
+# Adding any of them here is a separate decision — jedioceans is CC-BY-SA-4.0, which
+# does not combine with the CC-BY-NC-4.0 sources already in the table.
 #
 # Each entry carries THREE distinct identifiers — do not interchange them:
 #   name        the source's identity. It is the `dataset` column value AND the

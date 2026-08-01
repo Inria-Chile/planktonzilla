@@ -18,6 +18,7 @@ builds the dataclass and derives its ``imagefolder_dir`` / ``raw_dir`` paths.
 """
 
 import os
+import shutil
 
 import pyrootutils
 
@@ -332,19 +333,50 @@ def test_zoolake_is_not_actually_a_manual_download(tmp_path):
     assert importer.missing_manual_downloads() == []
 
 
-def test_jedi_manual_override_shadows_a_direct_url(tmp_path):
-    """JEDI declares BOTH a direct URL and a manual archive; the manual one wins."""
+def test_jedi_defaults_to_the_direct_download(tmp_path):
+    """JEDI downloads automatically now; its manual override used to shadow the URL.
+
+    Checked against the live host on 2026-08-01: that URL serves a zip whose first entry
+    is CPICS_Validated/20141001-07.zip, the nested layout this importer expects. There is
+    no anti-bot protection to work around.
+    """
     importer = _importer("jedi_oceans_cpics", tmp_path)
 
+    assert importer.download_uris, "the direct URL is declared"
+    assert importer.manual_download_local_file_names is None, "and is no longer shadowed"
+    assert importer.missing_manual_downloads() == []
+
+
+def test_a_manual_override_shadows_a_direct_url(tmp_path):
+    """Setting a manual archive takes precedence over download_uris.
+
+    Exercised through an explicit override rather than a config default, so this pins the
+    MECHANISM and cannot break again just because a source flips to automatic.
+    """
+    archive = tmp_path / "manual_downloads" / "CPICS_Validated.zip"
+    importer = _importer(
+        "jedi_oceans_cpics",
+        tmp_path,
+        extra=[f"dataset_import.manual_download_local_file_names={archive}"],
+    )
+
     assert importer.download_uris, "the direct URL is still declared"
-    assert importer.manual_download_local_file_names, "and is shadowed by the manual archive"
-    # Nothing downloaded in this tmp_path, so the manual archive registers as missing.
-    assert len(importer.missing_manual_downloads()) == 1
+    assert importer.manual_download_local_file_names, "but the manual archive wins"
+    assert importer.missing_manual_downloads() == [archive]
 
 
 def test_missing_manual_download_reports_instructions_not_a_stack_trace(tmp_path):
-    """A missing hand-downloaded archive names the file and where to get it."""
-    importer = _importer("jedi_oceans_cpics", tmp_path)
+    """A missing hand-downloaded archive names the file and where to get it.
+
+    The override is explicit so this never falls through to the direct URL and starts a
+    real download inside the test suite.
+    """
+    archive = tmp_path / "manual_downloads" / "CPICS_Validated.zip"
+    importer = _importer(
+        "jedi_oceans_cpics",
+        tmp_path,
+        extra=[f"dataset_import.manual_download_local_file_names={archive}"],
+    )
 
     with pytest.raises(FileNotFoundError) as excinfo:
         importer._download_and_extract()
@@ -357,7 +389,12 @@ def test_missing_manual_download_reports_instructions_not_a_stack_trace(tmp_path
 
 def test_present_manual_download_is_not_reported_missing(tmp_path):
     """Once the archive is in place, the preflight is satisfied."""
-    importer = _importer("jedi_oceans_cpics", tmp_path)
+    archive = tmp_path / "manual_downloads" / "CPICS_Validated.zip"
+    importer = _importer(
+        "jedi_oceans_cpics",
+        tmp_path,
+        extra=[f"dataset_import.manual_download_local_file_names={archive}"],
+    )
 
     expected = importer.manual_download_paths()[0]
     expected.parent.mkdir(parents=True, exist_ok=True)
@@ -396,16 +433,38 @@ class _FakeResponse:
         return self._payload
 
 
+# The exact body the live service returned for the SYKE ZooScan 2024 dataset on
+# 2026-08-01, captured from GET /api/download/requests?cr_id=<pid>. Kept verbatim so
+# these tests fail if the resolver stops handling the real shape.
+LIVE_REQUESTS_RESPONSE = {
+    "checksum": "sha256:0a309fa8774b467de491115d40ab0cc95c7be75d0b7925ce4ddf8d513418710c",
+    "dataset": "6fa42787-9772-41a5-a6fc-0dde489ed908",
+    "generated": "2026-07-07T06:19:46Z",
+    "initiated": "2026-07-07T06:19:28Z",
+    "package": "6fa42787-9772-41a5-a6fc-0dde489ed908_nhungsie.zip",
+    "size": 79363785,
+    "status": "SUCCESS",
+}
+
+# ...and the body POST /api/download/authorize returned for it (token truncated).
+LIVE_AUTHORIZE_RESPONSE = {"url": "https://download.fairdata.fi:443/download?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.trunc"}
+
+# The resolver's default api_base, asserted on so a silent change of host is caught.
+_DEFAULT_BASE = "https://etsin.fairdata.fi/api/download"
+
+
 class _FakeFairdata:
-    """Scripted stand-in for the Fairdata Download API."""
+    """Scripted stand-in for the Fairdata Download API, speaking the verified contract."""
 
     def __init__(self, statuses, authorize=None, fail_post=False):
         self._statuses = list(statuses)
-        self._authorize = authorize if authorize is not None else {"token": "tok-123"}
+        self._authorize = authorize if authorize is not None else LIVE_AUTHORIZE_RESPONSE
         self._fail_post = fail_post
         self.posts = []
+        self.gets = []
 
     def get(self, url, params=None, timeout=None):
+        self.gets.append((url, params))
         return _FakeResponse(self._statuses.pop(0) if self._statuses else {})
 
     def post(self, url, json=None, timeout=None):
@@ -421,32 +480,30 @@ def test_fairdata_reuses_an_already_generated_package():
     """A ready package is downloaded straight away, without requesting a new one."""
     from planktonzilla.dataset_import.dataset_importer import resolve_fairdata_download_url
 
-    api = _FakeFairdata(statuses=[{"partial": {"all": {"package": "syke.zip", "status": "SUCCESS"}}}])
+    api = _FakeFairdata(statuses=[LIVE_REQUESTS_RESPONSE])
 
     url = resolve_fairdata_download_url("pid-1", session=api, sleep=lambda s: None)
 
-    assert "package=syke.zip" in url
-    assert "dataset=pid-1" in url
-    assert "token=tok-123" in url
+    # The service hands back a complete single-use URL; it must be returned as-is.
+    assert url == LIVE_AUTHORIZE_RESPONSE["url"]
     assert not any(u.endswith("/requests") for u, _ in api.posts), "should not request a new package"
+
+    # The parameter is cr_id: the service rejects `dataset` as an unknown field.
+    assert api.gets[0][1] == {"cr_id": "pid-1"}
+    assert api.posts[0][1] == {"cr_id": "pid-1", "package": LIVE_REQUESTS_RESPONSE["package"]}
 
 
 def test_fairdata_requests_then_polls_until_ready():
     """No ready package -> request one, poll until it appears."""
     from planktonzilla.dataset_import.dataset_importer import resolve_fairdata_download_url
 
-    api = _FakeFairdata(
-        statuses=[
-            {},  # nothing yet
-            {"partial": {"all": {"package": "syke.zip", "status": "PENDING"}}},  # not ready
-            {"partial": {"all": {"package": "syke.zip", "status": "SUCCESS"}}},  # ready
-        ]
-    )
+    pending = {**LIVE_REQUESTS_RESPONSE, "status": "PENDING"}
+    api = _FakeFairdata(statuses=[{}, pending, LIVE_REQUESTS_RESPONSE])
 
     url = resolve_fairdata_download_url("pid-2", session=api, sleep=lambda s: None)
 
-    assert "package=syke.zip" in url
-    assert any(u.endswith("/requests") for u, _ in api.posts), "should have requested generation"
+    assert url == LIVE_AUTHORIZE_RESPONSE["url"]
+    assert api.posts[0] == (f"{_DEFAULT_BASE}/requests", {"cr_id": "pid-2"}), "should request generation"
 
 
 def test_fairdata_gives_up_with_the_manual_fallback():
@@ -497,19 +554,16 @@ def test_fairdata_http_error_is_actionable():
         resolve_fairdata_download_url("pid-5", session=_Failing(), sleep=lambda s: None)
 
 
-def test_fairdata_missing_token_is_an_error():
-    """Authorization without a token is a failure, not a URL with token=None."""
+def test_fairdata_missing_url_is_an_error():
+    """Authorization without a url is a failure, not a broken URL built from parts."""
     from planktonzilla.dataset_import.dataset_importer import (
         FairdataResolutionError,
         resolve_fairdata_download_url,
     )
 
-    api = _FakeFairdata(
-        statuses=[{"partial": {"all": {"package": "syke.zip", "status": "SUCCESS"}}}],
-        authorize={"detail": "no token for you"},
-    )
+    api = _FakeFairdata(statuses=[LIVE_REQUESTS_RESPONSE], authorize={"detail": "denied"})
 
-    with pytest.raises(FairdataResolutionError, match="no token"):
+    with pytest.raises(FairdataResolutionError, match="no download url"):
         resolve_fairdata_download_url("pid-6", session=api, sleep=lambda s: None)
 
 
@@ -568,3 +622,98 @@ def test_syke_manual_override_skips_the_resolver(tmp_path, monkeypatch):
     monkeypatch.setattr(di.DatasetImporter, "_download_and_extract", lambda self: None)
 
     importer._download_and_extract()
+
+
+def test_syke_prepare_imagefolder_unwraps_the_nested_archive(tmp_path):
+    """SYKE's package is a zip inside a zip; the class folders are three levels down.
+
+    Reproduces the REAL archive layout, captured from the live download on 2026-08-01:
+
+        <package>.zip
+          SYKE-plankton_ZooScan_2024/readme.md
+          SYKE-plankton_ZooScan_2024/SYKE-plankton_ZooScan_2024.zip
+            SYKE-plankton_ZooScan_2024/images/SYKE-plankton_ZooScan_2024/<class>/*.png
+            SYKE-plankton_ZooScan_2024/class_splits/…
+            __MACOSX/…
+
+    Before this was fixed, _prepare_imagefolder globbed
+    "0127422/2.3/data/FINAL_Plankton_Segments_12082014" — PlanktonSet1's NOAA accession
+    path, which does not exist in this archive — so the loop iterated nothing and
+    produced an EMPTY imagefolder without erroring.
+    """
+    import zipfile
+
+    importer = _importer("sykezooscan2024", tmp_path)
+
+    classes = ["Bivalvia", "Copepoda_nauplius", "Synchaeta_sp"]
+    staging = tmp_path / "staging"
+    inner_root = staging / "SYKE-plankton_ZooScan_2024" / "images" / "SYKE-plankton_ZooScan_2024"
+    _make_classes(inner_root, classes, n_images=2)
+    (staging / "SYKE-plankton_ZooScan_2024" / "class_splits").mkdir(parents=True, exist_ok=True)
+    (staging / "SYKE-plankton_ZooScan_2024" / "class_splits" / "split.txt").write_text("a\n")
+    # macOS junk, which must not become a class folder.
+    junk = staging / "__MACOSX" / "SYKE-plankton_ZooScan_2024"
+    junk.mkdir(parents=True, exist_ok=True)
+    (junk / "._readme.md").write_bytes(b"\x00")
+
+    inner_zip = tmp_path / "SYKE-plankton_ZooScan_2024.zip"
+    with zipfile.ZipFile(inner_zip, "w") as z:
+        for path in staging.rglob("*"):
+            if path.is_file():
+                z.write(path, path.relative_to(staging))
+
+    # The extraction dir as the download manager leaves it: the OUTER zip unpacked.
+    extracted = tmp_path / "extracted" / "SYKE-plankton_ZooScan_2024"
+    extracted.mkdir(parents=True, exist_ok=True)
+    (extracted / "readme.md").write_text("# SYKE ZooScan 2024\n")
+    shutil.copy(inner_zip, extracted / "SYKE-plankton_ZooScan_2024.zip")
+
+    importer.extracted_dirs = tmp_path / "extracted"
+    importer.imagefolder_dir.mkdir(parents=True, exist_ok=True)
+
+    importer._prepare_imagefolder()
+
+    produced = sorted(p.name for p in importer.imagefolder_dir.iterdir() if p.is_dir())
+    assert produced == sorted(classes), "expected exactly the class folders, no wrappers or junk"
+    for class_name in classes:
+        assert len(list((importer.imagefolder_dir / class_name).glob("*.png"))) == 2
+
+
+def test_syke_class_names_match_the_taxonomy_csv():
+    """The archive's 20 class folders are exactly the CSV's 20 sykezooscan2024 labels.
+
+    Verified against the real download: taking the class names from the live archive and
+    the labels from planktonzilla_taxonomy.csv gives the same set, which is what makes
+    the taxonomy lookup resolve for every row of this source.
+    """
+    import polars as pl
+
+    # Captured from the live archive on 2026-08-01.
+    archive_classes = {
+        "Bivalvia",
+        "Bivalvia_multiple",
+        "Bosmina_sp",
+        "Bubbles",
+        "Ceriodaphnia_sp",
+        "Copepoda_calanoida",
+        "Copepoda_cyclopoida",
+        "Copepoda_nauplius",
+        "Daphnia_sp",
+        "Eggs",
+        "Evadne_sp",
+        "Fibers_etc",
+        "Fish_eggs",
+        "Gastropoda",
+        "Harpacticoida",
+        "Mysis_sp",
+        "Podon_sp",
+        "Polychaeta",
+        "Sessilia",
+        "Synchaeta_sp",
+    }
+
+    df = pl.read_csv(root / "planktonzilla" / "planktonzilla_dataset" / "planktonzilla_taxonomy.csv")
+    csv_labels = set(df.filter(pl.col("Dataset") == "sykezooscan2024")["Raw_Labels"].to_list())
+
+    assert archive_classes == csv_labels
+    assert len(csv_labels) == 20

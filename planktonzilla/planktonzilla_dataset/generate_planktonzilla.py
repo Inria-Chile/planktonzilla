@@ -17,23 +17,26 @@ Prerequisites:
     (wikidata_ID, ecotaxa_ID, aphia_ID, NCBI_ID, BOLD_ID), indexed by
     (Dataset, Raw_Labels).
 
-  - Three sources are omitted from ``cfg.datasets`` as needing a hand-downloaded
-    .zip. Only one of them still clearly does — the other two are configured to
-    download automatically and appear never to have been tried:
+  - Three sources are omitted from ``cfg.datasets``, long described as needing a
+    hand-downloaded .zip because of "anti-bot protection". Checked against the live
+    services on 2026-08-01: none of them does.
 
-      * Zoolake — `download_uris` already points straight at the .zip and there is
-        no manual override. Nothing forces it manual; it just is not in the table.
-      * JEDI CPICS — has a direct `download_uris` too, but its
-        `manual_download_local_file_names` shadows it, so the automatic path never
-        runs. Clear that override to try it.
-      * SYKE ZooScan 2024 — genuinely has no direct URL: Fairdata serves a generated
-        package instead. `SYKEZooScan2024DatasetImporter` resolves that through the
-        Download API when `fairdata_pid` is set (contract unverified against the live
-        service — it fails loudly with the manual fallback if it differs).
+      * Zoolake — `download_uris` already pointed straight at the .zip and there was
+        no manual override. Serves a 492 MB application/zip. It is simply not in the
+        table.
+      * JEDI CPICS — had a direct `download_uris` shadowed by a manual override, so
+        the automatic path was never tried. The URL serves the expected nested
+        `CPICS_Validated/*.zip`; the override now defaults to null.
+      * SYKE ZooScan 2024 — the one real case: no direct URL, because Fairdata
+        packages on demand. `SYKEZooScan2024DatasetImporter` resolves that through
+        the Download API (`fairdata_pid`), verified end to end.
 
-    Whichever route a source takes, a missing hand-downloaded archive is now reported
-    up front — by ``pz_planktonzilla dry_run=true`` for a whole build, and by the
-    importer itself with the file wanted and where to get it.
+    Adding any of them to ``cfg.datasets`` is a separate decision: JEDI is
+    CC-BY-SA-4.0, which does not combine with the CC-BY-NC-4.0 sources already there.
+
+    A missing hand-downloaded archive, wherever one is still used, is now reported up
+    front — by ``pz_planktonzilla dry_run=true`` for a whole build, and by the importer
+    itself with the file wanted and where to get it.
 
   - Internet access for the WHOI and EcoTaxa APIs. EcoTaxa objects in private
     projects do not return metadata and stay null.

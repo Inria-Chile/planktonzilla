@@ -3,11 +3,16 @@ defaults:
 
 _target_: planktonzilla.dataset_import.dataset_importer.JEDISystemsOceansCPICSDatasetImporter
 hf_dataset_name: jedi_system_oceans_cpics
-# download_uris below is a direct link to the same archive, and it is NOT known to be
-# blocked — this manual override simply shadows it, so the automatic path has likely
-# never been tried. To attempt it, clear the override:
-#   pz_import_dataset dataset_import=jedi_oceans_cpics dataset_import.manual_download_local_file_names=null
-manual_download_local_file_names: ${paths.data_dir}/manual_downloads/CPICS_Validated.zip
+# This used to default to a hand-downloaded archive, which shadowed the direct
+# download_uris below so the automatic path was never tried. Checked on 2026-08-01: that
+# URL serves a real zip (HTTP 206 on a range request, application/zip) whose first entry
+# is CPICS_Validated/20141001-07.zip — the nested layout this importer expects. There is
+# no anti-bot protection to work around, so the automatic path is the default now.
+# (Reachability and archive structure were verified; a full end-to-end import was not
+# run.) To go back to a hand-downloaded copy:
+#   pz_import_dataset dataset_import=jedi_oceans_cpics \
+#     dataset_import.manual_download_local_file_names=${paths.data_dir}/manual_downloads/CPICS_Validated.zip
+manual_download_local_file_names: null
 manual_download_url: "https://dbarchive.biosciencedbc.jp/data/jedisystem-oceansdb/LATEST/CPICS_Validated.zip"
 manual_download_notes: |
   The archive contains further per-class .zip files, which the importer unpacks itself.
