@@ -342,16 +342,17 @@ KI-21 established that neither needs a hand-downloaded archive. They are **appen
 inserted**: registry order is the concatenation order of the output, so every existing
 source keeps the index it already had.
 
-The registry now carries 14 of the 15 sources in the published dataset.
-`sykezooscan2024` remains out — importable (its Fairdata resolver is verified end to
-end) but not yet an active entry.
+`sykezooscan2024` followed the same day, once its Fairdata resolver (KI-21) and its
+wrong-path `_prepare_imagefolder` (KI-22) were both fixed and verified end to end. The
+registry now covers **all 15** sources of the published dataset, so a from-scratch build
+reproduces it rather than 12 of its 15 parts.
 
 **Licence consequence, stated plainly.** `jedioceans` is **CC-BY-SA-4.0** and is the only
 ShareAlike source. A rebuild therefore mixes:
 
 | terms | sources |
 | --- | ---: |
-| `cc-by-4.0` | 6 |
+| `cc-by-4.0` | 7 |
 | `cc-by-nc-4.0` | 5 |
 | `cc-by-sa-4.0` | 1 |
 | `mit` | 1 |
