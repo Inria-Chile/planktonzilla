@@ -59,6 +59,7 @@ _TAXONOMY_CSV = root / "planktonzilla" / "planktonzilla_dataset" / "planktonzill
 # if the mapping there is edited, this independent copy makes the test fail instead of
 # agreeing with the edit.
 _EXPECTED_DEEDS = {
+    "cc0-1.0": "https://creativecommons.org/publicdomain/zero/1.0/",
     "cc-by-4.0": "https://creativecommons.org/licenses/by/4.0/",
     "cc-by-nc-4.0": "https://creativecommons.org/licenses/by-nc/4.0/",
     "cc-by-sa-4.0": "https://creativecommons.org/licenses/by-sa/4.0/",

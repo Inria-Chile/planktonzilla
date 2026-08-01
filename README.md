@@ -481,20 +481,30 @@ source; **CIFAR-10** is also configured there as a generic sanity-check/smoke-te
 
 ### Licensing of the composite dataset
 
-`planktonzilla-17M` aggregates sources under **five different sets of terms**, so it has no single
-license. Every image therefore carries its source's terms in two columns — `license` (the slug,
-verbatim from that source's importer config) and `license_url` (where those terms are stated).
+The authority on this is the dataset's own
+[`LICENSE.md`](https://huggingface.co/datasets/project-oceania/planktonzilla-17M/blob/main/LICENSE.md)
+on the Hub, not this repository — read it before redistributing anything. It licenses the corpus in
+three layers: each image keeps its **source collection's** licence with no aggregate override; the
+planktonzilla contributions (harmonised taxonomy, derived metadata, splits, docs, scripts) are
+**CC BY 4.0**; and the compilation itself, including any sui generis database right, is **CC0 1.0**.
+
+`planktonzilla-17M` aggregates sources under **five different sets of terms**, so no single license
+can lawfully cover it — it holds both share-alike and non-commercial material, and those conditions
+are mutually incompatible. Every image therefore carries its source's terms in two columns —
+`license` (the slug, verbatim from that source's importer config) and `license_url` (where those
+terms are stated).
 
 The shares below describe the **published** dataset. The registry covers all 15 of its
 sources, so a from-scratch rebuild reproduces the same mix.
 
 | License | Images | Share | Reuse |
 | --- | ---: | ---: | --- |
-| `cc-by-4.0` | 8,888,497 | 51.07% | attribution |
+| `cc-by-4.0` | 8,870,555 | 50.97% | attribution |
 | `mit` ⚠️ | 3,563,595 | 20.48% | attribution — but see KI-14 |
 | `cc-by-nc-4.0` | 2,975,337 | 17.10% | attribution, **non-commercial only** |
 | `cc-by-sa-4.0` | 1,915,882 | 11.01% | attribution, **share-alike** |
 | `other` ⚠️ | 60,736 | 0.35% | unstated — see KI-15 |
+| `cc0-1.0` | 17,942 | 0.10% | public domain — **no attribution required** |
 
 The practical consequence: **17.1% of the corpus may not be used commercially** and a further
 11.0% imposes share-alike on derivatives. Filter before you train:
@@ -503,7 +513,7 @@ The practical consequence: **17.1% of the corpus may not be used commercially** 
 from datasets import load_dataset
 
 ds = load_dataset("project-oceania/planktonzilla-17M", split="train")
-commercial = ds.filter(lambda row: row["license"] in {"cc-by-4.0", "mit"})  # 12,452,092 images
+commercial = ds.filter(lambda row: row["license"] in {"cc-by-4.0", "mit", "cc0-1.0"})  # 12,452,092 images
 ```
 
 Two entries deserve a second look before you rely on them — `whoi` (`mit` is the license of a

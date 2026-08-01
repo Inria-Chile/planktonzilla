@@ -365,8 +365,31 @@ carries its own `license` / `license_url`, so a consumer filters rather than rel
 dataset-level statement. The published dataset already contained all three of these
 sources, so this changes what a *rebuild* produces, not what is published.
 
-**Still open:** the aggregate has no declared licence of its own on the Hub. Per-row
-provenance makes that answerable now; the declaration itself remains a maintainer call.
+**The aggregate IS licensed on the Hub**, in
+[`LICENSE.md`](https://huggingface.co/datasets/project-oceania/planktonzilla-17M/blob/main/LICENSE.md),
+and that document is the authority — not this repository. It structures the corpus in
+three layers: each image keeps its source collection's licence with no aggregate
+override; the planktonzilla contributions (harmonised taxonomy, derived metadata,
+splits, docs, scripts) are CC BY 4.0; and the compilation itself, including any sui
+generis database right, is CC0 1.0. It reaches the same conclusion this entry does —
+share-alike and non-commercial are mutually incompatible, so per-source licensing is the
+only available structure — and it records that images are redistributed byte-identical,
+which is what keeps the repository a *Collection* rather than an Adaptation and stops
+CC-BY-SA propagating to the other fourteen collections.
+
+**One discrepancy found and fixed (2026-08-01).** Comparing `DATASET_LICENSES` against
+that LICENSE.md, fourteen of fifteen agreed; **`zoolake` did not**. It was recorded as
+`cc-by-4.0` here (transcribed from its importer config) while the published notice
+states **CC0 1.0 — no attribution required**, verified at the originating EAWAG deposit.
+The repository value over-stated the restriction. Corrected in
+`configs/dataset_import/zoolake.yaml` and `DATASET_LICENSES` together, since the drift
+test compares them.
+
+This mattered because `zoolake` had *just* become an active registry entry (above): a
+rebuild would otherwise have stamped the wrong, more restrictive licence on every
+zoolake row. The LICENSE.md notes that seven sources differ from earlier statements —
+including the paper's Table 8 — always in the over-stating direction, so the repository
+is the side that lags. **When the two disagree, the published LICENSE.md wins.**
 
 ---
 

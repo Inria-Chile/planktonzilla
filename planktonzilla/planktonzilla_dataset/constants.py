@@ -64,16 +64,15 @@ LICENSE_COLS = ("license", "license_url")
 # ``dataset`` column value -> ``configs/dataset_import/<stem>.yaml``.
 #
 # Five of the fifteen do NOT match: the value written into the ``dataset`` column is
-# the `name` field of a `cfg.datasets` entry in configs/generate_planktonzilla.yaml
-# (or, for the manual-download sources below, whatever the frozen build used), while
-# the importer config is named after the source. No naming rule recovers the
+# the `name` field of a `cfg.datasets` entry in configs/generate_planktonzilla.yaml,
+# while the importer config is named after the source. No naming rule recovers the
 # difference, so it is written down here and pinned by tests/test_dataset_licenses.py.
 #
-# The last three are present in the published planktonzilla-17M (1.96M images, 11.2%)
-# but are NOT in cfg.datasets: they need a manual .zip download and are kept commented
-# out there. That is why this table cannot be derived from cfg.datasets. Note also
-# that the commented reference block calls the JEDI source `jedi`, while the frozen
-# data uses `jedioceans` — the value below is the one that actually appears in the data.
+# All fifteen are active entries in cfg.datasets as of 2026-08-01 — the last three
+# joined once their downloads were shown not to need the manual .zip they had long been
+# documented as requiring. Note the JEDI source carries three different strings:
+# `jedioceans` in the data, `jedi_oceans_cpics` as a config stem, `jedi` as a redefiner
+# key.
 DATASET_IMPORT_CONFIGS = {
     "isiisnet": "isiisnet",
     "whoi": "whoi-plankton",
@@ -98,6 +97,7 @@ DATASET_IMPORT_CONFIGS = {
 # a repository's code license, ``other`` names nothing at all) are NOT listed and must
 # give an explicit per-dataset URL in DATASET_LICENSES below.
 _LICENSE_DEEDS = {
+    "cc0-1.0": "https://creativecommons.org/publicdomain/zero/1.0/",
     "cc-by-4.0": "https://creativecommons.org/licenses/by/4.0/",
     "cc-by-nc-4.0": "https://creativecommons.org/licenses/by-nc/4.0/",
     "cc-by-sa-4.0": "https://creativecommons.org/licenses/by-sa/4.0/",
@@ -108,8 +108,13 @@ _LICENSE_DEEDS = {
 # The slugs are inherited VERBATIM from the ``license:`` field of the matching
 # configs/dataset_import/*.yaml — that file stays the upstream source of truth, and
 # tests/test_dataset_licenses.py fails if the two ever disagree. This table exists
-# because the three manual-download sources have no reachable importer config at
-# update time, and because update_planktonzilla never composes importer configs at all.
+# because update_planktonzilla never composes importer configs at all, and because a
+# source's TERMS must stay recorded even if it is temporarily pulled from the build.
+#
+# Cross-checked against the published dataset's LICENSE.md on 2026-08-01 — all fifteen
+# agree. `zoolake` was corrected there and then: it had been recorded as cc-by-4.0,
+# over-stating the restriction, when the originating EAWAG deposit is CC0 (no
+# attribution required at all).
 #
 # Two entries carry a URL that is not a license deed, because their slug alone is not
 # actionable (see KI-14/KI-15 in utils/KNOWN_ISSUES.md):
@@ -117,7 +122,8 @@ _LICENSE_DEEDS = {
 #     the config's source_url; the URL points there so a consumer can check the terms
 #     that actually cover the IFCB imagery.
 #   - planktonset1.0: `other` names nothing, so the URL is the NOAA NCEI DOI for
-#     accession 0127422 already recorded in the config's citation.
+#     accession 0127422 already recorded in the config's citation. The published
+#     LICENSE.md words this as "U.S. Government Work — no license stated".
 DATASET_LICENSES = {
     name: {"license": slug, "license_url": url or _LICENSE_DEEDS[slug]}
     for name, slug, url in (
@@ -135,7 +141,7 @@ DATASET_LICENSES = {
         ("global_uvp5", "cc-by-4.0", None),
         ("jedioceans", "cc-by-sa-4.0", None),
         ("sykezooscan2024", "cc-by-4.0", None),
-        ("zoolake", "cc-by-4.0", None),
+        ("zoolake", "cc0-1.0", None),
     )
 }
 
