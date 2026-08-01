@@ -5,11 +5,18 @@ Re-sync the taxonomy and external IDs of the published planktonzilla dataset.
 
 Loads the frozen consolidated dataset from the HuggingFace Hub, overwrites its
 taxonomy ranks, label/classification extras and external-database ID columns from
-the taxonomy CSV (matched per example on ``(dataset, original_label)``), then saves
-the result back to disk and, when ``push_to_hub`` is set, pushes it to the Hub.
+the taxonomy CSV (matched per example on ``(dataset, original_label)``), adds the
+per-image ``license`` / ``license_url`` provenance columns derived from the
+``dataset`` column, then saves the result back to disk and, when ``push_to_hub`` is
+set, pushes it to the Hub.
 
-Only columns that already exist in the dataset are updated; no rows are added or
-removed.
+The taxonomy/ID re-sync only updates columns that already exist. The license columns
+are the one addition, and they are appended without reading the image column at all
+(see ``add_license_columns``). No rows are added or removed by either step.
+
+The re-sync is a full-table ``map``: it rewrites every row, taxonomy columns included,
+from the current CSV. To add *only* the license columns — leaving the published taxonomy
+exactly as it is, and never even reading the CSV — run with ``sync_taxonomy=false``.
 """
 
 import math
@@ -24,12 +31,15 @@ from omegaconf import DictConfig
 from planktonzilla.utils.logger import get_pylogger
 
 from .constants import (
+    DATASET_LICENSES,
     DEFAULT_TAXONOMY_CSV_FILENAME,
     EXTRA_COLS,
     ID_NUM_COLS,
     ID_STR_COLS,
+    LICENSE_COLS,
     TAXONOMY_RANKS,
     default_num_proc,
+    validate_license_coverage,
 )
 
 root = pyrootutils.setup_root(
@@ -124,6 +134,55 @@ def sync_columns(ds: Dataset, sync_dict: dict, num_proc: int) -> Dataset:
     )
 
 
+def add_license_columns(ds: Dataset) -> Dataset:
+    """Add the per-image ``license`` / ``license_url`` columns from the ``dataset`` column.
+
+    Both values are a pure function of the source dataset (``DATASET_LICENSES``), so this
+    reads *only* the ``dataset`` column and appends the results with ``add_column``, which
+    is a zero-copy Arrow ``concat_tables(axis=1)``. The image column is never materialized.
+
+    That is deliberate and load-bearing on a 17M-image dataset. The alternative — a ``map``
+    over the whole example — would decode all 17M images to PIL and rewrite the entire
+    table, image bytes included, to a fresh Arrow cache. (It would *not* corrupt them:
+    datasets 5.0.1 round-trips the original bytes through ``map``, single- and
+    multi-process alike. The cost is the decode and the rewrite, not the encoding.)
+
+    Peak extra memory is the source-name list plus two lists of pointers into the fifteen
+    interned license strings — a few GB on the full dataset, well under what the
+    taxonomy re-sync already costs.
+
+    Re-runnable: pre-existing license columns are dropped and rebuilt, never duplicated.
+
+    Args:
+        ds: Dataset exposing the ``dataset`` column.
+
+    Returns:
+        ``ds`` with ``license`` and ``license_url`` appended as ``string`` columns.
+
+    Raises:
+        KeyError: If the dataset contains a source with no recorded license.
+    """
+    source_names = ds["dataset"]
+    distinct_sources = set(source_names)
+    # Every distinct source must be accounted for before anything is written: an
+    # unrecorded one must fail, not ship as a null license on published images.
+    validate_license_coverage(distinct_sources)
+
+    already_present = [col for col in LICENSE_COLS if col in ds.column_names]
+    if already_present:
+        logger.info(f"License column(s) {already_present} already present, rebuilding them.")
+        ds = ds.remove_columns(already_present)
+
+    logger.info(f"Adding license columns {list(LICENSE_COLS)} for {len(distinct_sources)} source datasets...")
+    for col in LICENSE_COLS:
+        # Every recorded value is a non-null str, so Arrow infers Value("string") on
+        # its own. Deliberately no follow-up cast(): casting rewrites the entire table,
+        # image column included, to reach a type add_column already gives us.
+        ds = ds.add_column(col, [DATASET_LICENSES[name][col] for name in source_names])
+
+    return ds
+
+
 @hydra.main(
     version_base="1.3",
     config_path=str(root / "configs"),
@@ -134,29 +193,59 @@ def main(cfg: DictConfig) -> None:
 
     Loads ``cfg.repo_id`` from the Hub, rebuilds the ``(dataset, label) -> values``
     lookup from the taxonomy CSV, re-syncs the taxonomy/ID columns onto every
-    example, saves the result to ``cfg.data_dir`` and, when ``cfg.push_to_hub`` is
-    true, also pushes it to ``cfg.repo_id`` (visibility from ``push_as_private``,
-    token from ``hf_token`` / the ``HF_TOKEN`` env var).
+    example, adds the ``license`` / ``license_url`` columns, saves the result to
+    ``cfg.data_dir`` and, when ``cfg.push_to_hub`` is true, also pushes it to
+    ``cfg.repo_id`` (visibility from ``push_as_private``, token from ``hf_token`` /
+    the ``HF_TOKEN`` env var).
+
+    Set ``cfg.sync_taxonomy`` false to skip the re-sync entirely and add only the license
+    columns — a strictly additive run that never reads the CSV and leaves every published
+    taxonomy/ID value exactly as it is. It defaults true, which is the historical behavior.
+
+    Set ``cfg.push_revision`` to publish onto a branch other than the repo default,
+    which is how a schema change reaches the Hub without overwriting the revision the
+    paper and the released models are pinned to.
     """
     repo_id = cfg.repo_id
     taxo_csv_path = cfg.taxonomy_csv_path if cfg.get("taxonomy_csv_path") is not None else DEFAULT_TAXONOMY_CSV_FILENAME
     num_proc = cfg.num_proc if cfg.get("num_proc") is not None else default_num_proc()
     output_dir = cfg.data_dir
 
-    logger.info(f"Updating Planktonzilla dataset on {repo_id} with taxonomy CSV {taxo_csv_path}.")
+    sync_taxonomy = cfg.get("sync_taxonomy", True)
 
     logger.info(f"Loading dataset {repo_id}.")
     ds = load_dataset(repo_id, split="train")
 
-    sync_dict = build_sync_dict(taxo_csv_path)
-    dataset_final = sync_columns(ds, sync_dict, num_proc)
+    if sync_taxonomy:
+        logger.info(f"Re-syncing taxonomy and external IDs on {repo_id} from taxonomy CSV {taxo_csv_path}.")
+        sync_dict = build_sync_dict(taxo_csv_path)
+        dataset_final = sync_columns(ds, sync_dict, num_proc)
+    else:
+        # The CSV is never even read: no lookup is built, no full-table map runs, and the
+        # published taxonomy/ID columns are carried through byte for byte. This makes the
+        # run strictly additive — the license columns are the only change.
+        logger.info("sync_taxonomy=false: leaving the published taxonomy and external IDs untouched.")
+        dataset_final = ds
+
+    # After the re-sync, so the frozen taxonomy/ID path keeps operating on exactly the
+    # columns it always has and the license columns simply ride along to disk.
+    dataset_final = add_license_columns(dataset_final)
 
     logger.info(f"Saving dataset to disk ({output_dir})...")
     dataset_final.save_to_disk(output_dir)
 
     if cfg.get("push_to_hub", False):
-        logger.info(f"Pushing updated Planktonzilla dataset to HuggingFace Hub as «{cfg.repo_id}».")
-        dataset_final.push_to_hub(cfg.repo_id, private=cfg.get("push_as_private", True), token=cfg.get("hf_token", None))
+        # revision is only forwarded when set, so the default call stays byte-identical.
+        push_revision = cfg.get("push_revision", None)
+        revision_kwargs = {"revision": push_revision} if push_revision else {}
+        target = f"{cfg.repo_id}@{push_revision}" if push_revision else str(cfg.repo_id)
+        logger.info(f"Pushing updated Planktonzilla dataset to HuggingFace Hub as «{target}».")
+        dataset_final.push_to_hub(
+            cfg.repo_id,
+            private=cfg.get("push_as_private", True),
+            token=cfg.get("hf_token", None),
+            **revision_kwargs,
+        )
     else:
         logger.warning("Skipping pushing dataset to HuggingFace Hub, set push_to_hub=True to change this.")
 
