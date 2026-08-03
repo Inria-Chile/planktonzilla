@@ -126,7 +126,6 @@ planktonzilla/                          # repo root
 ├── scripts/                            # train.sh, train_clip.sh, push_dataset.sh (SLURM launchers)
 ├── notebooks/                          # exploratory analysis (metrics paper, sampling map)
 ├── docs/                               # banner + figures used by this README
-│   ╰── non_living_treeview.md          # Mermaid treeview of the root_class ≠ living label space
 ├── .devcontainer/                      # CUDA 12.5 + cuDNN dev container
 ├── .github/workflows/ci.yml            # CI: lint · test · dependency-isolation guard
 ╰── tests/                              # pytest suite (mocks all network)
@@ -265,12 +264,6 @@ Inria typefaces, so they travel), and **Mermaid** — a `.mmd` file of `sankey-b
 the same nodes, links and weights as text, ready to paste into any Markdown that renders
 Mermaid. Names that would collide there (each column's pooled *Other*, a taxon a rank reuses)
 are qualified by column, since Mermaid identifies a node by the string it prints.
-
-The slice of that label space that has no lineage to fan out through is drawn separately, as a
-Mermaid treeview checked into the repository:
-[`docs/non_living_treeview.md`](docs/non_living_treeview.md) takes the 13,578,659 instances whose
-`root_class` is **not** `living` — 78.02% of the corpus — and puts all 48 classes under their root
-class with counts, qualifiers and the sources each comes from.
 
 ### Train a model
 
