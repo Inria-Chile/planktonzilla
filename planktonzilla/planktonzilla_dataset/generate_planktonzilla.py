@@ -17,12 +17,26 @@ Prerequisites:
     (wikidata_ID, ecotaxa_ID, aphia_ID, NCBI_ID, BOLD_ID), indexed by
     (Dataset, Raw_Labels).
 
-  - Some datasets have anti-bot protection on their download, so you have to
-    download the .zip by hand and pass its path in the Hydra overrides. Until that
-    path is given they stay commented out below:
-      * Zoolake: https://opendata.eawag.ch/dataset/.../download/data.zip
-      * SYKE ZooScan 2024: https://etsin.fairdata.fi/dataset/.../data
-      * JEDI CPICS: https://dbarchive.biosciencedbc.jp/data/jedisystem-oceansdb/LATEST/CPICS_Validated.zip
+  - Three sources are omitted from ``cfg.datasets``, long described as needing a
+    hand-downloaded .zip because of "anti-bot protection". Checked against the live
+    services on 2026-08-01: none of them does.
+
+      * Zoolake — `download_uris` already pointed straight at the .zip and there was
+        no manual override. Serves a 492 MB application/zip. It is simply not in the
+        table.
+      * JEDI CPICS — had a direct `download_uris` shadowed by a manual override, so
+        the automatic path was never tried. The URL serves the expected nested
+        `CPICS_Validated/*.zip`; the override now defaults to null.
+      * SYKE ZooScan 2024 — the one real case: no direct URL, because Fairdata
+        packages on demand. `SYKEZooScan2024DatasetImporter` resolves that through
+        the Download API (`fairdata_pid`), verified end to end.
+
+    Adding any of them to ``cfg.datasets`` is a separate decision: JEDI is
+    CC-BY-SA-4.0, which does not combine with the CC-BY-NC-4.0 sources already there.
+
+    A missing hand-downloaded archive, wherever one is still used, is now reported up
+    front — by ``pz_planktonzilla dry_run=true`` for a whole build, and by the importer
+    itself with the file wanted and where to get it.
 
   - Internet access for the WHOI and EcoTaxa APIs. EcoTaxa objects in private
     projects do not return metadata and stay null.
@@ -31,7 +45,8 @@ Prerequisites:
 import concurrent.futures
 import json
 import os
-from functools import partial
+import shutil
+from functools import lru_cache, partial
 from pathlib import Path
 
 import hydra
@@ -67,6 +82,77 @@ logger = get_pylogger(__name__)
 # WHOIRedefiner; only redefine() receives the configurable value (num_proc_arg).
 # Matching pre-port behavior — do NOT wire cfg.num_proc into this global.
 num_proc = constants.default_num_proc()
+
+
+# Reading the taxonomy CSV
+LOOKUP_COLS = (
+    *constants.TAXONOMY_RANKS,
+    *constants.EXTRA_COLS,
+    *constants.ID_STR_COLS,
+    *constants.ID_NUM_COLS,
+)
+
+
+def _norm(v):
+    """Empty or blank strings become None; everything else is left as is."""
+    if isinstance(v, str):
+        v = v.strip()
+        return v or None
+    return v
+
+
+@lru_cache(maxsize=4)
+def _build_taxonomy_lookup_cached(csv_path: str) -> dict:
+    """Cached body of :func:`build_taxonomy_lookup`, keyed by resolved path string."""
+    df = pl.read_csv(csv_path)
+
+    # Numeric IDs are stored as text without decimals (135336.0 -> "135336").
+    for c in constants.ID_NUM_COLS:
+        if c in df.columns:
+            df = df.with_columns(pl.col(c).cast(pl.Int64, strict=False).cast(pl.Utf8).alias(c))
+
+    present = [c for c in LOOKUP_COLS if c in df.columns]
+    keys = list(zip(df["Dataset"].to_list(), df["Raw_Labels"].to_list()))
+    rows = df.select(present).to_dicts()
+
+    # A duplicate key silently kept the LAST row here and hard-raised in the pandas
+    # reader this replaced. Warn and keep last-wins so the two agree, and so a CSV that
+    # grows a duplicate says so instead of quietly picking a winner. (The shipped CSV
+    # has none — pinned by tests/test_taxonomy_lookup_equivalence.py.)
+    seen = {}
+    for key in keys:
+        seen[key] = seen.get(key, 0) + 1
+    duplicates = sorted(key for key, n in seen.items() if n > 1)
+    if duplicates:
+        shown = ", ".join(f"{dataset}/{label}" for dataset, label in duplicates[:10])
+        more = f" (+{len(duplicates) - 10} more)" if len(duplicates) > 10 else ""
+        logger.warning(f"Taxonomy CSV has {len(duplicates)} duplicate (Dataset, Raw_Labels) keys; keeping last: {shown}{more}")
+
+    lookup = {}
+    for key, row in zip(keys, rows):
+        lookup[key] = {col: _norm(row.get(col)) for col in LOOKUP_COLS}
+    return lookup
+
+
+def build_taxonomy_lookup(csv_path) -> dict:
+    """Build the ``(Dataset, Raw_Labels) -> {column: value}`` lookup from the CSV.
+
+    The single taxonomy-CSV reader for the repo: the generation path (via
+    ``RedefineDataset._build_lookup``) and the re-sync path (via
+    ``update_planktonzilla.build_sync_dict``) both go through here, so the two cannot
+    drift in how they stringify IDs or represent blanks. That divergence — polars on
+    one side, pandas on the other — was recorded as KI-7/KI-12; unifying is provably
+    value-identical on the shipped CSV, which
+    ``tests/test_taxonomy_lookup_equivalence.py`` pins against a verbatim copy of the
+    replaced pandas implementation.
+
+    Numeric ID columns are normalised to decimal-free strings and blank values to
+    ``None`` so every example resolves to a consistent set of taxonomy/ID fields.
+
+    Results are cached per resolved path, so a run that builds N redefiners reads the
+    CSV once rather than N times.
+    """
+    return _build_taxonomy_lookup_cached(str(Path(csv_path).resolve()))
 
 
 # Cleaning up corrupt examples
@@ -254,7 +340,7 @@ class RedefineDataset:
             *self.ID_STR_COLS,
             *self.ID_NUM_COLS,
         ]
-        self.lookup = self._build_lookup(csv_taxonomies_path)
+        self.lookup = build_taxonomy_lookup(csv_taxonomies_path)
 
         # Columns flattened out of the metadata JSON.
         self.metadata_cols_final = [
@@ -268,36 +354,14 @@ class RedefineDataset:
             "timestamp",
         ]
 
-    @staticmethod
-    def _norm(v):
-        """Empty or blank strings become None; everything else is left as is."""
-        if isinstance(v, str):
-            v = v.strip()
-            return v or None
-        return v
+    # _norm and _build_lookup were hoisted to module level as _norm /
+    # build_taxonomy_lookup so the re-sync path shares one CSV reader; these keep the
+    # former method names working for any external caller.
+    _norm = staticmethod(_norm)
 
     def _build_lookup(self, csv_path):
-        """Build the ``(Dataset, Raw_Labels) -> {column: value}`` lookup from the CSV.
-
-        Numeric ID columns are normalised to decimal-free strings and blank values
-        to ``None`` so every example resolves to a consistent set of taxonomy/ID
-        fields in ``_taxonomy_row``.
-        """
-        df = pl.read_csv(csv_path)
-
-        # Numeric IDs are stored as text without decimals (135336.0 -> "135336").
-        for c in self.ID_NUM_COLS:
-            if c in df.columns:
-                df = df.with_columns(pl.col(c).cast(pl.Int64, strict=False).cast(pl.Utf8).alias(c))
-
-        present = [c for c in self.lookup_cols if c in df.columns]
-        keys = zip(df["Dataset"].to_list(), df["Raw_Labels"].to_list())
-        rows = df.select(present).to_dicts()
-
-        lookup = {}
-        for key, row in zip(keys, rows):
-            lookup[key] = {col: self._norm(row.get(col)) for col in self.lookup_cols}
-        return lookup
+        """Build the ``(Dataset, Raw_Labels) -> {column: value}`` lookup from the CSV."""
+        return build_taxonomy_lookup(csv_path)
 
     def _add_metadata(self, ds):
         """Attach the metadata as a JSON string. Defined by the subclasses."""
@@ -504,9 +568,10 @@ class WHOIRedefiner(RedefineDataset):
 class JediRedefiner(RedefineDataset):
     """JEDI Oceans dataset: fixed metadata for all the examples.
 
-    Kept for reference: JEDI Oceans needs a manual ``.zip`` download, so it has no
-    active entry in ``cfg.datasets`` — its config stays commented out in
-    ``configs/generate_planktonzilla.yaml``.
+    Active in ``cfg.datasets`` as ``jedioceans`` since 2026-08-01, once its download was
+    shown not to need the manual ``.zip`` its config had long forced. Note the three
+    distinct identifiers: ``name`` is ``jedioceans`` (matching the taxonomy CSV),
+    ``import_name`` is ``jedi_oceans_cpics``, and ``jedi`` is this redefiner's key.
     """
 
     def __init__(self, csv_taxonomies_path):
@@ -535,6 +600,144 @@ REDEFINERS = {
 }
 
 
+# How deep a rebuild of one source goes. Consumed by build_overrides.
+#   reuse      - reuse the imagefolder on disk when non-empty (the legacy behavior)
+#   rebuild    - re-run _prepare_imagefolder over the existing raw download
+#   redownload - re-fetch the archive too; the caller removes the imagefolder first
+REFRESH_MODES = ("reuse", "rebuild", "redownload")
+
+
+def build_overrides(data_dir, import_name, cleanup, extra_overrides=(), refresh="reuse", import_overrides=()):
+    """Build the per-dataset Hydra override block for the import_dataset config.
+
+    Only ``dataset_import`` and ``cleanup_after_processing`` vary between the
+    standard datasets; the importer's ``push_to_hub`` (always ``False`` here —
+    the per-source imports are never pushed) and ``data_dir`` are the same
+    everywhere. ``extra_overrides`` carries per-dataset extras straight from the
+    config (e.g. a manual-download ``manual_download_local_file_names`` path) and
+    is empty for the standard datasets.
+
+    With ``refresh="reuse"`` and no ``import_overrides`` the result is the frozen
+    4-element block the generation pipeline has always emitted, byte for byte.
+    Deeper refresh modes append the flags that force a rebuild — without them a
+    re-import is a silent no-op, because ``force_imagefolder_preparation`` defaults
+    to false and a non-empty imagefolder short-circuits the import.
+    """
+    overrides = [
+        f"dataset_import={import_name}",
+        f"dataset_import.cleanup_after_processing={cleanup}",
+        "dataset_import.push_to_hub=False",
+        f"dataset_import.data_dir={data_dir}",
+        *extra_overrides,
+    ]
+
+    if refresh in ("rebuild", "redownload"):
+        overrides.append("dataset_import.force_imagefolder_preparation=True")
+    if refresh == "redownload":
+        overrides.append("dataset_import.force_download=True")
+
+    overrides.extend(import_overrides)
+    return overrides
+
+
+def import_and_redefine_source(entry, *, data_dir, redefiner, num_proc_arg, refresh="reuse", import_overrides=()):
+    """Import one source dataset and return it with taxonomy, IDs and metadata assigned.
+
+    The per-source body of the generation pipeline: compose the importer config,
+    instantiate it, build (or reuse) its imagefolder, load that imagefolder as a
+    HuggingFace dataset and hand it to ``redefiner.redefine``.
+
+    Resolves ``hydra``, ``os``, ``load_dataset`` and ``logger`` from this module's
+    globals, so patching them on this module affects this function too.
+
+    Args:
+        entry: One entry of the ``datasets`` table (``name``, ``import_name``,
+            ``cleanup``, ``redefiner``, optional ``extra_overrides``).
+        data_dir: Root under which each importer namespaces its imagefolder.
+        redefiner: The ``RedefineDataset`` instance for this source.
+        num_proc_arg: Worker count forwarded to ``redefine``.
+        refresh: One of :data:`REFRESH_MODES`.
+        import_overrides: Extra Hydra overrides appended to every source's block.
+
+    Returns:
+        The redefined dataset for this source, splits concatenated.
+    """
+    dataset_name = entry["name"]
+    overrides = build_overrides(
+        data_dir,
+        entry["import_name"],
+        entry["cleanup"],
+        entry.get("extra_overrides", []),
+        refresh=refresh,
+        import_overrides=import_overrides,
+    )
+
+    import_cfg = hydra.compose(config_name="import_dataset", overrides=overrides)
+
+    dataset_importer = hydra.utils.instantiate(import_cfg.dataset_import)
+    imagefolder_dir = Path(dataset_importer.imagefolder_dir)
+
+    # A non-empty imagefolder short-circuits the import below, so a genuine re-import
+    # has to clear it first. imagefolder_dir is namespaced by the importer's class
+    # name (DatasetImporter.__post_init__), so this cannot reach another source's
+    # data. Required because every _prepare_imagefolder except Lensless MERGES into
+    # an existing tree, so without the removal a refresh could only ever add files —
+    # never drop ones deleted upstream.
+    if refresh == "redownload" and imagefolder_dir.exists():
+        logger.info(f"╰─ Removing imagefolder {imagefolder_dir} for a full re-import.")
+        shutil.rmtree(imagefolder_dir, ignore_errors=True)
+
+    # Reuse the imagefolder if it already exists; otherwise build it.
+    has_content = imagefolder_dir.exists() and bool(os.listdir(imagefolder_dir))
+    if has_content:
+        num_items = len(os.listdir(imagefolder_dir))
+        logger.info(f"╰─ Using existing imagefolder with {num_items} categories in {imagefolder_dir}.")
+    else:
+        logger.info("╰─ Building imagefolder from the raw dataset.")
+        dataset_importer.import_dataset()
+
+    # Resolve the files for each split (accepts the val/validation alias).
+    #
+    # KNOWN ISSUE (frozen, do NOT "fix"): `root` here is the module-level pyrootutils
+    # REPOSITORY root, not `imagefolder_dir`. DatasetImporter.import_dataset runs the
+    # same probe rooted at its own imagefolder, so this is a copy-paste slip — but no
+    # repo-root train/ or test/ directory exists, so `data_files` is always empty and
+    # control always reaches the single-split fallback below. That makes `n_splits`
+    # always 1, which makes `original_path` the last TWO path chunks
+    # (`_taxonomy_row`). Those values are frozen in the published dataset, and rows
+    # rebuilt by a per-source refresh sit beside rows carried over from it, so
+    # correcting the probe would make the two disagree. Two consequences worth
+    # knowing: a stray `train/` at the repo root would hijack `data_files` for every
+    # source at once, and the depth-2 fallback glob cannot read the split layouts
+    # LenslessDatasetImporter and ZooLakeDatasetImporter produce.
+    split_aliases = {
+        "train": ["train"],
+        "validation": ["validation", "val"],
+        "test": ["test"],
+    }
+    data_files = {}
+    for canonical_split, aliases in split_aliases.items():
+        for alias in aliases:
+            split_path = root / alias
+            if split_path.exists():
+                data_files[canonical_split] = str(split_path / "*/[!._]*")
+                break
+
+    # No explicit splits: take everything as train.
+    if not data_files:
+        data_files = {"train": str(dataset_importer.imagefolder_dir / "*/*[!._]*")}
+
+    logger.info("╰─ Loading dataset with the imagefolder loader.")
+    dataset = load_dataset("imagefolder", data_files=data_files)
+
+    logger.info("╰─ Assigning taxonomy, IDs and metadata...")
+    return redefiner.redefine(
+        hf_dataset=dataset,
+        dataset_name=dataset_name,
+        num_proc=num_proc_arg,
+    )
+
+
 @hydra.main(
     version_base="1.3",
     config_path=str(root / "configs"),
@@ -561,24 +764,11 @@ def main(cfg: DictConfig) -> None:
     output_path = Path(cfg.data_dir) / constants.DEFAULT_PLANKTONZILLA_DATASET_NAME
     num_proc_arg = cfg.num_proc if cfg.get("num_proc") is not None else constants.default_num_proc()
 
-    def build_overrides(import_name, cleanup, extra_overrides=()):
-        """Build the per-dataset Hydra override block for the import_dataset config.
-
-        Only ``dataset_import`` and ``cleanup_after_processing`` vary between the
-        standard datasets; the importer's ``push_to_hub`` (always ``False`` here —
-        the per-source imports are never pushed) and ``data_dir`` are the same
-        everywhere. ``extra_overrides`` carries per-dataset extras straight from the
-        config (e.g. a manual-download ``manual_download_local_file_names`` path) and
-        is empty for the standard datasets, reproducing the override list that was
-        previously inlined per dataset.
-        """
-        return [
-            f"dataset_import={import_name}",
-            f"dataset_import.cleanup_after_processing={cleanup}",
-            "dataset_import.push_to_hub=False",
-            f"dataset_import.data_dir={cfg.data_dir}",
-            *extra_overrides,
-        ]
+    logger.warning(
+        "pz_generate_planktonzilla is DEPRECATED and will be removed in the next minor "
+        "release. Use `pz_planktonzilla` instead — it creates or updates the dataset "
+        "with one command. The equivalent of this run is the bare `pz_planktonzilla`."
+    )
 
     # The dataset table now lives in configs/generate_planktonzilla.yaml under `datasets`.
     # Order is preserved exactly: cfg.datasets is iterated in declaration order and
@@ -587,7 +777,7 @@ def main(cfg: DictConfig) -> None:
     # there for reference).
     datasets_configs = {
         d["name"]: {
-            "overrides": build_overrides(d["import_name"], d["cleanup"], d.get("extra_overrides", [])),
+            "entry": d,
             "redefiner": REDEFINERS[d["redefiner"]](csv_taxonomies_path=taxo_csv_path),
         }
         for d in cfg.datasets
@@ -601,49 +791,14 @@ def main(cfg: DictConfig) -> None:
     for dataset_name, ds_cfg in datasets_configs.items():
         logger.info(f"Start importing dataset «{dataset_name}».")
 
-        import_cfg = hydra.compose(config_name="import_dataset", overrides=ds_cfg["overrides"])
-
-        dataset_importer = hydra.utils.instantiate(import_cfg.dataset_import)
-        imagefolder_dir = Path(dataset_importer.imagefolder_dir)
-
-        # Reuse the imagefolder if it already exists; otherwise build it.
-        has_content = imagefolder_dir.exists() and bool(os.listdir(imagefolder_dir))
-        if has_content:
-            num_items = len(os.listdir(imagefolder_dir))
-            logger.info(f"╰─ Using existing imagefolder with {num_items} categories in {imagefolder_dir}.")
-        else:
-            logger.info("╰─ Building imagefolder from the raw dataset.")
-            dataset_importer.import_dataset()
-
-        # Resolve the files for each split (accepts the val/validation alias).
-        split_aliases = {
-            "train": ["train"],
-            "validation": ["validation", "val"],
-            "test": ["test"],
-        }
-        data_files = {}
-        for canonical_split, aliases in split_aliases.items():
-            for alias in aliases:
-                split_path = root / alias
-                if split_path.exists():
-                    data_files[canonical_split] = str(split_path / "*/[!._]*")
-                    break
-
-        # No explicit splits: take everything as train.
-        if not data_files:
-            data_files = {"train": str(dataset_importer.imagefolder_dir / "*/*[!._]*")}
-
-        logger.info("╰─ Loading dataset with the imagefolder loader.")
-        dataset = load_dataset("imagefolder", data_files=data_files)
-
-        logger.info("╰─ Assigning taxonomy, IDs and metadata...")
-        dataset = ds_cfg["redefiner"].redefine(
-            hf_dataset=dataset,
-            dataset_name=dataset_name,
-            num_proc=num_proc_arg,
+        parts.append(
+            import_and_redefine_source(
+                ds_cfg["entry"],
+                data_dir=cfg.data_dir,
+                redefiner=ds_cfg["redefiner"],
+                num_proc_arg=num_proc_arg,
+            )
         )
-
-        parts.append(dataset)
 
     logger.info("Concatenating all imported datasets.")
     ds = concatenate_datasets(parts)

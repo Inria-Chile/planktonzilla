@@ -21,6 +21,7 @@ import os
 import re
 import shutil
 import stat
+import time
 from dataclasses import dataclass
 from multiprocessing import cpu_count
 from pathlib import Path
@@ -31,6 +32,7 @@ from zipfile import ZipFile
 import aiohttp
 import numpy as np
 import plotext as plt
+import requests
 from datasets import (
     Dataset,
     DatasetDict,
@@ -176,6 +178,251 @@ def cleanup_imagefolder_empty_dirs(imagefolder_dir: Path) -> None:
             shutil.rmtree(dir)
 
 
+# Suffixes treated as images when locating class folders. Suffix-only on purpose:
+# find_class_root walks the whole extracted tree, so opening every candidate with PIL
+# (as is_valid_image_file does) would be far too slow. Readability is checked later,
+# behind check_image_file_integrity.
+IMAGE_SUFFIXES: Final = frozenset({".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".gif", ".ppm", ".webp"})
+
+# Depth cap for find_class_root, counted from the extraction root. Every bundled source
+# nests its class folders at most 4 levels down — the deepest measured is SYKE ZooScan
+# 2024 at 3 ("SYKE-plankton_ZooScan_2024/images/SYKE-plankton_ZooScan_2024/<class>",
+# after its nested zip is unwrapped) — so 6 leaves headroom without letting a
+# pathological tree turn the scan into a full-disk walk.
+MAX_CLASS_ROOT_DEPTH: Final = 6
+
+
+def _subdirectories(dir: Path) -> list[Path]:
+    """Immediate subdirectories of ``dir``, sorted, skipping dot-directories."""
+    return sorted(p for p in dir.iterdir() if p.is_dir() and not p.name.startswith("."))
+
+
+def _holds_images(dir: Path) -> bool:
+    """Return True if ``dir`` directly contains at least one image file."""
+    return any(p.is_file() and p.suffix.lower() in IMAGE_SUFFIXES for p in dir.iterdir())
+
+
+def find_class_root(extraction_root: Path) -> Path:
+    """Locate the directory whose immediate subdirectories are the class folders.
+
+    Most importers hard-code the path from the extraction root down to the class
+    folders (e.g. ``ZooScanNet/imgs``), which means a re-release that adds or renames
+    a wrapper directory breaks them. This finds it instead: it scans the tree and
+    returns the directory with the most immediate subdirectories that directly hold
+    images, which is what a torchvision-style ``<class>/<image>`` layout looks like.
+
+    Use it when the archive's internal layout is not pinned by a checksum, so a
+    wrapper folder appearing or disappearing upstream is not a silent breakage.
+
+    Args:
+        extraction_root: Directory the archive was extracted into.
+
+    Returns:
+        The directory holding the class folders (may be ``extraction_root`` itself).
+
+    Raises:
+        RuntimeError: If no directory in the tree has an image-bearing subdirectory.
+    """
+    best_dir, best_count = None, 0
+
+    queue = [(extraction_root, 0)]
+    while queue:
+        dir, depth = queue.pop(0)
+        subdirs = _subdirectories(dir)
+
+        # Ties keep the shallowest candidate: BFS reaches it first and the comparison
+        # is strict, so a nested duplicate of the same layout cannot displace it.
+        count = sum(1 for sub in subdirs if _holds_images(sub))
+        if count > best_count:
+            best_dir, best_count = dir, count
+
+        if depth < MAX_CLASS_ROOT_DEPTH:
+            queue.extend((sub, depth + 1) for sub in subdirs)
+
+    if best_dir is None:
+        raise RuntimeError(
+            f"No class folders found under {extraction_root}: no directory within "
+            f"{MAX_CLASS_ROOT_DEPTH} levels has a subdirectory containing images "
+            f"({', '.join(sorted(IMAGE_SUFFIXES))})."
+        )
+
+    logger.info(f"Located {best_count} class folders under {best_dir}.")
+    return best_dir
+
+
+class FairdataResolutionError(RuntimeError):
+    """The Fairdata Download API did not yield a usable download URL.
+
+    Always carries the manual fallback, because that is what the caller has to do next.
+    """
+
+
+def _find_ready_package(payload) -> str | None:
+    """Pull the name of a generated, ready-to-download package out of an API response.
+
+    The live service returns a flat object::
+
+        {"package": "<pid>_nhungsie.zip", "status": "SUCCESS", "size": 79363785,
+         "checksum": "sha256:…", "generated": "…", "initiated": "…", "dataset": "<pid>"}
+
+    which the ``"package" in payload`` branch below handles. The nested forms are kept
+    because the endpoint is undocumented and its shape is the part most likely to move.
+    Tolerant about SHAPE, strict about MEANING: only a package whose status says it is
+    generated is accepted, and an unrecognised shape returns None so the caller raises
+    with the manual fallback rather than guessing a package name.
+    """
+    if not isinstance(payload, dict):
+        return None
+
+    candidates = []
+    for key in ("partial", "complete", "packages"):
+        value = payload.get(key)
+        if isinstance(value, dict):
+            candidates.extend(value.values())
+        elif isinstance(value, list):
+            candidates.extend(value)
+    # A single top-level package object, rather than a collection of them.
+    if "package" in payload:
+        candidates.append(payload)
+
+    for entry in candidates:
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("package") or entry.get("filename") or entry.get("name")
+        if not name:
+            continue
+        status = str(entry.get("status", "SUCCESS")).upper()
+        if status in ("SUCCESS", "SUCCESSFUL", "COMPLETE", "COMPLETED", "READY", "GENERATED"):
+            return name
+
+    return None
+
+
+def resolve_fairdata_download_url(
+    pid: str,
+    *,
+    api_base: str = "https://etsin.fairdata.fi/api/download",
+    timeout: int = 3600,
+    poll_attempts: int = 60,
+    poll_interval: int = 10,
+    source_url: str | None = None,
+    session=None,
+    sleep=time.sleep,
+) -> str:
+    """Resolve a Fairdata dataset PID to a direct, authorized download URL.
+
+    Fairdata serves no stable ``.zip`` link. A dataset is downloaded by asking the
+    Download API to *package* it, waiting for that, then authorizing a single-use
+    download. This walks that flow:
+
+      1. ``GET  {api_base}/requests?cr_id=<pid>``  — reuse a ready package if there is one
+      2. ``POST {api_base}/requests``              — otherwise ask for one
+      3. poll (1) until a package reports SUCCESS
+      4. ``POST {api_base}/authorize``             — exchange it for a single-use URL
+      5. return that URL
+
+    VERIFIED end to end against the live service on 2026-08-01 with
+    ``6fa42787-9772-41a5-a6fc-0dde489ed908`` (SYKE ZooScan 2024): the flow resolved and
+    downloaded the full 79,363,785-byte package, whose size and name matched what step
+    (1) reported. Recorded shapes::
+
+        GET  /requests?cr_id=<pid>
+          -> {"package": "<pid>_nhungsie.zip", "status": "SUCCESS", "size": 79363785,
+              "checksum": "sha256:…", "generated": "…", "initiated": "…",
+              "dataset": "<pid>"}
+        POST /requests  {"cr_id": "<pid>"}
+          -> the same object plus "created": false when a package already exists
+        POST /authorize {"cr_id": "<pid>", "package": "<name>"}
+          -> {"url": "https://download.fairdata.fi:443/download?token=<jwt>"}
+
+    Two details worth keeping: the query/body parameter is ``cr_id`` (``dataset`` is
+    rejected as an unknown field), and ``authorize`` returns a ready ``url`` rather than
+    a bare token — ``/download`` accepts only ``token``, so the URL must not be
+    reassembled from parts.
+
+    Args:
+        pid: The dataset persistent identifier (the Etsin dataset id).
+        api_base: Download API root. Overridable so a contract change, a mirror or a
+            test double needs no code edit.
+        timeout: Per-request timeout in seconds.
+        poll_attempts: How many times to poll for package generation before giving up.
+        poll_interval: Seconds between polls.
+        source_url: Landing page, quoted in the error so the fallback is actionable.
+        session: ``requests``-compatible session; defaults to a fresh one.
+        sleep: Injected for tests, so polling does not actually wait.
+
+    Returns:
+        A single-use URL that downloads the packaged dataset.
+
+    Raises:
+        FairdataResolutionError: On any unexpected response, or if the package is not
+            ready within ``poll_attempts * poll_interval`` seconds.
+    """
+    manual_hint = (
+        f"Download the archive by hand from {source_url or 'the dataset landing page'} and point "
+        f"dataset_import.manual_download_local_file_names at it."
+    )
+    requester = session or requests
+
+    def _json(response, what):
+        if not response.ok:
+            raise FairdataResolutionError(
+                f"Fairdata {what} returned HTTP {response.status_code} for dataset «{pid}». {manual_hint}"
+            )
+        try:
+            return response.json()
+        except ValueError as e:
+            raise FairdataResolutionError(f"Fairdata {what} returned a non-JSON body for «{pid}». {manual_hint}") from e
+
+    try:
+        status = _json(requester.get(f"{api_base}/requests", params={"cr_id": pid}, timeout=timeout), "request status")
+        package = _find_ready_package(status)
+
+        if package is None:
+            # Asking for a package that already exists is harmless — the service returns
+            # the existing one with "created": false — so this is safe to reach.
+            created = _json(
+                requester.post(f"{api_base}/requests", json={"cr_id": pid}, timeout=timeout),
+                "package request",
+            )
+            package = _find_ready_package(created)
+
+            for _ in range(poll_attempts):
+                if package is not None:
+                    break
+                sleep(poll_interval)
+                status = _json(
+                    requester.get(f"{api_base}/requests", params={"cr_id": pid}, timeout=timeout),
+                    "request status",
+                )
+                package = _find_ready_package(status)
+
+        if package is None:
+            raise FairdataResolutionError(
+                f"Fairdata did not report a ready package for «{pid}» after "
+                f"{poll_attempts * poll_interval}s. Large datasets can take longer — raise "
+                f"dataset_import.fairdata_poll_attempts, or {manual_hint[0].lower() + manual_hint[1:]}"
+            )
+
+        authorized = _json(
+            requester.post(f"{api_base}/authorize", json={"cr_id": pid, "package": package}, timeout=timeout),
+            "authorization",
+        )
+        # The service hands back a complete single-use URL. Do NOT rebuild it from
+        # parts: /download accepts only `token`, and rejects `dataset` and `file` as
+        # unknown fields, so a reassembled URL is a 400.
+        url = authorized.get("url") if isinstance(authorized, dict) else None
+        if not url:
+            raise FairdataResolutionError(
+                f"Fairdata authorization returned no download url for «{pid}» (package {package!r}). {manual_hint}"
+            )
+
+    except requests.RequestException as e:
+        raise FairdataResolutionError(f"Could not reach the Fairdata API for «{pid}»: {e}. {manual_hint}") from e
+
+    return url
+
+
 def is_valid_image_file(image_filename):
     """Return True if PIL can open and crop the file, i.e. it is a readable image.
 
@@ -253,6 +500,21 @@ class DatasetImporter:
     # if we have manually downloaded the files add the archives here
     manual_download_local_file_names: str | list[str] = None
 
+    # Where a human obtains the archives named above, and anything they need to know to
+    # do it (a login, a "request access" step, an unstable direct link). Purely
+    # informational: it is what missing_manual_downloads() reports, so a missing file
+    # produces instructions instead of an error from inside extract().
+    manual_download_url: str = None
+    manual_download_notes: str = None
+
+    # Fairdata (Etsin) sources publish through a package API rather than a stable direct
+    # URL. Set fairdata_pid to resolve the download automatically; leave it null to use
+    # the manual route. See resolve_fairdata_download_url.
+    fairdata_pid: str = None
+    fairdata_api_base: str = "https://download.fairdata.fi"
+    fairdata_poll_attempts: int = 60
+    fairdata_poll_interval: int = 10
+
     cleanup_after_processing: Optional[bool] = False
 
     description: str = ""
@@ -292,6 +554,41 @@ class DatasetImporter:
         self.download_manager = None
         self.hf_dataset = None
 
+    def manual_download_paths(self) -> list[Path]:
+        """The archives this importer expects to have been fetched by hand, if any."""
+        declared = self.manual_download_local_file_names
+        if not declared:
+            return []
+        if isinstance(declared, str):
+            declared = [declared]
+        return [Path(path) for path in declared]
+
+    def missing_manual_downloads(self) -> list[Path]:
+        """Declared manual archives that are not on disk yet.
+
+        Cheap and side-effect free, so a caller can pre-flight a whole build and report
+        every missing archive at once rather than discovering them one failed source at
+        a time, hours apart.
+        """
+        return [path for path in self.manual_download_paths() if not path.exists()]
+
+    def manual_download_instructions(self) -> str:
+        """Human-readable instructions for obtaining this importer's manual archives."""
+        missing = self.missing_manual_downloads()
+        if not missing:
+            return ""
+
+        lines = [f"«{self.human_readable_name or self.hf_dataset_name}» needs {len(missing)} file(s) downloaded by hand:"]
+        lines.extend(f"  - {path}" for path in missing)
+        if self.manual_download_url:
+            lines.append(f"Get them from: {self.manual_download_url}")
+        elif self.source_url:
+            lines.append(f"Start from the dataset page: {self.source_url}")
+        if self.manual_download_notes:
+            lines.append(self.manual_download_notes.strip())
+        lines.append("Create the parent directory if needed, then re-run. Nothing else is required.")
+        return "\n".join(lines)
+
     def _download_and_extract(self):
         """Download ``download_uris`` (or use manual files) and extract them.
 
@@ -315,9 +612,23 @@ class DatasetImporter:
             ),
         )
         if self.manual_download_local_file_names:
+            # Checked here rather than left to extract(), which fails on a missing path
+            # with an error that names neither the file wanted nor where to get it.
+            missing = self.missing_manual_downloads()
+            if missing:
+                raise FileNotFoundError(self.manual_download_instructions())
+
             logger.info(f"Using manually downloaded file {self.manual_download_local_file_names}.")
             downloaded_paths = self.manual_download_local_file_names
         else:
+            if not self.download_uris:
+                raise ValueError(
+                    f"«{self.human_readable_name or self.hf_dataset_name}» has neither download_uris nor "
+                    f"manual_download_local_file_names set, so there is nothing to fetch. Give it a download URL, "
+                    f"or point manual_download_local_file_names at an archive you downloaded yourself"
+                    + (f" from {self.source_url}." if self.source_url else ".")
+                )
+
             logger.info(f"Downloading files to {self.raw_dir}.")
             downloaded_paths = self.download_manager.download(self.download_uris)
 
@@ -406,6 +717,7 @@ class DatasetImporter:
                 logger.info(
                     f"Pushing «{self.human_readable_name}» to HuggingFace Hub as «{self.hf_org_name}/{self.hf_dataset_name}»."
                 )
+                last_error = None
                 for attempt in range(self.push_to_hub_retries):
                     try:
                         self.hf_dataset.push_to_hub(
@@ -413,11 +725,23 @@ class DatasetImporter:
                             token=self.hf_token,
                             private=self.hf_private,
                         )
+                        last_error = None
                         break
                     except Exception as e:
+                        last_error = e
                         logger.warning(
                             f"Push to hub attempt {attempt + 1}/{self.push_to_hub_retries} failed, retrying. Cause: {e}."
                         )
+
+                # Exhausting every retry used to fall through to update_dataset_metadata()
+                # and return normally, so a push that never succeeded reported success and
+                # the card was refreshed for a dataset that was never uploaded.
+                if last_error is not None:
+                    raise RuntimeError(
+                        f"Failed to push «{self.hf_dataset_name}» to the HuggingFace Hub after "
+                        f"{self.push_to_hub_retries} attempts. Last error: {last_error}"
+                    ) from last_error
+
                 self.update_dataset_metadata()
             else:
                 logger.error("No dataset to push.")
@@ -490,20 +814,27 @@ class DatasetImporter:
             )
 
         if self.check_image_file_integrity:
-            for class_dir in tqdm(
-                os.listdir(self.imagefolder_dir),
-                desc="Validating classes.",
+            # rglob rather than a two-level listdir: importers that produce a split
+            # layout (LenslessDatasetImporter's train/ + test/, ZooLakeDatasetImporter's
+            # train_split/ ...) nest images one level deeper, and the flat version of
+            # this walk handed those class DIRECTORIES to is_valid_image_file. That
+            # returns False for a directory (IsADirectoryError subclasses OSError,
+            # which IOError aliases), so the next line called os.remove on a directory
+            # and raised uncaught — turning an opt-in integrity check into a crash on
+            # exactly the layouts that need it most.
+            candidates = [path for path in self.imagefolder_dir.rglob("*") if path.is_file()]
+
+            for path in tqdm(
+                candidates,
+                desc="Validating images.",
                 disable=not self.show_progress,
                 leave=False,
             ):
-                for file in tqdm(
-                    os.listdir(self.imagefolder_dir / class_dir),
-                    disable=not self.show_progress,
-                    leave=False,
-                ):
-                    if not is_valid_image_file(self.imagefolder_dir / class_dir / file):
-                        logger.warning("Invalid file {file} in class {class_dir} detected. Removing it from dataset.")
-                        os.remove(self.imagefolder_dir / class_dir / file)
+                if not is_valid_image_file(path):
+                    logger.warning(f"Invalid file {path} detected. Removing it from the dataset.")
+                    os.remove(path)
+
+            cleanup_imagefolder_empty_dirs(self.imagefolder_dir)
 
         logger.info(f"Loading imagefolder in {self.imagefolder_dir} as HuggingFace dataset.")
 
@@ -962,13 +1293,113 @@ class SYKEZooScan2024DatasetImporter(DatasetImporter):
 
     Copies each class folder from
     ``0127422/2.3/data/FINAL_Plankton_Segments_12082014``.
+
+    The archive is published through Fairdata (Etsin) rather than at a stable direct
+    URL, so ``download_uris`` cannot simply name a ``.zip``. Set ``fairdata_pid`` and
+    this importer asks the Fairdata Download API to package the dataset and downloads
+    the result; leave it unset and it falls back to the usual
+    ``manual_download_local_file_names`` route, which now reports exactly which file is
+    missing and where to get it.
+
+    The package is a zip containing another zip, so the outer extraction must be
+    unwrapped before the class folders are reachable — verified against the real
+    archive on 2026-08-01::
+
+        <package>.zip
+          SYKE-plankton_ZooScan_2024/readme.md
+          SYKE-plankton_ZooScan_2024/SYKE-plankton_ZooScan_2024.zip
+            SYKE-plankton_ZooScan_2024/images/SYKE-plankton_ZooScan_2024/<class>/*.png
+            SYKE-plankton_ZooScan_2024/class_splits/…
+            __MACOSX/…                       (junk; copytree_filtered drops it)
+
+    The 20 class folders that produces match the 20 ``sykezooscan2024`` ``Raw_Labels``
+    in ``planktonzilla_taxonomy.csv`` exactly.
     """
 
+    def _download_and_extract(self):
+        """Resolve the archive through the Fairdata API when a PID is configured."""
+        if self.fairdata_pid and not self.manual_download_local_file_names:
+            resolved = resolve_fairdata_download_url(
+                self.fairdata_pid,
+                api_base=self.fairdata_api_base,
+                timeout=self.http_timeout,
+                poll_attempts=self.fairdata_poll_attempts,
+                poll_interval=self.fairdata_poll_interval,
+                source_url=self.source_url,
+            )
+            logger.info(f"Fairdata resolved «{self.fairdata_pid}» to a download URL.")
+            self.download_uris = resolved
+
+        return super()._download_and_extract()
+
     def _prepare_imagefolder(self):
+        root = Path(self.extracted_dirs)
+
+        # Unwrap the nested archive. The previous implementation instead globbed
+        # "0127422/2.3/data/FINAL_Plankton_Segments_12082014" — the NOAA accession path
+        # belonging to PlanktonSet1, which does not exist anywhere in this archive, so
+        # the loop silently iterated nothing and produced an EMPTY imagefolder.
+        for nested in sorted(root.rglob("*.zip")):
+            logger.info(f"Extracting nested archive {nested.name}.")
+            unzip(nested, nested.parent, show_progress=self.show_progress)
+
+        # Located rather than hard-coded: the class folders sit three levels down, under
+        # images/<dataset name>/, and a re-release that renames a wrapper would break a
+        # fixed path again.
+        class_root = find_class_root(root)
+
+        class_dirs = [dir for dir in _subdirectories(class_root) if _holds_images(dir)]
         for plankton_class_dir in tqdm(
-            (Path(self.extracted_dirs) / "0127422" / "2.3" / "data" / "FINAL_Plankton_Segments_12082014").glob("*"),
+            class_dirs,
             desc="Progress",
             leave=False,
             disable=not self.show_progress,
         ):
             copytree_filtered(plankton_class_dir, self.imagefolder_dir / plankton_class_dir.name)
+
+        cleanup_imagefolder_empty_dirs(self.imagefolder_dir)
+
+
+class MedPlanktonSetDatasetImporter(DatasetImporter):
+    """Importer for MedPlanktonSet — labeled IFCB images from the Mediterranean Sea.
+
+    Source: ``IFCB_images.zip`` from Zenodo record 15471023 (see
+    ``configs/dataset_import/medplanktonset.yaml``). The archive holds one folder per
+    labeled class; ``planktonzilla_taxonomy.csv`` maps 139 ``medplanktonset``
+    ``Raw_Labels`` (``Akashiwo_sanguinea``, ``Centric_diatoms``, ``Chaetoceros_spp``,
+    …) onto the shared taxonomy, and those names are the class folder names.
+
+    Unlike its sibling importers this one does not hard-code the path from the
+    extraction root to the class folders — it locates them with
+    :func:`find_class_root`, so a wrapper directory in the archive does not matter.
+
+    .. warning::
+       The archive's internal layout has NOT been verified against the real download:
+       Zenodo was unreachable from the environment this importer was written in. The
+       layout-independent scan is what makes that acceptable rather than a guess, but
+       the first real run should be done with ``show_progress=true`` and its reported
+       class count checked against the 139 ``medplanktonset`` rows in the taxonomy CSV.
+       A mismatch means the scan found the wrong level, not that the CSV is wrong.
+    """
+
+    def _prepare_imagefolder(self):
+        class_root = find_class_root(Path(self.extracted_dirs))
+
+        # find_class_root scores a directory by how many subdirectories hold images, so
+        # the winner may still have image-free siblings (a stray "metadata/" folder, a
+        # "docs/"). Copying those would create class folders whose only members are
+        # non-image files, which the imagefolder loader then tries to decode — so
+        # select on image content here, the same test the scan itself used.
+        class_dirs = [dir for dir in _subdirectories(class_root) if _holds_images(dir)]
+
+        for plankton_class_dir in tqdm(
+            class_dirs,
+            desc="Progress",
+            leave=False,
+            disable=not self.show_progress,
+        ):
+            copytree_filtered(plankton_class_dir, self.imagefolder_dir / plankton_class_dir.name)
+
+        # Belt and braces: a class folder whose every image was a macOS junk file is
+        # dropped by copytree_filtered's ignore patterns and arrives empty.
+        cleanup_imagefolder_empty_dirs(self.imagefolder_dir)

@@ -85,8 +85,9 @@ planktonzilla/                          # repo root
 ├── configs/                            # Hydra configuration tree (bundled into wheel)
 │   ├── train.yaml                      # root config for pz_train
 │   ├── import_dataset.yaml             # root config for pz_import_dataset
-│   ├── generate_planktonzilla.yaml     # root config for dataset generation
-│   ├── update_planktonzilla.yaml       # root config for dataset update
+│   ├── planktonzilla.yaml              # root config for pz_planktonzilla (create or update)
+│   ├── generate_planktonzilla.yaml     # deprecated; still owns the `datasets` registry
+│   ├── update_planktonzilla.yaml       # deprecated root config for dataset update
 │   ├── augmentation/                   # data augmentation strategies
 │   ├── custom_loss/                    # imbalance-aware loss configs
 │   ├── dataset/                        # dataset-specific configs
@@ -113,9 +114,10 @@ planktonzilla/                          # repo root
 │   ├── open_clip_ext/                  # forward-compat seam around open_clip factory/transform
 │   │   ╰── model_configs/              # open_clip model JSON configs
 │   ├── planktonzilla_dataset/          # builds the master composite dataset from external sources
-│   │   ├── generate_planktonzilla.py        # main dataset build (Hydra entry)
+│   │   ├── make_planktonzilla.py            # pz_planktonzilla — create or update (Hydra entry)
+│   │   ├── generate_planktonzilla.py        # deprecated build entry; hosts the shared pipeline
 │   │   ├── gen_planktonzilla_only_plankton.py
-│   │   ├── update_planktonzilla.py          # incremental dataset update (Hydra entry)
+│   │   ├── update_planktonzilla.py          # deprecated taxonomy re-sync (Hydra entry)
 │   │   ├── save_planktonzilla_for_clip.py   # export to WebDataset for CLIP
 │   │   ├── sankey.py                        # pz_sankey — live label-space Sankey (self-contained HTML)
 │   │   ├── templates/sankey_flow.html       # the page pz_sankey fills in
@@ -176,45 +178,135 @@ the `.yaml`) as `dataset_import=`.
 
 `planktonzilla-17M` is assembled from the imported sources by mapping each source's own labels
 onto the shared taxonomy in `planktonzilla/planktonzilla_dataset/planktonzilla_taxonomy.csv`.
-Both entry points are Hydra-configured (`configs/generate_planktonzilla.yaml`,
-`configs/update_planktonzilla.yaml`):
+One command creates or updates it (`configs/planktonzilla.yaml`):
 
 ```bash
-# Full build of the master composite dataset
-uv run pz_generate_planktonzilla
-
-# Incremental update of an existing build
-uv run pz_update_planktonzilla
+uv run pz_planktonzilla
 ```
+
+There is no mode switch. The run is described by three orthogonal parameters:
+
+| Parameter | Meaning | Values |
+| --- | --- | --- |
+| `base` | where already-built rows come from | `null` · `hub` · `local` · a path |
+| `sources` | which sources are rebuilt this run | `all` · `[]` · `[whoi]` |
+| `sync_taxonomy` | re-apply the CSV to carried-over rows | `true` · `false` |
+
+```bash
+# Create the whole dataset from scratch (all 15 sources) — the default
+uv run pz_planktonzilla
+
+# The taxonomy CSV changed: re-sync every row, rebuild nothing
+uv run pz_planktonzilla base=hub sources=[]
+
+# Re-import one source and splice it into what is already there
+uv run pz_planktonzilla base=local sources=[whoi] refresh=redownload
+
+# Same, plus a taxonomy re-sync of everything else (sync_taxonomy defaults true)
+uv run pz_planktonzilla base=local sources=[whoi,zooscan] refresh=redownload num_proc=8
+
+# Pre-flight: resolve the plan and report it, touching nothing
+uv run pz_planktonzilla base=hub sources=[whoi] dry_run=true
+
+# Stamp a version on the build, and tag it on the Hub
+uv run pz_planktonzilla version=1.4.0 push_to_hub=true
+```
+
+### Versioning a build
+
+`version=` (default `null`, unversioned) is applied in two places:
+
+- **Embedded in the saved artifact** as `DatasetInfo.version`, so a copy on disk or pulled from
+  the Hub knows which version it is. This needs the `x.y.z` form `datasets.utils.Version`
+  accepts — note it *normalises*, so `2026.08.01` becomes `2026.8.1`.
+- **Pushed as a git tag** on the Hub repo, after a successful push. Hub tags are free-form, so
+  any non-empty string works.
+
+A version that isn't `x.y.z` is therefore still a valid Hub tag but can't be embedded; the run
+says so rather than dropping it silently. `version_strict=true` rejects anything non-embeddable.
+The version is validated before any build work, so a malformed one fails in seconds rather than
+after hours.
+
+Tagging happens only after the push succeeds, so a tag always points at data that exists. An
+existing tag is an error by default — re-tagging silently would make a version name point at
+different data; `version_overwrite=true` moves it deliberately. If the push succeeds but tagging
+fails, the error says so explicitly: the upload is done, don't re-run the build.
+
+Source names are the `name` field of the `datasets` entries (`whoi`, `zooscan`,
+`planktonset1.0`, `global_uvp5`) — *not* the `configs/dataset_import/` stems
+(`whoi-plankton`, `zooscannet`, …). Passing a stem by mistake is rejected with the name to
+use instead.
+
+**The output holds exactly one contribution per source** — freshly built for the sources in
+`sources`, carried over from `base` for the rest — concatenated in the `datasets` declaration
+order. Reassembling in registry order rather than appending rebuilt rows at the end is what
+makes an incremental run row-for-row identical to a from-scratch one, which
+`tests/test_make_planktonzilla_splice.py` asserts directly.
+
+A per-source refresh needs `refresh=redownload` (or `rebuild`) to do anything: a non-empty
+imagefolder short-circuits the import, and every `_prepare_imagefolder` except Lensless *merges*
+into the existing tree, so without it a "refresh" could only add files, never drop ones deleted
+upstream.
+
+Two guards worth knowing, both of which stop a run before it does any I/O:
+
+- A **partial** rebuild (`sources` a strict subset) with `base=null` refuses to overwrite an
+  existing `output_dir`, because `save_to_disk` replaces a dataset directory silently — a
+  forgotten `base=` would swap the 17M-row artifact for a fragment and report success. Use
+  `base=local`, a fresh `output_dir=`, or `allow_partial_overwrite=true`.
+- A base whose columns diverge from the consolidated schema is a hard error, because
+  `concatenate_datasets` null-fills a missing column instead of raising.
 
 > The published dataset and the models trained on it are frozen artifacts. These commands are
 > reproduction tooling — changing what they emit means republishing, not patching.
 
-Both entry points stamp every image with its source's `license` / `license_url`
-(see [Licensing](#licensing-of-the-composite-dataset)). `pz_update_planktonzilla` appends the
-two columns with a zero-copy Arrow column concat, without ever reading the image column.
+### Licensing and schema changes
 
-By default that run *also* re-syncs the taxonomy from the CSV — a full-table rewrite that
-re-applies whatever the CSV says today. To annotate the frozen dataset with its terms and
-change nothing else, turn the re-sync off. The CSV is then never read and every published
-taxonomy/ID value is carried through untouched:
+Every image is stamped with its source's `license` / `license_url`
+(see [Licensing](#licensing-of-the-composite-dataset)). A from-scratch build writes them
+alongside the taxonomy, in the same pass — no extra sweep over the images.
+
+Adding those columns to the *published* dataset changes its schema, so publish it onto its own
+Hub branch rather than over the revision the paper and the released models are pinned to:
 
 ```bash
-# Strictly additive: license columns only, published on a v1.1 branch
-uv run pz_update_planktonzilla sync_taxonomy=false push_to_hub=true push_revision=v1.1
+# Strictly additive: annotate the frozen data, change nothing else, publish to a v1.1 branch
+uv run pz_planktonzilla base=hub sources=[] sync_taxonomy=false \
+  push_to_hub=true push_revision=v1.1 version=1.1.0
 ```
 
-Publishing onto its own revision is what keeps the schema change off the revision the paper
-and the released models are pinned to. Tag the frozen state *first*, then the new one:
+`sync_taxonomy=false` is what makes that run additive: the taxonomy CSV is never read and every
+published taxonomy/ID value is carried through untouched. Drop it only when you actually intend
+to republish the taxonomy too.
+
+`push_revision` targets a branch; `version` tags it. Tag the frozen state *first* so `v1.0`
+keeps pointing at the original bytes:
 
 ```python
 from huggingface_hub import HfApi
 api = HfApi()
 api.create_tag("project-oceania/planktonzilla-17M", tag="v1.0", revision="main", repo_type="dataset")
-api.create_tag("project-oceania/planktonzilla-17M", tag="v1.1", revision="v1.1", repo_type="dataset")
 ```
 
-Drop `sync_taxonomy=false` only when you actually intend to republish the taxonomy too.
+<details>
+<summary>Deprecated: <code>pz_generate_planktonzilla</code> and <code>pz_update_planktonzilla</code></summary>
+
+Both still work and behave exactly as before, but are removed in the next minor release:
+
+```bash
+uv run pz_generate_planktonzilla   # == uv run pz_planktonzilla
+uv run pz_update_planktonzilla     # == uv run pz_planktonzilla base=hub sources=[] output_dir='${data_dir}'
+
+# license-columns-only run, on the old command and the new one
+uv run pz_update_planktonzilla sync_taxonomy=false
+uv run pz_planktonzilla base=hub sources=[] sync_taxonomy=false output_dir='${data_dir}'
+```
+
+The `output_dir` override matters: `pz_update_planktonzilla` saved to the bare `data_dir`,
+whereas `pz_planktonzilla` saves to `<data_dir>/planktonzilla-17M` (where
+`pz_generate_planktonzilla` wrote, and where `base=local` reads back).
+
+</details>
 
 ### Explore the label space (Sankey)
 
@@ -389,17 +481,30 @@ source; **CIFAR-10** is also configured there as a generic sanity-check/smoke-te
 
 ### Licensing of the composite dataset
 
-`planktonzilla-17M` aggregates sources under **five different sets of terms**, so it has no single
-license. Every image therefore carries its source's terms in two columns — `license` (the slug,
-verbatim from that source's importer config) and `license_url` (where those terms are stated):
+The authority on this is the dataset's own
+[`LICENSE.md`](https://huggingface.co/datasets/project-oceania/planktonzilla-17M/blob/main/LICENSE.md)
+on the Hub, not this repository — read it before redistributing anything. It licenses the corpus in
+three layers: each image keeps its **source collection's** licence with no aggregate override; the
+planktonzilla contributions (harmonised taxonomy, derived metadata, splits, docs, scripts) are
+**CC BY 4.0**; and the compilation itself, including any sui generis database right, is **CC0 1.0**.
+
+`planktonzilla-17M` aggregates sources under **five different sets of terms**, so no single license
+can lawfully cover it — it holds both share-alike and non-commercial material, and those conditions
+are mutually incompatible. Every image therefore carries its source's terms in two columns —
+`license` (the slug, verbatim from that source's importer config) and `license_url` (where those
+terms are stated).
+
+The shares below describe the **published** dataset. The registry covers all 15 of its
+sources, so a from-scratch rebuild reproduces the same mix.
 
 | License | Images | Share | Reuse |
 | --- | ---: | ---: | --- |
-| `cc-by-4.0` | 8,888,497 | 51.07% | attribution |
+| `cc-by-4.0` | 8,870,555 | 50.97% | attribution |
 | `mit` ⚠️ | 3,563,595 | 20.48% | attribution — but see KI-14 |
 | `cc-by-nc-4.0` | 2,975,337 | 17.10% | attribution, **non-commercial only** |
 | `cc-by-sa-4.0` | 1,915,882 | 11.01% | attribution, **share-alike** |
 | `other` ⚠️ | 60,736 | 0.35% | unstated — see KI-15 |
+| `cc0-1.0` | 17,942 | 0.10% | public domain — **no attribution required** |
 
 The practical consequence: **17.1% of the corpus may not be used commercially** and a further
 11.0% imposes share-alike on derivatives. Filter before you train:
@@ -408,7 +513,7 @@ The practical consequence: **17.1% of the corpus may not be used commercially** 
 from datasets import load_dataset
 
 ds = load_dataset("project-oceania/planktonzilla-17M", split="train")
-commercial = ds.filter(lambda row: row["license"] in {"cc-by-4.0", "mit"})  # 12,452,092 images
+commercial = ds.filter(lambda row: row["license"] in {"cc-by-4.0", "mit", "cc0-1.0"})  # 12,452,092 images
 ```
 
 Two entries deserve a second look before you rely on them — `whoi` (`mit` is the license of a

@@ -59,6 +59,7 @@ _TAXONOMY_CSV = root / "planktonzilla" / "planktonzilla_dataset" / "planktonzill
 # if the mapping there is edited, this independent copy makes the test fail instead of
 # agreeing with the edit.
 _EXPECTED_DEEDS = {
+    "cc0-1.0": "https://creativecommons.org/publicdomain/zero/1.0/",
     "cc-by-4.0": "https://creativecommons.org/licenses/by/4.0/",
     "cc-by-nc-4.0": "https://creativecommons.org/licenses/by-nc/4.0/",
     "cc-by-sa-4.0": "https://creativecommons.org/licenses/by-sa/4.0/",
@@ -196,6 +197,9 @@ def test_generate_config_datasets_are_all_covered():
     assert not configured - set(DATASET_LICENSES), (
         f"cfg.datasets source(s) with no recorded license: {sorted(configured - set(DATASET_LICENSES))}"
     )
-    # The build config carries 12 of the 15; the other three need a manual .zip download
-    # and are commented out there, which is exactly why the table is not derived from it.
-    assert len(configured) == 12
+    # The registry now carries all 15, so a from-scratch build reproduces every source
+    # of the published dataset. The table is still declared independently of
+    # cfg.datasets: it is the record of each source's TERMS, which must survive a source
+    # being temporarily removed from the build.
+    assert configured == set(DATASET_LICENSES)
+    assert len(configured) == 15

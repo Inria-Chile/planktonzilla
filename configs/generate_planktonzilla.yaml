@@ -32,14 +32,31 @@ num_proc: null
 # Source datasets to import + redefine, in build order (concatenation follows it).
 # `redefiner` is a key into the REDEFINERS map in generate_planktonzilla.py
 # (none -> NoMetadataRedefiner, whoi -> WHOIRedefiner, ecotaxa -> EcoTaxaRedefiner).
-# Datasets that require a manual .zip download are intentionally omitted here; they
-# match the commented-for-reference blocks below and in the script:
-#   - jedi_oceans_cpics (import_name: jedi,            redefiner: jedi,    CPICS_Validated.zip)
-#   - sykezooscan2024   (import_name: sykezooscan2024, redefiner: none,    SYKE-plankton_ZooScan_2024.zip)
-#   - zoolake           (import_name: zoolake,         redefiner: none,    zoolake_data.zip)
-# To enable one, add an entry with an extra override, e.g.:
-#   - {name: zoolake, import_name: zoolake, cleanup: true, redefiner: none,
-#      extra_overrides: ["dataset_import.manual_download_local_file_names=${data_dir}/zoolake_data.zip"]}
+# Three sources were long described as "requires a manual .zip download" because of
+# anti-bot protection. Checked against the live services on 2026-08-01: NONE of them
+# does, and all three are now active entries at the end of the table.
+#
+# `sykezooscan2024` was the only one needing real work — Fairdata packages it on demand
+# rather than serving a direct URL — which its importer resolves through the Download API
+# (`fairdata_pid`).
+#
+# The registry therefore covers all 15 sources of the published dataset: a from-scratch
+# build reproduces it, rather than 12 of its 15 parts.
+#
+# Each entry carries THREE distinct identifiers — do not interchange them:
+#   name        the source's identity. It is the `dataset` column value AND the
+#               taxonomy CSV `Dataset` value, so it must match the CSV exactly.
+#   import_name the configs/dataset_import/<stem>.yaml filename.
+#   redefiner   a key into the REDEFINERS map above.
+# For 5 of the 15 active entries name != import_name (whoi/whoi-plankton,
+# zooscan/zooscannet, planktonset1.0/planktonset1, global_uvp5/global_uvp5net,
+# jedioceans/jedi_oceans_cpics).
+#
+# If one of the downloads breaks upstream, fall back to a hand-fetched archive without
+# removing the source from this table — `pz_planktonzilla dry_run=true` reports the exact
+# path and URL for anything still missing:
+#   - {name: zoolake, import_name: zoolake, cleanup: false, redefiner: none,
+#      extra_overrides: ["dataset_import.manual_download_local_file_names=${data_dir}/manual_downloads/zoolake_data.zip"]}
 datasets:
   - { name: isiisnet, import_name: isiisnet, cleanup: true, redefiner: none }
   - { name: whoi, import_name: whoi-plankton, cleanup: true, redefiner: whoi }
@@ -87,4 +104,30 @@ datasets:
       import_name: global_uvp5net,
       cleanup: false,
       redefiner: ecotaxa,
+    }
+  # Appended, not inserted: registry order is the concatenation order of the output, so
+  # adding these at the end leaves every existing source at the index it already had.
+  # Both download automatically (checked 2026-08-01); cleanup:false keeps the large raw
+  # archives (zoolake is 492 MB) for reuse across runs.
+  - { name: zoolake, import_name: zoolake, cleanup: false, redefiner: none }
+  # NOTE: jedioceans is CC-BY-SA-4.0. It is the only ShareAlike source here, and it does
+  # not combine with the five CC-BY-NC-4.0 sources above into a single redistributable
+  # licence — see the Licensing section of the README. Per-image `license` /
+  # `license_url` columns record each row's terms, which is what makes the mix tractable.
+  - {
+      name: jedioceans,
+      import_name: jedi_oceans_cpics,
+      cleanup: false,
+      redefiner: jedi,
+    }
+  # Resolves its archive through the Fairdata Download API (`fairdata_pid`) rather than a
+  # direct URL — verified end to end on 2026-08-01: 20 class folders / 22,753 images,
+  # matching its 20 taxonomy CSV labels exactly. cc-by-4.0, so it adds nothing new to the
+  # licence mix. With this entry the registry covers all 15 sources of the published
+  # dataset, so a from-scratch build reproduces it.
+  - {
+      name: sykezooscan2024,
+      import_name: sykezooscan2024,
+      cleanup: false,
+      redefiner: none,
     }

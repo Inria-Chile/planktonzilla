@@ -5,6 +5,12 @@ hf_dataset_name: null
 
 data_dir: ${paths.data_dir}
 
+# Path(s) to an archive downloaded by hand, used instead of fetching download_uris.
+# Declared here (not only on the sources that need it) so it can always be overridden
+# without Hydra's `+` prefix — struct mode rejects setting a key a config never declared,
+# which would otherwise make the documented override fail on most sources.
+manual_download_local_file_names: null
+
 force_download: false
 resume_download: true
 force_imagefolder_preparation: false

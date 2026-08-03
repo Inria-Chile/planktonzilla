@@ -57,6 +57,14 @@ EXPECTED_TABLE = [
     ("syke_ifcb_2022", "syke_ifcb_2022", False, "none"),
     ("planktoscope", "planktoscope", False, "ecotaxa"),
     ("global_uvp5", "global_uvp5net", False, "ecotaxa"),
+    # Appended 2026-08-01, once none of the three turned out to need the manual .zip
+    # they had long been documented as requiring. They go at the END so every source
+    # above keeps the index it already had — registry order is the concatenation order
+    # of the output. With these the registry covers all 15 sources of the published
+    # dataset.
+    ("zoolake", "zoolake", False, "none"),
+    ("jedioceans", "jedi_oceans_cpics", False, "jedi"),
+    ("sykezooscan2024", "sykezooscan2024", False, "none"),
 ]
 
 
@@ -182,7 +190,7 @@ def test_null_fallback_defaults_match_legacy_absolute_values():
 def test_datasets_and_repo_id_pinned_in_config():
     """Pin the config-driven import table + repo id (the migrated values).
 
-    Asserts cfg.datasets is exactly the frozen 12-row table in order, repo_id is
+    Asserts cfg.datasets is exactly the frozen 15-row table in order, repo_id is
     the consolidated dataset identity, and the REDEFINERS map resolves each key to
     the expected class.
     """
@@ -202,6 +210,7 @@ def test_datasets_and_repo_id_pinned_in_config():
         "none": gp.NoMetadataRedefiner,
         "whoi": gp.WHOIRedefiner,
         "ecotaxa": gp.EcoTaxaRedefiner,
+        "jedi": gp.JediRedefiner,
     }
     for key, klass in expected_classes.items():
         assert gp.REDEFINERS[key] is klass
@@ -243,9 +252,10 @@ def test_main_pins_override_blocks_and_redefiners(monkeypatch, tmp_path):
         "none": gp.NoMetadataRedefiner,
         "whoi": gp.WHOIRedefiner,
         "ecotaxa": gp.EcoTaxaRedefiner,
+        "jedi": gp.JediRedefiner,
     }
 
-    # Exactly these 12 active datasets, in this order (commented ones excluded).
+    # Exactly these 15 active datasets, in this order.
     assert list(captured_redefiners.keys()) == [t[0] for t in EXPECTED_TABLE]
     assert len(captured_overrides) == len(EXPECTED_TABLE)
 

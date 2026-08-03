@@ -6,7 +6,10 @@ hf_dataset_name: zoolake
 push_to_hub: true
 
 human_readable_name: "ZooLake Plankton Dataset"
-license: "cc-by-4.0"
+# CC0, not CC BY: verified at the originating EAWAG deposit and recorded in the published
+# dataset's LICENSE.md. The earlier cc-by-4.0 value over-stated the restriction — CC0
+# requires no attribution at all.
+license: "cc0-1.0"
 source_url: "https://opendata.eawag.ch/dataset/52b6ba86-5ecb-448c-8c01-eec7cb209dc7/resource/1cc785fa-36c2-447d-bb11-92ce1d1f3f2d/download/data.zip"
 description: "Plankton images annotated into 35 classes over 17900 images of zooplankton and large phytoplankton colonies, detected in Lake Greifensee (Switzerland) with the Dual Scripps Plankton Camera."
 download_uris: "https://opendata.eawag.ch/dataset/52b6ba86-5ecb-448c-8c01-eec7cb209dc7/resource/1cc785fa-36c2-447d-bb11-92ce1d1f3f2d/download/data.zip"

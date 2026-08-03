@@ -55,6 +55,9 @@ repository = "https://github.com/Inria-Chile/planktonzilla"
 [project.scripts]
 pz_import_dataset = 'planktonzilla.dataset_import.import_dataset:main'
 pz_train = 'planktonzilla.train:main'
+pz_planktonzilla = 'planktonzilla.planktonzilla_dataset.make_planktonzilla:main'
+# DEPRECATED, removed in the next minor release: both are subsumed by pz_planktonzilla
+# (full build == the bare command; taxonomy re-sync == base=hub sources=[]).
 pz_generate_planktonzilla = 'planktonzilla.planktonzilla_dataset.generate_planktonzilla:main'
 pz_update_planktonzilla = 'planktonzilla.planktonzilla_dataset.update_planktonzilla:main'
 pz_sankey = 'planktonzilla.planktonzilla_dataset.sankey:main'

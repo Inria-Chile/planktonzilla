@@ -118,16 +118,290 @@ not uniform.
 **Frozen-output risk: MEDIUM.** Shifts null/dtype representation in the produced CSVs. →
 `HARDEN-01`.
 
+**Partially resolved (taxonomy-CSV half).** The `generate` vs `update` divergence is gone:
+both now read `planktonzilla_taxonomy.csv` through the single polars reader
+`generate_planktonzilla.build_taxonomy_lookup`, and `update_planktonzilla.build_sync_dict`
+is a thin projection of it. The pandas implementation was deleted, so the two paths **cannot**
+drift again — there is only one.
+
+This was provably zero-drift: over the shipped CSV the two implementations agree on all 16
+synced columns × 1485 rows, in value **and** Python type.
+`tests/test_taxonomy_lookup_equivalence.py` pins that against a verbatim copy of the deleted
+pandas reader, and keeps pinning it forward — the two would *not* agree on every possible CSV
+(a numeric-only `ecotaxa_ID` column with blanks makes polars infer `Int64` → `328` where
+pandas infers `float64` → `"328.0"`, exactly the KI-12 shape), so a future CSV edit that
+enters that regime turns the test red instead of silently rewriting ID values.
+
+One deliberate behavior change came with it: a duplicate `(Dataset, Raw_Labels)` key used to
+hard-raise in the pandas path and be silently last-wins in the polars path. It now **warns and
+keeps the last row** — the generation path's long-standing behavior, made visible. The shipped
+CSV has no duplicates.
+
+**Still open:** the `extract_taxon_ids.py` output CSVs (empty-string vs `null` asymmetry) and
+the `";"` vs `","` separator convention. Those are untouched. → `HARDEN-01`.
+
+## KI-16 — The split probe in the build path reads the repository root, not the imagefolder
+
+**Where:** `generate_planktonzilla.py`, `import_and_redefine_source` — the `split_path = root /
+alias` probe.
+
+**Today:** `root` there is the module-level pyrootutils **repository** root, not the source's
+`imagefolder_dir`. `DatasetImporter.import_dataset` runs the identical probe correctly rooted at
+its own imagefolder, so this is a copy-paste slip. No `train/`, `validation/`, `val/` or `test/`
+directory exists at the repository root, so `data_files` is always empty and control always
+reaches the single-split fallback. Consequences:
+
+- `n_splits` is always `1`, so `original_path` is always the last **two** path chunks
+  (`/<class>/<file>`) rather than three. Pinned by
+  `tests/test_gen_planktonzilla_lensless_e2e.py`.
+- A stray `train/` directory at the repository root would hijack `data_files` for **every**
+  source at once.
+- The depth-2 fallback glob cannot read the split layouts `LenslessDatasetImporter` (renames
+  `TRAIN_IMAGE`/`TEST_IMAGE` → `train`/`test`) and `ZooLakeDatasetImporter` produce.
+
+**Do NOT fix.** `original_path` values are frozen in the published dataset, and a per-source
+refresh places rebuilt rows *beside* rows carried over from that published dataset — correcting
+the probe would make the two disagree within one artifact. Carried verbatim into
+`import_and_redefine_source` under a `# KNOWN ISSUE:` comment. → gate any correction on a golden
+diff (`HARDEN-01`).
+
+## KI-17 — Two `dataset_import` configs named classes that do not exist
+
+**Where:** `configs/dataset_import/medplanktonset.yaml`, `configs/dataset_import/sykezooscan2024.yaml`.
+
+**Was:** `medplanktonset.yaml` targeted `MedPlanktonSetDatasetImporter`, which had never been
+written, and `sykezooscan2024.yaml` targeted `SYKEZooScan2024` instead of
+`SYKEZooScan2024DatasetImporter`. `medplanktonset` is the **5th of the 12 active entries** in
+the `datasets` registry, so a full build died partway through — after four sources had already
+been downloaded and processed.
+
+**Resolved.** The `sykezooscan2024` target is corrected, and `MedPlanktonSetDatasetImporter` is
+implemented. `tests/test_dataset_import_configs.py` now instantiates every config in the group,
+so a `_target_` naming a missing class fails in CI instead of mid-build.
+
+**Caveat on the new importer:** the internal layout of MedPlanktonSet's `IFCB_images.zip` could
+not be verified — Zenodo was unreachable from the environment it was written in. Rather than
+hard-code a guessed path from the extraction root to the class folders (as its sibling importers
+do), it locates them with `find_class_root`, which scans for the directory whose subdirectories
+hold images. That is layout-independent and covered by tests, but **the first real run should
+still be checked**: its reported class count should match the 139 `medplanktonset` rows in
+`planktonzilla_taxonomy.csv`. A mismatch means the scan picked the wrong level.
+
+## KI-18 — A Hub push that never succeeded reported success
+
+**Where:** `dataset_importer.py` `_push_to_hub`.
+
+**Was:** the retry loop caught every exception per attempt and logged a warning. After the
+last attempt it fell through to `update_dataset_metadata()` and returned normally, so a push
+that never succeeded looked like a successful one — and the dataset card was refreshed for a
+dataset that was never uploaded.
+
+**Resolved.** The last error is retained and re-raised as a `RuntimeError` naming the attempt
+count; `update_dataset_metadata()` is not reached on failure. Pinned by
+`tests/test_dataset_import_configs.py::test_push_to_hub_raises_after_exhausting_retries`.
+
+## KI-19 — `check_image_file_integrity` crashed on the layouts that need it
+
+**Where:** `dataset_importer.py` `import_dataset`, the `check_image_file_integrity` block.
+
+**Was:** a fixed two-level walk (`os.listdir(imagefolder)` then
+`os.listdir(imagefolder / class_dir)`). On a **split** layout (`train/<class>/<image>`), which
+`LenslessDatasetImporter` and `ZooLakeDatasetImporter` both produce, the inner entries are class
+**directories**. `is_valid_image_file` returns False for a directory (`IsADirectoryError`
+subclasses `OSError`, which `IOError` aliases), so the next line called `os.remove` on a
+directory and raised uncaught. The adjacent warning was also missing its `f` prefix, so it
+logged the literal text `{file}` / `{class_dir}`.
+
+**Resolved.** The walk is now `rglob("*")` filtered to files, so it is layout-independent;
+empty class folders left behind are cleaned up afterwards. Both fixed together since they sit
+on adjacent lines. Off by default, so no published artifact is affected.
+
+## KI-20 — The manual-download comment conflated three different identifiers
+
+**Where:** `configs/generate_planktonzilla.yaml`, the commented block above `datasets`.
+
+**Was:** the bullet read `jedi_oceans_cpics (import_name: jedi, redefiner: jedi, ...)`. The
+leading token was actually the `import_name`, `import_name: jedi` was actually the *redefiner*
+key, and the real `name` — which must equal the taxonomy CSV `Dataset` value — is a third
+string, `jedioceans` (95 rows). Following the comment produced an entry that could not resolve.
+
+**Resolved.** Replaced with a table naming all three identifiers per row, plus a note that 4 of
+the 12 active entries have `name != import_name`. Comment only; the `datasets` table itself is
+unchanged.
+
+## KI-21 — "Requires a manual download" was true of one source, not three
+
+**Where:** `configs/generate_planktonzilla.yaml` (comment above `datasets`),
+`generate_planktonzilla.py` (module docstring), `configs/dataset_import/{zoolake,
+jedi_oceans_cpics,sykezooscan2024}.yaml`.
+
+**Was:** all three omitted sources were documented as needing a hand-downloaded `.zip`
+because of "anti-bot protection". The configs say otherwise:
+
+- **`zoolake`** has a direct `download_uris` and **no** manual override. Nothing forces it
+  manual — it is simply absent from the `datasets` table. The automatic path appears never
+  to have been tried.
+- **`jedioceans`** has a direct `download_uris` **and** a
+  `manual_download_local_file_names` that shadows it (the manual branch is checked first in
+  `_download_and_extract`), so the direct URL is never attempted either.
+- **`sykezooscan2024`** is the only genuine case: `download_uris` was the empty string.
+  Fairdata serves a generated package rather than a stable URL, so there was nothing to
+  fetch.
+
+**Resolved, and verified against the live services on 2026-08-01. None of the three needs
+a manual download.**
+
+- **`sykezooscan2024`** — `SYKEZooScan2024DatasetImporter` resolves the archive through
+  the Fairdata Download API (`fairdata_pid`). Exercised end to end: resolved, downloaded
+  the 79,363,785-byte package, unwrapped it, and produced 20 class folders / 22,753
+  images matching the 20 `sykezooscan2024` rows in the taxonomy CSV exactly.
+- **`zoolake`** — its `download_uris` serves a 492 MB `application/zip` whose first entry
+  is `data/Fig_All_plankton_images.png`. Reachability and archive shape verified; a full
+  import was not run.
+- **`jedioceans`** — its `download_uris` serves a zip whose first entry is
+  `CPICS_Validated/20141001-07.zip`, the nested layout its importer expects. The manual
+  override that shadowed this now defaults to null. Same caveat: reachability and shape
+  verified, full import not run.
+
+The "anti-bot protection" premise was wrong for all three. What was actually true is that
+one source (`sykezooscan2024`) had no direct URL because Fairdata packages on demand.
+
+## KI-22 — `SYKEZooScan2024DatasetImporter` globbed PlanktonSet1's path
+
+**Where:** `dataset_importer.py` `SYKEZooScan2024DatasetImporter._prepare_imagefolder`.
+
+**Was:** it globbed `0127422/2.3/data/FINAL_Plankton_Segments_12082014` — the NOAA
+accession path belonging to **PlanktonSet1**, almost certainly copy-pasted. No such path
+exists anywhere in the SYKE archive, so the loop iterated **nothing** and produced an
+**empty imagefolder without raising**. Undetectable until now, because the source could
+not be downloaded at all (KI-21), so the broken path was never reached.
+
+**Today's real layout**, captured from the live download::
+
+    <package>.zip
+      SYKE-plankton_ZooScan_2024/readme.md
+      SYKE-plankton_ZooScan_2024/SYKE-plankton_ZooScan_2024.zip     <- nested
+        SYKE-plankton_ZooScan_2024/images/SYKE-plankton_ZooScan_2024/<class>/*.png
+        SYKE-plankton_ZooScan_2024/class_splits/…
+        __MACOSX/…
+
+**Resolved.** The importer unwraps the nested archive, then locates the class folders with
+`find_class_root` rather than a fixed path, so a re-release that renames a wrapper cannot
+break it the same way. Pinned by
+`tests/test_dataset_import_configs.py::test_syke_prepare_imagefolder_unwraps_the_nested_archive`
+and by a test asserting the archive's 20 class names equal the CSV's 20 labels.
+
+**Frozen-output risk: none.** `sykezooscan2024` is not in the active `datasets` table, and
+its 20 CSV rows are 20 of the 1,485 — the published dataset's rows for this source came
+from a build that must have used a hand-downloaded archive.
+
+**Related improvement.** A missing hand-downloaded archive used to surface as an error from
+inside `extract()` naming neither the file nor its source. `missing_manual_downloads()` /
+`manual_download_instructions()` now report it up front — per source at import time, and
+for a whole build via `pz_planktonzilla dry_run=true`, which lists every blocking archive
+before anything is downloaded.
+
+## KI-23 — The consolidated command could not perform the license migration
+
+**Where:** `make_planktonzilla.py` `main`, against
+`update_planktonzilla.add_license_columns`.
+
+**Was:** an integration gap between the two changesets that landed together, invisible in
+either one alone. `pz_planktonzilla` requires every part to match
+`constants.CONSOLIDATED_COLUMNS`, which now includes `license` / `license_url`. The
+**published** planktonzilla-17M predates those columns, so
+`assert_consolidated_schema` rejected it as a base — and `add_license_columns` was only
+ever called from `pz_update_planktonzilla`, never from the command that replaces it.
+
+The documented migration was therefore broken end to end:
+
+    pz_planktonzilla base=hub sources=[] sync_taxonomy=false   # -> Schema mismatch
+
+and the deprecation warning on `pz_update_planktonzilla` pointed at that same failing
+invocation.
+
+**Resolved.** `ensure_license_columns` derives the pair from the `dataset` column when a
+base lacks it, applied **before** the schema check and before any `select` —
+`add_column` flattens an indices mapping, which on the full dataset would rewrite ~13.6M
+rows for nothing. It is derivation, not invention (both values are a pure function of
+the source), but it does change the published schema, so it logs a warning pointing at
+`push_revision`. Pinned by two tests in `test_make_planktonzilla_splice.py` covering both
+the pure-resync fast path and the splice path.
+
+**Consequence worth knowing:** a base holding a source absent from `DATASET_LICENSES`
+now fails during derivation rather than being carried over with a warning. That is
+deliberate — a license cannot be guessed — but it means the carry-over of unregistered
+sources only works on a base that already has the columns.
+
+## KI-24 — `zoolake` and `jedioceans` joined the registry; the licence mix widened
+
+**Where:** `configs/generate_planktonzilla.yaml` `datasets`.
+
+**Change (2026-08-01, maintainer decision).** Both were added as active entries once
+KI-21 established that neither needs a hand-downloaded archive. They are **appended, not
+inserted**: registry order is the concatenation order of the output, so every existing
+source keeps the index it already had.
+
+`sykezooscan2024` followed the same day, once its Fairdata resolver (KI-21) and its
+wrong-path `_prepare_imagefolder` (KI-22) were both fixed and verified end to end. The
+registry now covers **all 15** sources of the published dataset, so a from-scratch build
+reproduces it rather than 12 of its 15 parts.
+
+**Licence consequence, stated plainly.** `jedioceans` is **CC-BY-SA-4.0** and is the only
+ShareAlike source. A rebuild therefore mixes:
+
+| terms | sources |
+| --- | ---: |
+| `cc-by-4.0` | 7 |
+| `cc-by-nc-4.0` | 5 |
+| `cc-by-sa-4.0` | 1 |
+| `mit` | 1 |
+| `other` | 1 |
+
+ShareAlike and NonCommercial cannot both be satisfied by a single licence on a combined
+work, so the aggregate **cannot** be relicensed as one thing — it could not before
+either, but this makes it unambiguous. What makes the mix tractable is that every row
+carries its own `license` / `license_url`, so a consumer filters rather than relying on a
+dataset-level statement. The published dataset already contained all three of these
+sources, so this changes what a *rebuild* produces, not what is published.
+
+**The aggregate IS licensed on the Hub**, in
+[`LICENSE.md`](https://huggingface.co/datasets/project-oceania/planktonzilla-17M/blob/main/LICENSE.md),
+and that document is the authority — not this repository. It structures the corpus in
+three layers: each image keeps its source collection's licence with no aggregate
+override; the planktonzilla contributions (harmonised taxonomy, derived metadata,
+splits, docs, scripts) are CC BY 4.0; and the compilation itself, including any sui
+generis database right, is CC0 1.0. It reaches the same conclusion this entry does —
+share-alike and non-commercial are mutually incompatible, so per-source licensing is the
+only available structure — and it records that images are redistributed byte-identical,
+which is what keeps the repository a *Collection* rather than an Adaptation and stops
+CC-BY-SA propagating to the other fourteen collections.
+
+**One discrepancy found and fixed (2026-08-01).** Comparing `DATASET_LICENSES` against
+that LICENSE.md, fourteen of fifteen agreed; **`zoolake` did not**. It was recorded as
+`cc-by-4.0` here (transcribed from its importer config) while the published notice
+states **CC0 1.0 — no attribution required**, verified at the originating EAWAG deposit.
+The repository value over-stated the restriction. Corrected in
+`configs/dataset_import/zoolake.yaml` and `DATASET_LICENSES` together, since the drift
+test compares them.
+
+This mattered because `zoolake` had *just* become an active registry entry (above): a
+rebuild would otherwise have stamped the wrong, more restrictive licence on every
+zoolake row. The LICENSE.md notes that seven sources differ from earlier statements —
+including the paper's Table 8 — always in the over-stating direction, so the repository
+is the side that lags. **When the two disagree, the published LICENSE.md wins.**
+
 ---
 
 *Recorded 2026-06-17 during the v1.0 `dataset_generation` cleanup (Phase 7, `KNOWN-01`).
-See `.planning/REQUIREMENTS.md` `HARDEN-01` / `HARDEN-02` for the deferred v2 work.*
+See `.planning/REQUIREMENTS.md` `HARDEN-01` / `HARDEN-02` for the deferred v2 work.
+KI-16 through KI-24 recorded 2026-08-01 during the `pz_planktonzilla` consolidation.*
 
 ---
 
 ## Data inconsistencies in `planktonzilla_taxonomy.csv` (KI-8 – KI-13)
 
-KI-1..KI-7 above concern **code behavior**. KI-8..KI-13 below concern **data** defects in the
+KI-1..KI-7 and KI-16..KI-24 above concern **code behavior**. KI-8..KI-13 below concern **data** defects in the
 frozen `planktonzilla_taxonomy.csv` itself, found by a two-method audit on **2026-07-13**
 (deterministic checks + a 27-agent adversarially-verified multi-lens audit; every finding
 below survived independent re-verification, and candidate findings explained by a legitimate
