@@ -424,6 +424,28 @@ class RedefineDataset:
         ds = ds.map(extract, desc="Flattening metadata", num_proc=num_proc)
         return ds.remove_columns("metadata")
 
+    def _mapped_features(self, ds):
+        """Declare the schema the taxonomy pass produces, instead of letting it be inferred.
+
+        ``map`` types each writer batch from the values in it. An imagefolder is ordered
+        by class, so the first batch is a single class — and a class with no Order,
+        Family or Genus types those columns ``null``, after which the first class that
+        HAS one dies with ``Couldn't cast array of type string to null``.
+
+        Not hypothetical: sykezooscan2024's first class alphabetically is ``Bivalvia``,
+        whose Order/Family/Genus are all empty while later classes set them, so importing
+        that source failed outright. It fails identically on datasets 4.8.5 and 5.0.1, so
+        this is this pass, not the library.
+
+        The types are exactly the ones :meth:`_cast_scalar_types` casts to at the end of
+        ``redefine``, so no output value or type changes — only that the schema stops
+        depending on which class happens to sort first.
+        """
+        features = ds.features.copy()
+        for column in (*constants.IDENTITY_COLS, *constants.LICENSE_COLS, *self.lookup_cols):
+            features[column] = Value("bool") if column == "plankton" else Value("string")
+        return features
+
     def _cast_scalar_types(self, ds):
         """Set consistent types so all datasets concatenate without conflicts."""
         features = ds.features.copy()
@@ -477,7 +499,7 @@ class RedefineDataset:
             )
 
             logger.info(f"Processing split {split}...")
-            ds = ds.map(process_row, desc="Mapping taxonomy", num_proc=num_proc)
+            ds = ds.map(process_row, desc="Mapping taxonomy", num_proc=num_proc, features=self._mapped_features(ds))
 
             ds = self._add_metadata(ds)
             ds = self._flatten_metadata(ds)

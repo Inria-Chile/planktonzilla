@@ -565,20 +565,108 @@ def test_fairdata_network_failure_is_wrapped():
         di.resolve_fairdata_download_url("pid-7", session=_Offline(), sleep=lambda s: None)
 
 
-def test_syke_importer_uses_the_resolver_then_delegates(tmp_path, monkeypatch):
-    """The importer swaps the resolved URL into download_uris and reuses the base path."""
-    importer = _importer("sykezooscan2024", tmp_path)
+def test_syke_importer_fetches_the_package_once_then_delegates(tmp_path, monkeypatch):
+    """The single-use URL is downloaded HERE, then handed to the manual-archive path.
 
+    Assigning it to ``download_uris`` instead — which is what this used to do — gives it
+    to DownloadManager, and that requests the URL TWICE: ``datasets`` calls
+    ``fsspec_head`` (which falls back to a ranged GET when the server discloses no size,
+    as this one does) and then ``fsspec_get``. Measured against the live service on
+    2026-08-04, a completed GET consumes the token and the next one is 401, so the real
+    download failed with UNAUTHORIZED after resolving perfectly.
+    """
+    importer = _importer("sykezooscan2024", tmp_path)
     monkeypatch.setattr(di, "resolve_fairdata_download_url", lambda pid, **kw: f"https://example.invalid/{pid}.zip")
+
+    package = tmp_path / "package.zip"
+    fetched = []
+    monkeypatch.setattr(
+        di.SYKEZooScan2024DatasetImporter,
+        "_fetch_single_use",
+        lambda self, url: (fetched.append(url), package)[1],
+    )
 
     delegated = {}
     monkeypatch.setattr(
-        di.DatasetImporter, "_download_and_extract", lambda self: delegated.setdefault("uris", self.download_uris)
+        di.DatasetImporter,
+        "_download_and_extract",
+        lambda self: delegated.setdefault("manual", self.manual_download_local_file_names),
     )
 
     importer._download_and_extract()
 
-    assert delegated["uris"] == "https://example.invalid/6fa42787-9772-41a5-a6fc-0dde489ed908.zip"
+    assert fetched == ["https://example.invalid/6fa42787-9772-41a5-a6fc-0dde489ed908.zip"], "fetched exactly once"
+    assert not importer.download_uris, "the single-use URL must never reach DownloadManager"
+
+    # A bare string, not a one-element list: DownloadManager.extract MIRRORS the
+    # structure it is given, so a list makes extracted_dirs a list and every
+    # _prepare_imagefolder dies on Path(self.extracted_dirs). Cost an import to learn.
+    assert delegated["manual"] == str(package)
+    assert isinstance(delegated["manual"], str)
+
+
+class _FakeStreamedResponse:
+    """A streaming requests response: context manager, chunks, and a declared length."""
+
+    def __init__(self, chunks, declared=None):
+        self._chunks = chunks
+        total = sum(len(chunk) for chunk in chunks)
+        self.headers = {"Content-Length": str(declared if declared is not None else total)}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def raise_for_status(self):
+        return None
+
+    def iter_content(self, chunk_size=None):
+        yield from self._chunks
+
+
+def test_fetch_single_use_writes_atomically_and_reuses_what_it_wrote(tmp_path, monkeypatch):
+    """A .part file is renamed only on success, and a second call re-fetches nothing.
+
+    The token is spent by the first completed GET, so a retry cannot resume — which
+    makes "is the file on disk complete?" the only safe question to ask afterwards.
+    """
+    importer = _importer("sykezooscan2024", tmp_path)
+    calls = []
+
+    def _fake_get(url, **kwargs):
+        calls.append((url, kwargs["headers"]["User-Agent"]))
+        return _FakeStreamedResponse([b"PK\x03\x04", b"payload"])
+
+    monkeypatch.setattr(di.requests, "get", _fake_get)
+
+    package = importer._fetch_single_use("https://example.invalid/pkg.zip")
+
+    assert package.read_bytes() == b"PK\x03\x04payload"
+    assert package.name == f"{importer.fairdata_pid}.zip"
+    assert not list(package.parent.glob("*.part")), "the partial file must not survive"
+    assert calls[0][1] == importer.http_user_agent, "the package is fetched as this project"
+
+    # Already on disk: no second request, no second token spent.
+    assert importer._fetch_single_use("https://example.invalid/pkg.zip") == package
+    assert len(calls) == 1
+
+
+def test_fetch_single_use_refuses_a_truncated_package(tmp_path, monkeypatch):
+    """A short read is an error now, not a corrupt archive that fails hours later."""
+    importer = _importer("sykezooscan2024", tmp_path)
+
+    monkeypatch.setattr(
+        di.requests,
+        "get",
+        lambda url, **kwargs: _FakeStreamedResponse([b"only-this"], declared=99999),
+    )
+
+    with pytest.raises(RuntimeError, match="single-use"):
+        importer._fetch_single_use("https://example.invalid/pkg.zip")
+
+    assert not list(importer.raw_dir.glob("*")), "nothing partial is left to be mistaken for the package"
 
 
 def test_syke_manual_override_skips_the_resolver(tmp_path, monkeypatch):

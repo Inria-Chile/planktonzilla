@@ -1726,6 +1726,70 @@ class SYKEZooScan2024DatasetImporter(DatasetImporter):
             return [("fairdata", self.fairdata_pid)]
         return super().download_targets()
 
+    def _fetch_single_use(self, url: str) -> Path:
+        """Download an authorized Fairdata URL exactly once, into ``raw_dir``.
+
+        The URL authorises ONE download. Measured against the live service on
+        2026-08-04, per token: HEAD then GET both answer 200, but a *completed* GET
+        consumes it and the next GET is ``401 UNAUTHORIZED``.
+
+        That is fatal to the usual path, because it makes two requests: ``datasets``
+        calls ``fsspec_head`` (``HTTPFileSystem.info``, which falls back to a ranged GET
+        when HEAD discloses no size — this service discloses none) and then
+        ``fsspec_get``. The first consumes the token and the real download fails, which
+        is what an import did until this method existed. So the package is fetched once,
+        here, and handed to the ordinary hand-downloaded-archive path.
+
+        Written to a ``.part`` file and renamed only on success: a half-downloaded
+        package that looked complete would be reused by the next run and fail in
+        ``extract`` instead, hours later and nowhere near the cause.
+        """
+        self.raw_dir.mkdir(parents=True, exist_ok=True)
+        target = self.raw_dir / f"{self.fairdata_pid}.zip"
+
+        if target.exists() and not self.force_download:
+            logger.info(f"Reusing the Fairdata package already at {target} (force_download=True to re-fetch).")
+            return target
+
+        partial = target.with_suffix(".part")
+        logger.info(f"Downloading the Fairdata package to {target}.")
+
+        with requests.get(
+            url,
+            stream=True,
+            timeout=self.http_timeout,
+            headers={"User-Agent": self.http_user_agent},
+        ) as response:
+            response.raise_for_status()
+            declared = int(response.headers.get("Content-Length") or 0)
+            with (
+                open(partial, "wb") as handle,
+                tqdm(
+                    total=declared or None,
+                    unit="B",
+                    unit_scale=True,
+                    desc="Fairdata package",
+                    disable=not self.show_progress,
+                    leave=False,
+                ) as progress,
+            ):
+                for chunk in response.iter_content(chunk_size=1024 * 1024):
+                    handle.write(chunk)
+                    progress.update(len(chunk))
+
+        written = partial.stat().st_size
+        if declared and written != declared:
+            partial.unlink(missing_ok=True)
+            raise RuntimeError(
+                f"The Fairdata package for «{self.fairdata_pid}» stopped at {naturalsize(written)} of "
+                f"{naturalsize(declared)}. The download token is single-use, so retry from the start rather than "
+                f"resuming — re-run the import."
+            )
+
+        partial.replace(target)
+        logger.info(f"Fairdata package downloaded ({naturalsize(written)}).")
+        return target
+
     def _download_and_extract(self):
         """Resolve the archive through the Fairdata API when a PID is configured."""
         if self.fairdata_pid and not self.manual_download_local_file_names:
@@ -1738,7 +1802,13 @@ class SYKEZooScan2024DatasetImporter(DatasetImporter):
                 source_url=self.source_url,
             )
             logger.info(f"Fairdata resolved «{self.fairdata_pid}» to a download URL.")
-            self.download_uris = resolved
+            # NOT assigned to download_uris: that hands the single-use URL to
+            # DownloadManager, which requests it twice. See _fetch_single_use.
+            #
+            # A bare string, NOT a one-element list: DownloadManager.extract mirrors the
+            # structure it is given, so a list makes extracted_dirs a list, and every
+            # _prepare_imagefolder starts with Path(self.extracted_dirs).
+            self.manual_download_local_file_names = str(self._fetch_single_use(resolved))
 
         return super()._download_and_extract()
 

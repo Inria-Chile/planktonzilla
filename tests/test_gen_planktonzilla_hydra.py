@@ -321,3 +321,30 @@ def test_module_level_num_proc_independent_of_cfg():
     import time and is intentionally NOT driven by cfg.num_proc (only redefine()
     receives the configurable value)."""
     assert gp.num_proc == constants.default_num_proc()
+
+
+def test_taxonomy_map_declares_its_schema_instead_of_inferring_it():
+    """The taxonomy pass must not depend on which class sorts first.
+
+    `map` types each writer batch from its values, and an imagefolder is ordered by
+    class: a first class with no Order/Family/Genus types those columns `null`, and the
+    first later class that has one dies with "Couldn't cast array of type string to
+    null". sykezooscan2024 is exactly that shape (Bivalvia sorts first, with all three
+    empty), so importing it failed on datasets 4.8.5 and 5.0.1 alike.
+    """
+    from datasets import Value
+
+    redefiner = gp.NoMetadataRedefiner(csv_taxonomies_path=str(constants.DEFAULT_TAXONOMY_CSV_FILENAME))
+    ds = Dataset.from_dict({"label": [0, 1]})
+
+    features = redefiner._mapped_features(ds)
+
+    # Every column the taxonomy pass writes is declared...
+    for column in (*constants.IDENTITY_COLS, *constants.LICENSE_COLS, *redefiner.lookup_cols):
+        assert column in features, f"{column} would be inferred from batch content"
+    # ...as the type _cast_scalar_types casts to at the end, so nothing about the
+    # output changes — only that the schema is stated rather than guessed.
+    assert features["Genus"] == Value("string")
+    assert features["aphia_ID"] == Value("string"), "numeric IDs are stored as text"
+    assert features["plankton"] == Value("bool")
+    assert features["label"] == ds.features["label"], "input columns are carried through untouched"
