@@ -28,7 +28,9 @@ root = pyrootutils.setup_root(
 )
 
 
+import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import hydra
@@ -37,6 +39,7 @@ from datasets import Dataset
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import OmegaConf
 
+from planktonzilla.dataset_import import dataset_importer as di
 from planktonzilla.planktonzilla_dataset import constants
 from planktonzilla.planktonzilla_dataset import generate_planktonzilla as gp
 from planktonzilla.planktonzilla_dataset import make_planktonzilla as mk
@@ -110,6 +113,8 @@ def test_config_composes_with_expected_keys():
     assert cfg.sync_unmatched == "keep"
     assert cfg.allow_partial_overwrite is False
     assert cfg.dry_run is False
+    assert cfg.check_downloads == "none"
+    assert cfg.check_timeout == 30
     assert list(cfg.drop) == []
     assert list(cfg.import_overrides) == []
 
@@ -346,6 +351,9 @@ def test_nothing_to_do_is_an_error(tmp_path):
         ("refresh=turbo", "refresh must be one of"),
         ("clean=sometimes", "clean must be one of"),
         ("sync_unmatched=maybe", "sync_unmatched must be one of"),
+        ("check_downloads=yes", "check_downloads must be one of"),
+        ("check_timeout=0", "check_timeout must be"),
+        ("check_timeout=null", "check_timeout must be"),
     ],
 )
 def test_invalid_enum_values_fail_fast(tmp_path, override, message):
@@ -777,3 +785,374 @@ def test_assemble_conforms_to_the_largest_part_not_the_first(tmp_path):
 
     assert final.features["n"] == Value("int64"), "reference should come from the 5-row base part"
     assert [r["dataset"] for r in final] == ["isiisnet"] * 3 + ["lensless"] * 5
+
+
+# --- Network pre-flight (dry_run / check_downloads) ---------------------------------
+
+
+class _StubImporter:
+    """An importer for the pre-flight to walk over: no Hydra, no network, no disk."""
+
+    def __init__(self, imagefolder, results=()):
+        self.imagefolder_dir = imagefolder
+        self._results = list(results)
+        self.probes = []
+
+    def missing_manual_downloads(self):
+        return []
+
+    def manual_download_instructions(self):
+        return ""
+
+    def probe_downloads(self, *, timeout=None, session=None):
+        self.probes.append(timeout)
+        return self._results
+
+
+def _stub_importers(monkeypatch, tmp_path, results=(), built=False):
+    """Replace importer instantiation with one stub per selected source.
+
+    ``built`` gives every stub a non-empty imagefolder, which is what makes a real run
+    skip its download — the state the `needed` scope keys off.
+    """
+    made = []
+
+    def _instantiate(*args, **kwargs):
+        imagefolder = tmp_path / f"imagefolder_{len(made)}"
+        if built:
+            (imagefolder / "a_class").mkdir(parents=True)
+            (imagefolder / "a_class" / "img.png").write_bytes(b"x")
+        made.append(_StubImporter(imagefolder, results))
+        return made[-1]
+
+    monkeypatch.setattr(gp.hydra, "compose", lambda *a, **k: MagicMock())
+    monkeypatch.setattr(gp.hydra.utils, "instantiate", _instantiate)
+    return made
+
+
+def _probe(ok=True, location="https://example.invalid/a.zip", detail="HTTP 200, application/zip", size=1024, warning=None):
+    return di.ProbeResult(kind="url", location=location, ok=ok, detail=detail, size=size, warning=warning)
+
+
+def _preflight_cfg(tmp_path, overrides, job_name):
+    """A composed cfg with a valid taxonomy CSV, ready to drive the pre-flight."""
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "isiisnet", "y")
+    cfg = _compose([f"taxonomy_csv_path={csv_path}", f"data_dir={tmp_path}", *overrides], job_name=job_name)
+    GlobalHydra.instance().clear()
+    return cfg
+
+
+def test_a_plain_run_never_pre_flights(monkeypatch, tmp_path):
+    """check_downloads=none without dry_run leaves the run exactly as it always was.
+
+    The zero-drift guarantee of the consolidated command is asserted elsewhere against
+    pz_generate_planktonzilla; this pins that the new checks cannot creep into it.
+    """
+    cfg = _preflight_cfg(tmp_path, [], "test_make_preflight_off")
+
+    def _boom(**kwargs):
+        raise AssertionError("a plain run must not pre-flight")
+
+    monkeypatch.setattr(mk, "run_preflight", _boom)
+    monkeypatch.setattr(mk, "atomic_replace", lambda ds, path: None)
+
+    _drive(monkeypatch, cfg, tmp_path, mk.main)
+
+
+def test_dry_run_makes_no_network_call(monkeypatch, tmp_path):
+    """The default dry run answers from local state only: no HTTP session is opened."""
+    cfg = _preflight_cfg(tmp_path, ["dry_run=true"], "test_make_preflight_local")
+    importers = _stub_importers(monkeypatch, tmp_path)
+
+    def _no_network(*args, **kwargs):
+        raise AssertionError("network called")
+
+    monkeypatch.setattr(mk.requests, "Session", _no_network)
+    monkeypatch.setattr(mk, "HfApi", _no_network)
+
+    mk.main(cfg)
+
+    assert len(importers) == len(EXPECTED_TABLE), "every selected source is still resolved"
+    assert all(importer.probes == [] for importer in importers), "nothing may be probed"
+
+
+def test_dry_run_probes_every_download_when_asked(monkeypatch, tmp_path):
+    """check_downloads=all probes each source, through the configured timeout."""
+    cfg = _preflight_cfg(
+        tmp_path,
+        ["dry_run=true", "check_downloads=all", "check_timeout=5"],
+        "test_make_preflight_probe",
+    )
+    importers = _stub_importers(monkeypatch, tmp_path, results=[_probe()], built=True)
+
+    mk.main(cfg)
+
+    assert [importer.probes for importer in importers] == [[5]] * len(EXPECTED_TABLE)
+
+
+def test_an_unreachable_download_stops_a_real_run_before_any_import(monkeypatch, tmp_path):
+    """check_downloads on a REAL run refuses to start, rather than failing four sources in.
+
+    ``built=False`` matters: these sources have no imagefolder, so the run really would
+    download them, which is what makes an unreachable archive fatal to it.
+    """
+    cfg = _preflight_cfg(tmp_path, ["check_downloads=needed"], "test_make_preflight_gate")
+    _stub_importers(
+        monkeypatch,
+        tmp_path,
+        results=[_probe(ok=False, location="https://example.invalid/gone.tar", detail="HTTP 404, text/html")],
+        built=False,
+    )
+
+    monkeypatch.setattr(gp.RedefineDataset, "redefine", lambda *a, **k: pytest.fail("the run must not import"))
+    saves = []
+    monkeypatch.setattr(mk, "atomic_replace", lambda ds, path: saves.append(path))
+
+    with pytest.raises(RuntimeError, match="Pre-flight found") as excinfo:
+        mk.main(cfg)
+
+    message = str(excinfo.value)
+    assert "gone.tar" in message, "the failing URL must be named"
+    assert "HTTP 404" in message
+    assert saves == []
+
+
+def test_a_warning_alone_does_not_stop_the_run(monkeypatch, tmp_path):
+    """An HTML body is reported loudly but is not a verdict a machine can make."""
+    cfg = _preflight_cfg(tmp_path, ["dry_run=true", "check_downloads=all"], "test_make_preflight_warn")
+    _stub_importers(monkeypatch, tmp_path, results=[_probe(warning="the server returned an HTML page")], built=True)
+
+    mk.main(cfg)
+
+
+def test_needed_scope_skips_the_sources_that_are_already_built():
+    """`needed` asks "can THIS run proceed?"; `all` asks "is every source downloadable?"."""
+    entries = [{"name": "whoi"}, {"name": "zoolake"}]
+    importers = [(entry, _StubImporter(Path("/nowhere"), [_probe()])) for entry in entries]
+
+    checks, total = mk.check_source_downloads(importers, ["whoi"], scope="needed", timeout=1)
+    probed = [name for entry, importer in importers for name in [entry["name"]] if importer.probes]
+    assert probed == ["whoi"]
+    assert total == 1024
+    # Named, not counted: a probe covering 1 of 2 sources must not read as a clean bill
+    # of health for both.
+    assert any("zoolake" in check.detail for check in checks if check.name == "downloads-skipped")
+
+    for _, importer in importers:
+        importer.probes.clear()
+    mk.check_source_downloads(importers, ["whoi"], scope="all", timeout=1)
+    assert all(importer.probes for _, importer in importers)
+
+
+def test_an_all_scope_audit_blocks_only_what_a_real_run_actually_needs():
+    """`all` must be usable as both an audit and a gate, and they differ on one point.
+
+    A dry run builds nothing, so every failure it finds IS the answer — it exits non-zero.
+    A real run may only be stopped by a source it would fetch: refusing to build because
+    an archive is unreachable for a source whose imagefolder is already on disk would
+    stop a run that was going to succeed.
+    """
+    entries = [{"name": "whoi"}, {"name": "zoolake"}]
+    dead = _probe(ok=False, location="https://example.invalid/gone.tar", detail="HTTP 404, text/html")
+    importers = [(entry, _StubImporter(Path("/nowhere"), [dead])) for entry in entries]
+
+    audit, _ = mk.check_source_downloads(importers, ["whoi"], scope="all", timeout=1, audit=True)
+    assert all(check.blocking for check in audit if check.name.startswith("download:"))
+
+    gate, _ = mk.check_source_downloads(importers, ["whoi"], scope="all", timeout=1, audit=False)
+    verdicts = {check.name: check for check in gate if check.name.startswith("download:")}
+    assert verdicts["download:whoi"].blocking, "this run would fetch whoi, so whoi stops it"
+    assert not verdicts["download:zoolake"].blocking, "zoolake is reused from disk, so it cannot"
+    assert "not blocking" in verdicts["download:zoolake"].detail, "and the report must say why"
+
+
+def test_the_disk_estimate_counts_only_what_would_be_downloaded():
+    """An `all`-scope audit must not inflate the free-space check with archives it audits."""
+    entries = [{"name": "whoi"}, {"name": "zoolake"}]
+    importers = [(entry, _StubImporter(Path("/nowhere"), [_probe(size=1024)])) for entry in entries]
+
+    _, total = mk.check_source_downloads(importers, ["whoi"], scope="all", timeout=1)
+
+    assert total == 1024, "zoolake is probed but never downloaded, so its bytes are not needed"
+
+
+def test_a_crashing_probe_costs_one_source_not_the_whole_report():
+    """probe_downloads only promises to swallow requests' own exceptions.
+
+    Anything else would propagate out of executor.map and lose the verdicts on the other
+    fourteen sources — the one thing this report exists to prevent.
+    """
+
+    class _ExplodingImporter(_StubImporter):
+        def probe_downloads(self, *, timeout=None, session=None):
+            raise ValueError("malformed header")
+
+    importers = [
+        ({"name": "whoi"}, _ExplodingImporter(Path("/nowhere"))),
+        ({"name": "zoolake"}, _StubImporter(Path("/nowhere"), [_probe()])),
+    ]
+
+    checks, _ = mk.check_source_downloads(importers, ["whoi", "zoolake"], scope="needed", timeout=1)
+    verdicts = {check.name: check for check in checks}
+
+    assert not verdicts["download:whoi"].ok
+    assert "ValueError" in verdicts["download:whoi"].detail
+    assert verdicts["download:zoolake"].ok, "the other sources are still reported"
+
+
+def test_check_taxonomy_csv_catches_a_missing_file_and_a_missing_column(tmp_path):
+    """A CSV that lost a rank would build the whole dataset with that rank blank."""
+    assert not mk.check_taxonomy_csv(tmp_path / "nope.csv", [])[0].ok
+
+    truncated = tmp_path / "taxo.csv"
+    truncated.write_text("Dataset,Raw_Labels,Kingdom\nisiisnet,y,Animalia\n")
+    check = mk.check_taxonomy_csv(truncated, [])[0]
+    assert not check.ok
+    assert "Species" in check.detail, "the absent columns must be named"
+
+
+def test_check_taxonomy_csv_warns_about_a_source_it_does_not_cover(tmp_path):
+    """A source with no CSV row builds fine and produces null taxonomy for every image."""
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "isiisnet", "y")
+
+    checks = mk.check_taxonomy_csv(csv_path, [{"name": "isiisnet"}, {"name": "whoi"}])
+    coverage = next(check for check in checks if check.name == "taxonomy-coverage")
+
+    assert not coverage.ok
+    assert not coverage.blocking, "adding a source before curating its labels is legitimate"
+    assert "whoi" in coverage.detail and "isiisnet" not in coverage.detail
+
+
+def test_check_base_on_disk_recognises_a_saved_dataset(tmp_path):
+    """The base is identified the way load_from_disk identifies it, without loading it."""
+    absent = mk.check_base_on_disk(tmp_path / "nothing")
+    assert not absent[0].ok and "does not exist" in absent[0].detail
+
+    not_a_dataset = tmp_path / "empty"
+    not_a_dataset.mkdir()
+    assert not mk.check_base_on_disk(not_a_dataset)[0].ok
+
+    saved = tmp_path / "saved"
+    Dataset.from_dict({"dataset": ["whoi"] * 3}).save_to_disk(str(saved))
+    check = mk.check_base_on_disk(saved)[0]
+    assert check.ok
+    assert "1 shard(s)" in check.detail
+
+    # A dataset built by a builder — which is what the real artifact is — also records
+    # its splits, and then the row count and version are reported without loading it.
+    info_file = saved / "dataset_info.json"
+    info = json.loads(info_file.read_text())
+    info["splits"] = {"train": {"name": "train", "num_examples": 3}}
+    info["version"] = {"version_str": "1.4.0"}
+    info_file.write_text(json.dumps(info))
+
+    detailed = mk.check_base_on_disk(saved)[0]
+    assert "3 rows" in detailed.detail
+    assert "version 1.4.0" in detailed.detail
+
+
+def test_check_base_on_disk_notices_a_shard_that_is_gone(tmp_path):
+    """state.json names the shards; a deleted one is a broken base, not a small one."""
+    saved = tmp_path / "saved"
+    Dataset.from_dict({"dataset": ["whoi"] * 3}).save_to_disk(str(saved))
+    for shard in saved.glob("*.arrow"):
+        shard.unlink()
+
+    checks = mk.check_base_on_disk(saved)
+    assert any(not check.ok and check.name == "base-shards" for check in checks)
+
+
+class _FakeHubApi:
+    """Stand-in for HfApi: scripted refs, scripted auth verdict, no network."""
+
+    def __init__(self, tags=(), branches=("main",), auth=None):
+        self.tags = tags
+        self.branches = branches
+        self.auth = auth
+
+    def auth_check(self, repo_id, *, repo_type=None, token=None, write=False):
+        if isinstance(self.auth, Exception):
+            raise self.auth
+
+    def list_repo_refs(self, repo_id, *, repo_type=None):
+        return SimpleNamespace(
+            tags=[SimpleNamespace(name=name) for name in self.tags],
+            branches=[SimpleNamespace(name=name) for name in self.branches],
+        )
+
+
+def _push_cfg(tmp_path, overrides, job_name):
+    cfg = _bare_cfg([f"data_dir={tmp_path}", "push_to_hub=true", *overrides], job_name)
+    cfg.hf_token = "hf_test_token"  # so the check never falls back to the ambient login
+    return cfg
+
+
+def test_check_push_target_catches_a_tag_that_already_exists(tmp_path):
+    """A tag collision is only discovered AFTER the upload today; this moves it to second 0.
+
+    tag_hub_release's own error exists to stop the user re-running an upload that
+    succeeded — which is the expensive way to learn the version name was taken.
+    """
+    cfg = _push_cfg(tmp_path, ["version=1.4.0"], "test_make_preflight_tag")
+    checks = mk.check_push_target(cfg, "1.4.0", api=_FakeHubApi(tags=("1.4.0",)))
+
+    conflict = next(check for check in checks if check.name == "version-tag")
+    assert not conflict.ok
+    assert "version_overwrite=true" in conflict.detail
+
+    # The same collision with the opt-in set is a deliberate move, not a failure.
+    cfg.version_overwrite = True
+    moved = next(
+        check for check in mk.check_push_target(cfg, "1.4.0", api=_FakeHubApi(tags=("1.4.0",))) if check.name == "version-tag"
+    )
+    assert moved.ok
+    assert "MOVED" in moved.detail
+
+
+def test_check_push_target_reports_a_free_tag_and_a_new_branch(tmp_path):
+    """The happy path says so explicitly, including whether push_revision exists yet."""
+    cfg = _push_cfg(tmp_path, ["version=1.5.0", "push_revision=v1.1"], "test_make_preflight_tag_ok")
+    checks = mk.check_push_target(cfg, "1.5.0", api=_FakeHubApi(tags=("1.4.0",), branches=("main",)))
+
+    assert all(check.ok for check in checks)
+    assert any("does not exist yet" in check.detail for check in checks if check.name == "push-revision")
+
+
+def test_check_push_target_requires_a_token(tmp_path, monkeypatch):
+    """push_to_hub=true with no token anywhere is a five-second failure, not an hours-long one.
+
+    ``get_token`` is stubbed rather than trusted: this machine has a cached login and a
+    HF_TOKEN in .env, so an unstubbed check would silently pass and prove nothing.
+    """
+    cfg = _bare_cfg([f"data_dir={tmp_path}", "push_to_hub=true"], "test_make_preflight_token")
+    cfg.hf_token = None
+    monkeypatch.setattr(mk, "get_token", lambda: None)
+
+    checks = mk.check_push_target(cfg, None, api=_FakeHubApi())
+
+    assert [check.name for check in checks] == ["push-token"], "nothing else can be checked without one"
+    assert not checks[0].ok
+    assert "HF_TOKEN" in checks[0].detail
+
+
+def test_check_writable_dir_reports_free_space_and_a_dead_end(tmp_path):
+    """Writability is tested by writing, because os.access lies on NFS and ACL mounts."""
+    ok = mk.check_writable_dir("output-dir", tmp_path / "not" / "created" / "yet")[0]
+    assert ok.ok
+    assert "free" in ok.detail
+    assert not list(tmp_path.glob(".pz-preflight-*")), "the probe file must be removed"
+
+    blocked = tmp_path / "a-file"
+    blocked.write_text("not a directory")
+    assert not mk.check_writable_dir("output-dir", blocked / "under-a-file")[0].ok
+
+
+def test_check_writable_dir_warns_when_the_downloads_will_not_fit(tmp_path):
+    """A build needs about three times the download size; saying so beats ENOSPC at hour 6."""
+    check = mk.check_writable_dir("data-dir", tmp_path, needed_bytes=10**18)[0]
+
+    assert not check.ok
+    assert not check.blocking, "the estimate is a lower bound, not a verdict"
+    assert f"{mk.DISK_SPACE_FACTOR}x" in check.detail

@@ -140,9 +140,41 @@ clean: fresh
 allow_partial_overwrite: false
 
 # Resolve the plan, instantiate every selected importer, report each imagefolder and
-# everything that would be removed / written / pushed, then exit. Reads and writes
-# nothing. Cheap pre-flight for a run that can take hours.
+# everything that would be removed / written / pushed, then exit. Writes nothing and
+# downloads nothing. Cheap pre-flight for a run that can take hours.
+#
+# Every check below still runs, so `dry_run=true` is also the verdict on whether a real
+# run WOULD work: it exits non-zero, listing what is broken, if any blocking check fails.
 dry_run: false
+
+# HOW MUCH OF THE PRE-FLIGHT TALKS TO THE NETWORK.
+#   none   -> nothing does (default). The local checks still run: the taxonomy CSV, a
+#             `base` on disk, the output directory, and any hand-downloaded archive.
+#   needed -> probe every file THIS run would actually fetch — sources whose imagefolder
+#             is missing, or all of them under refresh=redownload — plus the Hub
+#             endpoints it would use (`base=hub`, the push target, an existing version
+#             tag). One HEAD per URL, falling back to a one-byte ranged GET for the
+#             servers that refuse HEAD; nothing is downloaded.
+#   all    -> also probe the sources whose imagefolder already exists, i.e. answer "is
+#             every source in the registry still downloadable?" rather than "can this
+#             run proceed?".
+#
+# Independent of dry_run on purpose: `check_downloads=needed` on a REAL run refuses to
+# start when something it needs is unreachable, instead of failing four sources in.
+#
+# The two roles differ on ONE point, which is what keeps `all` usable for both. A dry run
+# builds nothing, so every failure it finds is the answer it was asked for and it exits
+# non-zero. A REAL run is only stopped by a source it would actually fetch — a source
+# whose imagefolder is already on disk is reported loudly and does not block a build that
+# was going to succeed without it.
+#
+#   pz_planktonzilla dry_run=true check_downloads=all      # audit every source
+#   pz_planktonzilla sources=[whoi] check_downloads=needed # gate the real build
+check_downloads: none
+
+# Per-request timeout, in seconds, for the probes above. Small on purpose: a pre-flight
+# that hangs for the importers' 3600s http_timeout is not a pre-flight.
+check_timeout: 30
 
 # Extra overrides appended to EVERY per-source import_dataset override block, e.g.
 # ["dataset_import.check_image_file_integrity=true"]. Per-source extras stay in the

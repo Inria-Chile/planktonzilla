@@ -17,17 +17,19 @@ helpers used during normalization.
 import concurrent.futures
 import csv
 import gzip
+import importlib.metadata
 import os
 import re
 import shutil
 import stat
 import time
 from dataclasses import dataclass
+from functools import lru_cache
 from multiprocessing import cpu_count
 from pathlib import Path
 from shutil import copy2, copytree, move, rmtree
 from typing import ClassVar, Dict, Final, Optional, Union
-from zipfile import ZipFile
+from zipfile import ZipFile, is_zipfile
 
 import aiohttp
 import numpy as np
@@ -87,6 +89,39 @@ from datasets import load_dataset
 dataset = load_dataset("{{hf_org_name}}/{{hf_dataset_name}}")
 ```
 """
+
+
+@lru_cache(maxsize=1)
+def default_user_agent() -> str:
+    """How this project identifies itself to the archives it downloads from.
+
+    Identification, not impersonation: the string names the project, its version and its
+    repository, so an archive maintainer seeing it in a log can tell who is fetching and
+    where to complain. Nothing here pretends to be a browser.
+
+    It exists because leaving it unset is not neutral — it means sending whatever the
+    underlying library sends, and that is what gets refused. Measured against
+    darchive.mblwhoilibrary.org (whoi's host) on 2026-08-04, one one-byte ranged GET per
+    User-Agent:
+
+        python-requests/2.34.2      -> connection dropped
+        datasets/5.0.0; python/…    -> connection dropped
+        aiohttp default / no UA     -> connection dropped
+        Chrome 140                  -> connection dropped
+        curl/8.7.1                  -> 206, application/zip, 1,158,978,503 bytes
+        planktonzilla/<v> (+repo)   -> 206, application/zip
+
+    So the host blocks known library User-Agents (and, oddly, a browser one) rather than
+    automated access as such: identifying honestly is enough, and all nine whoi archives
+    are reachable again.
+    """
+    try:
+        version = importlib.metadata.version("planktonzilla")
+    except importlib.metadata.PackageNotFoundError:
+        # Running from a source tree that was never installed. The version is decoration
+        # in this string; the identity and the contact URL are the parts that matter.
+        version = "unknown"
+    return f"planktonzilla/{version} (+https://github.com/Inria-Chile/planktonzilla)"
 
 
 def is_dir_empty(dir: Path) -> bool:
@@ -423,6 +458,262 @@ def resolve_fairdata_download_url(
     return url
 
 
+# --------------------------------------------------------------------- pre-flight ---
+#
+# Checking that a source COULD be imported, without importing it. The three questions a
+# build actually fails on are: is the archive reachable, is the hand-downloaded file
+# there, and is what comes back a file rather than a login page. All three are
+# answerable in one request per target, which is what makes a whole-registry pre-flight
+# cost seconds instead of the hours the real download takes.
+
+# HTTP statuses that mean "this server does not do HEAD", not "this file is missing".
+# Kept as a named constant because the fallback below is the difference between a
+# correct pre-flight and one that reports half the registry as broken: darchive
+# (WHOI) and dbarchive (JEDI) both answer a plain HEAD with a refusal and the file
+# with a ranged GET.
+HEAD_UNSUPPORTED_STATUSES: Final = frozenset({400, 401, 403, 405, 406, 501})
+
+# Appended to the verdict when a host refuses the client rather than reporting a missing
+# file. Deliberately NOT worked around with a spoofed User-Agent: the probe's job is to
+# predict what the DOWNLOAD will do, and the download is an equally non-browser-like
+# Python client (datasets' DownloadManager -> fsspec -> aiohttp).
+#
+# Measured against darchive.mblwhoilibrary.org (whoi) on 2026-08-04, because this is
+# exactly the case that looks like a false alarm — the URL opens perfectly in a browser:
+#
+#     curl (its own UA)              -> 302 then 206, application/zip, 1,158,978,503 bytes
+#     requests, UA python-requests   -> connection dropped
+#     requests, UA datasets/5.0.0…   -> connection dropped
+#     requests, no UA / Chrome UA    -> connection dropped
+#     aiohttp, default UA            -> ServerDisconnectedError
+#     fsspec .info()/.open()         -> FileNotFoundError   <- what a real run hits first
+#
+# So "it works in my browser" is not evidence the run would work, which is why the hint
+# says so outright rather than leaving the user to conclude the pre-flight is broken.
+BLOCKED_HINT: Final = (
+    "the host may be down, slow (raise check_timeout), or refusing this client. A 403 or a dropped connection is what "
+    "User-Agent, IP or region filtering looks like, and such a URL often still opens fine in a BROWSER — which is not "
+    "evidence a run would work, because the download speaks the same non-browser Python client this probe does. Retry "
+    "from another network, or point dataset_import.manual_download_local_file_names at a copy fetched by hand"
+)
+
+
+@dataclass(frozen=True)
+class ProbeResult:
+    """The verdict on ONE thing a real import would have to obtain.
+
+    Attributes:
+        kind: How it is obtained — ``url``, ``file`` (hand-downloaded), ``bundled``
+            (shipped inside the package) or ``fairdata`` (packaged on demand by the
+            Etsin Download API). ``none`` means the source declares no way to get its
+            data at all, which is a configuration error rather than a reachability one.
+        location: The URL, path or dataset PID that was checked.
+        ok: Whether a real run could obtain it.
+        detail: One line for the report, e.g. ``HTTP 200, application/zip, 492.4 MB``.
+        size: Total bytes when the server (or the filesystem) discloses it, else None.
+            Summed across a run to estimate how much disk the build needs.
+        warning: Set when the target answered but the answer is suspect — an HTML body
+            where an archive was expected, a package not yet generated. Not a failure:
+            it is reported and the run continues.
+    """
+
+    kind: str
+    location: str
+    ok: bool
+    detail: str
+    size: Optional[int] = None
+    warning: Optional[str] = None
+
+
+def _as_uri_list(value) -> list[str]:
+    """Normalise a ``download_uris`` value to a list of URLs.
+
+    Sources declare it three ways — a bare string (zoolake), a list (whoi's nine
+    release archives), and the empty string (sykezooscan2024, which resolves its
+    download through Fairdata instead). Iterating the bare string would probe one URL
+    per character, so the string case is special-cased rather than left to ``list()``.
+    Hydra hands these over as ``ListConfig`` unless converted, so no ``isinstance(...,
+    list)`` test is used.
+    """
+    if not value:
+        return []
+    if isinstance(value, str):
+        return [value]
+    return [str(item) for item in value]
+
+
+def _content_type(response) -> str:
+    """The bare media type of a response, without parameters (``; charset=utf-8``)."""
+    return (response.headers.get("Content-Type", "").split(";")[0].strip() or "unknown").lower()
+
+
+def probe_url(url: str, *, timeout: int = 30, session=None, user_agent: Optional[str] = None) -> ProbeResult:
+    """Check that ``url`` would download, without downloading it.
+
+    HEAD first, then — if the server refuses it, answers with an error, or does not
+    answer at all — a one-byte ranged GET. The fallback is not defensive programming: it
+    is how the JEDI archive was verified by hand on 2026-08-01 ("HTTP 206 on a range
+    request, application/zip"), and several of these data portals refuse or ignore a HEAD
+    while serving the file perfectly to a GET. Reporting those as unreachable would make
+    the pre-flight worse than useless — it would send someone hunting a download that
+    works.
+
+    A 2xx whose body is HTML is reported as ``ok`` with a warning rather than a failure:
+    it is what a login wall, a "dataset has moved" notice or an anti-bot interstitial
+    looks like, and only a human can tell which.
+
+    Args:
+        url: The URL a real run would fetch.
+        timeout: Per-request timeout in seconds.
+        session: ``requests``-compatible session; defaults to the module-level
+            ``requests``. Injected by the caller so one connection pool (and one test
+            double) serves a whole registry sweep.
+        user_agent: Identify as this. Callers pass the importer's ``http_user_agent``,
+            the same value the real download sends — a probe that identified itself
+            differently from the downloader would be answering a different question, and
+            on at least one of these hosts a different answer.
+
+    Returns:
+        A :class:`ProbeResult` of kind ``url``. Never raises for a network problem —
+        an unreachable host is a verdict, not an exception, since the point is to
+        report every target rather than stop at the first bad one.
+    """
+    requester = session or requests
+    headers = {"User-Agent": user_agent} if user_agent else {}
+
+    response, head_failure = None, None
+    try:
+        response = requester.head(url, headers=headers, allow_redirects=True, timeout=timeout)
+    except requests.RequestException as e:
+        # NOT a verdict, so it does not return here. Measured against the live hosts on
+        # 2026-08-03: NCEI (planktonset1.0) times out on a HEAD and answers the one-byte
+        # GET below in under a second, and darchive (WHOI) closes the HEAD connection
+        # without answering. Taking a HEAD that RAISES as the answer called 10 of the 22
+        # archives broken; the GET then reached all but the 9 that are genuinely refused.
+        head_failure = e
+
+    if response is None or response.status_code in HEAD_UNSUPPORTED_STATUSES or not response.ok:
+        try:
+            response = requester.get(
+                url,
+                headers={**headers, "Range": "bytes=0-0"},
+                stream=True,
+                allow_redirects=True,
+                timeout=timeout,
+            )
+            # Only the headers are wanted; closing here returns the connection to the
+            # pool without pulling the body of a multi-gigabyte archive.
+            response.close()
+        except requests.RequestException as e:
+            detail = f"unreachable — {type(e).__name__}: {e}"
+            if head_failure is not None:
+                detail += f" (HEAD failed too: {type(head_failure).__name__})"
+            return ProbeResult(kind="url", location=url, ok=False, detail=f"{detail}. {BLOCKED_HINT}")
+
+    length = response.headers.get("Content-Length", "")
+    size = int(length) if length.isdigit() else None
+
+    if response.status_code == 206:
+        # On a ranged reply Content-Length is the length of the RANGE (one byte), not
+        # of the file. The total is the part after the slash in Content-Range.
+        total = response.headers.get("Content-Range", "").rpartition("/")[2]
+        size = int(total) if total.isdigit() else None
+
+    content_type = _content_type(response)
+    ok = response.status_code in (200, 206)
+
+    detail = f"HTTP {response.status_code}, {content_type}"
+    if size is not None:
+        detail += f", {naturalsize(size)}"
+    if not ok and response.status_code in (401, 403):
+        detail += f". {BLOCKED_HINT}"
+
+    warning = None
+    if ok and content_type.startswith("text/html"):
+        warning = "the server returned an HTML page, not a file — a login wall, a moved-dataset notice or an interstitial"
+
+    return ProbeResult(kind="url", location=url, ok=ok, detail=detail, size=size, warning=warning)
+
+
+def probe_local_file(path, *, kind: str = "file") -> ProbeResult:
+    """Check a file a real import would read from disk (hand-downloaded or bundled).
+
+    A ``.zip`` is additionally opened for its central directory: an archive truncated by
+    an interrupted download passes an existence check and then fails hours later inside
+    ``extract``, which is exactly the failure this pre-flight exists to move forward.
+    """
+    path = Path(path)
+
+    if not path.exists():
+        return ProbeResult(kind=kind, location=str(path), ok=False, detail="not on disk")
+
+    size = path.stat().st_size
+
+    if path.suffix.lower() == ".zip" and not is_zipfile(path):
+        return ProbeResult(
+            kind=kind,
+            location=str(path),
+            ok=False,
+            detail=f"{naturalsize(size)} on disk but NOT a readable zip (truncated or partially downloaded?)",
+            size=size,
+        )
+
+    return ProbeResult(kind=kind, location=str(path), ok=True, detail=f"on disk, {naturalsize(size)}", size=size)
+
+
+def probe_fairdata_package(pid: str, *, api_base: str, timeout: int = 30, session=None) -> ProbeResult:
+    """Check the Fairdata Download API can serve ``pid``, WITHOUT asking it to package.
+
+    Deliberately only step (1) of :func:`resolve_fairdata_download_url`'s flow — the
+    read-only ``GET /requests``. The POST that asks the service to build a package is a
+    side effect on someone else's infrastructure (and can occupy it for minutes on a
+    dataset this size), so a pre-flight must not trigger it.
+
+    The verdict mirrors the resolver's own contract exactly, which is what makes it
+    trustworthy: ``_json`` there raises for ANY non-OK response, so any non-OK response
+    here is a blocking failure — a real run would stop at the same request. Reporting a
+    404 as "no package yet" instead looked reasonable and was wrong: probing the base URL
+    this importer shipped with returned nginx's 404 page for every path, which that
+    reading turned into a pass for a source that could not be downloaded at all.
+
+    A 200 that simply names no ready package IS ``ok`` with a warning: that is the normal
+    state for a dataset nobody has requested lately, and a real run would ask for one.
+    """
+    requester = session or requests
+    url = f"{api_base}/requests"
+
+    try:
+        response = requester.get(url, params={"cr_id": pid}, timeout=timeout)
+    except requests.RequestException as e:
+        return ProbeResult(kind="fairdata", location=pid, ok=False, detail=f"unreachable — {type(e).__name__}: {e}")
+
+    if not response.ok:
+        detail = f"{url} returned HTTP {response.status_code}, which is what a real run's first request would get"
+        if response.status_code == 404:
+            detail += " — the dataset PID or fairdata_api_base is wrong, or the service moved"
+        return ProbeResult(kind="fairdata", location=pid, ok=False, detail=detail)
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return ProbeResult(kind="fairdata", location=pid, ok=False, detail=f"{url} returned a non-JSON body")
+
+    package = _find_ready_package(payload)
+    if package is None:
+        return ProbeResult(
+            kind="fairdata",
+            location=pid,
+            ok=True,
+            detail=f"{url} reachable, no ready package reported",
+            warning="a real run would ask the service to package this dataset first, which can take minutes",
+        )
+
+    size = payload.get("size") if isinstance(payload, dict) else None
+    size = size if isinstance(size, int) else None
+    detail = f"package {package} ready" + (f", {naturalsize(size)}" if size else "")
+    return ProbeResult(kind="fairdata", location=pid, ok=True, detail=detail, size=size)
+
+
 def is_valid_image_file(image_filename):
     """Return True if PIL can open and crop the file, i.e. it is a readable image.
 
@@ -494,6 +785,10 @@ class DatasetImporter:
     force_imagefolder_preparation: Optional[bool] = True
     max_download_retries: Optional[int] = 5
     http_timeout: Optional[int] = 3600
+    # Sent on every download AND on every pre-flight probe, so the two cannot disagree
+    # about what the server will do. null -> default_user_agent(); see it for why leaving
+    # this unset is not the neutral option it looks like.
+    http_user_agent: Optional[str] = None
     push_to_hub_retries: Optional[int] = 10
     check_image_file_integrity: Optional[bool] = False
 
@@ -511,7 +806,15 @@ class DatasetImporter:
     # URL. Set fairdata_pid to resolve the download automatically; leave it null to use
     # the manual route. See resolve_fairdata_download_url.
     fairdata_pid: str = None
-    fairdata_api_base: str = "https://download.fairdata.fi"
+    # The Etsin proxy, NOT https://download.fairdata.fi — which this defaulted to until
+    # the download pre-flight probed it on 2026-08-04 and got nginx's 404 HTML page for
+    # every path, while the value below returned the package JSON recorded in
+    # resolve_fairdata_download_url's docstring. Since _download_and_extract passes this
+    # field explicitly, the wrong host overrode the resolver's own (correct) default, so
+    # a sykezooscan2024 import raised "Fairdata request status returned HTTP 404".
+    # Keep it equal to resolve_fairdata_download_url's default; the two are pinned
+    # together by tests/test_dataset_import_configs.py.
+    fairdata_api_base: str = "https://etsin.fairdata.fi/api/download"
     fairdata_poll_attempts: int = 60
     fairdata_poll_interval: int = 10
 
@@ -547,6 +850,7 @@ class DatasetImporter:
         """
         self._validate()
         self.data_dir = Path(self.data_dir)
+        self.http_user_agent = self.http_user_agent or default_user_agent()
 
         self.imagefolder_dir = self.data_dir / f"{self.__class__.__name__.lower()}_imagefolder"
         self.raw_dir = self.data_dir / f"{self.__class__.__name__.lower()}_raw_download"
@@ -589,6 +893,86 @@ class DatasetImporter:
         lines.append("Create the parent directory if needed, then re-run. Nothing else is required.")
         return "\n".join(lines)
 
+    def download_targets(self) -> list[tuple[str, str]]:
+        """What a real import of this source would have to obtain, as ``(kind, location)``.
+
+        The pre-flight counterpart of :meth:`_download_and_extract`, and it MIRRORS that
+        method's precedence deliberately: a hand-downloaded archive shadows
+        ``download_uris`` there, so it must shadow it here too, or the report describes a
+        download the run would never perform.
+
+        An empty list means the source declares no way to get its data — the same
+        condition ``_download_and_extract`` raises on, surfaced before anything is
+        fetched instead of at the source's turn in a multi-hour build.
+
+        Subclasses that override ``_download_and_extract`` override this in step:
+        :class:`LenslessDatasetImporter` (bundled zip) and
+        :class:`SYKEZooScan2024DatasetImporter` (Fairdata). A source with a SECOND
+        download outside the lifecycle — :class:`GlobalUVP5NetDatasetImporter`'s objects
+        metadata, fetched from ``_prepare_imagefolder`` — adds it here as well, since a
+        build stops just as dead on that one.
+        """
+        if self.manual_download_local_file_names:
+            return [("file", str(path)) for path in self.manual_download_paths()]
+        return [("url", uri) for uri in _as_uri_list(self.download_uris)]
+
+    def probe_downloads(self, *, timeout: int = 30, session=None) -> list[ProbeResult]:
+        """Check every :meth:`download_targets` entry without downloading anything.
+
+        Side-effect free and safe to run against the live services: URLs are probed with
+        HEAD (falling back to a one-byte ranged GET), files are stat-ed, and the Fairdata
+        API is only READ. Never raises for a network failure — each target's verdict is
+        returned so one dead host does not hide the state of the other fourteen sources.
+
+        Each URL is probed AS the download identifies itself (:attr:`http_user_agent`),
+        since at least one of these hosts answers differently by User-Agent. The Fairdata
+        request deliberately does not: ``resolve_fairdata_download_url`` sends no custom
+        User-Agent either, and the probe's value is that it mirrors the real run.
+        """
+        targets = self.download_targets()
+
+        if not targets:
+            return [
+                ProbeResult(
+                    kind="none",
+                    location=self.human_readable_name or self.hf_dataset_name or type(self).__name__,
+                    ok=False,
+                    detail=(
+                        "nothing to fetch: neither download_uris nor manual_download_local_file_names is set, "
+                        "so a real run would stop here"
+                    ),
+                )
+            ]
+
+        results = []
+        for kind, location in targets:
+            if kind == "url":
+                results.append(probe_url(location, timeout=timeout, session=session, user_agent=self.http_user_agent))
+            elif kind == "fairdata":
+                results.append(
+                    probe_fairdata_package(location, api_base=self.fairdata_api_base, timeout=timeout, session=session)
+                )
+            else:
+                results.append(probe_local_file(location, kind=kind))
+        return results
+
+    def storage_options(self) -> dict:
+        """fsspec/aiohttp options shared by every download this importer makes.
+
+        The ``headers`` entry is the only route a User-Agent has into the real download:
+        ``datasets`` builds one in ``get_from_cache`` and then calls
+        ``fsspec_head``/``fsspec_get`` WITHOUT it (verified in datasets 5.0), so setting
+        ``DownloadConfig.user_agent`` would change nothing on the wire. Going through
+        ``client_kwargs`` also means the pre-flight and the download agree, because both
+        read :attr:`http_user_agent`.
+        """
+        return {
+            "client_kwargs": {
+                "timeout": aiohttp.ClientTimeout(total=self.http_timeout),
+                "headers": {"User-Agent": self.http_user_agent},
+            }
+        }
+
     def _download_and_extract(self):
         """Download ``download_uris`` (or use manual files) and extract them.
 
@@ -608,7 +992,7 @@ class DatasetImporter:
                 max_retries=self.max_download_retries,
                 num_proc=self.num_proc,
                 disable_tqdm=not self.show_progress,
-                storage_options={"client_kwargs": {"timeout": aiohttp.ClientTimeout(total=self.http_timeout)}},
+                storage_options=self.storage_options(),
             ),
         )
         if self.manual_download_local_file_names:
@@ -883,6 +1267,10 @@ class LenslessDatasetImporter(DatasetImporter):
 
     DATASET_FILENAME: Final[str] = "lensless_dataset"
 
+    def download_targets(self) -> list[tuple[str, str]]:
+        """The bundled zip: this source is never downloaded, so nothing is probed."""
+        return [("bundled", str(Path(public_data.__path__[0]) / f"{self.DATASET_FILENAME}.zip"))]
+
     def _download_and_extract(self):
         """Unzip the bundled lensless dataset from ``public_data`` into ``raw_dir``."""
         dataset_path = Path(public_data.__path__[0])
@@ -1151,6 +1539,16 @@ class GlobalUVP5NetDatasetImporter(DatasetImporter):
 
     OBJECTS_URL = "https://www.seanoe.org/data/00964/107583/data/120871.zip"
 
+    def download_targets(self) -> list[tuple[str, str]]:
+        """The image archive AND the objects metadata zip.
+
+        ``OBJECTS_URL`` is fetched from ``_prepare_imagefolder``, not from
+        ``_download_and_extract``, so it is downloaded even by a ``refresh=rebuild`` that
+        reuses the raw archive — and an import stops just as dead without it. A
+        pre-flight that only looked at ``download_uris`` would miss it.
+        """
+        return [*super().download_targets(), ("url", self.OBJECTS_URL)]
+
     def _prepare_imagefolder(self):
         aux_dir = self.data_dir / "global_uvp5_aux"
         aux_dir.mkdir(parents=True, exist_ok=True)
@@ -1166,7 +1564,9 @@ class GlobalUVP5NetDatasetImporter(DatasetImporter):
                 max_retries=self.max_download_retries,
                 num_proc=self.num_proc,
                 disable_tqdm=not self.show_progress,
-                storage_options={"client_kwargs": {"timeout": aiohttp.ClientTimeout(total=self.http_timeout)}},
+                # Same options as the main archive: this second download is a real one,
+                # on the same host, and would be refused just the same without them.
+                storage_options=self.storage_options(),
             ),
         )
 
@@ -1315,6 +1715,16 @@ class SYKEZooScan2024DatasetImporter(DatasetImporter):
     The 20 class folders that produces match the 20 ``sykezooscan2024`` ``Raw_Labels``
     in ``planktonzilla_taxonomy.csv`` exactly.
     """
+
+    def download_targets(self) -> list[tuple[str, str]]:
+        """Fairdata packages this dataset on demand, unless a manual copy shadows it.
+
+        The precedence is the one ``_download_and_extract`` applies below — manual file,
+        then PID, then ``download_uris`` (empty in the shipped config).
+        """
+        if self.fairdata_pid and not self.manual_download_local_file_names:
+            return [("fairdata", self.fairdata_pid)]
+        return super().download_targets()
 
     def _download_and_extract(self):
         """Resolve the archive through the Fairdata API when a PID is configured."""

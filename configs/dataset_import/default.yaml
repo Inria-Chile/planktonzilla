@@ -11,6 +11,20 @@ data_dir: ${paths.data_dir}
 # which would otherwise make the documented override fail on most sources.
 manual_download_local_file_names: null
 
+# How this project identifies itself to the archives it downloads from, on every
+# download AND on every `pz_planktonzilla check_downloads=...` probe — the two read this
+# same value, so they cannot disagree about what a server will do.
+#
+# null -> dataset_importer.default_user_agent(), i.e.
+#   planktonzilla/<version> (+https://github.com/Inria-Chile/planktonzilla)
+#
+# Not cosmetic. Leaving it unset does not mean "no User-Agent", it means "whatever the
+# library sends", and that is what gets refused: measured on 2026-08-04, whoi's host
+# (darchive.mblwhoilibrary.org) drops the connection for python-requests, aiohttp,
+# datasets and even a Chrome User-Agent, while serving the archive to a request that
+# names this project. See default_user_agent() for the full measurement.
+http_user_agent: null
+
 force_download: false
 resume_download: true
 force_imagefolder_preparation: false

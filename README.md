@@ -205,12 +205,62 @@ uv run pz_planktonzilla base=local sources=[whoi] refresh=redownload
 # Same, plus a taxonomy re-sync of everything else (sync_taxonomy defaults true)
 uv run pz_planktonzilla base=local sources=[whoi,zooscan] refresh=redownload num_proc=8
 
-# Pre-flight: resolve the plan and report it, touching nothing
+# Pre-flight: resolve the plan and check it, touching nothing
 uv run pz_planktonzilla base=hub sources=[whoi] dry_run=true
+
+# Same, plus: is every file actually downloadable right now?
+uv run pz_planktonzilla dry_run=true check_downloads=all
 
 # Stamp a version on the build, and tag it on the Hub
 uv run pz_planktonzilla version=1.4.0 push_to_hub=true
 ```
+
+### Pre-flight: would this run work?
+
+A build takes hours, so the same command also answers whether it *could* succeed before
+doing any of it. `dry_run=true` resolves the plan and checks its local prerequisites;
+`check_downloads` adds the network ones:
+
+| Value | What is probed |
+| --- | --- |
+| `none` | nothing (the default) — local checks only |
+| `needed` | every file **this** run would fetch, plus the Hub endpoints it would use |
+| `all` | also the sources whose imagefolder is already built |
+
+```bash
+# Audit every source in the registry — the one to run on a schedule
+uv run pz_planktonzilla dry_run=true check_downloads=all
+
+# Gate a REAL run: refuse to start if something it needs is unreachable
+uv run pz_planktonzilla base=local sources=[whoi] refresh=redownload check_downloads=needed
+```
+
+It reports one line per check and exits non-zero listing everything blocking, so it works
+as a CI gate. A dry run builds nothing, so *every* failure it finds is fatal to it; a real
+run is only stopped by a source it would actually fetch — an archive that is unreachable
+for a source whose imagefolder is already on disk is reported loudly and lets the build
+proceed. What it verifies:
+
+- **Downloads** — one `HEAD` per URL, falling back to a one-byte ranged `GET` for the
+  hosts that refuse `HEAD` (several of these do), reporting status, media type and size.
+  Local sources are checked too: the bundled `lensless` zip and any hand-downloaded
+  archive are opened, so a *truncated* one is caught here instead of hours later.
+  A `403` or a dropped connection is reported as client filtering, with the manual-archive
+  fallback spelled out; a `200` that returns HTML is flagged as the login wall it usually is.
+  `sykezooscan2024` is checked through the Fairdata API **read-only** — the pre-flight never
+  asks the service to package anything.
+- **Taxonomy CSV** — it exists, parses, has every lookup column (a missing rank silently
+  builds that column blank), and has rows for each source being rebuilt.
+- **`base`** — on disk, that the path really is a saved dataset, with its shards, row count
+  and embedded version read from JSON rather than by loading it; on the Hub, that the repo
+  is readable, distinguishing *gated* from *missing or invisible to this token*.
+- **Push target** — that the token can write, and **that `version=` is not already a tag**.
+  Today that collision only surfaces *after* the whole dataset has been uploaded.
+- **Disk** — that the output and data directories are writable, with free space compared
+  against the total download size the probes just measured (a build needs ~3× it).
+
+Everything is side-effect free: nothing is downloaded, no dataset is written, nothing is
+POSTed. The only write is a zero-byte file created and removed to test a directory.
 
 ### Versioning a build
 

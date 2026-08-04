@@ -17,6 +17,7 @@ Nothing here touches the network or downloads anything: instantiating an importe
 builds the dataclass and derives its ``imagefolder_dir`` / ``raw_dir`` paths.
 """
 
+import inspect
 import os
 import shutil
 
@@ -413,8 +414,15 @@ def test_sykezooscan2024_is_configured_for_fairdata(tmp_path):
     importer = _importer("sykezooscan2024", tmp_path)
 
     assert importer.fairdata_pid == "6fa42787-9772-41a5-a6fc-0dde489ed908"
-    assert importer.fairdata_api_base.startswith("https://")
     assert "etsin.fairdata.fi" in importer.manual_download_url
+
+    # Pinned to the exact value, not just "https://": the importer passes this field
+    # explicitly, so a value that differs from resolve_fairdata_download_url's own
+    # default silently OVERRIDES the verified endpoint. It did — the field shipped as
+    # https://download.fairdata.fi, which answers 404 to every path — and the loose
+    # assertion this replaces is what let that through.
+    assert importer.fairdata_api_base == "https://etsin.fairdata.fi/api/download"
+    assert importer.fairdata_api_base == inspect.signature(di.resolve_fairdata_download_url).parameters["api_base"].default
 
 
 class _FakeResponse:
@@ -688,3 +696,361 @@ def test_taxonomy_csv_still_matches_the_recorded_syke_class_names():
 
     assert archive_classes == csv_labels
     assert len(csv_labels) == 20
+
+
+# --- Download pre-flight: what a source would fetch, and whether it could ------------
+
+
+class _FakeHTTPResponse:
+    """Minimal stand-in for a ``requests.Response``.
+
+    Separate from ``_FakeResponse`` above, which models the Fairdata JSON API and takes
+    ``ok`` explicitly: here ``ok`` is DERIVED from the status code, exactly as requests
+    derives it, because the probe branches on both and a double that let them disagree
+    would prove nothing about the real thing.
+    """
+
+    def __init__(self, status_code=200, headers=None, payload=None):
+        self.status_code = status_code
+        self.headers = headers or {}
+        self.ok = 200 <= status_code < 400
+        self._payload = payload
+        self.closed = False
+
+    def json(self):
+        if isinstance(self._payload, Exception):
+            raise self._payload
+        return self._payload
+
+    def close(self):
+        self.closed = True
+
+
+class _FakeHTTP:
+    """Scripted HTTP double that records every call, so the REQUESTS made are assertable.
+
+    A ``post`` is defined only to fail: nothing in the pre-flight may POST, because on
+    Fairdata that starts a packaging job on someone else's infrastructure.
+    """
+
+    def __init__(self, head=None, get=None):
+        self._head = head
+        self._get = get
+        self.heads = []
+        self.gets = []
+
+    def _answer(self, scripted):
+        if isinstance(scripted, Exception):
+            raise scripted
+        return scripted
+
+    def head(self, url, headers=None, allow_redirects=None, timeout=None):
+        self.heads.append((url, allow_redirects, timeout, headers))
+        return self._answer(self._head)
+
+    def get(self, url, headers=None, params=None, stream=None, allow_redirects=None, timeout=None):
+        self.gets.append((url, headers, params, allow_redirects))
+        return self._answer(self._get)
+
+    def post(self, *args, **kwargs):
+        raise AssertionError("a pre-flight must never POST")
+
+
+def test_download_targets_normalises_a_bare_string_and_a_list(tmp_path):
+    """13 of the 15 sources declare download_uris as a string; whoi declares nine.
+
+    Iterating the string form directly would probe one URL per CHARACTER, so the
+    coercion is the difference between a report and nonsense.
+    """
+    zoolake = _importer("zoolake", tmp_path).download_targets()
+    whoi = _importer("whoi-plankton", tmp_path).download_targets()
+
+    assert len(zoolake) == 1, "a bare string is one URL, not one per character"
+    assert zoolake[0][0] == "url"
+    assert zoolake[0][1].endswith("/data.zip")
+
+    assert len(whoi) == 9
+    assert {kind for kind, _ in whoi} == {"url"}
+
+
+def test_download_targets_manual_archive_shadows_the_url(tmp_path):
+    """A hand-downloaded archive short-circuits download_uris, so the URL is NOT fetched.
+
+    Mirrors ``_download_and_extract``'s precedence: reporting the URL here would describe
+    a download the run never performs.
+    """
+    archive = tmp_path / "manual_downloads" / "CPICS_Validated.zip"
+    importer = _importer(
+        "jedi_oceans_cpics",
+        tmp_path,
+        extra=[f"dataset_import.manual_download_local_file_names={archive}"],
+    )
+
+    assert importer.download_targets() == [("file", str(archive))]
+
+
+def test_download_targets_lensless_is_the_bundled_zip(tmp_path):
+    """Lensless ships inside the package: nothing to download, something to check."""
+    targets = _importer("lensless", tmp_path).download_targets()
+
+    assert len(targets) == 1
+    kind, location = targets[0]
+    assert kind == "bundled"
+    assert location.endswith("lensless_dataset.zip")
+    assert di.Path(location).exists(), "the bundled archive must ship with the package"
+
+    (result,) = _importer("lensless", tmp_path).probe_downloads()
+    assert result.ok and result.size, "the bundled zip is readable and its size is known"
+
+
+def test_download_targets_syke_reports_fairdata_not_its_empty_url(tmp_path):
+    """sykezooscan2024 has download_uris="" and resolves through the packaging API."""
+    assert _importer("sykezooscan2024", tmp_path).download_targets() == [("fairdata", "6fa42787-9772-41a5-a6fc-0dde489ed908")]
+
+    archive = tmp_path / "SYKE.zip"
+    importer = _importer(
+        "sykezooscan2024",
+        tmp_path,
+        extra=[f"dataset_import.manual_download_local_file_names={archive}"],
+    )
+    assert importer.download_targets() == [("file", str(archive))], "a manual archive still wins"
+
+
+def test_download_targets_global_uvp5_includes_the_objects_metadata(tmp_path):
+    """global_uvp5 fetches a SECOND zip from _prepare_imagefolder, not from the lifecycle.
+
+    A pre-flight reading only download_uris would call it a one-URL source and pass a
+    build that then dies on the metadata it never checked.
+    """
+    targets = _importer("global_uvp5net", tmp_path).download_targets()
+
+    assert len(targets) == 2
+    assert targets[1] == ("url", di.GlobalUVP5NetDatasetImporter.OBJECTS_URL)
+
+
+def test_probe_downloads_reports_a_source_that_declares_no_way_to_get_its_data(tmp_path):
+    """No URL and no archive is a config error, surfaced before anything is fetched."""
+    importer = _importer("sykezooscan2024", tmp_path, extra=["dataset_import.fairdata_pid=null"])
+
+    assert importer.download_targets() == []
+    (result,) = importer.probe_downloads()
+    assert not result.ok
+    assert "nothing to fetch" in result.detail
+
+
+def test_probe_url_accepts_a_plain_head(tmp_path):
+    """A HEAD that answers 200 is enough; the size and type are reported from it."""
+    session = _FakeHTTP(head=_FakeHTTPResponse(headers={"Content-Type": "application/zip", "Content-Length": "492398129"}))
+
+    result = di.probe_url("https://example.invalid/data.zip", session=session, timeout=7)
+
+    assert result.ok
+    assert result.size == 492398129
+    assert "application/zip" in result.detail
+    assert session.gets == [], "a working HEAD needs no second request"
+    assert session.heads[0][1] is True, "redirects must be followed — requests.head does not by default"
+    assert session.heads[0][2] == 7
+
+
+def test_probe_url_falls_back_to_a_ranged_get_when_head_is_refused(tmp_path):
+    """Several of these hosts refuse HEAD and serve the file to a ranged GET.
+
+    Reporting them as unreachable would send someone hunting a download that works, so
+    the refusal costs one extra one-byte request instead of a wrong verdict.
+    """
+    session = _FakeHTTP(
+        head=_FakeHTTPResponse(status_code=405),
+        get=_FakeHTTPResponse(
+            status_code=206,
+            headers={"Content-Type": "application/zip", "Content-Length": "1", "Content-Range": "bytes 0-0/79363785"},
+        ),
+    )
+
+    result = di.probe_url("https://example.invalid/data.zip", session=session)
+
+    assert result.ok
+    # Content-Length on a 206 is the length of the RANGE; the total is after the slash.
+    assert result.size == 79363785
+    assert session.gets[0][1] == {"Range": "bytes=0-0"}
+
+
+def test_probe_url_reports_an_html_body_as_a_warning_not_a_pass(tmp_path):
+    """A 200 that is HTML is a login wall or a moved-dataset notice, not an archive."""
+    session = _FakeHTTP(head=_FakeHTTPResponse(headers={"Content-Type": "text/html; charset=utf-8"}))
+
+    result = di.probe_url("https://example.invalid/data.zip", session=session)
+
+    assert result.ok, "only a human can tell an interstitial from a real page"
+    assert "HTML" in result.warning
+
+
+def test_probe_url_reports_a_dead_url_and_a_dead_network(tmp_path):
+    """A 404 and a transport failure are verdicts, not exceptions."""
+    import requests as _requests
+
+    gone = _FakeHTTP(head=_FakeHTTPResponse(status_code=404), get=_FakeHTTPResponse(status_code=404))
+    assert not di.probe_url("https://example.invalid/gone.zip", session=gone).ok
+
+    offline = _FakeHTTP(head=_requests.ConnectionError("dns failure"), get=_requests.ConnectionError("dns failure"))
+    result = di.probe_url("https://example.invalid/gone.zip", session=offline)
+    assert not result.ok
+    assert "ConnectionError" in result.detail
+
+
+def test_probe_url_falls_back_when_head_raises_not_only_when_it_refuses(tmp_path):
+    """Measured against the live hosts on 2026-08-03: some close the connection on a HEAD.
+
+    Taking a HEAD that RAISES as the verdict reported 10 of the 22 bundled archives as
+    broken, when the ranged GET reached every one of them.
+    """
+    import requests as _requests
+
+    session = _FakeHTTP(
+        head=_requests.ConnectionError("Remote end closed connection without response"),
+        get=_FakeHTTPResponse(status_code=206, headers={"Content-Range": "bytes 0-0/10"}),
+    )
+
+    result = di.probe_url("https://example.invalid/data.zip", session=session)
+
+    assert result.ok, "a HEAD that hangs up is not evidence about the file"
+    assert session.gets, "the ranged GET must still be tried"
+    assert result.size == 10
+
+
+def test_probe_url_says_what_a_refused_client_probably_means(tmp_path):
+    """A host refusing THIS client is not a missing file, and the fix is different.
+
+    Not worked around with a spoofed User-Agent on purpose: the real download runs
+    through datasets' DownloadManager, which is no more browser-like than this probe, so
+    a spoof would turn a run that WILL fail into a pre-flight that says it is fine.
+    """
+    blocked = _FakeHTTP(head=_FakeHTTPResponse(status_code=403), get=_FakeHTTPResponse(status_code=403))
+
+    result = di.probe_url("https://example.invalid/data.zip", session=blocked)
+
+    assert not result.ok
+    assert "manual_download_local_file_names" in result.detail
+
+
+def test_probe_local_file_catches_a_truncated_archive(tmp_path):
+    """An interrupted download passes an existence check and fails hours later.
+
+    Opening the central directory is what tells the two apart, and it costs nothing.
+    """
+    absent = di.probe_local_file(tmp_path / "nope.zip")
+    assert not absent.ok and "not on disk" in absent.detail
+
+    truncated = tmp_path / "half.zip"
+    truncated.write_bytes(b"PK\x03\x04 and then the connection dropped")
+    result = di.probe_local_file(truncated)
+    assert not result.ok
+    assert "NOT a readable zip" in result.detail
+
+
+def test_probe_fairdata_reports_a_ready_package_without_asking_for_one(tmp_path):
+    """Only the read-only step of the resolver's flow runs: GET, never POST.
+
+    The POST asks Fairdata to build a package — a side effect on someone else's
+    infrastructure that can occupy it for minutes. _FakeHTTP.post raises if reached.
+    """
+    session = _FakeHTTP(get=_FakeHTTPResponse(payload=LIVE_REQUESTS_RESPONSE))
+
+    result = di.probe_fairdata_package("pid-1", api_base="https://api.invalid", session=session)
+
+    assert result.ok
+    assert result.size == LIVE_REQUESTS_RESPONSE["size"]
+    assert session.gets[0][0] == "https://api.invalid/requests"
+    assert session.gets[0][2] == {"cr_id": "pid-1"}
+
+
+def test_probe_fairdata_treats_a_200_without_a_package_as_reachable(tmp_path):
+    """No package yet is the normal state, not a failure: a real run would request one."""
+    result = di.probe_fairdata_package(
+        "pid-2", api_base="https://api.invalid", session=_FakeHTTP(get=_FakeHTTPResponse(payload={}))
+    )
+
+    assert result.ok
+    assert "package" in result.warning
+
+
+def test_probe_fairdata_does_not_excuse_a_404(tmp_path):
+    """A 404 is where a real run STOPS, so the probe must stop there too.
+
+    resolve_fairdata_download_url's `_json` raises for any non-OK response, so reading a
+    404 as "no package generated yet" passed a source that could not be downloaded at
+    all: probed on 2026-08-04, the base URL this importer shipped with answered nginx's
+    404 page for every path, while the Etsin proxy returned the package JSON.
+    """
+    result = di.probe_fairdata_package(
+        "pid-9", api_base="https://api.invalid", session=_FakeHTTP(get=_FakeHTTPResponse(status_code=404))
+    )
+
+    assert not result.ok
+    assert "fairdata_api_base" in result.detail, "the likeliest cause must be named"
+
+
+def test_probe_fairdata_reports_a_sick_service(tmp_path):
+    """A 503 or a non-JSON body is a blocking failure that names the endpoint."""
+    down = di.probe_fairdata_package(
+        "pid-3", api_base="https://api.invalid", session=_FakeHTTP(get=_FakeHTTPResponse(status_code=503))
+    )
+    assert not down.ok and "503" in down.detail
+
+    garbled = di.probe_fairdata_package(
+        "pid-4",
+        api_base="https://api.invalid",
+        session=_FakeHTTP(get=_FakeHTTPResponse(payload=ValueError("not json"))),
+    )
+    assert not garbled.ok and "non-JSON" in garbled.detail
+
+
+def test_the_probe_identifies_itself_exactly_as_the_download_does(tmp_path):
+    """A probe that identified itself differently would answer a different question.
+
+    Not hypothetical: whoi's host drops the connection for python-requests', aiohttp's and
+    datasets' User-Agents while serving the archive to one naming this project, so the
+    probe and the downloader disagreeing here means the pre-flight is worthless on exactly
+    the source that needs it.
+    """
+    importer = _importer("zoolake", tmp_path)
+    session = _FakeHTTP(head=_FakeHTTPResponse(headers={"Content-Type": "application/zip"}))
+
+    importer.probe_downloads(session=session)
+
+    sent = session.heads[0][3]["User-Agent"]
+    assert sent == importer.http_user_agent
+    assert sent == importer.storage_options()["client_kwargs"]["headers"]["User-Agent"], (
+        "the probe and the real download must send the same identity"
+    )
+
+
+def test_the_default_user_agent_names_the_project_and_where_to_complain(tmp_path):
+    """Identification, not impersonation: no browser string, and a reachable contact."""
+    importer = _importer("zoolake", tmp_path)
+
+    assert importer.http_user_agent.startswith("planktonzilla/")
+    assert "github.com/Inria-Chile/planktonzilla" in importer.http_user_agent
+    for impersonation in ("Mozilla", "Chrome", "Safari", "curl"):
+        assert impersonation not in importer.http_user_agent
+
+
+def test_an_explicit_user_agent_overrides_the_default(tmp_path):
+    """One override changes what BOTH the download and the probe send."""
+    importer = _importer("zoolake", tmp_path, extra=["dataset_import.http_user_agent=my-mirror/2.0"])
+
+    assert importer.http_user_agent == "my-mirror/2.0"
+    assert importer.storage_options()["client_kwargs"]["headers"] == {"User-Agent": "my-mirror/2.0"}
+
+
+def test_storage_options_carry_the_timeout_and_the_identity(tmp_path):
+    """The User-Agent's only route into a real download is client_kwargs.headers.
+
+    datasets 5.0 builds a user-agent header in get_from_cache and then calls
+    fsspec_head/fsspec_get without it, so DownloadConfig.user_agent would change nothing
+    on the wire. This is the seam that does.
+    """
+    importer = _importer("zoolake", tmp_path)
+    client_kwargs = importer.storage_options()["client_kwargs"]
+
+    assert client_kwargs["timeout"].total == importer.http_timeout
+    assert client_kwargs["headers"]["User-Agent"] == importer.http_user_agent

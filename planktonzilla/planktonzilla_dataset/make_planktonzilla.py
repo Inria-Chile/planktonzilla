@@ -19,6 +19,18 @@ so the three real scenarios are parameterisations rather than separate code path
     pz_planktonzilla base=hub   sources=[]                        # taxonomy CSV changed
     pz_planktonzilla base=local sources=[whoi] refresh=redownload # re-import one source
 
+A run that can take hours should not discover its problems hours in, so the same command
+also answers "would this work?" before doing any of it::
+
+    pz_planktonzilla dry_run=true check_downloads=all             # verify, build nothing
+
+``dry_run`` resolves the plan and checks its local prerequisites; ``check_downloads``
+adds the network ones — one HEAD (or ranged GET) per file a real run would fetch, the
+Fairdata packaging API, the Hub base, the push target and the version tag. Anything
+blocking is raised as a single summarised error, so the command doubles as a CI gate.
+``check_downloads`` is independent of ``dry_run``: set on a real run, it refuses to start
+rather than failing four sources in. See :func:`run_preflight`.
+
 INVARIANT: the output holds exactly one contribution per source — freshly built for
 the sources in ``sources``, carried over from ``base`` for every other one —
 concatenated in the ``datasets`` declaration order. Reassembling in registry order
@@ -34,22 +46,30 @@ Prerequisites:
     downloaded. ``base=null`` with existing imagefolders is fully offline.
 """
 
+import concurrent.futures
+import csv
+import json
 import os
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
 
 import hydra
 import numpy as np
 import pyarrow.compute as pc
 import pyrootutils
+import requests
 from datasets import Dataset, concatenate_datasets, load_dataset, load_from_disk
+from datasets import config as datasets_config
 from datasets.utils import Version
-from huggingface_hub import HfApi
-from huggingface_hub.errors import RevisionNotFoundError
+from huggingface_hub import HfApi, get_token
+from huggingface_hub.errors import GatedRepoError, RepositoryNotFoundError, RevisionNotFoundError
+from humanize import naturalsize
 from omegaconf import DictConfig
 
 from planktonzilla.planktonzilla_dataset import constants
 from planktonzilla.planktonzilla_dataset.generate_planktonzilla import (
+    LOOKUP_COLS,
     REDEFINERS,
     REFRESH_MODES,
     build_overrides,
@@ -415,15 +435,299 @@ def log_plan(*, selected, registry, base_location, output_dir, cfg, dropped) -> 
     logger.info("=" * 78)
 
 
-def _report_dry_run(selected, cfg) -> list:
-    """Instantiate each selected importer and report what a real run would touch.
+# ==================================================================== pre-flight ===
+#
+# ``log_plan`` says what the run WOULD do; the checks below say whether it COULD. They
+# come in two tiers, because they cost different things:
+#
+#   local    the taxonomy CSV, a ``base`` on disk, the output and data directories,
+#            every hand-downloaded archive, each source's imagefolder — free
+#   remote   one HEAD (or ranged GET) per file a real run would fetch, the Fairdata
+#            packaging API, the Hub base, the push target and the version tag — gated
+#            on ``check_downloads``, since this is the only part that uses the network
+#
+# Nothing here downloads data, writes a dataset or POSTs anything; the single write is
+# a zero-byte file created and removed to prove a directory is writable.
 
-    Returns the archives a real run would block on — sources whose imagefolder must be
-    built but whose hand-downloaded input is not on disk.
+CHECK_SCOPES = ("none", "needed", "all")
+
+# Free space wanted per byte of download. A source's archive lands on disk, is extracted
+# beside itself, and is then copied into the imagefolder, so three copies of it exist at
+# the high-water mark of an import.
+DISK_SPACE_FACTOR = 3
+
+
+@dataclass(frozen=True)
+class Check:
+    """One pre-flight verdict.
+
+    ``ok=False`` with ``blocking=False`` is a warning: reported loudly, but not a reason
+    to stop. Checks that PASS are kept and reported too — a pre-flight that printed only
+    its failures could not be read as evidence that everything else is fine, which is
+    the question it is asked.
     """
-    logger.info("DRY RUN: resolving the plan only. Nothing is read, written or pushed.")
-    blockers = []
 
+    name: str
+    ok: bool
+    detail: str
+    blocking: bool = True
+
+
+def check_taxonomy_csv(csv_path, selected) -> list:
+    """Check the taxonomy CSV exists, parses, has every column, and covers each source.
+
+    The column check is not decoration: ``build_taxonomy_lookup`` resolves an absent
+    column to ``None`` for every row instead of raising, so a CSV that lost a rank
+    builds the whole dataset with that rank blank and reports success.
+
+    A selected source with NO row at all in the CSV is reported as a warning rather than
+    a failure — it is what adding a source before curating its labels looks like — but
+    it is worth saying up front, because the alternative is discovering afterwards that
+    a few hundred thousand images have null taxonomy and null IDs.
+    """
+    path = Path(csv_path)
+    if not path.exists():
+        return [Check("taxonomy-csv", False, f"missing: {path}")]
+
+    try:
+        with path.open(newline="", encoding="utf-8") as handle:
+            header = next(csv.reader(handle), [])
+    except OSError as e:
+        return [Check("taxonomy-csv", False, f"unreadable: {path} ({e})")]
+
+    required = ("Dataset", "Raw_Labels", *LOOKUP_COLS)
+    absent = [column for column in required if column not in header]
+    if absent:
+        return [Check("taxonomy-csv", False, f"{path} is missing the column(s) {absent}")]
+
+    try:
+        lookup = build_taxonomy_lookup(str(path))
+    except Exception as e:
+        return [Check("taxonomy-csv", False, f"{path} could not be parsed: {type(e).__name__}: {e}")]
+
+    checks = [Check("taxonomy-csv", True, f"{len(lookup)} (dataset, label) rows, all {len(required)} columns present")]
+
+    covered = {dataset for dataset, _ in lookup}
+    uncovered = [entry["name"] for entry in selected if entry["name"] not in covered]
+    if uncovered:
+        checks.append(
+            Check(
+                "taxonomy-coverage",
+                False,
+                f"no CSV row at all for {uncovered}; every image of those sources would get null taxonomy and null IDs",
+                blocking=False,
+            )
+        )
+    elif selected:
+        checks.append(Check("taxonomy-coverage", True, f"all {len(selected)} rebuilt source(s) appear in the CSV"))
+
+    return checks
+
+
+def check_base_on_disk(location) -> list:
+    """Check a ``base`` on disk really is a saved dataset, without loading it.
+
+    Mirrors ``datasets.load_from_disk``'s own dispatcher — ``dataset_info.json`` AND
+    ``state.json`` means a ``Dataset``, ``dataset_dict.json`` means a ``DatasetDict``,
+    neither means the path is not a saved dataset at all. Reading those two small JSON
+    files also yields the row count, the embedded version and the shard list for free,
+    so a splice run can be checked against the numbers it is about to build on without
+    touching a byte of Arrow.
+    """
+    path = Path(location)
+    if not path.exists():
+        return [Check("base", False, f"base points at {path}, which does not exist")]
+
+    info_file = path / datasets_config.DATASET_INFO_FILENAME
+    state_file = path / datasets_config.DATASET_STATE_JSON_FILENAME
+    dict_file = path / datasets_config.DATASETDICT_JSON_FILENAME
+
+    if not (info_file.is_file() and state_file.is_file()):
+        if dict_file.is_file():
+            return [Check("base", True, f"{path} is a saved DatasetDict")]
+        return [Check("base", False, f"{path} is not a saved dataset: it has neither {info_file.name} nor {dict_file.name}")]
+
+    try:
+        info = json.loads(info_file.read_text(encoding="utf-8"))
+        state = json.loads(state_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        return [Check("base", False, f"{path} has an unreadable {info_file.name}/{state_file.name}: {e}")]
+
+    # `splits` is written by a builder, so the real artifact carries it and an ad-hoc
+    # Dataset.from_dict(...).save_to_disk() does not. Absent means "not recorded", never
+    # "empty" — reporting 0 rows for a full dataset would be worse than saying nothing.
+    splits = info.get("splits") or {}
+    rows = sum(split.get("num_examples") or 0 for split in splits.values()) if splits else None
+    version = (info.get("version") or {}).get("version_str")
+    shards = [entry.get("filename") for entry in state.get("_data_files") or []]
+    missing_shards = [name for name in shards if name and not (path / name).is_file()]
+
+    detail = f"{path}: {len(shards)} shard(s)"
+    if rows is not None:
+        detail = f"{path}: {rows} rows in {len(shards)} shard(s)"
+    if version:
+        detail += f", version {version}"
+    checks = [Check("base", True, detail)]
+    if missing_shards:
+        gone = f"{len(missing_shards)} shard(s) named in {state_file.name} are gone: {missing_shards[:3]}"
+        checks.append(Check("base-shards", False, gone))
+    return checks
+
+
+def check_base_on_hub(repo_id, *, token, timeout, api=None) -> list:
+    """Check the Hub dataset a ``base=hub`` run would read is there and readable.
+
+    A private or unauthorised repo answers 404, so ``RepositoryNotFoundError`` means
+    "missing OR invisible to this token" and is worded that way. ``GatedRepoError`` —
+    which SUBCLASSES it in huggingface_hub 1.x, hence the order of the handlers — is the
+    one case where the repo is known to exist and only access is missing.
+    """
+    api = api or HfApi(token=token)
+
+    try:
+        info = api.dataset_info(repo_id, timeout=timeout)
+    except GatedRepoError:
+        return [Check("base-hub", False, f"«{repo_id}» is gated; request access on the Hub before a base=hub run")]
+    except RepositoryNotFoundError:
+        return [Check("base-hub", False, f"«{repo_id}» not found, or invisible to this token (a private repo needs HF_TOKEN)")]
+    except Exception as e:
+        # Broad on purpose: huggingface_hub 1.x speaks httpx, whose transport errors are
+        # neither requests exceptions nor OSError, so nothing narrower catches "the
+        # network is down". A pre-flight has to report that, not crash on it.
+        return [Check("base-hub", False, f"«{repo_id}» could not be read: {type(e).__name__}: {e}")]
+
+    detail = f"«{repo_id}» readable"
+    if info.sha:
+        detail += f", revision {info.sha[:7]}"
+    if info.last_modified:
+        detail += f", last modified {info.last_modified:%Y-%m-%d}"
+    if info.private:
+        detail += ", private"
+    return [Check("base-hub", True, detail)]
+
+
+def check_push_target(cfg, version, *, api=None) -> list:
+    """Check the run could push — and tag — what it is about to spend hours building.
+
+    The tag check is the point of this one. ``tag_hub_release`` only discovers a name
+    collision AFTER the entire dataset has been uploaded, and the error it raises then
+    exists purely to stop the user re-running the build. Reading the repo's refs up front
+    turns that into a five-second failure with the same advice.
+
+    Takes no ``timeout``, deliberately: ``auth_check`` and ``list_repo_refs`` accept none
+    in huggingface_hub 1.x, and a parameter that silently bounds nothing would read as a
+    guarantee this cannot make. (``dataset_info`` does accept one — see
+    :func:`check_base_on_hub`, which passes ``check_timeout``.)
+    """
+    repo_id = str(cfg.repo_id)
+    token = cfg.get("hf_token", None)
+    api = api or HfApi(token=token)
+
+    if not token and not get_token():
+        return [Check("push-token", False, "push_to_hub=true but no token: set HF_TOKEN, or run `hf auth login`")]
+
+    checks = []
+    try:
+        api.auth_check(repo_id, repo_type="dataset", write=True)
+        checks.append(Check("push-target", True, f"«{repo_id}» exists and this token may write to it"))
+    except GatedRepoError:
+        checks.append(Check("push-target", False, f"«{repo_id}» is gated for this token"))
+    except RepositoryNotFoundError:
+        # Deliberately NOT blocking, and deliberately ambiguous: the Hub answers 404 both
+        # for a repo that does not exist — which push_to_hub would simply create — and
+        # for one this token cannot see, where the push fails. Nothing distinguishes them
+        # from here, so the message names both instead of guessing, and it is also what a
+        # typo in repo_id looks like, which is only cheap to notice before the upload.
+        absent = (
+            f"«{repo_id}» is not visible to this token: either it does not exist (the push would create it — "
+            f"check the spelling) or the token lacks access to it (the push would fail)"
+        )
+        checks.append(Check("push-target", False, absent, blocking=False))
+    except Exception as e:
+        unconfirmed = f"write access to «{repo_id}» could not be confirmed: {type(e).__name__}: {e}"
+        checks.append(Check("push-target", False, unconfirmed))
+
+    push_revision = cfg.get("push_revision", None)
+    if version is None and not push_revision:
+        return checks
+
+    try:
+        refs = api.list_repo_refs(repo_id, repo_type="dataset")
+    except Exception as e:
+        unlisted = f"the refs of «{repo_id}» could not be listed: {type(e).__name__}: {e}"
+        checks.append(Check("hub-refs", False, unlisted, blocking=False))
+        return checks
+
+    if version is not None:
+        tags = {ref.name for ref in refs.tags}
+        if version not in tags:
+            checks.append(Check("version-tag", True, f"«{version}» is free to tag on «{repo_id}»"))
+        elif cfg.get("version_overwrite", False):
+            checks.append(Check("version-tag", True, f"«{version}» exists and would be MOVED (version_overwrite=true)"))
+        else:
+            checks.append(
+                Check(
+                    "version-tag",
+                    False,
+                    f"tag «{version}» already exists on «{repo_id}» — pick another version, or set version_overwrite=true. "
+                    f"Left as is, this run uploads the whole dataset and only then fails to tag it",
+                )
+            )
+
+    if push_revision:
+        exists = push_revision in {ref.name for ref in refs.branches}
+        state = "exists" if exists else "does not exist yet; the push creates it"
+        checks.append(Check("push-revision", True, f"branch «{push_revision}» {state}"))
+
+    return checks
+
+
+def check_writable_dir(name, path, *, needed_bytes=0) -> list:
+    """Check a directory can be written to, and report the free space on its filesystem.
+
+    Writability is tested by creating and deleting a zero-byte file rather than with
+    ``os.access``, which answers for the real uid and lies on NFS and ACL mounts. The
+    nearest EXISTING ancestor is used, because the target itself is usually the thing
+    the run would create.
+    """
+    target = Path(path)
+
+    existing = target
+    while not existing.exists() and existing != existing.parent:
+        existing = existing.parent
+
+    probe = existing / f".pz-preflight-{os.getpid()}"
+    try:
+        probe.touch()
+        probe.unlink()
+    except OSError as e:
+        return [Check(name, False, f"{existing} is not writable: {e}")]
+
+    free = shutil.disk_usage(existing).free
+    detail = f"{target} writable, {naturalsize(free)} free"
+
+    if needed_bytes and free < needed_bytes * DISK_SPACE_FACTOR:
+        return [
+            Check(
+                name,
+                False,
+                f"{detail} — the downloads alone are {naturalsize(needed_bytes)}, and an import needs about "
+                f"{DISK_SPACE_FACTOR}x that (archive + extraction + imagefolder)",
+                blocking=False,
+            )
+        ]
+    return [Check(name, True, detail)]
+
+
+def instantiate_selected(selected, cfg) -> list:
+    """Compose and instantiate every selected source's importer. Touches nothing.
+
+    Composing is the only way to see EFFECTIVE values: a registry entry's
+    ``extra_overrides`` (a hand-downloaded archive, say), the ``refresh`` flags and
+    ``import_overrides`` all change what a source would fetch, and none of them is
+    visible in ``configs/dataset_import/*.yaml``.
+    """
+    importers = []
     for entry in selected:
         overrides = build_overrides(
             cfg.data_dir,
@@ -434,26 +738,200 @@ def _report_dry_run(selected, cfg) -> list:
             import_overrides=cfg.import_overrides,
         )
         import_cfg = hydra.compose(config_name="import_dataset", overrides=overrides)
-        importer = hydra.utils.instantiate(import_cfg.dataset_import)
+        importers.append((entry, hydra.utils.instantiate(import_cfg.dataset_import)))
+    return importers
 
+
+def report_source_state(importers, cfg) -> tuple:
+    """Report each source's imagefolder and hand-downloaded archives.
+
+    Returns ``(checks, fetch_names)`` — the second being the sources a real run would
+    actually download, decided exactly as ``import_and_redefine_source`` decides it: a
+    non-empty imagefolder short-circuits the import unless ``refresh=redownload``
+    removes it first.
+    """
+    checks, fetch_names = [], []
+
+    for entry, importer in importers:
+        name = entry["name"]
         imagefolder = Path(importer.imagefolder_dir)
         exists = imagefolder.exists() and bool(os.listdir(imagefolder))
         state = f"{len(os.listdir(imagefolder))} categories" if exists else "absent/empty -> would be imported"
         removal = " (would be REMOVED first)" if cfg.refresh == "redownload" and imagefolder.exists() else ""
 
-        logger.info(f"╰─ {entry['name']:16s} {imagefolder} [{state}]{removal}")
+        logger.info(f"╰─ {name:16s} {imagefolder} [{state}]{removal}")
 
         # A source that needs a hand-downloaded archive only fails once the run reaches
         # it, which on a full build can be hours in. Report it now, while the whole plan
         # is on screen and nothing has been downloaded yet.
         if not exists or cfg.refresh == "redownload":
+            fetch_names.append(name)
             missing = importer.missing_manual_downloads()
             if missing:
-                blockers.extend(missing)
                 for line in importer.manual_download_instructions().splitlines():
                     logger.warning(f"   {line}")
+                wanted = f"{len(missing)} archive(s) must be downloaded by hand: {missing}"
+                checks.append(Check(f"manual:{name}", False, wanted))
 
-    return blockers
+    return checks, fetch_names
+
+
+def check_source_downloads(importers, fetch_names, *, scope, timeout, session=None, audit=True) -> tuple:
+    """Probe every file a real run would obtain, without obtaining any of it.
+
+    ``scope`` decides the question being asked. ``needed`` answers "can THIS run
+    proceed?" and skips the sources whose imagefolder is already built, since those are
+    never downloaded. ``all`` answers "is every selected source still downloadable?",
+    which is the one worth running on a schedule — upstream archives move, and finding
+    out at the start of the next rebuild is late.
+
+    ``audit`` is what keeps ``all`` usable in both roles. When nothing is being built
+    (a dry run) every failure blocks, so the audit exits non-zero on any breakage. On a
+    REAL run only the sources this run would actually fetch can block it: refusing to
+    build because an archive is unreachable for a source whose imagefolder is already on
+    disk would stop a run that was going to succeed.
+
+    Returns ``(checks, total_bytes)``. The byte total counts only what would really be
+    downloaded, so the free-space check is not inflated by an ``all``-scope audit.
+    """
+    wanted = set(fetch_names)
+    targets = [(entry["name"], importer) for entry, importer in importers if scope == "all" or entry["name"] in wanted]
+    skipped = [entry["name"] for entry, _ in importers if scope != "all" and entry["name"] not in wanted]
+
+    checks, total = [], 0
+
+    def _probe(target):
+        """Probe one source, converting any crash into a verdict about that source.
+
+        probe_downloads only promises to swallow requests' own exceptions. Anything else
+        (a malformed header, a bug here) would propagate out of executor.map and take the
+        whole report down with it — losing the verdicts on the other fourteen sources,
+        which is exactly what this pre-flight exists to avoid.
+        """
+        name, importer = target
+        try:
+            if session is not None:
+                return importer.probe_downloads(timeout=timeout, session=session)
+            # One session per source rather than one shared across the pool: requests'
+            # Session is not documented as thread-safe, and per-source is where the reuse
+            # that matters happens anyway (whoi alone is 9 URLs on one host).
+            with requests.Session() as own_session:
+                return importer.probe_downloads(timeout=timeout, session=own_session)
+        except Exception as e:
+            logger.warning(f"Probing «{name}» raised {type(e).__name__}: {e}")
+            return e
+
+    if targets:
+        # Concurrent because 15 sources spread over 9 hosts are 22 mostly-idle requests;
+        # sequentially that is a minute of waiting for a check meant to be instant.
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(targets))) as executor:
+            probed = list(executor.map(_probe, targets))
+    else:
+        probed = []
+
+    for (name, _), results in zip(targets, probed):
+        blocking = audit or name in wanted
+
+        if isinstance(results, Exception):
+            crashed = f"could not be probed: {type(results).__name__}: {results}"
+            checks.append(Check(f"download:{name}", False, crashed, blocking))
+            continue
+
+        failures = [result for result in results if not result.ok]
+        sizes = [result.size for result in results if result.size]
+        if name in wanted:
+            total += sum(sizes)
+
+        if failures:
+            shown = "; ".join(f"{result.location} — {result.detail}" for result in failures[:2])
+            more = f" (+{len(failures) - 2} more)" if len(failures) > 2 else ""
+            detail = f"{len(failures)}/{len(results)} unreachable: {shown}{more}"
+            if not blocking:
+                detail += " (not blocking: this run reuses the imagefolder it already has)"
+            checks.append(Check(f"download:{name}", False, detail, blocking))
+        else:
+            volume = f", {naturalsize(sum(sizes))}" if sizes else ""
+            checks.append(Check(f"download:{name}", True, f"{len(results)} target(s) reachable{volume}"))
+
+        checks.extend(
+            Check(f"download:{name}", False, f"{result.location} — {result.warning}", blocking=False)
+            for result in results
+            if result.warning
+        )
+
+    if skipped:
+        # Named rather than counted: a probe that silently covered 3 of 15 sources reads
+        # like a clean bill of health for all 15.
+        checks.append(
+            Check("downloads-skipped", True, f"imagefolder already built, not probed: {', '.join(skipped)}", blocking=False)
+        )
+
+    return checks, total
+
+
+def run_preflight(*, selected, cfg, base_location, output_dir, taxo_csv_path, version) -> list:
+    """Verify that a real run could do what ``log_plan`` just described.
+
+    Every verdict is returned, passes included, in report order. The caller decides what
+    to do with them; nothing here raises for a check that failed, because stopping at the
+    first problem is what makes a multi-hour build take three attempts to start.
+    """
+    remote = cfg.check_downloads != "none"
+    scope = "network + local checks" if remote else "local checks only (check_downloads=needed probes the network)"
+    logger.info(f"PRE-FLIGHT: {scope}. Nothing is downloaded, built or pushed.")
+
+    checks = list(check_taxonomy_csv(taxo_csv_path, selected))
+
+    importers = instantiate_selected(selected, cfg)
+    source_checks, fetch_names = report_source_state(importers, cfg)
+    checks += source_checks
+
+    estimated_bytes = 0
+    if remote and importers:
+        download_checks, estimated_bytes = check_source_downloads(
+            importers,
+            fetch_names,
+            scope=cfg.check_downloads,
+            timeout=cfg.check_timeout,
+            # A dry run builds nothing, so every failure it finds is the answer it was
+            # asked for; a real run may only be stopped by a source it would fetch.
+            audit=bool(cfg.dry_run),
+        )
+        checks += download_checks
+
+    if base_location is not None:
+        kind, target = base_location
+        if kind == "disk":
+            checks += check_base_on_disk(target)
+        elif remote:
+            checks += check_base_on_hub(target, token=cfg.get("hf_token", None), timeout=cfg.check_timeout)
+
+    checks += check_writable_dir("output-dir", output_dir)
+    checks += check_writable_dir("data-dir", cfg.data_dir, needed_bytes=estimated_bytes)
+
+    if cfg.get("push_to_hub", False) and remote:
+        checks += check_push_target(cfg, version)
+
+    return checks
+
+
+def log_preflight(checks) -> None:
+    """Print the whole verdict table, one line per check, in the banner style."""
+    passed = [check for check in checks if check.ok]
+    warned = [check for check in checks if not check.ok and not check.blocking]
+    failed = [check for check in checks if not check.ok and check.blocking]
+
+    logger.info("=" * 78)
+    logger.info(f"PRE-FLIGHT: {len(passed)} ok, {len(warned)} warning(s), {len(failed)} blocking failure(s)")
+    for check in checks:
+        line = f"[{'ok  ' if check.ok else 'FAIL' if check.blocking else 'WARN'}] {check.name:20s} {check.detail}"
+        if check.ok:
+            logger.info(line)
+        elif check.blocking:
+            logger.error(line)
+        else:
+            logger.warning(line)
+    logger.info("=" * 78)
 
 
 def _refuse_empty_result(*, dropped, fresh_names, base_source_names=None) -> None:
@@ -625,6 +1103,13 @@ def main(cfg: DictConfig) -> None:
         raise ValueError(f"clean must be one of {CLEAN_SCOPES}, got {cfg.clean!r}")
     if cfg.sync_unmatched not in UNMATCHED_POLICIES:
         raise ValueError(f"sync_unmatched must be one of {UNMATCHED_POLICIES}, got {cfg.sync_unmatched!r}")
+    if cfg.check_downloads not in CHECK_SCOPES:
+        raise ValueError(f"check_downloads must be one of {CHECK_SCOPES}, got {cfg.check_downloads!r}")
+    # `not isinstance(...)` first: `check_timeout=null` reaches here as None, and the
+    # comparison alone would answer a mistyped value with a TypeError from inside the
+    # guard written to reject it.
+    if not isinstance(cfg.check_timeout, (int, float)) or isinstance(cfg.check_timeout, bool) or cfg.check_timeout <= 0:
+        raise ValueError(f"check_timeout must be a positive number of seconds, got {cfg.check_timeout!r}")
 
     version, version_embeddable = resolve_version(cfg)
 
@@ -663,16 +1148,31 @@ def main(cfg: DictConfig) -> None:
         dropped=dropped,
     )
 
-    if cfg.dry_run:
-        blockers = _report_dry_run(selected, cfg)
-        if blockers:
-            logger.warning(
-                f"DRY RUN complete; nothing was modified. {len(blockers)} archive(s) must be downloaded by "
-                f"hand before a real run can get past them (listed above)."
+    # The pre-flight runs for a dry run (which is nothing else) and whenever the network
+    # checks were asked for on a real run — there, refusing to start beats failing four
+    # sources in. A plain run skips it entirely and behaves exactly as it always has.
+    if cfg.dry_run or cfg.check_downloads != "none":
+        checks = run_preflight(
+            selected=selected,
+            cfg=cfg,
+            base_location=base_location,
+            output_dir=output_dir,
+            taxo_csv_path=taxo_csv_path,
+            version=version,
+        )
+        log_preflight(checks)
+
+        blocking = [check for check in checks if not check.ok and check.blocking]
+        if blocking:
+            raise RuntimeError(
+                f"Pre-flight found {len(blocking)} blocking problem(s), so nothing was downloaded, built or pushed: "
+                + " | ".join(f"{check.name}: {check.detail}" for check in blocking)
             )
-        else:
+
+        if cfg.dry_run:
             logger.info("DRY RUN complete; nothing was modified.")
-        return
+            return
+        logger.info("Pre-flight passed; starting the real run.")
 
     lookup = build_taxonomy_lookup(taxo_csv_path)
     sync_dict = build_sync_dict(taxo_csv_path) if (base_location is not None and cfg.sync_taxonomy) else None
