@@ -29,6 +29,7 @@ root = pyrootutils.setup_root(
 import datasets
 import huggingface_hub.constants
 import hydra
+import pytest
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import OmegaConf
 from PIL import Image as PILImage
@@ -59,8 +60,19 @@ def _write_png(path, size=8):
     PILImage.new("RGB", (size, size), color=(120, 160, 200)).save(path)
 
 
-def test_lensless_only_e2e_generation_is_offline_and_pins_behavior(monkeypatch, tmp_path):
-    """Run the REAL lensless-only gen pipeline offline and pin the output rows."""
+@pytest.mark.parametrize("layout", ["flat", "split"])
+def test_lensless_only_e2e_generation_is_offline_and_pins_behavior(monkeypatch, tmp_path, layout):
+    """Run the REAL lensless-only gen pipeline offline and pin the output rows.
+
+    Parametrized over both imagefolder shapes because they are NOT interchangeable:
+    ``LenslessDatasetImporter._prepare_imagefolder`` renames ``TRAIN_IMAGE``/``TEST_IMAGE``
+    to ``train``/``test``, so ``split`` is the layout a real lensless build actually
+    produces — ``flat`` never occurs for this source. The split case used to raise
+    ``Instruction "train" corresponds to no data!``: the fallback glob was a fixed depth-2
+    pattern that matched the class DIRECTORIES, and `datasets` keeps only files. Both
+    layouts must yield the SAME rows, including the frozen two-chunk ``original_path`` —
+    the split level is provenance the consolidated dataset does not record.
+    """
     # (finding 1+9) Offline by construction; these guards PROVE it. HF offline env
     # plus monkeypatched requests that raise if the redefine path ever hits network.
     monkeypatch.setenv("HF_HUB_OFFLINE", "1")
@@ -80,7 +92,12 @@ def test_lensless_only_e2e_generation_is_offline_and_pins_behavior(monkeypatch, 
     monkeypatch.setattr(gp.requests.Session, "get", _no_network)
 
     # (finding 7) Determinism: the module-level global read by _serialize/_flatten.
-    gp.num_proc = 1
+    # Set via monkeypatch so it REVERTS: a bare assignment leaked into whatever ran next
+    # in the same process and made test_gen_planktonzilla_hydra.py's
+    # test_module_level_num_proc_independent_of_cfg fail. The full suite only escaped that
+    # because alphabetical file order happens to put the hydra file first — an
+    # order-dependence, not a guarantee.
+    monkeypatch.setattr(gp, "num_proc", 1)
 
     # (finding 2+3) Pre-create the imagefolder so import_dataset() is NEVER called.
     # Name matches DatasetImporter.__post_init__: data_dir / "<classname>_imagefolder".
@@ -90,9 +107,13 @@ def test_lensless_only_e2e_generation_is_offline_and_pins_behavior(monkeypatch, 
     class_pngs = {"copepoda": 3, "diatom": 2}
     total_png_count = sum(class_pngs.values())
     for class_name, n in class_pngs.items():
-        class_dir = imagefolder / class_name
-        class_dir.mkdir(parents=True, exist_ok=True)
         for i in range(n):
+            # "split" nests every class under a split directory, exactly as the real
+            # importer leaves it; the image count and the class set are identical, so any
+            # difference in the asserted rows below is caused by the layout alone.
+            parent = imagefolder / ("train" if i % 2 == 0 else "test") if layout == "split" else imagefolder
+            class_dir = parent / class_name
+            class_dir.mkdir(parents=True, exist_ok=True)
             _write_png(class_dir / f"img_{i}.png")
     expected_classes = set(class_pngs)
 

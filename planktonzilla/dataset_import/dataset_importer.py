@@ -16,6 +16,7 @@ helpers used during normalization.
 
 import concurrent.futures
 import csv
+import glob
 import gzip
 import importlib.metadata
 import os
@@ -283,6 +284,65 @@ def find_class_root(extraction_root: Path) -> Path:
 
     logger.info(f"Located {best_count} class folders under {best_dir}.")
     return best_dir
+
+
+# Class-folder depths the no-explicit-splits fallback will try, shallowest first.
+# 1 is the flat `<class>/<image>` layout every URL-based importer produces; 2 is the
+# split `<split>/<class>/<image>` layout LenslessDatasetImporter (train/ + test/) and
+# ZooLakeDatasetImporter (train_split/ + val_split/ + test_split/) produce.
+IMAGEFOLDER_CLASS_DEPTHS: Final = (1, 2)
+
+
+def resolve_imagefolder_glob(imagefolder_dir: Path) -> str:
+    """Return a fixed-depth glob that resolves to the image FILES under ``imagefolder_dir``.
+
+    The fallback used when no canonical ``train``/``validation``/``test`` directory is
+    found. It was a single hard-coded depth-2 glob (``*/*[!._]*``), which matches only
+    the flat ``<class>/<image>`` layout. On a split layout that pattern matches the class
+    **directories** instead of files; ``datasets`` keeps only ``type == "file"``, so zero
+    files resolved and the load died with ``Instruction "train" corresponds to no data!``.
+    That made ``lensless`` and ``zoolake`` — both active registry entries — unbuildable.
+
+    Why a depth LADDER and not a recursive ``**`` glob: ``imagefolder`` infers the label
+    from each file's parent directory and only emits a ``label`` column when the matched
+    files sit at a uniform depth. A recursive glob also picks up any stray image sitting
+    at the imagefolder root, which breaks that uniformity — the loader then silently drops
+    ``label`` entirely and ``_taxonomy_row``'s ``class_names[example["label"]]`` raises.
+    A fixed depth keeps the layout uniform and keeps root-level strays out.
+
+    Depth 1 is tried first, so every flat source resolves exactly the pattern it always
+    did. Only a layout that yields no files at depth 1 — i.e. one that raises today —
+    falls through to depth 2. ``original_path`` is unaffected either way: the caller's
+    single-split fallback keeps ``n_splits == 1``, so it stays the last two path chunks.
+
+    When NO depth yields a file the shallowest pattern is returned anyway — deliberately,
+    to keep this function output-preserving. That is the string the caller has always
+    passed to ``load_dataset``, so an empty or unreadable imagefolder still fails exactly
+    where and how it did before, rather than acquiring a new failure mode here. Raising
+    instead would also break every caller that never resolves the pattern against a real
+    filesystem, which is what the ``load_dataset``-monkeypatching Hydra tests do.
+
+    Args:
+        imagefolder_dir: Root of the imagefolder to probe.
+
+    Returns:
+        A glob string suitable for ``load_dataset("imagefolder", data_files=...)``.
+    """
+    patterns = [str(imagefolder_dir.joinpath(*["*"] * depth, "[!._]*")) for depth in IMAGEFOLDER_CLASS_DEPTHS]
+
+    for depth, pattern in zip(IMAGEFOLDER_CLASS_DEPTHS, patterns):
+        if any(Path(match).is_file() for match in glob.glob(pattern)):
+            if depth != 1:
+                logger.info(f"Imagefolder {imagefolder_dir} nests classes {depth} levels deep; using {pattern}.")
+            return pattern
+
+    logger.warning(
+        f"No image files found under {imagefolder_dir} at any tried depth ({', '.join(patterns)}). "
+        f"Falling back to {patterns[0]}; the loader will report the empty result. The imagefolder "
+        f"is empty, or its class folders are nested deeper than {max(IMAGEFOLDER_CLASS_DEPTHS)} "
+        f"levels — extend IMAGEFOLDER_CLASS_DEPTHS if so."
+    )
+    return patterns[0]
 
 
 class FairdataResolutionError(RuntimeError):
@@ -1239,9 +1299,12 @@ class DatasetImporter:
                     data_files[canonical_split] = str(split_path / "*/[!._]*")
                     break
 
-        # fallback: dataset sin splits
+        # No directory matched a canonical split alias, so take everything as train.
+        # ZooLakeDatasetImporter reaches this branch even though it HAS splits: it names
+        # them train_split/val_split/test_split, none of which is an alias above. The
+        # resolver handles that by depth rather than by name — see resolve_imagefolder_glob.
         if not data_files:
-            data_files = {"train": str(root / "*/*[!._]*")}
+            data_files = {"train": resolve_imagefolder_glob(root)}
 
         self.hf_dataset = load_dataset(
             "imagefolder",

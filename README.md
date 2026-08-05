@@ -123,7 +123,7 @@ planktonzilla/                          # repo root
 │   │   ├── templates/sankey_flow.html       # the page pz_sankey fills in
 │   │   ├── constants.py                     # shared constants
 │   │   ├── planktonzilla_taxonomy.csv       # taxonomy mapping table
-│   │   ╰── utils/                            # extract_cox.py, extract_taxon_ids.py, KNOWN_ISSUES.md
+│   │   ╰── utils/                            # extract_cox.py, extract_taxon_ids.py, KNOWN_ISSUES.md, RESOLVED_ISSUES.md
 │   ╰── utils/                           # hydra.py, resolvers.py, logger.py, rich_utils.py
 ├── scripts/                            # train.sh, train_clip.sh, push_dataset.sh (SLURM launchers)
 ├── notebooks/                          # exploratory analysis (metrics paper, sampling map)

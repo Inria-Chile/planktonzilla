@@ -17,7 +17,9 @@ Nothing here touches the network or downloads anything: instantiating an importe
 builds the dataclass and derives its ``imagefolder_dir`` / ``raw_dir`` paths.
 """
 
+import glob
 import inspect
+import logging
 import os
 import shutil
 
@@ -1142,3 +1144,72 @@ def test_storage_options_carry_the_timeout_and_the_identity(tmp_path):
 
     assert client_kwargs["timeout"].total == importer.http_timeout
     assert client_kwargs["headers"]["User-Agent"] == importer.http_user_agent
+
+
+# --- resolve_imagefolder_glob: the fallback that decides what every source loads -------
+#
+# KI-16 froze the split probe in the build path at the repository root, so the
+# no-explicit-splits fallback is the ONLY branch `import_and_redefine_source` ever takes.
+# It used to be a hard-coded depth-2 glob that could not see a split layout, which made
+# `lensless` and `zoolake` — both active registry entries — raise on load.
+
+
+def test_resolve_imagefolder_glob_picks_the_flat_depth_first(tmp_path):
+    """A flat `<class>/<image>` source resolves the exact pattern it always did."""
+    _make_classes(tmp_path, ["copepoda", "diatom"])
+
+    assert di.resolve_imagefolder_glob(tmp_path) == str(tmp_path / "*" / "[!._]*")
+
+
+def test_resolve_imagefolder_glob_reaches_a_split_layout(tmp_path):
+    """`<split>/<class>/<image>` (lensless, zoolake) resolves one level deeper."""
+    for split in ("train", "test"):
+        _make_classes(tmp_path / split, ["copepoda"])
+
+    assert di.resolve_imagefolder_glob(tmp_path) == str(tmp_path / "*" / "*" / "[!._]*")
+
+
+def test_resolve_imagefolder_glob_ignores_zoolake_style_split_names(tmp_path):
+    """ZooLake names its splits train_split/val_split/test_split — no alias matches them.
+
+    The resolver keys on DEPTH, not on the split's name, which is what lets that layout
+    load at all.
+    """
+    for split in ("train_split", "val_split", "test_split"):
+        _make_classes(tmp_path / split, ["copepoda"])
+
+    assert di.resolve_imagefolder_glob(tmp_path) == str(tmp_path / "*" / "*" / "[!._]*")
+
+
+def test_resolve_imagefolder_glob_is_not_recursive(tmp_path):
+    """A stray image at the imagefolder root must not drag the match to a mixed depth.
+
+    `imagefolder` only emits a `label` column when the matched files sit at a uniform
+    depth; a `**` glob would pick the stray up, silently drop `label`, and make
+    `_taxonomy_row`'s `class_names[example["label"]]` raise. A fixed depth cannot.
+    """
+    _make_classes(tmp_path, ["copepoda"])
+    _write_png(tmp_path / "loose_at_root.png")
+
+    pattern = di.resolve_imagefolder_glob(tmp_path)
+
+    assert pattern == str(tmp_path / "*" / "[!._]*")
+    assert str(tmp_path / "loose_at_root.png") not in glob.glob(pattern)
+
+
+def test_resolve_imagefolder_glob_warns_but_still_returns_the_flat_pattern(tmp_path, caplog):
+    """An empty imagefolder must keep failing where it always did, not raise here.
+
+    The resolver is output-preserving on purpose: the shallowest pattern is the string
+    this call site has always produced, so an empty imagefolder still surfaces from the
+    loader. Raising instead would invent a failure mode for every caller that never
+    resolves the pattern against a real filesystem — which is what the Hydra tests that
+    monkeypatch ``load_dataset`` do.
+    """
+    (tmp_path / "empty_class").mkdir()
+
+    with caplog.at_level(logging.WARNING):
+        pattern = di.resolve_imagefolder_glob(tmp_path)
+
+    assert pattern == str(tmp_path / "*" / "[!._]*")
+    assert "No image files found" in caplog.text

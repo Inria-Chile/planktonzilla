@@ -66,6 +66,7 @@ from joblib import Parallel, delayed
 from omegaconf import DictConfig
 from tqdm import tqdm
 
+from planktonzilla.dataset_import.dataset_importer import resolve_imagefolder_glob
 from planktonzilla.planktonzilla_dataset import constants
 from planktonzilla.utils.logger import get_pylogger
 
@@ -728,10 +729,11 @@ def import_and_redefine_source(entry, *, data_dir, redefiner, num_proc_arg, refr
     # always 1, which makes `original_path` the last TWO path chunks
     # (`_taxonomy_row`). Those values are frozen in the published dataset, and rows
     # rebuilt by a per-source refresh sit beside rows carried over from it, so
-    # correcting the probe would make the two disagree. Two consequences worth
-    # knowing: a stray `train/` at the repo root would hijack `data_files` for every
-    # source at once, and the depth-2 fallback glob cannot read the split layouts
-    # LenslessDatasetImporter and ZooLakeDatasetImporter produce.
+    # correcting the probe would make a rebuilt source disagree with the fourteen
+    # carried ones. (Splicing is whole-source, keyed on the `dataset` column, so the
+    # disagreement is ACROSS sources in one artifact — never two identities for one
+    # row.) One consequence remains live: a stray `train/` at the repo root would
+    # hijack `data_files` for every source at once.
     split_aliases = {
         "train": ["train"],
         "validation": ["validation", "val"],
@@ -745,9 +747,14 @@ def import_and_redefine_source(entry, *, data_dir, redefiner, num_proc_arg, refr
                 data_files[canonical_split] = str(split_path / "*/[!._]*")
                 break
 
-    # No explicit splits: take everything as train.
+    # No explicit splits: take everything as train. Because of the KNOWN ISSUE above this
+    # branch is ALWAYS taken, so it alone decides what every source loads. It used to be a
+    # hard-coded depth-2 glob, which matches the flat `<class>/<image>` layout only; on the
+    # split layouts lensless and zoolake produce it matched the class DIRECTORIES, resolved
+    # zero files, and the load raised. resolve_imagefolder_glob picks the depth that yields
+    # files, trying the flat one first so every other source resolves exactly as before.
     if not data_files:
-        data_files = {"train": str(dataset_importer.imagefolder_dir / "*/*[!._]*")}
+        data_files = {"train": resolve_imagefolder_glob(imagefolder_dir)}
 
     logger.info("╰─ Loading dataset with the imagefolder loader.")
     dataset = load_dataset("imagefolder", data_files=data_files)
