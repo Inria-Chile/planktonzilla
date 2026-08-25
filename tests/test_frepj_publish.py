@@ -333,3 +333,43 @@ def test_tag_release_rejects_frozen_before_any_network_call(monkeypatch):
     monkeypatch.setenv("HF_TOKEN", "hf_faketoken")
     with pytest.raises(ValueError, match="frozen"):
         fp.tag_release("project-oceania/planktonzilla-17M", "v1.2.0")
+
+
+def test_build_card_carries_over_existing_metadata_but_owned_keys_win():
+    """configs/dataset_info from the Hub card survive a card push; license/tags/pretty_name are ours."""
+    existing = {
+        "license": "mit",
+        "tags": ["stale"],
+        "configs": [{"config_name": "default", "data_files": [{"split": "train", "path": "data/train-*"}]}],
+        "dataset_info": {
+            "features": [{"name": "image", "dtype": "image"}],
+            "splits": [{"name": "train", "num_examples": 88686}],
+        },
+    }
+    data = fp.build_card(existing).data.to_dict()
+    assert data["license"] == frepj_layout.LICENSE
+    assert data["tags"] == ["plankton", "zooplankton", "image-classification", "frepj"]
+    assert data["pretty_name"] == frepj_layout.HUMAN_READABLE_NAME
+    assert data["configs"] == existing["configs"]
+    assert data["dataset_info"] == existing["dataset_info"]
+    # Offline default: no existing card -> exactly the owned keys.
+    assert set(fp.build_card().data.to_dict()) == {"license", "tags", "pretty_name"}
+
+
+def test_push_card_reads_the_existing_card_before_pushing(monkeypatch):
+    """push_card loads the Hub card's metadata and hands it to build_card (no network here)."""
+    monkeypatch.setenv("HF_TOKEN", "hf_faketoken")
+    seen = {}
+    monkeypatch.setattr(fp, "_existing_card_metadata", lambda repo_id, token: {"configs": ["kept"]})
+
+    class _Card:
+        def push_to_hub(self, repo_id, repo_type, token):
+            seen["pushed"] = (repo_id, repo_type)
+
+    def _build(existing=None):
+        seen["existing"] = existing
+        return _Card()
+
+    monkeypatch.setattr(fp, "build_card", _build)
+    fp.push_card("project-oceania/planktonzilla-frepj")
+    assert seen == {"existing": {"configs": ["kept"]}, "pushed": ("project-oceania/planktonzilla-frepj", "dataset")}

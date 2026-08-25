@@ -185,7 +185,19 @@ def smoke_load(repo_id: str = TARGET_REPO_ID, token: str | None = None) -> bool:
     return True
 
 
-def _card_content() -> str:
+# The card metadata this helper owns. Anything ELSE found in the card already on the Hub
+# is carried over untouched — in particular the `configs` / `dataset_info` blocks that
+# `push_to_hub` writes (features, split sizes, data_files), which the dataset viewer and
+# `load_dataset` read. Replacing the whole README, as the first publish did, silently
+# dropped them.
+_OWNED_CARD_METADATA = {
+    "license": frepj_layout.LICENSE,
+    "tags": ["plankton", "zooplankton", "image-classification", "frepj"],
+    "pretty_name": frepj_layout.HUMAN_READABLE_NAME,
+}
+
+
+def _card_content(existing_metadata: dict | None = None) -> str:
     """Build the FREPJ dataset-card markdown (YAML header + body) from committed constants.
 
     REUSES the ``frepj_layout`` license/citation/DOI constants so the citation is never
@@ -193,21 +205,16 @@ def _card_content() -> str:
     et al. 2024 citation (paper + data DOIs), and the LITERAL ``INTERMEDIATE_NOTE``
     distinguishing this build from the frozen ``planktonzilla-17M`` and the forthcoming
     full ``planktonzilla-v1.2``.
+
+    ``existing_metadata`` is the YAML block of the card already on the Hub (if any): it
+    is carried over key for key, with the owned keys (license, tags, pretty_name)
+    overriding, so the ``configs`` / ``dataset_info`` that ``push_to_hub`` maintains
+    survive a card push.
     """
-    header = "\n".join(
-        [
-            "---",
-            f"license: {frepj_layout.LICENSE}",
-            "tags:",
-            "- plankton",
-            "- zooplankton",
-            "- image-classification",
-            "- frepj",
-            f'pretty_name: "{frepj_layout.HUMAN_READABLE_NAME}"',
-            "---",
-            "",
-        ]
-    )
+    import yaml
+
+    metadata = {**(existing_metadata or {}), **_OWNED_CARD_METADATA}
+    header = "---\n" + yaml.safe_dump(metadata, sort_keys=False, allow_unicode=True) + "---\n\n"
     body = f"""# {frepj_layout.HUMAN_READABLE_NAME}
 
 **{INTERMEDIATE_NOTE}** — this repository is the FREPJ-only intermediate testing/validation
@@ -255,19 +262,36 @@ Released under **{frepj_layout.LICENSE_NAME}** (`{frepj_layout.LICENSE}`) —
     return header + body
 
 
-def build_card():
+def build_card(existing_metadata: dict | None = None):
     """Return the FREPJ ``DatasetCard`` built offline from :func:`_card_content`."""
     from huggingface_hub import DatasetCard
 
-    return DatasetCard(_card_content())
+    return DatasetCard(_card_content(existing_metadata))
+
+
+def _existing_card_metadata(repo_id: str, token: str) -> dict:
+    """The YAML metadata of the card currently on the Hub, or ``{}`` when there is none."""
+    from huggingface_hub import DatasetCard
+    from huggingface_hub.errors import EntryNotFoundError, RepositoryNotFoundError
+
+    try:
+        return dict(DatasetCard.load(repo_id, repo_type="dataset", token=token).data.to_dict())
+    except (EntryNotFoundError, RepositoryNotFoundError):
+        return {}
 
 
 def push_card(repo_id: str = TARGET_REPO_ID, token: str | None = None) -> None:
-    """Preflight, then push the FREPJ dataset card (README.md) to ``repo_id``."""
+    """Preflight, then push the FREPJ dataset card (README.md) to ``repo_id``.
+
+    The card already on the Hub is read first so its ``configs`` / ``dataset_info``
+    metadata (written by ``push_to_hub``) is carried over rather than dropped.
+    """
     preflight(repo_id)
     token = _resolve_token(token)
-    card = build_card()
-    logger.info(f"Pushing the FREPJ dataset card to «{repo_id}».")
+    existing = _existing_card_metadata(repo_id, token)
+    card = build_card(existing)
+    kept = sorted(set(existing) - set(_OWNED_CARD_METADATA))
+    logger.info(f"Pushing the FREPJ dataset card to «{repo_id}» (carrying over existing metadata keys {kept}).")
     card.push_to_hub(repo_id, repo_type="dataset", token=token)
 
 
