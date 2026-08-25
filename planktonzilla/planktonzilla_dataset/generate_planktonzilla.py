@@ -46,6 +46,7 @@ import concurrent.futures
 import json
 import os
 import shutil
+from collections import Counter
 from functools import lru_cache, partial
 from pathlib import Path
 
@@ -68,6 +69,7 @@ from tqdm import tqdm
 
 from planktonzilla.dataset_import.dataset_importer import resolve_imagefolder_glob
 from planktonzilla.planktonzilla_dataset import constants
+from planktonzilla.planktonzilla_dataset.timestamps import extract_path_timestamp, merge_timestamp
 from planktonzilla.utils.logger import get_pylogger
 
 root = pyrootutils.setup_root(
@@ -425,6 +427,64 @@ class RedefineDataset:
         ds = ds.map(extract, desc="Flattening metadata", num_proc=num_proc)
         return ds.remove_columns("metadata")
 
+    def _apply_path_timestamps(self, ds, dataset_name):
+        """Fill or refine ``timestamp`` from the capture time encoded in the file name.
+
+        Runs for EVERY source, on the base class rather than in a subclass, because it
+        is the only timestamp path that costs no request: a source is covered by virtue
+        of its imager's naming convention, not by being wired to a redefiner that knows
+        how to look it up. That is what makes it automatic for a source added later.
+
+        Deliberately column surgery rather than a ``map``: at this point ``image`` still
+        holds the undecoded bytes of every row, so mapping would copy the entire table
+        to rewrite one string column. Reading ``original_path`` and swapping
+        ``timestamp`` touches only those two.
+
+        The per-source outcome counts are logged rather than returned. A regex that
+        starts claiming the wrong digits shows up here as a non-zero ``conflict`` count,
+        which is the signal that :func:`merge_timestamp` exists to produce.
+        """
+        if "timestamp" not in ds.column_names or "original_path" not in ds.column_names:
+            return ds
+
+        order = list(ds.column_names)
+        arrow = ds.select_columns(["original_path", "timestamp"]).with_format("arrow")[:]
+        paths = arrow["original_path"].to_pylist()
+        recorded = arrow["timestamp"].to_pylist()
+
+        merged, outcomes, patterns = [], Counter(), Counter()
+        for path, current in zip(paths, recorded):
+            derived, pattern = extract_path_timestamp(path)
+            value, outcome = merge_timestamp(current, derived)
+            merged.append(value)
+            outcomes[outcome] += 1
+            if pattern:
+                patterns[pattern] += 1
+
+        gained = outcomes["filled"] + outcomes["refined"]
+        if not gained and not outcomes["conflict"]:
+            logger.info(f"╰─ {dataset_name}: no file-name capture time (no naming pattern matched its {len(paths)} paths).")
+            return ds
+
+        named = ", ".join(f"{name}x{count}" for name, count in patterns.most_common())
+        logger.info(
+            f"╰─ {dataset_name}: capture time from file names — {outcomes['filled']} filled, "
+            f"{outcomes['refined']} refined, {outcomes['conflict']} conflict(s), "
+            f"{outcomes['kept']} unchanged [{named}]"
+        )
+        if outcomes["conflict"]:
+            # Never silent: a conflict means the file name and the API disagree about
+            # which DAY a sample was taken, so one of the two is wrong about provenance.
+            # The recorded value was kept, but the count has to reach a human.
+            logger.warning(
+                f"╰─ {dataset_name}: {outcomes['conflict']} path timestamp(s) disagree with the recorded date "
+                f"and were DISCARDED. The recorded value was kept; check the naming pattern for this source."
+            )
+
+        ds = ds.remove_columns("timestamp").add_column("timestamp", merged)
+        # add_column appends, and the frozen artifact has a fixed column order.
+        return ds.select_columns(order)
+
     def _mapped_features(self, ds):
         """Declare the schema the taxonomy pass produces, instead of letting it be inferred.
 
@@ -504,6 +564,7 @@ class RedefineDataset:
 
             ds = self._add_metadata(ds)
             ds = self._flatten_metadata(ds)
+            ds = self._apply_path_timestamps(ds, dataset_name)
 
             if "label" in ds.column_names:
                 ds = ds.remove_columns("label")

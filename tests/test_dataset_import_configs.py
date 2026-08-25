@@ -22,6 +22,7 @@ import inspect
 import logging
 import os
 import shutil
+from multiprocessing import cpu_count
 
 import pyrootutils
 
@@ -42,6 +43,7 @@ from PIL import Image as PILImage
 # attributes, which needs the module object anyway, and mixing `import x` with
 # `from x import y` for the same module is the inconsistency the code-quality bot flags.
 from planktonzilla.dataset_import import dataset_importer as di
+from planktonzilla.planktonzilla_dataset.generate_planktonzilla import build_overrides as di_build_overrides
 
 # Every config in the group except the abstract base, which has `_target_: null`.
 IMPORT_CONFIG_NAMES = sorted(f[:-5] for f in os.listdir(root / "configs" / "dataset_import") if f.endswith(".yaml"))
@@ -1213,3 +1215,40 @@ def test_resolve_imagefolder_glob_warns_but_still_returns_the_flat_pattern(tmp_p
 
     assert pattern == str(tmp_path / "*" / "[!._]*")
     assert "No image files found" in caplog.text
+
+
+class TestNumProcIsOverridable:
+    """``num_proc`` must be settable with the plain override form, not only with ``+``.
+
+    It was a dataclass field that no config declared, and Hydra's struct mode rejects
+    setting a key a config never declared::
+
+        pz_planktonzilla import_overrides=[dataset_import.num_proc=1]
+        -> ConfigAttributeError: Key 'num_proc' is not in struct
+
+    which reads like the field does not exist rather than like it was undeclared. It is
+    the knob you reach for when a download misbehaves — datasets' map_nested spawns a
+    process pool once num_proc > 1 and there are two or more URLs — so needing the
+    add-form to reach it is exactly backwards.
+    """
+
+    def _importer(self, tmp_path, extra):
+        overrides = di_build_overrides(str(tmp_path), "zoolake", True, [], refresh="reuse", import_overrides=extra)
+        hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_num_proc")
+        try:
+            cfg = hydra.compose(config_name="import_dataset", overrides=overrides)
+            return hydra.utils.instantiate(cfg.dataset_import)
+        finally:
+            GlobalHydra.instance().clear()
+
+    def test_the_plain_override_form_works(self, tmp_path):
+        assert self._importer(tmp_path, ["dataset_import.num_proc=1"]).num_proc == 1
+
+    def test_null_resolves_to_the_cpu_count(self, tmp_path):
+        """The config stays machine-independent; __post_init__ supplies the real value."""
+        assert self._importer(tmp_path, []).num_proc == cpu_count()
+
+    @pytest.mark.parametrize("value", [0, -1])
+    def test_falsy_and_sentinel_values_are_preserved(self, tmp_path, value):
+        """`or cpu_count()` would eat both; map_nested gives -1 its own meaning."""
+        assert self._importer(tmp_path, [f"dataset_import.num_proc={value}"]).num_proc == value

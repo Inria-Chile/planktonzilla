@@ -164,7 +164,7 @@ def report_dataset_content(huggingface_dataset: Dataset | DatasetDict) -> str:
         The Markdown report string.
     """
 
-    def report_split(dataset: Dataset, split_name: str) -> str:
+    def report_split(dataset: Dataset, split_name: str | None = None) -> str:
         class_idxs, class_counts = np.unique(dataset["label"], return_counts=True)
 
         content = []
@@ -172,7 +172,9 @@ def report_dataset_content(huggingface_dataset: Dataset | DatasetDict) -> str:
             class_name = dataset.features["label"].int2str(int(class_idx))
             content += [f"{class_idx}: {class_name}"]
 
-        plt.simple_bar(content, class_counts.astype(int), title=f"Label histogram for {split_name} split ", width=83)
+        # A bare Dataset has no split to name; only the DatasetDict branch passes one.
+        title = f"Label histogram for {split_name} split " if split_name else "Label histogram "
+        plt.simple_bar(content, class_counts.astype(int), title=title, width=83)
         plt.show()
 
         return strip_ansi_codes(plt.build())
@@ -837,7 +839,12 @@ class DatasetImporter:
     hf_org_name: str = None
 
     show_progress: Optional[bool] = True
-    num_proc: Optional[int] = cpu_count()
+    # null -> cpu_count(), resolved in __post_init__. Two reasons it is not simply
+    # `= cpu_count()` here: a dataclass default is evaluated once at IMPORT time, so the
+    # value would be baked in when the module is first loaded; and the field has to be
+    # declared in configs/dataset_import/default.yaml to be overridable at all, where a
+    # concrete default would then hard-code this machine's core count into the config.
+    num_proc: Optional[int] = None
 
     # download-related configs
     force_download: Optional[bool] = False
@@ -911,6 +918,10 @@ class DatasetImporter:
         self._validate()
         self.data_dir = Path(self.data_dir)
         self.http_user_agent = self.http_user_agent or default_user_agent()
+        # `is None`, not `or`: 0 and -1 are values a caller can mean (map_nested reads
+        # -1), and `or` would silently turn both into cpu_count().
+        if self.num_proc is None:
+            self.num_proc = cpu_count()
 
         self.imagefolder_dir = self.data_dir / f"{self.__class__.__name__.lower()}_imagefolder"
         self.raw_dir = self.data_dir / f"{self.__class__.__name__.lower()}_raw_download"
@@ -1033,6 +1044,32 @@ class DatasetImporter:
             }
         }
 
+    def _downloadable_uris(self):
+        """``download_uris`` in the shape ``DownloadManager.download`` actually accepts.
+
+        Hydra hands a YAML list over as an OmegaConf ``ListConfig``, which is NOT a
+        ``list`` subclass. ``datasets.map_nested`` dispatches on ``isinstance(x, list)``,
+        so a ListConfig misses every sequence branch and lands in the singleton one: the
+        whole container is then stringified to ``"['https://a', 'https://b']"``, a value
+        with no URL scheme, which ``_download_single`` takes for a relative path and
+        joins onto ``base_path``. The download therefore fails without ever naming a URL.
+
+        This is the same normalisation ``probe_downloads`` has always applied via
+        :func:`_as_uri_list`, which is precisely why the pre-flight could report all nine
+        whoi archives reachable while the real import crashed on them: the two paths
+        disagreed about what ``download_uris`` is. They now share one answer.
+
+        The bare-string case is passed through UNCHANGED rather than wrapped in a list.
+        ``DownloadManager.extract`` mirrors the structure it is given, so wrapping would
+        make ``extracted_dirs`` a one-element list and break the
+        ``Path(self.extracted_dirs)`` that opens nearly every ``_prepare_imagefolder``.
+        Only :class:`WHOIPlanktonDatasetImporter` iterates it — and whoi is also the only
+        source declaring a list.
+        """
+        if isinstance(self.download_uris, str):
+            return self.download_uris
+        return _as_uri_list(self.download_uris)
+
     def _download_and_extract(self):
         """Download ``download_uris`` (or use manual files) and extract them.
 
@@ -1043,14 +1080,42 @@ class DatasetImporter:
         ``self.extracted_dirs`` as a side effect.
         """
         self.download_manager = DownloadManager(
-            base_path=self.raw_dir,
+            # str, not the Path: datasets joins this with anything it takes for a
+            # relative path, and its is_remote_url() calls urlparse() on the result.
+            # urlparse rejects a PosixPath with "'PosixPath' object has no attribute
+            # 'decode'", which names neither the URL nor this argument. A str turns the
+            # same mistake into a legible "Local file <path> doesn't exist".
+            base_path=str(self.raw_dir),
             data_dir=self.raw_dir,
             download_config=DownloadConfig(
                 cache_dir=self.raw_dir,
                 force_download=self.force_download,
                 resume_download=self.resume_download,
                 max_retries=self.max_download_retries,
-                num_proc=self.num_proc,
+                # 1, NOT self.num_proc — for downloads only. self.num_proc still drives
+                # the CPU-bound work (imagefolder preparation, the Hub push).
+                #
+                # datasets' map_nested spawns a multiprocessing Pool once num_proc > 1
+                # and there are >= 2 URLs (parallel_min_length defaults to 2), and that
+                # pool breaks downloads twice over:
+                #
+                #   - it fails. whoi's nine archives fetched by 12 processes from
+                #     darchive.mblwhoilibrary.org — a host this project already sends a
+                #     custom User-Agent to because it refuses library clients — died
+                #     partway through. The same nine with num_proc=1 downloaded AND
+                #     extracted completely, 36 GB, verified 2026-08-06.
+                #   - it hides why. A worker's exception must be pickled back to the
+                #     parent, and aiohttp errors carry their response headers as a
+                #     CIMultiDictProxy, which has no pickle support. Pool then raises
+                #     "MaybeEncodingError: can't pickle CIMultiDictProxy" INSTEAD of the
+                #     real failure, discarding the status code, URL and reason — so
+                #     every HTTP error arrives as the same unreadable message.
+                #
+                # Concurrency is not lost where it pays: _download_batched thread-maps
+                # any batch of >= 16 files, in-process, so a many-URL source still
+                # downloads concurrently — with no process boundary for an exception to
+                # die at. whoi is the only source with more than one URL today.
+                num_proc=1,
                 disable_tqdm=not self.show_progress,
                 storage_options=self.storage_options(),
             ),
@@ -1074,7 +1139,7 @@ class DatasetImporter:
                 )
 
             logger.info(f"Downloading files to {self.raw_dir}.")
-            downloaded_paths = self.download_manager.download(self.download_uris)
+            downloaded_paths = self.download_manager.download(self._downloadable_uris())
 
         logger.info("Extracting file(s).")
         self.extracted_dirs = self.download_manager.extract(downloaded_paths)
@@ -1618,14 +1683,19 @@ class GlobalUVP5NetDatasetImporter(DatasetImporter):
 
         # --- Metadata (obj_id to taxo) ---
         dm = DownloadManager(
-            base_path=aux_dir,
+            # str base_path and num_proc=1 for the same reasons as the main archive
+            # download in _download_and_extract; see the comments there. This one fetches
+            # a single URL, so map_nested never reaches its parallel branch today — the
+            # values match anyway so the two download sites cannot drift into disagreeing
+            # about how a download is performed.
+            base_path=str(aux_dir),
             data_dir=aux_dir,
             download_config=DownloadConfig(
                 cache_dir=aux_dir,
                 force_download=self.force_download,
                 resume_download=self.resume_download,
                 max_retries=self.max_download_retries,
-                num_proc=self.num_proc,
+                num_proc=1,
                 disable_tqdm=not self.show_progress,
                 # Same options as the main archive: this second download is a real one,
                 # on the same host, and would be refused just the same without them.

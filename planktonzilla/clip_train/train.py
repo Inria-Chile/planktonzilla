@@ -489,10 +489,6 @@ def zero_shot_eval_all(task, data, epoch, args, tokenizer=None):
     zero_shot_metrics = {}
     if "imagenet-val" in data or "imagenet-v2" in data:
         zero_shot_metrics.update(zero_shot_eval(task, data, epoch, args, tokenizer=tokenizer))
-    if "audio-zeroshot" in data:
-        from open_clip_train.audio_zero_shot import audio_zero_shot_eval
-
-        zero_shot_metrics.update(audio_zero_shot_eval(task, data["audio-zeroshot"], epoch, args, tokenizer=tokenizer))
     return zero_shot_metrics
 
 

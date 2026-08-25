@@ -25,6 +25,20 @@ manual_download_local_file_names: null
 # names this project. See default_user_agent() for the full measurement.
 http_user_agent: null
 
+# Worker count for downloads, imagefolder preparation and the Hub push.
+#
+# Declared here (not only on the dataclass) for the same reason as
+# manual_download_local_file_names above: Hydra's struct mode rejects setting a key a
+# config never declared, so with this absent the documented override form fails —
+#   pz_planktonzilla import_overrides=[dataset_import.num_proc=1]
+#   -> ConfigAttributeError: Key 'num_proc' is not in struct
+# and only the `+dataset_import.num_proc=1` add-form worked, which reads like the field
+# does not exist rather than like it was merely undeclared.
+#
+# null -> multiprocessing.cpu_count(), resolved in __post_init__. Kept null rather than a
+# number so the config does not pin one machine's core count.
+num_proc: null
+
 force_download: false
 resume_download: true
 force_imagefolder_preparation: false

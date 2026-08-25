@@ -195,7 +195,7 @@ def test_main_wires_repo_id_data_dir_and_num_proc(monkeypatch, tmp_path):
     monkeypatch.setattr(up.Dataset, "save_to_disk", _fake_save_to_disk)
 
     # main is @hydra.main-decorated; call the undecorated body with our composed cfg.
-    up.main.__wrapped__(cfg)
+    up.main.__wrapped__(cfg)  # pyright: ignore[reportFunctionMemberAccess]
 
     GlobalHydra.instance().clear()
 
