@@ -193,7 +193,7 @@ def _load_existing(csv_path: Path):
             )
         genus_lineage[gen] = {
             "lineages": lineages,
-            "kpc_of": sorted(lineages)[0],
+            "kpc_of": min(lineages),
             "sources": sorted({r["Dataset"] for r in rows}),
             "id_rows": [
                 {

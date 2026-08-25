@@ -53,8 +53,13 @@ def rows():
 
 
 def test_frozen_table_anchor(rows):
-    """Sanity anchor: the frozen table has 1,485 rows and the expected schema."""
-    assert len(rows) == 1485
+    """Sanity anchor: 1,485 frozen rows + the 229 frepj rows appended in v1.2, expected schema.
+
+    The 1,485-row base is still byte-frozen — tests/test_frepj_taxonomy_coverage.py pins
+    its sha256 — so the KI-8..KI-13 findings below are unchanged; the frepj rows were
+    APPENDED after it and are covered by their own tests.
+    """
+    assert len(rows) == 1485 + 229
     assert {*NORMALIZED_COLUMNS, *ID_COLUMNS, "Dataset", "Raw_Labels", "plankton", "living"} <= set(rows[0])
 
 

@@ -38,6 +38,7 @@ import datasets
 from datasets import ClassLabel, Dataset, DatasetDict, Features, Image, Value
 from PIL import Image as PILImage
 
+from planktonzilla.planktonzilla_dataset import constants
 from planktonzilla.planktonzilla_dataset import generate_planktonzilla as gp
 
 # writer_batch_size default is 1000; with num_proc=2 the rank-0 shard must exceed it
@@ -74,6 +75,11 @@ def test_sparse_null_taxonomy_map_does_not_crash_under_multiprocessing(monkeypat
     # (the taxonomy map itself uses the redefine() num_proc arg below).
     monkeypatch.setattr(gp, "num_proc", 1)
 
+    # redefine() resolves the source's license terms up front and refuses an unrecorded
+    # source, so the synthetic "src" needs an entry for the duration of the test.
+    src_license = {"license": "cc0-1.0", "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"}
+    monkeypatch.setitem(constants.DATASET_LICENSES, "src", src_license)
+
     # One tiny valid PNG referenced by every row keeps the fixture cheap while still giving
     # _taxonomy_row a real example["image"]["path"] to read.
     png = tmp_path / "one.png"
@@ -102,6 +108,11 @@ def test_sparse_null_taxonomy_map_does_not_crash_under_multiprocessing(monkeypat
     assert ds.features["Genus"] == Value("string")
     assert ds.features["NCBI_ID"] == Value("string")
     assert ds.features["plankton"] == Value("bool")
+    # The license pair rides along in the same map, so it must be in the pinned schema too.
+    assert ds.features["license"] == Value("string")
+    assert ds.features["license_url"] == Value("string")
+    assert set(ds["license"]) == {src_license["license"]}
+    assert set(ds["license_url"]) == {src_license["license_url"]}
 
     # Column access avoids decoding the image column.
     original_label = ds["original_label"]

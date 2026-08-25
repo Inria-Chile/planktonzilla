@@ -9,8 +9,8 @@ They pin, by construction (Hydra compose only — no build, no network):
   (a) generate_frepj_only.yaml composes to exactly ONE datasets entry
       {name: frepj, import_name: frepj, cleanup: false, redefiner: frepj} targeting
       project-oceania/planktonzilla-frepj with push_to_hub false,
-  (b) the DEFAULT generate_planktonzilla.yaml stays unchanged (12 entries,
-      repo_id planktonzilla-17M, frepj absent) — the output-preserving pin,
+  (b) the DEFAULT generate_planktonzilla.yaml stays unchanged (all 15 published
+      sources, repo_id planktonzilla-17M, frepj absent) — the output-preserving pin,
   (c) assert_not_frozen_repo rejects the frozen planktonzilla-17M (full id, bare
       basename, and a defensive case-insensitive basename) and allows the
       intermediate planktonzilla-frepj / a versioned release.
@@ -64,11 +64,16 @@ def test_frepj_only_config_single_entry():
 
 
 def test_default_config_unchanged_output_preserving_pin():
-    """The default generate_planktonzilla stays 12 entries / planktonzilla-17M / no frepj."""
+    """The default generate_planktonzilla stays 15 entries / planktonzilla-17M / no frepj.
+
+    15 is the number of sources in the frozen planktonzilla-17M (the last three joined
+    cfg.datasets on 2026-08-01, see constants.DATASET_IMPORT_CONFIGS); frepj joins only
+    in Phase 20.
+    """
     cfg = _compose("generate_planktonzilla")
     try:
         assert cfg.repo_id == "project-oceania/planktonzilla-17M"
-        assert len(cfg.datasets) == 12
+        assert len(cfg.datasets) == 15
         assert not any(d["name"] == "frepj" for d in cfg.datasets)
     finally:
         GlobalHydra.instance().clear()

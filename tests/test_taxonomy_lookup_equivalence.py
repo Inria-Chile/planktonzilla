@@ -89,13 +89,14 @@ def test_polars_reader_reproduces_the_deleted_pandas_reader_on_the_real_csv():
     """The surviving reader is byte-equivalent to the deleted one on the shipped CSV.
 
     This is the zero-drift evidence for removing pandas from the re-sync path: over
-    all 1485 rows and all 16 synced columns, keys, values AND Python types match.
+    all 1714 rows (1485 frozen + 229 appended frepj) and all 16 synced columns, keys,
+    values AND Python types match.
     """
     new = up.build_sync_dict(REAL_CSV)
     legacy = _legacy_pandas_sync_dict(REAL_CSV)
 
     assert set(new) == set(legacy), "key sets differ"
-    assert len(new) == 1485
+    assert len(new) == 1485 + 229
 
     value_diffs, type_diffs = [], []
     for key in legacy:

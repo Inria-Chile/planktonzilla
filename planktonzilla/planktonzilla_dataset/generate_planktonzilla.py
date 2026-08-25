@@ -580,12 +580,16 @@ class RedefineDataset:
             # original_label/original_path -> string; `plankton` stays string at
             # this stage and only becomes bool in _cast_scalar_types), so pinning
             # them is output-preserving — it just forbids the transient `null`.
+            # Every column _taxonomy_row emits MUST be listed: with an explicit
+            # ``features=`` the ArrowWriter raises KeyError on any unlisted output
+            # column, so the license provenance pair rides along here too.
             map_features = Features(
                 {
                     **ds.features,
                     "dataset": Value("string"),
                     "original_label": Value("string"),
                     "original_path": Value("string"),
+                    **{col: Value("string") for col in constants.LICENSE_COLS},
                     **{col: Value("string") for col in self.lookup_cols},
                 }
             )
