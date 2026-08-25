@@ -404,3 +404,24 @@ def test_cli_other_steps_exit_normally(monkeypatch):
     monkeypatch.setattr(fp, "push_card", lambda repo_id, token=None: None)
     monkeypatch.setattr(fp.os, "_exit", lambda code: pytest.fail("os._exit must not run for --push-card"))
     fp.main(["--push-card"])
+
+
+def test_cli_configures_info_logging_when_nothing_is_configured(monkeypatch):
+    """Run as a script, the helper's INFO verdicts must be visible; an existing setup is left alone."""
+    import logging
+
+    root_logger = logging.getLogger()
+    saved = root_logger.handlers[:]
+    monkeypatch.setattr(root_logger, "handlers", [])
+    try:
+        fp._ensure_console_logging()
+        assert root_logger.handlers, "basicConfig must install a handler"
+        assert root_logger.level == logging.INFO
+        installed = root_logger.handlers[:]
+        fp._ensure_console_logging()
+        assert root_logger.handlers == installed, "second call must not add handlers"
+    finally:
+        for handler in root_logger.handlers:
+            if handler not in saved:
+                root_logger.removeHandler(handler)
+        root_logger.handlers[:] = saved

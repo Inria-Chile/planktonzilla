@@ -374,6 +374,21 @@ def publish_frepj_only(
         logger.info("confirm_public=False -> the repo keeps its pushed visibility; NO public flip.")
 
 
+def _ensure_console_logging() -> None:
+    """Make the helper's INFO verdicts visible when run as a plain script.
+
+    Unlike the Hydra entry points, ``python -m …frepj_publish`` configures no logging
+    handler, so Python's last-resort handler showed WARNING and above only: the
+    "Smoke-load PASS" / "Pushing …" lines never reached the operator's terminal or the
+    publish logs (verified 2026-08-25 on logs/frepj_smoke_verify.log). Idempotent — a
+    process that already configured logging (tests, Hydra) is left alone.
+    """
+    import logging
+
+    if not logging.getLogger().handlers:
+        logging.basicConfig(level=logging.INFO, format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s")
+
+
 def _build_parser() -> argparse.ArgumentParser:
     """Build the staged publish CLI (each phase is a separate flag so the orchestrator runs it visibly)."""
     parser = argparse.ArgumentParser(description="Frozen-repo-guarded FREPJ-only publish helper (ORCHESTRATOR-RUN).")
@@ -405,6 +420,7 @@ def main(argv: list[str] | None = None) -> None:
     """
     parser = _build_parser()
     args = parser.parse_args(argv)
+    _ensure_console_logging()
 
     # Any public-exposing request must carry the explicit gate.
     if args.public and not args.confirm_public:
