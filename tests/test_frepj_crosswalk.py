@@ -242,3 +242,15 @@ def test_committed_crosswalk_coverage():
             assert -180.0 <= longitude <= 180.0, f"longitude out of range for {r['site_token']}: {longitude}"
             # (e) a resolved row always names its Table_S1 site.
             assert not _is_blank(r["resolved_site"]), f"resolved row missing resolved_site: {r['site_token']}"
+
+
+def test_load_crosswalk_sites_maps_resolved_tokens_only(tmp_path):
+    """{token: resolved_site} for resolved rows; null rows are omitted so .get() is None."""
+    out = tmp_path / "crosswalk.csv"
+    out.write_text(
+        "site_token,resolved_site,Latitude,Longitude,method,n_images\n"
+        "akigawadam,Akigawa Dam,35.4,137.4,trivial,3\n"
+        "(baiyou),,,,null,201\n"
+        'kindam,"",,,null,5\n'
+    )
+    assert frepj_crosswalk.load_crosswalk_sites(out) == {"akigawadam": "Akigawa Dam"}

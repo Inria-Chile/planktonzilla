@@ -214,6 +214,19 @@ METADATA_COLS = (
     "timestamp",
 )
 
+# Source-specific metadata that has no consolidated column of its own, kept as ONE JSON
+# object per row so a source can carry what only it knows (FREPJ: the magnification and
+# the raw sampling-site token) without adding a sparse column to the schema for every
+# source. Filled generically by RedefineDataset._flatten_metadata from whatever keys of
+# the per-source metadata JSON the consolidated columns do not consume, sorted by key so
+# equal content is equal text. The value is always a JSON object — the literal "{}" when
+# a source has nothing to add — never null, so a consumer can json.loads() every row
+# without a null check. Rows carried over from a base that predates the column get the
+# same literal (make_planktonzilla.ensure_custom_metadata), so a rebuilt row and a
+# carried-over row are indistinguishable.
+CUSTOM_METADATA_COL = "custom_metadata"
+EMPTY_CUSTOM_METADATA = "{}"
+
 # Every column of the consolidated dataset. Used to check that a base dataset and a
 # freshly built part agree before they are concatenated: datasets.concatenate_datasets
 # silently NULL-FILLS a column missing from one side rather than raising, which would
@@ -227,6 +240,7 @@ CONSOLIDATED_COLUMNS = (
     *ID_NUM_COLS,
     *METADATA_COLS,
     *LICENSE_COLS,
+    CUSTOM_METADATA_COL,
 )
 
 

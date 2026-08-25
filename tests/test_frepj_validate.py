@@ -117,9 +117,8 @@ def _good_dict(n_per_class=40, latlon_cov=1.0):
             "aphia_ID",
             "NCBI_ID",
             "BOLD_ID",
-            "magnification",
-            "site",
-            "date",
+            "custom_metadata",
+            "timestamp",
             "Latitude",
             "Longitude",
         )
@@ -131,9 +130,8 @@ def _good_dict(n_per_class=40, latlon_cov=1.0):
             columns["proposed_label"].append(info["proposed_label"])
             for id_col in ("wikidata_ID", "ecotaxa_ID", "aphia_ID", "NCBI_ID", "BOLD_ID"):
                 columns[id_col].append(info[id_col])
-            columns["magnification"].append("40")
-            columns["site"].append("akigawadam")
-            columns["date"].append("2018.03.15")
+            columns["custom_metadata"].append('{"magnification": "40", "site": "akigawadam"}')
+            columns["timestamp"].append("2018-03-15")
 
     n = len(columns["original_label"])
     n_latlon = round(latlon_cov * n)
@@ -172,6 +170,8 @@ def test_all_checks_pass(tmp_path):
         "Non-null Taxonomy",
         "Metadata Coverage",
         "Lat/Lon Coverage",
+        "Timestamp Shape",
+        "Timestamp Coverage",
         "Overlap & Fidelity",
     }
 
@@ -190,11 +190,11 @@ def test_null_taxonomy_fails(tmp_path):
 
 
 def test_missing_metadata_fails(tmp_path):
-    """A single row missing magnification fails the 100% metadata-coverage gate."""
+    """A single row whose custom_metadata lacks magnification fails the 100% metadata-coverage gate."""
     taxo = tmp_path / "taxo.csv"
     _write_taxo(taxo)
     columns = _good_dict()
-    columns["magnification"][0] = None
+    columns["custom_metadata"][0] = '{"site": "akigawadam"}'
     report = _validate(columns, taxo)
     assert not report.passed
     assert not _check(report, "Metadata Coverage").passed
@@ -347,3 +347,34 @@ def test_report_is_structured(tmp_path):
     # Deep-copy proves the checks are plain data, not tied to the live dataset.
     snapshot = copy.deepcopy(report.checks)
     assert all(isinstance(c.passed, bool) and c.name and c.status in ("PASS", "FAIL") for c in snapshot)
+
+
+# --- timestamp: ISO shape is a hard 100%, coverage is a floor (KI-26) ------------------
+
+
+def test_malformed_timestamp_fails(tmp_path):
+    """One non-ISO timestamp — a raw upstream value leaking through — fails Timestamp Shape."""
+    taxo = tmp_path / "taxo.csv"
+    _write_taxo(taxo)
+    columns = _good_dict()
+    columns["timestamp"][0] = "2018.03.15"
+    report = _validate(columns, taxo)
+    assert not report.passed
+    assert not _check(report, "Timestamp Shape").passed
+    # Shape and coverage are distinct checks — the value is present, so coverage is still 100%.
+    assert _check(report, "Timestamp Coverage").passed
+
+
+def test_timestamp_coverage_below_floor_fails(tmp_path):
+    """Coverage under the floor fails; the floor is a parameter, so a lower one accepts the same build."""
+    taxo = tmp_path / "taxo.csv"
+    _write_taxo(taxo)
+    columns = _good_dict()
+    n = len(columns["timestamp"])
+    for i in range(int(n * 0.05)):
+        columns["timestamp"][i] = None  # 95% coverage, under the 98% (-0.5%) default floor
+    report = _validate(columns, taxo)
+    assert not report.passed
+    assert not _check(report, "Timestamp Coverage").passed
+    assert _check(report, "Timestamp Shape").passed
+    assert _check(_validate(columns, taxo, timestamp_floor=0.9), "Timestamp Coverage").passed

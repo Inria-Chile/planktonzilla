@@ -30,6 +30,7 @@ project-oceania — see Plan 19-02 Task 2):
     uv run python -m planktonzilla.planktonzilla_dataset.frepj_publish --smoke
     uv run python -m planktonzilla.planktonzilla_dataset.frepj_publish --push-card
     uv run python -m planktonzilla.planktonzilla_dataset.frepj_publish --make-public --confirm-public
+    uv run python -m planktonzilla.planktonzilla_dataset.frepj_publish --tag v1.2.0-frepj
 
 Zero behavioral drift: nothing here touches, downloads, or mutates any frozen artifact.
 """
@@ -37,10 +38,11 @@ Zero behavioral drift: nothing here touches, downloads, or mutates any frozen ar
 from __future__ import annotations
 
 import argparse
+import json
 import os
 
 from planktonzilla.dataset_import import frepj_layout
-from planktonzilla.planktonzilla_dataset import frozen_repo_guard
+from planktonzilla.planktonzilla_dataset import constants, frozen_repo_guard
 from planktonzilla.utils.logger import get_pylogger
 
 logger = get_pylogger(__name__)
@@ -58,8 +60,22 @@ DEFAULT_DATASET_PATH = "data/frepj_only_build/planktonzilla-17M"
 # card share ONE source of truth for the exact phrasing.
 INTERMEDIATE_NOTE = "intermediate validation build (v1.2)"
 
-# Columns the smoke-load must find on a streamed example to call the load a PASS.
-EXPECTED_FREPJ_COLUMNS = ("proposed_label", "magnification", "site", "date", "Latitude", "Longitude")
+# Columns the smoke-load must find on a streamed example to call the load a PASS, and the
+# keys its `custom_metadata` JSON object must carry. FREPJ has no column of its own: the
+# magnification and the raw site token live in `custom_metadata`, the normalized
+# sampling date in `timestamp` (see FrepjRedefiner).
+EXPECTED_FREPJ_COLUMNS = (
+    "proposed_label",
+    "timestamp",
+    "Latitude",
+    "Longitude",
+    constants.CUSTOM_METADATA_COL,
+    *constants.LICENSE_COLS,
+)
+EXPECTED_CUSTOM_METADATA_KEYS = ("magnification", "site")
+
+# Default Hub tag for a republish of this intermediate build (`--tag` with no value).
+DEFAULT_TAG = "v1.2.0-frepj"
 
 # Bounded push retry budget (mirrors DatasetImporter._push_to_hub).
 PUSH_RETRIES = 10
@@ -153,7 +169,19 @@ def smoke_load(repo_id: str = TARGET_REPO_ID, token: str | None = None) -> bool:
     missing = [column for column in EXPECTED_FREPJ_COLUMNS if column not in example]
     if missing:
         raise RuntimeError(f"Smoke-load FAILED: «{repo_id}» is missing expected FREPJ columns {missing}.")
-    logger.info(f"Smoke-load PASS: «{repo_id}» carries all expected FREPJ columns {list(EXPECTED_FREPJ_COLUMNS)}.")
+    try:
+        custom = json.loads(example[constants.CUSTOM_METADATA_COL] or "{}")
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError(f"Smoke-load FAILED: «{repo_id}» {constants.CUSTOM_METADATA_COL} is not JSON: {exc}.") from exc
+    missing_keys = [key for key in EXPECTED_CUSTOM_METADATA_KEYS if key not in custom]
+    if missing_keys:
+        raise RuntimeError(
+            f"Smoke-load FAILED: «{repo_id}» {constants.CUSTOM_METADATA_COL} lacks the FREPJ keys {missing_keys}."
+        )
+    logger.info(
+        f"Smoke-load PASS: «{repo_id}» carries all expected FREPJ columns {list(EXPECTED_FREPJ_COLUMNS)} "
+        f"and {constants.CUSTOM_METADATA_COL} keys {list(EXPECTED_CUSTOM_METADATA_KEYS)}."
+    )
     return True
 
 
@@ -191,6 +219,21 @@ the forthcoming full composite `planktonzilla-v1.2`.
 
 FREPJ-Z (Freshwater Plankton in Japanese Lakes and Reservoirs, I. Zooplankton), sourced from
 <{frepj_layout.SOURCE_URL}>.
+
+## Columns
+
+The consolidated planktonzilla schema — `image`, the source provenance (`dataset`,
+`original_label`, `original_path`), the seven taxonomy ranks and label extras, the five
+external-ID columns, the metadata columns (`Latitude`, `Longitude`, `timestamp`, …) and the
+per-image `license` / `license_url` — plus, as in every planktonzilla source, one JSON object
+per image in `{constants.CUSTOM_METADATA_COL}` holding what only this source knows:
+
+- `{constants.CUSTOM_METADATA_COL}`: `{{"magnification": "40" | "100", "site": "<sampling-site token as
+  published upstream>"}}`.
+- `timestamp`: the upstream sampling date normalized to ISO `YYYY-MM-DD`. The source column
+  is hand-typed free text; values that cannot be read without guessing (about 1.9% of the
+  images) are null. `Latitude` / `Longitude` are resolved from the site token for about 87%
+  of the images and null for the rest — never a guessed coordinate.
 
 ## License
 
@@ -249,6 +292,20 @@ def make_public(repo_id: str = TARGET_REPO_ID, token: str | None = None, confirm
     logger.info(f"«{repo_id}» is now PUBLIC.")
 
 
+def tag_release(repo_id: str = TARGET_REPO_ID, tag: str = DEFAULT_TAG, token: str | None = None) -> None:
+    """Preflight, then create Hub tag ``tag`` on the current revision of ``repo_id``.
+
+    Refuses (``exist_ok=False``) to move a tag that already exists: re-tagging a different
+    commit silently would make an existing version name point at different data.
+    """
+    preflight(repo_id)
+    token = _resolve_token(token)
+    from huggingface_hub import HfApi
+
+    logger.info(f"Tagging the current revision of «{repo_id}» as «{tag}».")
+    HfApi().create_tag(repo_id, tag=tag, tag_message=f"FREPJ-only {INTERMEDIATE_NOTE}: {tag}", repo_type="dataset", token=token)
+
+
 def publish_frepj_only(
     dataset_path: str = DEFAULT_DATASET_PATH,
     repo_id: str = TARGET_REPO_ID,
@@ -288,6 +345,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "--public", action="store_true", help="explicit public intent for --publish (requires --confirm-public)"
     )
     parser.add_argument("--confirm-public", action="store_true", help="explicit confirmation gate for any public flip")
+    parser.add_argument(
+        "--tag", nargs="?", const=DEFAULT_TAG, default=None, help=f"tag the pushed revision (default {DEFAULT_TAG})"
+    )
     return parser
 
 
@@ -327,6 +387,9 @@ def main(argv: list[str] | None = None) -> None:
             private=not args.public,
             confirm_public=args.public and args.confirm_public,
         )
+        did = True
+    if args.tag:
+        tag_release(args.repo_id, args.tag)
         did = True
     if args.make_public:
         make_public(args.repo_id, confirm_public=args.confirm_public)

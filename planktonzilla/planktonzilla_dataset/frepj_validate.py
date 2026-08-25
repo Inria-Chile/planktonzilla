@@ -13,9 +13,12 @@ the built FREPJ-only composite:
      extracted imagefolder file counts).
   2. NON-NULL TAXONOMY — every built class carries a non-null ``proposed_label``
      (closes the silent left-join miss).
-  3. METADATA COVERAGE — ``magnification`` / ``site`` / ``date`` present for 100%
-     of rows, and ``Latitude`` / ``Longitude`` for at least the ~86.9% floor
-     (rest null by design).
+  3. METADATA COVERAGE — ``magnification`` / ``site`` present in every row's
+     ``custom_metadata`` JSON object, ``Latitude`` / ``Longitude`` for at least the
+     ~86.9% floor (rest null by design), and ``timestamp`` ISO ``YYYY-MM-DD`` wherever
+     set and set for at least the ~98.1% floor (the upstream sampling dates are
+     hand-typed free text — KI-26 — and the build nulls what it cannot read without
+     guessing).
   4. OVERLAP + FIDELITY — every built row's ``proposed_label`` + five external-ID
      columns match ``planktonzilla_taxonomy.csv`` for its ``(frepj, Raw_Labels)``
      key, and shared taxa reuse the canonical non-frepj external IDs.
@@ -25,6 +28,8 @@ enforcement that a failing check blocks publish rather than deferring the issue.
 """
 
 import argparse
+import json
+import re
 import sys
 from collections import Counter
 from dataclasses import dataclass, field
@@ -43,6 +48,10 @@ _EXTRA_COLS = constants.EXTRA_COLS
 _ID_STR_COLS = constants.ID_STR_COLS  # already text in the CSV
 _ID_NUM_COLS = constants.ID_NUM_COLS  # numeric in the CSV -> text without decimals
 _LOOKUP_COLS = (*_TAXONOMY_COLS, *_EXTRA_COLS, *_ID_STR_COLS, *_ID_NUM_COLS)
+
+# ``timestamp`` values must be ISO dates: the build normalizes the hand-typed upstream
+# "Sampling date" (KI-26) and never lets a raw value through.
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 # The five external-ID columns compared for overlap fidelity.
 _ID_COLS = (*_ID_STR_COLS, *_ID_NUM_COLS)
@@ -257,20 +266,43 @@ def _check_taxonomy(report, labels, proposed_labels):
     )
 
 
-def _check_metadata(report, n, magnification, site, date):
-    """CHECK 3a — magnification / site / date present for 100% of rows."""
+def _custom_metadata_field(custom_metadata, key) -> list:
+    """Pull one key out of every row's ``custom_metadata`` JSON object (None when absent)."""
+    values = []
+    for raw in custom_metadata:
+        try:
+            obj = json.loads(raw) if raw else {}
+        except (TypeError, ValueError):
+            obj = {}
+        values.append(obj.get(key) if isinstance(obj, dict) else None)
+    return values
+
+
+def _check_metadata(report, n, magnification, site):
+    """CHECK 3a — magnification / site present in ``custom_metadata`` for 100% of rows."""
     denom = n or 1
     mag_frac = _nn_fraction(magnification, denom)
     site_frac = _nn_fraction(site, denom)
-    date_frac = _nn_fraction(date, denom)
 
-    ok = (n > 0) and mag_frac == 1.0 and site_frac == 1.0 and date_frac == 1.0
-    report.add(
-        "Metadata Coverage",
-        ok,
-        f"mag {mag_frac:.1%} / site {site_frac:.1%} / date {date_frac:.1%}",
-        "mag+site+date 100%",
-    )
+    ok = (n > 0) and mag_frac == 1.0 and site_frac == 1.0
+    report.add("Metadata Coverage", ok, f"mag {mag_frac:.1%} / site {site_frac:.1%}", "mag+site 100%")
+
+
+def _check_timestamp(report, n, timestamps, timestamp_floor, timestamp_tolerance):
+    """CHECK 3c — ``timestamp`` is ISO ``YYYY-MM-DD`` wherever set, and set for >= the floor.
+
+    The upstream sampling dates are hand-typed (KI-26); the build normalizes them and
+    nulls what it cannot read without guessing. Shape is a hard 100% — one malformed
+    value fails — while coverage is a floor (98.1% on the real tables).
+    """
+    denom = n or 1
+    present = [t for t in timestamps if t is not None and str(t).strip() != ""]
+    malformed = [t for t in present if not _ISO_DATE_RE.match(str(t))]
+    report.add("Timestamp Shape", (n > 0) and not malformed, f"{len(malformed)} malformed of {len(present)} set", "0 malformed")
+
+    coverage = len(present) / denom
+    floor = timestamp_floor - timestamp_tolerance
+    report.add("Timestamp Coverage", (n > 0) and coverage >= floor, f"{coverage:.1%}", f">= {floor:.1%}")
 
 
 def _check_latlon(report, n, latitude, longitude, latlon_floor, latlon_tolerance):
@@ -355,6 +387,8 @@ def validate_frepj_dataset(
     count_tolerance=0.02,
     latlon_floor=0.869,
     latlon_tolerance=0.01,
+    timestamp_floor=0.98,
+    timestamp_tolerance=0.005,
 ) -> ValidationReport:
     """Validate a built FREPJ-only dataset end-to-end (VAL-02) and return a report.
 
@@ -370,9 +404,10 @@ def validate_frepj_dataset(
     labels = _col(ds, "original_label", n)
     proposed = _col(ds, "proposed_label", n)
     id_data = {col: _col(ds, col, n) for col in ("proposed_label", *_ID_COLS)}
-    magnification = _col(ds, "magnification", n)
-    site = _col(ds, "site", n)
-    date = _col(ds, "date", n)
+    custom_metadata = _col(ds, constants.CUSTOM_METADATA_COL, n)
+    magnification = _custom_metadata_field(custom_metadata, "magnification")
+    site = _custom_metadata_field(custom_metadata, "site")
+    timestamps = _col(ds, "timestamp", n)
     latitude = _col(ds, "Latitude", n)
     longitude = _col(ds, "Longitude", n)
 
@@ -383,8 +418,9 @@ def validate_frepj_dataset(
     report = ValidationReport()
     _check_count(report, labels, class_dirs, imagefolder_counts, expected_classes, expected_images, count_tolerance)
     _check_taxonomy(report, labels, proposed)
-    _check_metadata(report, n, magnification, site, date)
+    _check_metadata(report, n, magnification, site)
     _check_latlon(report, n, latitude, longitude, latlon_floor, latlon_tolerance)
+    _check_timestamp(report, n, timestamps, timestamp_floor, timestamp_tolerance)
     _check_overlap(report, labels, id_data, taxonomy_lookup)
     return report
 
@@ -421,6 +457,8 @@ def main(argv=None) -> None:
     parser.add_argument("--count-tolerance", type=float, default=0.02)
     parser.add_argument("--latlon-floor", type=float, default=0.869)
     parser.add_argument("--latlon-tolerance", type=float, default=0.01)
+    parser.add_argument("--timestamp-floor", type=float, default=0.98)
+    parser.add_argument("--timestamp-tolerance", type=float, default=0.005)
     args = parser.parse_args(argv)
 
     report = validate_frepj_dataset(
@@ -433,6 +471,8 @@ def main(argv=None) -> None:
         count_tolerance=args.count_tolerance,
         latlon_floor=args.latlon_floor,
         latlon_tolerance=args.latlon_tolerance,
+        timestamp_floor=args.timestamp_floor,
+        timestamp_tolerance=args.timestamp_tolerance,
     )
 
     out_path = Path(args.report_out)

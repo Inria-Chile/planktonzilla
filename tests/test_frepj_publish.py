@@ -281,3 +281,55 @@ def test_cli_publish_public_and_confirm_public_flips_public(monkeypatch):
     assert len(make_public_calls) == 1
     _, kwargs = make_public_calls[0]
     assert kwargs["confirm_public"] is True
+
+
+# --- v1.2 schema: custom_metadata keys on smoke-load, columns on the card, --tag -------
+
+
+def test_smoke_load_checks_custom_metadata_keys(monkeypatch):
+    """The streamed example must carry the consolidated columns AND the FREPJ keys in custom_metadata."""
+    monkeypatch.setenv("HF_TOKEN", "hf_faketoken")
+    import datasets
+
+    good = {column: "x" for column in fp.EXPECTED_FREPJ_COLUMNS}
+    good["custom_metadata"] = '{"magnification": "40", "site": "biwako"}'
+    monkeypatch.setattr(datasets, "load_dataset", lambda *args, **kwargs: iter([good]))
+    assert fp.smoke_load("project-oceania/planktonzilla-frepj") is True
+
+    empty = dict(good, custom_metadata="{}")
+    monkeypatch.setattr(datasets, "load_dataset", lambda *args, **kwargs: iter([empty]))
+    with pytest.raises(RuntimeError, match="lacks the FREPJ keys"):
+        fp.smoke_load("project-oceania/planktonzilla-frepj")
+
+    # The schema published on 2026-07-11 (top-level magnification/site/date, no license
+    # columns, no custom_metadata) must FAIL the smoke: it is exactly what the republish replaces.
+    legacy = {column: "x" for column in ("proposed_label", "magnification", "site", "date", "Latitude", "Longitude")}
+    monkeypatch.setattr(datasets, "load_dataset", lambda *args, **kwargs: iter([legacy]))
+    with pytest.raises(RuntimeError, match="missing expected FREPJ columns"):
+        fp.smoke_load("project-oceania/planktonzilla-frepj")
+
+
+def test_build_card_documents_custom_metadata_and_timestamp():
+    """The card tells a consumer where FREPJ's magnification/site/date went."""
+    content = fp.build_card().content
+    assert "## Columns" in content
+    assert "custom_metadata" in content
+    assert '"magnification": "40" | "100"' in content
+    assert "`timestamp`" in content
+    assert "license_url" in content
+
+
+def test_cli_tag_calls_tag_release_with_default_and_explicit(monkeypatch):
+    """--tag alone tags with DEFAULT_TAG; --tag NAME tags with NAME; both on the allowlisted repo."""
+    calls = []
+    monkeypatch.setattr(fp, "tag_release", lambda repo_id, tag: calls.append((repo_id, tag)))
+    fp.main(["--tag"])
+    fp.main(["--tag", "v9.9.9-frepj"])
+    assert calls == [(fp.TARGET_REPO_ID, fp.DEFAULT_TAG), (fp.TARGET_REPO_ID, "v9.9.9-frepj")]
+
+
+def test_tag_release_rejects_frozen_before_any_network_call(monkeypatch):
+    """Tagging goes through the same preflight: the frozen 17M can never be tagged from here."""
+    monkeypatch.setenv("HF_TOKEN", "hf_faketoken")
+    with pytest.raises(ValueError, match="frozen"):
+        fp.tag_release("project-oceania/planktonzilla-17M", "v1.2.0")

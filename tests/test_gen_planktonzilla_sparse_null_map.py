@@ -111,6 +111,9 @@ def test_sparse_null_taxonomy_map_does_not_crash_under_multiprocessing(monkeypat
     # The license pair rides along in the same map, so it must be in the pinned schema too.
     assert ds.features["license"] == Value("string")
     assert ds.features["license_url"] == Value("string")
+    # The generic custom_metadata column is typed string and never null (v1.2).
+    assert ds.features[constants.CUSTOM_METADATA_COL] == Value("string")
+    assert None not in ds[constants.CUSTOM_METADATA_COL]
     assert set(ds["license"]) == {src_license["license"]}
     assert set(ds["license_url"]) == {src_license["license_url"]}
 

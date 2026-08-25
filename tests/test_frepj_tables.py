@@ -258,3 +258,77 @@ def test_ensure_frepj_tables_raises_on_post_download_md5_mismatch(tmp_path, monk
 
     with pytest.raises(ValueError, match="md5"):
         frepj_tables.ensure_frepj_tables(tmp_path, manifest=manifest)
+
+
+# --- sampling-date normalization (KI-26) ----------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("2022.08.28", "2022-08-28"),
+        ("2019.11.6", "2019-11-06"),
+        (" 2018.03.15 ", "2018-03-15"),
+        ("2022.06,10", "2022-06-10"),
+        ("20200917", "2020-09-17"),
+        ("230815inba_funato", "2023-08-15"),
+        ("230427ashinoko4", "2023-04-27"),
+        ("biwako_20211122(462)", "2021-11-22"),
+        ("biwa230213_100", "2023-02-13"),
+        # Never guessed: three-digit day, month-only, bare tokens, impossible dates.
+        ("2021.11.011", None),
+        ("2020.08.dd", None),
+        ("2016.11.", None),
+        ("2311asahiyama_dai", None),
+        ("akanko1", None),
+        ("tsuruoka_100", None),
+        ("akanko_557,558", None),
+        ("2020.02.30", None),
+        ("19990101", None),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_normalize_sampling_date(raw, expected):
+    """Each KI-26 family maps by exactly one rule to ISO, or to None — never to a guess."""
+    assert frepj_tables.normalize_sampling_date(raw) == expected
+
+
+def test_three_digit_day_candidates():
+    """A three-digit day means the day with any ONE digit dropped (real calendar dates only)."""
+    assert frepj_tables.three_digit_day_candidates("2021.11.015") == ["2021-11-01", "2021-11-05", "2021-11-15"]
+    assert frepj_tables.three_digit_day_candidates("2021.11.011") == ["2021-11-01", "2021-11-11"]
+    assert frepj_tables.three_digit_day_candidates("2021.11.15") == []
+    assert frepj_tables.three_digit_day_candidates(None) == []
+
+
+def test_resolve_three_digit_day_requires_exactly_one_table_s1_match():
+    """Resolves only when Table_S1 confirms exactly one candidate for the site."""
+    assert frepj_tables.resolve_three_digit_day("2021.11.011", {"2021-11-01"}) == "2021-11-01"
+    assert frepj_tables.resolve_three_digit_day("2021.11.015", {"2021-11-01", "2021-11-15"}) is None
+    assert frepj_tables.resolve_three_digit_day("2021.11.015", {"2021-11-22"}) is None
+    assert frepj_tables.resolve_three_digit_day("2021.11.015", None) is None
+    assert frepj_tables.resolve_three_digit_day("2021.11.015", set()) is None
+
+
+def test_parse_sampling_date_applies_rules_first_then_table_s1():
+    """The fixed rules decide when they can; Table_S1 is consulted only for a three-digit day."""
+    assert frepj_tables.parse_sampling_date("20200917", {"2020-09-01"}) == "2020-09-17"
+    assert frepj_tables.parse_sampling_date("2021.11.011", {"2021-11-01"}) == "2021-11-01"
+    assert frepj_tables.parse_sampling_date("2021.11.011") is None
+    assert frepj_tables.parse_sampling_date("akanko1", {"2021-11-01"}) is None
+
+
+def test_read_site_sampling_dates_normalizes_and_skips_unreadable(tmp_path):
+    """Table_S1 (site, date) rows become {site: {ISO dates}}; month-only/blank rows add nothing."""
+    csv_path = tmp_path / "table_s1_dates.csv"
+    csv_path.write_text(
+        "site,North latitude,East latitude,date\n"
+        "Lake Biwa,35.25,136.05,2021.11.01\n"
+        "Lake Biwa,35.25,136.05,2021.11.15\n"
+        "Lake Biwa,35.25,136.05,2021.07\n"
+        "Lake Akan,43.455,144.110,20100714\n"
+        "Empty Site,1,1,\n"
+    )
+    dates = frepj_tables.read_site_sampling_dates(csv_path)
+    assert dates == {"Lake Biwa": {"2021-11-01", "2021-11-15"}, "Lake Akan": {"2010-07-14"}}

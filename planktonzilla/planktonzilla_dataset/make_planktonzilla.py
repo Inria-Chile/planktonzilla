@@ -231,6 +231,33 @@ def ensure_license_columns(ds: Dataset, *, where: str) -> Dataset:
     return add_license_columns(ds)
 
 
+def ensure_custom_metadata(ds: Dataset, *, where: str) -> Dataset:
+    """Add an empty ``custom_metadata`` column when a base predates it.
+
+    ``custom_metadata`` (v1.2) holds, per row, the JSON object of whatever source-specific
+    metadata has no consolidated column — see ``constants.CUSTOM_METADATA_COL``. Every
+    source published before it existed had nothing to put there, so the column is filled
+    with the literal ``constants.EMPTY_CUSTOM_METADATA`` (``"{}"``): the same value a
+    from-scratch rebuild of those sources writes, which keeps carried-over and rebuilt
+    rows indistinguishable. Derivation, not invention.
+
+    Same mechanics and caveats as :func:`ensure_license_columns`: applied to the base
+    BEFORE any ``select`` (``add_column`` is a zero-copy Arrow concat; the image column
+    is never touched), and it changes the published schema, so publish the result onto a
+    ``push_revision`` rather than over the frozen revision.
+    """
+    column = constants.CUSTOM_METADATA_COL
+    if column in ds.column_names:
+        return ds
+
+    logger.warning(
+        f"{where} predates the `{column}` column; filling it with {constants.EMPTY_CUSTOM_METADATA!r} for all "
+        f"{len(ds)} rows. This CHANGES the published schema — publish it with push_revision=<branch> rather than "
+        "over the revision the paper and released models are pinned to."
+    )
+    return ds.add_column(column, [constants.EMPTY_CUSTOM_METADATA] * len(ds))
+
+
 def assert_consolidated_schema(ds: Dataset, *, where: str, reference=None) -> None:
     """Fail loudly when a dataset's column SET diverges from the consolidated schema.
 
@@ -1206,6 +1233,7 @@ def main(cfg: DictConfig) -> None:
         # Before the schema check, so a base that predates per-image licensing can still
         # be brought up to date rather than rejected for lacking the columns.
         base = ensure_license_columns(base, where="the base dataset")
+        base = ensure_custom_metadata(base, where="the base dataset")
         assert_consolidated_schema(base, where="the base dataset")
 
     ds = assemble(

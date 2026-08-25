@@ -24,6 +24,11 @@ Load-bearing source-data facts (pinned from ``15-RESEARCH.md`` — do NOT "fix")
   * ``ID`` is the integer filename stem; it is canonicalized via ``str(int(...))``
     so a zero-padded id joins the ``40_<ID>.jpg`` / ``100_<ID>.jpg`` merged
     filenames produced by ``frepj_layout``.
+  * The ``Sampling date`` column of ``Table_S3``/``Table_S4`` (and ``date`` in
+    ``Table_S1``) is hand-typed free text: 92.9% of the per-image rows carry the
+    intended ``YYYY.MM.DD``, the rest a handful of malformed families (see KI-26 in
+    ``utils/KNOWN_ISSUES.md``). :func:`parse_sampling_date` normalizes it to ISO
+    ``YYYY-MM-DD`` by fixed rules and NEVER guesses — an ambiguous value is None.
 
 Zero behavioral drift: nothing here mutates any frozen artifact. Only network
 path is :func:`ensure_frepj_tables`; every parser is offline and pure. No new
@@ -32,8 +37,10 @@ third-party dependency is introduced (polars/datasets are already vendored;
 """
 
 import hashlib
+import re
 import shutil
 from collections import defaultdict
+from datetime import date as _calendar_date
 from math import asin, cos, radians, sin, sqrt
 from pathlib import Path
 
@@ -293,6 +300,144 @@ def parse_frepj_filename(filename: str) -> tuple[int, str] | None:
 def distinct_site_tokens(index: dict[tuple[int, str], tuple[str, str]]) -> set[str]:
     """Return the set of distinct sampling-site tokens present in ``index``."""
     return {token for token, _date in index.values()}
+
+
+# --- Sampling-date normalization ------------------------------------------------------
+# The "Sampling date" column of Table_S3/S4 is free text typed by hand. Audited on
+# 2026-08-25 over all 88,686 per-image rows (KI-26): 82,413 are the intended
+# ``YYYY.MM.DD``; the remaining 6,273 fall into the families below, each normalized by
+# ONE deterministic rule or left None. Nothing here guesses: a value that admits more
+# than one reading yields None.
+
+# Sampling ran 2006-2023; the bounds reject a misread run of digits, never a real date.
+_SAMPLING_YEAR_RANGE = (2000, 2035)
+
+_DOTTED_DATE_RE = re.compile(r"^(\d{4})\.(\d{1,2})\.(\d{1,2})$")  # 2022.08.28, 2019.11.6
+_COMMA_DAY_RE = re.compile(r"^(\d{4})\.(\d{2}),(\d{2})$")  # 2022.06,10 — a comma for the second dot
+_COMPACT_DATE_RE = re.compile(r"^(\d{4})(\d{2})(\d{2})$")  # 20200917
+_YYMMDD_PREFIX_RE = re.compile(r"^(\d{2})(\d{2})(\d{2})[A-Za-z_]")  # 230815inba_funato
+_EMBEDDED_8_RE = re.compile(r"(?<!\d)(\d{4})(\d{2})(\d{2})(?!\d)")  # biwako_20211122(462)
+_EMBEDDED_6_RE = re.compile(r"(?<!\d)(\d{2})(\d{2})(\d{2})(?!\d)")  # biwa230213_100
+_THREE_DIGIT_DAY_RE = re.compile(r"^(\d{4})\.(\d{2})\.(\d{3})$")  # 2021.11.011 — ambiguous
+
+
+def _iso_date(year: int, month: int, day: int) -> str | None:
+    """``YYYY-MM-DD`` for a real calendar date inside the sampling-year range, else None."""
+    lo, hi = _SAMPLING_YEAR_RANGE
+    if not (lo <= year <= hi):
+        return None
+    try:
+        return _calendar_date(year, month, day).isoformat()
+    except ValueError:
+        return None
+
+
+def normalize_sampling_date(raw: str | None) -> str | None:
+    """Normalize one upstream sampling-date string to ISO ``YYYY-MM-DD``, or None.
+
+    Rules, in order — the first whose SHAPE matches decides, and a match that is not a
+    real calendar date yields None rather than falling through to a later rule:
+
+    1. ``YYYY.MM.DD`` / ``YYYY.M.D`` — the intended format, single-digit day tolerated.
+    2. ``YYYY.MM,DD`` — a comma typed for the second dot.
+    3. ``YYYYMMDD`` — the dots omitted.
+    4. ``YYMMDD<site…>`` — a six-digit 20YY date prefixed to a site token.
+    5. A ``YYYYMMDD`` or ``YYMMDD`` run embedded in a token (``biwako_20211122(462)``,
+       ``biwa230213_100``); the eight-digit form is tried first.
+
+    Everything else is None: three-digit days (``2021.11.011``, handled by
+    :func:`resolve_three_digit_day`), month-only values (``2020.08.dd``, ``2016.11.``,
+    ``2311asahiyama_dai``) and bare site tokens (``akanko1``, ``tsuruoka_100``).
+    """
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+
+    match = _DOTTED_DATE_RE.match(text) or _COMMA_DAY_RE.match(text) or _COMPACT_DATE_RE.match(text)
+    if match:
+        return _iso_date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    match = _YYMMDD_PREFIX_RE.match(text)
+    if match:
+        return _iso_date(2000 + int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    match = _EMBEDDED_8_RE.search(text)
+    if match:
+        return _iso_date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    match = _EMBEDDED_6_RE.search(text)
+    if match:
+        return _iso_date(2000 + int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    return None
+
+
+def three_digit_day_candidates(raw: str | None) -> list[str]:
+    """The ISO dates a ``YYYY.MM.DDD`` value could mean: its day with any ONE digit dropped.
+
+    ``2021.11.015`` -> ``["2021-11-01", "2021-11-05", "2021-11-15"]`` (sorted, real
+    calendar dates only). Empty for any other shape.
+    """
+    if raw is None:
+        return []
+    match = _THREE_DIGIT_DAY_RE.match(str(raw).strip())
+    if not match:
+        return []
+    year, month, ddd = int(match.group(1)), int(match.group(2)), match.group(3)
+    candidates = set()
+    for i in range(3):
+        day = int(ddd[:i] + ddd[i + 1 :])
+        iso = _iso_date(year, month, day) if day else None
+        if iso:
+            candidates.add(iso)
+    return sorted(candidates)
+
+
+def resolve_three_digit_day(raw: str | None, site_dates: set[str] | None) -> str | None:
+    """Pick the one candidate of :func:`three_digit_day_candidates` that Table_S1 confirms.
+
+    ``site_dates`` is the set of ISO sampling dates Table_S1 records for the image's
+    (crosswalk-resolved) site — :func:`read_site_sampling_dates`. The value resolves only
+    when EXACTLY one candidate is among them; zero or several matches yield None.
+    Real outcome (2026-08-25): 259 of the 611 affected rows resolve (``biwako
+    2021.11.011`` -> 2021-11-01, ``obaradam 2020.10.016`` -> 2020-10-16, ``yokoyamadam
+    2021.11.010`` -> 2021-11-10); the 352 ``biwako 2021.11.015`` / ``.018`` rows stay
+    None because Lake Biwa was sampled on both candidate days.
+    """
+    if not site_dates:
+        return None
+    hits = [candidate for candidate in three_digit_day_candidates(raw) if candidate in site_dates]
+    return hits[0] if len(hits) == 1 else None
+
+
+def parse_sampling_date(raw: str | None, site_dates: set[str] | None = None) -> str | None:
+    """Normalize a sampling-date string, falling back to the Table_S1 disambiguation.
+
+    :func:`normalize_sampling_date` first; when that yields None and the value is a
+    three-digit-day form, :func:`resolve_three_digit_day` against ``site_dates``. Never
+    raises, never guesses. Over the real tables this leaves 86,979 of 88,686 rows
+    (98.1%) with a date.
+    """
+    normalized = normalize_sampling_date(raw)
+    if normalized is not None:
+        return normalized
+    return resolve_three_digit_day(raw, site_dates)
+
+
+def read_site_sampling_dates(s1_path: str | Path) -> dict[str, set[str]]:
+    """Map each Table_S1 site name to the set of ISO sampling dates recorded for it.
+
+    Table_S1 has one row per ``(site, date)``. Dates are normalized with
+    :func:`normalize_sampling_date`; a row whose date does not normalize (Table_S1 has
+    month-only values such as ``2021.07``) contributes nothing. Used only to disambiguate
+    three-digit days (:func:`resolve_three_digit_day`).
+    """
+    df, cols = _read_csv(s1_path)
+    dates: dict[str, set[str]] = defaultdict(set)
+    for row in df.select(pl.col(cols["site"]).alias("site"), pl.col(cols["date"]).alias("date")).iter_rows(named=True):
+        site = "" if row["site"] is None else str(row["site"]).strip()
+        iso = normalize_sampling_date(row["date"])
+        if site and iso:
+            dates[site].add(iso)
+    return dict(dates)
 
 
 # --- md5-verified fetch ---------------------------------------------------------------

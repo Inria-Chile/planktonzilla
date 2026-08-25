@@ -224,6 +224,24 @@ def load_crosswalk(path: str | Path) -> dict[str, tuple[float | None, float | No
     return mapping
 
 
+def load_crosswalk_sites(path: str | Path) -> dict[str, str]:
+    """Load the committed crosswalk as ``{site_token: resolved_site}`` (resolved tokens only).
+
+    The Table_S1 site name a token was matched to — the key into
+    :func:`frepj_tables.read_site_sampling_dates` when a three-digit sampling day needs
+    disambiguating. Tokens with no resolution (empty ``resolved_site``) are omitted, so a
+    ``.get`` on the result is None for them. Offline like :func:`load_crosswalk`.
+    """
+    df = pl.read_csv(path, infer_schema_length=0)
+    sites: dict[str, str] = {}
+    for row in df.iter_rows(named=True):
+        token, site = row.get("site_token"), row.get("resolved_site")
+        if token is None or site is None or not str(site).strip():
+            continue
+        sites[str(token)] = str(site).strip()
+    return sites
+
+
 def load_overrides(path: str | Path) -> dict[str, str]:
     """Load the hand-curated override table, skipping ``#`` comments and blank tokens."""
     path = Path(path)
