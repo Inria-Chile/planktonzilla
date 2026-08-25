@@ -1,7 +1,7 @@
 defaults:
   - default.yaml
 
-_target_: planktonzilla.dataset_import.dataset_importer.SYKEZooScan2024
+_target_: planktonzilla.dataset_import.dataset_importer.SYKEZooScan2024DatasetImporter
 hf_dataset_name: sykezooscan2024
 push_to_hub: true
 
@@ -23,8 +23,26 @@ description: |
     
     For more details about the data collection and composition, as well as, the comparison of OSR methods on both dataset, see the 
     paper.
+# Published through Fairdata (Etsin), which serves no stable direct .zip URL: a dataset
+# is downloaded by asking the Download API to package it, waiting for that, then
+# authorizing a single-use download. Setting fairdata_pid runs that flow automatically.
+#
+# Verified end to end against the live service on 2026-08-01: resolved and downloaded
+# the 79,363,785-byte package, whose 20 class folders (22,753 images) match the 20
+# sykezooscan2024 rows in planktonzilla_taxonomy.csv exactly.
+#
+# If the service is down or the contract moves, the resolver fails loudly with the
+# manual fallback rather than importing something wrong:
+#   pz_import_dataset dataset_import=sykezooscan2024 \
+#     dataset_import.fairdata_pid=null \
+#     dataset_import.manual_download_local_file_names=${paths.data_dir}/manual_downloads/SYKE-plankton_ZooScan_2024.zip
+fairdata_pid: "6fa42787-9772-41a5-a6fc-0dde489ed908"
 download_uris: ""
-source_url: "https://etsin.fairdata.fi/dataset/6fa42787-9772-41a5-a6fc-0dde489ed908" 
+manual_download_url: "https://etsin.fairdata.fi/dataset/6fa42787-9772-41a5-a6fc-0dde489ed908"
+manual_download_notes: |
+  On the Etsin page choose "Download" > the whole dataset, which produces a .zip. The
+  package can take a few minutes to generate for a dataset this size.
+source_url: "https://etsin.fairdata.fi/dataset/6fa42787-9772-41a5-a6fc-0dde489ed908"
 paperswithcode_id: "sykezooscan2024"
 citation_apa: |
     Kareinen, J., & Skyttä, A. (2024). SYKE-plankton_ZooScan_2024 (Version 1). LUT University. https://doi.org/10.23729/fa115087-

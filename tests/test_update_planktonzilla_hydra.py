@@ -18,9 +18,12 @@ update run. A full golden-output dataset diff is not runnable here (it needs the
       save_to_disk, and the resolved num_proc -> sync_columns,
   (d) the opt-in Hub push is additive — the default (push_to_hub false) never
       pushes (zero-drift), while push_to_hub=true pushes once to cfg.repo_id after
-      the unconditional save.
+      the unconditional save, forwarding ``revision`` only when push_revision is set,
+  (e) ``add_license_columns`` stamps each row with its source's redistribution terms,
+      is re-runnable, refuses an unrecorded source, and — the load-bearing part on a
+      17M-image dataset — never reads the image column.
 
-Every test PINS current behavior; none "improves" it. All network is mocked.
+Tests (a)-(d) PIN current behavior; none "improves" it. All network is mocked.
 """
 
 import pathlib
@@ -37,9 +40,12 @@ root = pyrootutils.setup_root(
 
 from unittest.mock import MagicMock
 
+import datasets
 import hydra
+import pytest
 from datasets import Dataset
 from hydra.core.global_hydra import GlobalHydra
+from PIL import Image as PILImage
 
 from planktonzilla.planktonzilla_dataset import constants
 from planktonzilla.planktonzilla_dataset import update_planktonzilla as up
@@ -70,7 +76,9 @@ def _drive_update_main(monkeypatch, cfg, push_mock=None):
     When ``push_mock`` is given it is installed as ``Dataset.push_to_hub`` so the
     opt-in push can be asserted.
     """
-    columns = {"dataset": ["x"], "original_label": ["y"]}
+    # The dataset name must be a REAL source: main() now stamps license/license_url
+    # from constants.DATASET_LICENSES and refuses an unrecorded source outright.
+    columns = {"dataset": ["lensless"], "original_label": ["y"]}
     for col in up.SYNC_COLS:
         # plankton is a bool; everything else is a (nullable) string column.
         columns[col] = [True] if col == "plankton" else [""]
@@ -146,7 +154,7 @@ def test_main_wires_repo_id_data_dir_and_num_proc(monkeypatch, tmp_path):
     # Real tiny CSV so build_sync_dict succeeds; routed via the override below.
     csv_path = tmp_path / "taxo.csv"
     out_dir = tmp_path / "out"
-    _write_taxonomy_csv(str(csv_path), "x", "y")
+    _write_taxonomy_csv(str(csv_path), "lensless", "y")
 
     # Compose the REAL update config, overriding taxonomy_csv_path (so the raw read
     # works) and data_dir (a writable target the save_to_disk capture records).
@@ -159,7 +167,9 @@ def test_main_wires_repo_id_data_dir_and_num_proc(monkeypatch, tmp_path):
 
     # Tiny in-memory dataset whose columns include dataset, original_label, and every
     # SYNC_COL, so update_example / new_features succeed inside sync_columns.
-    columns = {"dataset": ["x"], "original_label": ["y"]}
+    # The dataset name must be a REAL source: main() now stamps license/license_url
+    # from constants.DATASET_LICENSES and refuses an unrecorded source outright.
+    columns = {"dataset": ["lensless"], "original_label": ["y"]}
     for col in up.SYNC_COLS:
         # plankton is a bool; everything else is a (nullable) string column.
         columns[col] = [True] if col == "plankton" else [""]
@@ -185,7 +195,7 @@ def test_main_wires_repo_id_data_dir_and_num_proc(monkeypatch, tmp_path):
     monkeypatch.setattr(up.Dataset, "save_to_disk", _fake_save_to_disk)
 
     # main is @hydra.main-decorated; call the undecorated body with our composed cfg.
-    up.main.__wrapped__(cfg)
+    up.main.__wrapped__(cfg)  # pyright: ignore[reportFunctionMemberAccess]
 
     GlobalHydra.instance().clear()
 
@@ -209,7 +219,7 @@ def test_main_skips_push_by_default(monkeypatch, tmp_path):
     mocked; this PINS current behavior, it does not "improve" it.
     """
     csv_path = tmp_path / "taxo.csv"
-    _write_taxonomy_csv(str(csv_path), "x", "y")
+    _write_taxonomy_csv(str(csv_path), "lensless", "y")
 
     GlobalHydra.instance().clear()
     hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_update_nopush")
@@ -234,7 +244,7 @@ def test_main_pushes_to_hub_when_enabled(monkeypatch, tmp_path):
     mocked; this PINS current behavior, it does not "improve" it.
     """
     csv_path = tmp_path / "taxo.csv"
-    _write_taxonomy_csv(str(csv_path), "x", "y")
+    _write_taxonomy_csv(str(csv_path), "lensless", "y")
 
     GlobalHydra.instance().clear()
     hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_update_push")
@@ -251,3 +261,206 @@ def test_main_pushes_to_hub_when_enabled(monkeypatch, tmp_path):
     push.assert_called_once()
     assert push.call_args.args[0] == cfg.repo_id
     assert push.call_args.kwargs.get("private") == cfg.push_as_private
+    # push_revision defaults to null -> revision is NOT forwarded, so the default push
+    # call stays byte-identical to the pre-license-column one.
+    assert "revision" not in push.call_args.kwargs
+
+
+def test_push_revision_targets_a_branch_when_set(monkeypatch, tmp_path):
+    """``push_revision`` forwards a branch, so the frozen default revision is untouched.
+
+    Adding the license columns changes the published schema. Publishing it onto its own
+    revision is what keeps the bytes the paper and the released models are pinned to
+    exactly where they are.
+    """
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "lensless", "y")
+
+    GlobalHydra.instance().clear()
+    hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_update_push_revision")
+    cfg = hydra.compose(
+        config_name="update_planktonzilla",
+        overrides=[
+            f"taxonomy_csv_path={csv_path}",
+            f"data_dir={tmp_path / 'out'}",
+            "push_to_hub=true",
+            "push_revision=v1.1",
+        ],
+    )
+
+    push = MagicMock()
+    _drive_update_main(monkeypatch, cfg, push_mock=push)
+
+    GlobalHydra.instance().clear()
+
+    push.assert_called_once()
+    assert push.call_args.args[0] == cfg.repo_id
+    assert push.call_args.kwargs.get("revision") == "v1.1"
+
+
+def _drive_main_recording_sync(monkeypatch, cfg, tmp_path):
+    """Run ``main`` with the CSV read and the re-sync both recorded rather than executed.
+
+    Returns ``(calls, saved)`` where ``calls`` names the steps that actually ran and
+    ``saved`` is the dataset handed to ``save_to_disk``.
+    """
+    columns = {"dataset": ["lensless"], "original_label": ["y"]}
+    for col in up.SYNC_COLS:
+        columns[col] = [True] if col == "plankton" else ["frozen-value"]
+    tiny = Dataset.from_dict(columns)
+
+    calls = []
+    saved = {}
+
+    def _build_sync_dict(csv_path):
+        calls.append("build_sync_dict")
+        return {}
+
+    def _sync_columns(ds, sync_dict, num_proc):
+        calls.append("sync_columns")
+        return ds
+
+    monkeypatch.setattr(up, "load_dataset", lambda *a, **k: tiny)
+    monkeypatch.setattr(up, "build_sync_dict", _build_sync_dict)
+    monkeypatch.setattr(up, "sync_columns", _sync_columns)
+    monkeypatch.setattr(up.Dataset, "save_to_disk", lambda self, path: saved.update(ds=self))
+
+    up.main(cfg)
+    return calls, saved["ds"]
+
+
+def _compose_update_cfg(tmp_path, job_name, extra_overrides=()):
+    """Compose the real update config with a writable data_dir and a tiny CSV."""
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "lensless", "y")
+
+    GlobalHydra.instance().clear()
+    hydra.initialize(config_path="../configs", version_base="1.3", job_name=job_name)
+    return hydra.compose(
+        config_name="update_planktonzilla",
+        overrides=[f"taxonomy_csv_path={csv_path}", f"data_dir={tmp_path / 'out'}", *extra_overrides],
+    )
+
+
+def test_sync_taxonomy_defaults_true_and_runs_the_resync(monkeypatch, tmp_path):
+    """PIN zero-drift: the default run still re-syncs, exactly as it always has."""
+    cfg = _compose_update_cfg(tmp_path, "test_update_sync_default")
+    assert cfg.get("sync_taxonomy") is True
+
+    calls, saved = _drive_main_recording_sync(monkeypatch, cfg, tmp_path)
+    GlobalHydra.instance().clear()
+
+    assert calls == ["build_sync_dict", "sync_columns"]
+    # The license columns are added on top of the re-sync, not instead of it.
+    assert set(up.LICENSE_COLS) <= set(saved.column_names)
+
+
+def test_sync_taxonomy_false_adds_only_the_license_columns(monkeypatch, tmp_path):
+    """``sync_taxonomy=false`` is strictly additive: no CSV read, no re-sync, no rewrite.
+
+    This is the path for annotating the frozen dataset with its terms without
+    re-applying whatever the taxonomy CSV happens to say today.
+    """
+    cfg = _compose_update_cfg(tmp_path, "test_update_sync_off", ["sync_taxonomy=false"])
+
+    calls, saved = _drive_main_recording_sync(monkeypatch, cfg, tmp_path)
+    GlobalHydra.instance().clear()
+
+    # Neither the CSV lookup nor the full-table map ran.
+    assert calls == []
+
+    # The license columns are still there...
+    assert saved["license"] == ["cc-by-4.0"]
+    assert saved["license_url"] == ["https://creativecommons.org/licenses/by/4.0/"]
+
+    # ...and every published taxonomy/ID value came through untouched.
+    for col in up.SYNC_COLS:
+        expected = [True] if col == "plankton" else ["frozen-value"]
+        assert saved[col] == expected, f"{col} was modified by a license-only run"
+
+    # The only new columns are the two license ones.
+    assert set(saved.column_names) == {"dataset", "original_label", *up.SYNC_COLS, *up.LICENSE_COLS}
+
+
+def test_add_license_columns_stamps_each_source():
+    """Each row gets the license/license_url of its own source dataset."""
+    ds = Dataset.from_dict(
+        {
+            "dataset": ["lensless", "zooscan", "whoi", "planktonset1.0", "lensless"],
+            "original_label": ["a", "b", "c", "d", "e"],
+        }
+    )
+
+    out = up.add_license_columns(ds)
+
+    assert out.column_names[-2:] == list(up.LICENSE_COLS)
+    assert out["license"] == ["cc-by-4.0", "cc-by-nc-4.0", "mit", "other", "cc-by-4.0"]
+    assert out["license_url"] == [
+        "https://creativecommons.org/licenses/by/4.0/",
+        "https://creativecommons.org/licenses/by-nc/4.0/",
+        "https://github.com/hsosik/WHOI-Plankton",
+        "https://doi.org/10.7289/v5d21vjd",
+        "https://creativecommons.org/licenses/by/4.0/",
+    ]
+    # Stored as plain strings, like every other text column in the dataset.
+    for col in up.LICENSE_COLS:
+        assert out.features[col].dtype == "string"
+
+    # No rows added or removed, and nothing else touched.
+    assert len(out) == len(ds)
+    assert out["dataset"] == ds["dataset"]
+    assert out["original_label"] == ds["original_label"]
+
+
+def test_add_license_columns_is_rerunnable():
+    """A second pass rebuilds the columns instead of duplicating or erroring."""
+    ds = Dataset.from_dict({"dataset": ["lensless", "whoi"], "original_label": ["a", "b"]})
+
+    once = up.add_license_columns(ds)
+    twice = up.add_license_columns(once)
+
+    assert twice.column_names == once.column_names
+    assert twice["license"] == once["license"] == ["cc-by-4.0", "mit"]
+
+    # A stale value is corrected rather than preserved.
+    stale = once.remove_columns("license").add_column("license", ["wrong", "wrong"])
+    assert up.add_license_columns(stale)["license"] == ["cc-by-4.0", "mit"]
+
+
+def test_add_license_columns_rejects_an_unrecorded_source():
+    """An unknown source aborts the update; it never ships as a null license."""
+    ds = Dataset.from_dict({"dataset": ["lensless", "not-a-real-source"], "original_label": ["a", "b"]})
+
+    with pytest.raises(KeyError, match="not-a-real-source"):
+        up.add_license_columns(ds)
+
+
+def test_add_license_columns_never_reads_the_image_column(monkeypatch, tmp_path):
+    """The image column is never materialized — the property that makes this affordable.
+
+    A ``map`` over the full example would decode all 17M images to PIL and rewrite the
+    whole table. This pins the cheap path: only ``dataset`` is ever read.
+    """
+    image_path = tmp_path / "img.png"
+    PILImage.new("RGB", (2, 2)).save(image_path)
+
+    ds = Dataset.from_dict({"dataset": ["lensless"], "original_label": ["a"], "image": [str(image_path)]}).cast_column(
+        "image", datasets.Image()
+    )
+
+    read_columns = []
+    original_getitem = Dataset.__getitem__
+
+    def _tracking_getitem(self, key):
+        if isinstance(key, str):
+            read_columns.append(key)
+        return original_getitem(self, key)
+
+    monkeypatch.setattr(Dataset, "__getitem__", _tracking_getitem)
+    out = up.add_license_columns(ds)
+    monkeypatch.undo()
+
+    assert read_columns == ["dataset"]
+    assert out["license"] == ["cc-by-4.0"]
+    # The image feature survives untouched, still lazily decoded.
+    assert isinstance(out.features["image"], datasets.Image)

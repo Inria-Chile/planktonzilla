@@ -55,6 +55,9 @@ repository = "https://github.com/Inria-Chile/planktonzilla"
 [project.scripts]
 pz_import_dataset = 'planktonzilla.dataset_import.import_dataset:main'
 pz_train = 'planktonzilla.train:main'
+pz_planktonzilla = 'planktonzilla.planktonzilla_dataset.make_planktonzilla:main'
+# DEPRECATED, removed in the next minor release: both are subsumed by pz_planktonzilla
+# (full build == the bare command; taxonomy re-sync == base=hub sources=[]).
 pz_generate_planktonzilla = 'planktonzilla.planktonzilla_dataset.generate_planktonzilla:main'
 pz_update_planktonzilla = 'planktonzilla.planktonzilla_dataset.update_planktonzilla:main'
 pz_sankey = 'planktonzilla.planktonzilla_dataset.sankey:main'
@@ -101,6 +104,58 @@ lint.ignore = ["E402", "N806"]
 # No per-file-ignores: the only entry was generate_sankey.py, which embedded its page as a
 # raw-string template and needed an E501 exemption. pz_sankey keeps its page in
 # templates/sankey_flow.html instead, so no Python file carries non-Python long lines.
+
+[tool.pyright]
+# Pylance/pyright configuration. Ruff is the linter of record; type checking is advisory
+# here, so the rule families that only fire on this codebase's Hydra/OmegaConf idioms are
+# muted project-wide instead of being papered over with per-line comments. Rules that can
+# catch a real runtime failure stay on — silence those one line at a time with
+# `# pyright: ignore[<rule>]` and a reason.
+include = ["planktonzilla", "tests"]
+exclude = [
+    "**/__pycache__",
+    "**/.*",
+    "data",
+    "docs",
+    "logs",
+    "notebooks",
+    "outputs",
+    "scratchpad",
+    "scripts",
+]
+# Resolve third-party imports against the uv-managed venv regardless of which interpreter
+# the editor happens to have selected; without this every project dependency reads as
+# "import could not be resolved".
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+
+# Hydra structured configs declare `field: str = None` (None is the "unset" sentinel, filled
+# in from YAML at composition time), and config values reach call sites as `X | None` even
+# though Hydra/OmegaConf guarantee them by then. Each of these fires only on that pattern.
+reportArgumentType = "none"
+reportAssignmentType = "none"
+reportGeneralTypeIssues = "none"
+reportIndexIssue = "none"
+reportOperatorIssue = "none"
+reportOptionalCall = "none"
+reportOptionalIterable = "none"
+reportOptionalMemberAccess = "none"
+reportOptionalOperand = "none"
+reportOptionalSubscript = "none"
+
+# Almost every hit is a bad third-party overload — polars `df[col][i]`, `torch.where`,
+# `Tensor.type()`, `Module` attributes the stubs type as `Tensor` — plus the `@hydra.main`
+# entry points, which are declared as taking a `cfg` the decorator injects.
+reportCallIssue = "none"
+
+# Stub gaps in unannotated dependencies: open_clip re-exports (TimmModel, VisionTransformer),
+# hydra's compose/initialize, and torch tensors that the stubs widen to `float`.
+reportAttributeAccessIssue = "none"
+reportPrivateImportUsage = "none"
+# requests/tqdm/yaml resolve to typeshed stubs rather than to their own sources.
+reportMissingModuleSource = "none"
 
 [tool.pytest.ini_options]
 # --doctest-modules removed: no doctests in planktonzilla/; testpaths=["tests"] alone is the gate. (INFRA-01, CONCERNS #13)

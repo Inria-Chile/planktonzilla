@@ -5,6 +5,40 @@ hf_dataset_name: null
 
 data_dir: ${paths.data_dir}
 
+# Path(s) to an archive downloaded by hand, used instead of fetching download_uris.
+# Declared here (not only on the sources that need it) so it can always be overridden
+# without Hydra's `+` prefix — struct mode rejects setting a key a config never declared,
+# which would otherwise make the documented override fail on most sources.
+manual_download_local_file_names: null
+
+# How this project identifies itself to the archives it downloads from, on every
+# download AND on every `pz_planktonzilla check_downloads=...` probe — the two read this
+# same value, so they cannot disagree about what a server will do.
+#
+# null -> dataset_importer.default_user_agent(), i.e.
+#   planktonzilla/<version> (+https://github.com/Inria-Chile/planktonzilla)
+#
+# Not cosmetic. Leaving it unset does not mean "no User-Agent", it means "whatever the
+# library sends", and that is what gets refused: measured on 2026-08-04, whoi's host
+# (darchive.mblwhoilibrary.org) drops the connection for python-requests, aiohttp,
+# datasets and even a Chrome User-Agent, while serving the archive to a request that
+# names this project. See default_user_agent() for the full measurement.
+http_user_agent: null
+
+# Worker count for downloads, imagefolder preparation and the Hub push.
+#
+# Declared here (not only on the dataclass) for the same reason as
+# manual_download_local_file_names above: Hydra's struct mode rejects setting a key a
+# config never declared, so with this absent the documented override form fails —
+#   pz_planktonzilla import_overrides=[dataset_import.num_proc=1]
+#   -> ConfigAttributeError: Key 'num_proc' is not in struct
+# and only the `+dataset_import.num_proc=1` add-form worked, which reads like the field
+# does not exist rather than like it was merely undeclared.
+#
+# null -> multiprocessing.cpu_count(), resolved in __post_init__. Kept null rather than a
+# number so the config does not pin one machine's core count.
+num_proc: null
+
 force_download: false
 resume_download: true
 force_imagefolder_preparation: false

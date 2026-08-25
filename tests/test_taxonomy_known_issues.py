@@ -5,6 +5,10 @@ Pinning tests for `planktonzilla_taxonomy.csv` — they assert the CURRENT (froz
 the known data inconsistencies documented as KI-8..KI-13 in
 `planktonzilla/planktonzilla_dataset/utils/KNOWN_ISSUES.md`.
 
+KI-11 is the exception: it was RESOLVED (the `QUALIFIERS` vocabulary was widened, with no CSV
+change), so its write-up now lives in the sibling `RESOLVED_ISSUES.md`. Its test stays here
+because what it guards is unchanged — that every `qualifier` in the CSV is a recognized value.
+
 These tests PIN behavior; they do NOT fix it. The taxonomy table and the datasets/models
 derived from it are published and frozen on HuggingFace Hub, so under the milestone's
 zero-behavioral-drift rule these inconsistencies are documented and pinned rather than

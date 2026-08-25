@@ -266,6 +266,14 @@ def test_the_shipped_template_carries_every_placeholder():
         assert placeholder in text, placeholder
 
 
+def test_the_shipped_template_wires_all_three_exports():
+    """SVG and PNG are images of the view; Mermaid is the same graph as `sankey-beta` text."""
+    text = sk.TEMPLATE_PATH.read_text(encoding="utf-8")
+    for element in ('id="export"', 'id="exportPng"', 'id="exportMermaid"'):
+        assert element in text, element
+    assert "sankey-beta" in text  # the Mermaid diagram keyword the export emits
+
+
 # --------------------------------------------------------------------------- dataset naming
 def test_assemble_prints_the_bare_dataset_name_and_the_full_repo_id():
     html = sk.assemble("<title>__DATASET_NAME__</title><p>__DATASET_REPO__</p>", {}, "", "", "org/plankton-9K")

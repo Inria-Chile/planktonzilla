@@ -22,6 +22,23 @@ push_to_hub: false
 push_as_private: true
 hf_token: ${oc.env:HF_TOKEN, null}
 
+# Branch to push onto. null (the default) targets the repo's default revision.
+# Adding the license columns changes the published schema, so publish it onto its own
+# branch and tag that instead of overwriting the revision the paper and the released
+# models are pinned to:
+#   pz_update_planktonzilla push_to_hub=true push_revision=v1.1
+# then tag it on the Hub (huggingface_hub.HfApi().create_tag(..., repo_type="dataset")),
+# leaving the existing v1.0 tag on the frozen bytes.
+push_revision: null
+
+# Whether to re-sync the taxonomy ranks, label extras and external IDs from the taxonomy
+# CSV. True (the default) is the historical behavior: a full-table rewrite that re-applies
+# whatever the CSV currently says. Set false to add ONLY the license columns — the CSV is
+# never read, no map runs, and every published taxonomy/ID value is carried through
+# untouched, making the run strictly additive:
+#   pz_update_planktonzilla sync_taxonomy=false push_to_hub=true push_revision=v1.1
+sync_taxonomy: true
+
 # Null defaults resolved by the in-code fallbacks. Override on the CLI,
 # e.g. `pz_update_planktonzilla num_proc=4`.
 #   - taxonomy_csv_path -> constants.DEFAULT_TAXONOMY_CSV_FILENAME (a raw Path).

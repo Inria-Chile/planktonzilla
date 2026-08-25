@@ -57,6 +57,14 @@ EXPECTED_TABLE = [
     ("syke_ifcb_2022", "syke_ifcb_2022", False, "none"),
     ("planktoscope", "planktoscope", False, "ecotaxa"),
     ("global_uvp5", "global_uvp5net", False, "ecotaxa"),
+    # Appended 2026-08-01, once none of the three turned out to need the manual .zip
+    # they had long been documented as requiring. They go at the END so every source
+    # above keeps the index it already had — registry order is the concatenation order
+    # of the output. With these the registry covers all 15 sources of the published
+    # dataset.
+    ("zoolake", "zoolake", False, "none"),
+    ("jedioceans", "jedi_oceans_cpics", False, "jedi"),
+    ("sykezooscan2024", "sykezooscan2024", False, "none"),
 ]
 
 
@@ -182,7 +190,7 @@ def test_null_fallback_defaults_match_legacy_absolute_values():
 def test_datasets_and_repo_id_pinned_in_config():
     """Pin the config-driven import table + repo id (the migrated values).
 
-    Asserts cfg.datasets is exactly the frozen 12-row table in order, repo_id is
+    Asserts cfg.datasets is exactly the frozen 15-row table in order, repo_id is
     the consolidated dataset identity, and the REDEFINERS map resolves each key to
     the expected class.
     """
@@ -202,6 +210,7 @@ def test_datasets_and_repo_id_pinned_in_config():
         "none": gp.NoMetadataRedefiner,
         "whoi": gp.WHOIRedefiner,
         "ecotaxa": gp.EcoTaxaRedefiner,
+        "jedi": gp.JediRedefiner,
     }
     for key, klass in expected_classes.items():
         assert gp.REDEFINERS[key] is klass
@@ -243,9 +252,10 @@ def test_main_pins_override_blocks_and_redefiners(monkeypatch, tmp_path):
         "none": gp.NoMetadataRedefiner,
         "whoi": gp.WHOIRedefiner,
         "ecotaxa": gp.EcoTaxaRedefiner,
+        "jedi": gp.JediRedefiner,
     }
 
-    # Exactly these 12 active datasets, in this order (commented ones excluded).
+    # Exactly these 15 active datasets, in this order.
     assert list(captured_redefiners.keys()) == [t[0] for t in EXPECTED_TABLE]
     assert len(captured_overrides) == len(EXPECTED_TABLE)
 
@@ -311,3 +321,30 @@ def test_module_level_num_proc_independent_of_cfg():
     import time and is intentionally NOT driven by cfg.num_proc (only redefine()
     receives the configurable value)."""
     assert gp.num_proc == constants.default_num_proc()
+
+
+def test_taxonomy_map_declares_its_schema_instead_of_inferring_it():
+    """The taxonomy pass must not depend on which class sorts first.
+
+    `map` types each writer batch from its values, and an imagefolder is ordered by
+    class: a first class with no Order/Family/Genus types those columns `null`, and the
+    first later class that has one dies with "Couldn't cast array of type string to
+    null". sykezooscan2024 is exactly that shape (Bivalvia sorts first, with all three
+    empty), so importing it failed on datasets 4.8.5 and 5.0.1 alike.
+    """
+    from datasets import Value
+
+    redefiner = gp.NoMetadataRedefiner(csv_taxonomies_path=str(constants.DEFAULT_TAXONOMY_CSV_FILENAME))
+    ds = Dataset.from_dict({"label": [0, 1]})
+
+    features = redefiner._mapped_features(ds)
+
+    # Every column the taxonomy pass writes is declared...
+    for column in (*constants.IDENTITY_COLS, *constants.LICENSE_COLS, *redefiner.lookup_cols):
+        assert column in features, f"{column} would be inferred from batch content"
+    # ...as the type _cast_scalar_types casts to at the end, so nothing about the
+    # output changes — only that the schema is stated rather than guessed.
+    assert features["Genus"] == Value("string")
+    assert features["aphia_ID"] == Value("string"), "numeric IDs are stored as text"
+    assert features["plankton"] == Value("bool")
+    assert features["label"] == ds.features["label"], "input columns are carried through untouched"
