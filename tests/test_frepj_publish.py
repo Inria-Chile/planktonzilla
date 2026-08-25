@@ -373,3 +373,34 @@ def test_push_card_reads_the_existing_card_before_pushing(monkeypatch):
     monkeypatch.setattr(fp, "build_card", _build)
     fp.push_card("project-oceania/planktonzilla-frepj")
     assert seen == {"existing": {"configs": ["kept"]}, "pushed": ("project-oceania/planktonzilla-frepj", "dataset")}
+
+
+def test_cli_smoke_hard_exits_after_the_check(monkeypatch):
+    """--smoke ends with os._exit(0) once the check passed (interpreter shutdown otherwise hangs)."""
+    monkeypatch.setenv("HF_TOKEN", "hf_faketoken")
+    monkeypatch.setattr(fp, "smoke_load", lambda repo_id: True)
+    exits = []
+    monkeypatch.setattr(fp.os, "_exit", lambda code: exits.append(code))
+    fp.main(["--smoke"])
+    assert exits == [0]
+
+
+def test_cli_smoke_failure_propagates_before_any_hard_exit(monkeypatch):
+    """A failed smoke raises out of main() — the hard exit never masks a failure."""
+    monkeypatch.setenv("HF_TOKEN", "hf_faketoken")
+
+    def _fail(repo_id):
+        raise RuntimeError("Smoke-load FAILED")
+
+    monkeypatch.setattr(fp, "smoke_load", _fail)
+    monkeypatch.setattr(fp.os, "_exit", lambda code: pytest.fail("os._exit must not run after a failed smoke"))
+    with pytest.raises(RuntimeError, match="Smoke-load FAILED"):
+        fp.main(["--smoke"])
+
+
+def test_cli_other_steps_exit_normally(monkeypatch):
+    """Only the smoke path hard-exits; a card push returns from main() like before."""
+    monkeypatch.setenv("HF_TOKEN", "hf_faketoken")
+    monkeypatch.setattr(fp, "push_card", lambda repo_id, token=None: None)
+    monkeypatch.setattr(fp.os, "_exit", lambda code: pytest.fail("os._exit must not run for --push-card"))
+    fp.main(["--push-card"])

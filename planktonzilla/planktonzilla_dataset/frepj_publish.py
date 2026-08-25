@@ -40,6 +40,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 
 from planktonzilla.dataset_import import frepj_layout
 from planktonzilla.planktonzilla_dataset import constants, frozen_repo_guard
@@ -330,6 +331,25 @@ def tag_release(repo_id: str = TARGET_REPO_ID, tag: str = DEFAULT_TAG, token: st
     HfApi().create_tag(repo_id, tag=tag, tag_message=f"FREPJ-only {INTERMEDIATE_NOTE}: {tag}", repo_type="dataset", token=token)
 
 
+def _exit_now_after_smoke() -> None:
+    """Flush and hard-exit: a completed smoke-load otherwise hangs the interpreter at shutdown.
+
+    Verified 2026-08-25 (logs/frepj_smoke_diag.log): the streamed first example arrives in
+    ~30 s and the check passes, but normal interpreter exit then blocks indefinitely — no
+    Python thread is left alive (only daemon tqdm monitors), so it is the native runtime
+    behind the streaming download being torn down. Nothing is pending once the check has
+    logged its verdict, so skipping Python's shutdown loses nothing. Only the smoke path
+    does this; every other step exits normally.
+    """
+    import logging
+
+    logger.info("Smoke-load finished; exiting immediately (the streaming runtime hangs at interpreter shutdown).")
+    logging.shutdown()
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0)
+
+
 def publish_frepj_only(
     dataset_path: str = DEFAULT_DATASET_PATH,
     repo_id: str = TARGET_REPO_ID,
@@ -393,12 +413,13 @@ def main(argv: list[str] | None = None) -> None:
         parser.error("--confirm-public with --publish also requires --public (explicit public intent).")
 
     did = False
+    smoked = False
     if args.push_private:
         push_private(load_built(args.dataset_path), args.repo_id)
         did = True
     if args.smoke:
         smoke_load(args.repo_id)
-        did = True
+        did = smoked = True
     if args.push_card or args.card_only:
         push_card(args.repo_id)
         did = True
@@ -420,6 +441,9 @@ def main(argv: list[str] | None = None) -> None:
         did = True
     if not did:
         parser.print_help()
+
+    if smoked:
+        _exit_now_after_smoke()
 
 
 if __name__ == "__main__":
