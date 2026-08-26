@@ -29,7 +29,6 @@ from pathlib import Path
 from PIL import Image
 
 import planktonzilla.dataset_import.dataset_importer as dataset_importer
-from planktonzilla.dataset_import.dataset_importer import WHOIPlanktonDatasetImporter
 
 
 def _write_rgb_png(path: Path, color=(90, 130, 170), size=8):
@@ -39,7 +38,7 @@ def _write_rgb_png(path: Path, color=(90, 130, 170), size=8):
 
 def test_whoi_prepares_into_a_data_dir_that_never_held_it(tmp_path, monkeypatch):
     """The observed crash: a from-scratch build must not assume the imagefolder root."""
-    imp = WHOIPlanktonDatasetImporter(
+    imp = dataset_importer.WHOIPlanktonDatasetImporter(
         data_dir=tmp_path,
         hf_dataset_name="whoi",
         push_to_hub=False,
@@ -50,7 +49,7 @@ def test_whoi_prepares_into_a_data_dir_that_never_held_it(tmp_path, monkeypatch)
     _write_rgb_png(imp.raw_dir / "2014" / "Ciliate" / "img_0.png")
     _write_rgb_png(imp.raw_dir / "2014" / "Ciliate" / "img_1.png")
     monkeypatch.setattr(
-        WHOIPlanktonDatasetImporter,
+        dataset_importer.WHOIPlanktonDatasetImporter,
         "_download_and_extract",
         lambda self: setattr(self, "extracted_dirs", ["2014"]),
     )
