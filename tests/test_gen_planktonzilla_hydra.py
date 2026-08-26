@@ -32,9 +32,11 @@ root = pyrootutils.setup_root(
 )
 
 
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import hydra
+import pytest
 from datasets import Dataset
 from hydra.core.global_hydra import GlobalHydra
 
@@ -60,11 +62,14 @@ EXPECTED_TABLE = [
     # Appended 2026-08-01, once none of the three turned out to need the manual .zip
     # they had long been documented as requiring. They go at the END so every source
     # above keeps the index it already had — registry order is the concatenation order
-    # of the output. With these the registry covers all 15 sources of the published
+    # of the output. With these the registry covers all 15 sources of the published (frepj, v1.2, follows)
     # dataset.
     ("zoolake", "zoolake", False, "none"),
     ("jedioceans", "jedi_oceans_cpics", False, "jedi"),
     ("sykezooscan2024", "sykezooscan2024", False, "none"),
+    # Appended 2026-08-25 (v1.2), LAST, so every source above keeps its index. Its redefiner
+    # joins md5-pinned sidecar tables the importer fetches before the first import.
+    ("frepj", "frepj", False, "frepj"),
 ]
 
 
@@ -121,6 +126,7 @@ def _drive_main_with_mocked_pipeline(monkeypatch, cfg, tmp_path, push_mock=None)
     # save still work.
     importer = MagicMock()
     importer.imagefolder_dir = tmp_path
+    importer.ensure_sidecars.return_value = {}
     monkeypatch.setattr(gp.hydra.utils, "instantiate", lambda *a, **k: importer)
     monkeypatch.setattr(gp.os, "listdir", lambda p: ["dummy_category"])
     monkeypatch.setattr(gp, "load_dataset", lambda *a, **k: MagicMock())
@@ -190,7 +196,7 @@ def test_null_fallback_defaults_match_legacy_absolute_values():
 def test_datasets_and_repo_id_pinned_in_config():
     """Pin the config-driven import table + repo id (the migrated values).
 
-    Asserts cfg.datasets is exactly the frozen 15-row table in order, repo_id is
+    Asserts cfg.datasets is exactly the frozen 16-row table in order, repo_id is
     the consolidated dataset identity, and the REDEFINERS map resolves each key to
     the expected class.
     """
@@ -211,6 +217,7 @@ def test_datasets_and_repo_id_pinned_in_config():
         "whoi": gp.WHOIRedefiner,
         "ecotaxa": gp.EcoTaxaRedefiner,
         "jedi": gp.JediRedefiner,
+        "frepj": gp.FrepjRedefiner,
     }
     for key, klass in expected_classes.items():
         assert gp.REDEFINERS[key] is klass
@@ -253,9 +260,10 @@ def test_main_pins_override_blocks_and_redefiners(monkeypatch, tmp_path):
         "whoi": gp.WHOIRedefiner,
         "ecotaxa": gp.EcoTaxaRedefiner,
         "jedi": gp.JediRedefiner,
+        "frepj": gp.FrepjRedefiner,
     }
 
-    # Exactly these 15 active datasets, in this order.
+    # Exactly the EXPECTED_TABLE entries (15 published + frepj), in this order.
     assert list(captured_redefiners.keys()) == [t[0] for t in EXPECTED_TABLE]
     assert len(captured_overrides) == len(EXPECTED_TABLE)
 
@@ -348,3 +356,114 @@ def test_taxonomy_map_declares_its_schema_instead_of_inferring_it():
     assert features["aphia_ID"] == Value("string"), "numeric IDs are stored as text"
     assert features["plankton"] == Value("bool")
     assert features["label"] == ds.features["label"], "input columns are carried through untouched"
+
+
+# --- import_and_redefine_source: sidecar inputs are obtained on EVERY path -------------
+
+_SEAM_ENTRY = {"name": "src", "import_name": "src", "cleanup": False, "redefiner": "none"}
+
+
+class _FakeImporter:
+    """Records the order of ensure_sidecars / import_dataset; import creates one class dir."""
+
+    def __init__(self, imagefolder, sidecars):
+        self.imagefolder_dir = imagefolder
+        self.sidecars = sidecars
+        self.calls = []
+        self.folder_existed_at_ensure = None
+
+    def ensure_sidecars(self):
+        self.calls.append("ensure_sidecars")
+        self.folder_existed_at_ensure = Path(self.imagefolder_dir).exists()
+        return self.sidecars
+
+    def import_dataset(self):
+        self.calls.append("import_dataset")
+        (Path(self.imagefolder_dir) / "cls").mkdir(parents=True, exist_ok=True)
+        (Path(self.imagefolder_dir) / "cls" / "img.png").write_bytes(b"x")
+
+
+class _FakeRedefiner:
+    def __init__(self):
+        self.attached = None
+
+    def attach_sidecars(self, sidecars):
+        self.attached = sidecars
+
+    def redefine(self, hf_dataset, dataset_name, num_proc):
+        return "DS"
+
+
+def _seam(monkeypatch, tmp_path, importer, refresh="reuse"):
+    monkeypatch.setattr(gp, "load_dataset", lambda *a, **k: MagicMock())
+    monkeypatch.setattr(gp.hydra, "compose", lambda *a, **k: pytest.fail("compose must not run when an importer is given"))
+    monkeypatch.setattr(gp.hydra.utils, "instantiate", lambda *a, **k: pytest.fail("instantiate must not run either"))
+    redefiner = _FakeRedefiner()
+    out = gp.import_and_redefine_source(
+        _SEAM_ENTRY, data_dir=tmp_path, redefiner=redefiner, num_proc_arg=1, refresh=refresh, importer=importer
+    )
+    assert out == "DS"
+    return redefiner
+
+
+def test_import_and_redefine_source_ensures_sidecars_on_the_reuse_path(monkeypatch, tmp_path):
+    """A built imagefolder skips import_dataset() but NOT the sidecars the redefiner needs."""
+    imagefolder = tmp_path / "src_imagefolder"
+    (imagefolder / "cls").mkdir(parents=True)
+    (imagefolder / "cls" / "img.png").write_bytes(b"x")
+    importer = _FakeImporter(imagefolder, {"Table.csv": tmp_path / "Table.csv"})
+
+    redefiner = _seam(monkeypatch, tmp_path, importer)
+
+    assert importer.calls == ["ensure_sidecars"]
+    assert redefiner.attached == {"Table.csv": tmp_path / "Table.csv"}
+
+
+def test_import_and_redefine_source_ensures_sidecars_before_the_archive_and_the_removal(monkeypatch, tmp_path):
+    """Sidecars come first: before the multi-GB import, and before a redownload removes the folder."""
+    imagefolder = tmp_path / "src_imagefolder"
+    importer = _FakeImporter(imagefolder, {})
+    _seam(monkeypatch, tmp_path, importer)
+    assert importer.calls == ["ensure_sidecars", "import_dataset"]
+
+    importer = _FakeImporter(imagefolder, {})
+    _seam(monkeypatch, tmp_path, importer, refresh="redownload")
+    assert importer.calls == ["ensure_sidecars", "import_dataset"]
+    assert importer.folder_existed_at_ensure is True, "the folder is removed only after the sidecars are in hand"
+
+
+def test_import_and_redefine_source_accepts_an_instantiated_importer(monkeypatch, tmp_path):
+    """importer= reuses the caller's instance: no second compose, no second instantiate (see _seam)."""
+    imagefolder = tmp_path / "src_imagefolder"
+    (imagefolder / "cls").mkdir(parents=True)
+    (imagefolder / "cls" / "img.png").write_bytes(b"x")
+    _seam(monkeypatch, tmp_path, _FakeImporter(imagefolder, {}))
+
+
+def test_a_source_without_sidecars_attaches_an_empty_dict(monkeypatch, tmp_path):
+    """The fifteen archive-only sources hand their redefiner {} — and every redefiner accepts it."""
+    imagefolder = tmp_path / "src_imagefolder"
+    (imagefolder / "cls").mkdir(parents=True)
+    (imagefolder / "cls" / "img.png").write_bytes(b"x")
+    redefiner = _seam(monkeypatch, tmp_path, _FakeImporter(imagefolder, {}))
+    assert redefiner.attached == {}
+
+
+def test_generate_frepj_only_drives_the_same_seam_end_to_end(monkeypatch, tmp_path):
+    """The standalone republish config runs through gp.main: eager FrepjRedefiner construction
+    (lazy tables, so no table on disk is needed), one override block, sidecars via the seam."""
+    from hydra.core.global_hydra import GlobalHydra
+
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "frepj", "copepoda")
+    GlobalHydra.instance().clear()
+    gp.hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_frepj_only_drive")
+    cfg = gp.hydra.compose(
+        config_name="generate_frepj_only", overrides=[f"taxonomy_csv_path={csv_path}", f"data_dir={tmp_path}"]
+    )
+    GlobalHydra.instance().clear()
+
+    captured_overrides, captured_redefiners = _drive_main_with_mocked_pipeline(monkeypatch, cfg, tmp_path)
+
+    assert len(captured_overrides) == 1 and "dataset_import=frepj" in captured_overrides[0]
+    assert captured_redefiners == {"frepj": gp.FrepjRedefiner}

@@ -63,7 +63,7 @@ LICENSE_COLS = ("license", "license_url")
 
 # ``dataset`` column value -> ``configs/dataset_import/<stem>.yaml``.
 #
-# Five of the fifteen do NOT match: the value written into the ``dataset`` column is
+# Five of the sixteen do NOT match: the value written into the ``dataset`` column is
 # the `name` field of a `cfg.datasets` entry in configs/generate_planktonzilla.yaml,
 # while the importer config is named after the source. No naming rule recovers the
 # difference, so it is written down here and pinned by tests/test_dataset_licenses.py.
@@ -74,11 +74,10 @@ LICENSE_COLS = ("license", "license_url")
 # `jedioceans` in the data, `jedi_oceans_cpics` as a config stem, `jedi` as a redefiner
 # key.
 #
-# `frepj` (FREPJ-Z, milestone v1.2) is the sixteenth entry: it has taxonomy rows and an
-# importer config, and is published on its own as project-oceania/planktonzilla-frepj,
-# but it is NOT in the default cfg.datasets nor in the frozen planktonzilla-17M until
-# Phase 20 merges it. It is recorded here so its terms travel with its taxonomy rows and
-# so `pz_generate_planktonzilla --config-name generate_frepj_only` can build it.
+# `frepj` (FREPJ-Z, milestone v1.2) is the sixteenth entry of cfg.datasets since
+# 2026-08-25, appended last so the fifteen above keep their concatenation index. It is
+# published on its own as project-oceania/planktonzilla-frepj and is absent from the
+# frozen planktonzilla-17M until the v1.2 push.
 DATASET_IMPORT_CONFIGS = {
     "isiisnet": "isiisnet",
     "whoi": "whoi-plankton",
@@ -92,11 +91,11 @@ DATASET_IMPORT_CONFIGS = {
     "syke_ifcb_2022": "syke_ifcb_2022",
     "planktoscope": "planktoscope",
     "global_uvp5": "global_uvp5net",
-    # Manual .zip download — no entry in cfg.datasets, but present in the frozen data.
+    # Active since 2026-08-01 (import_name jedi_oceans_cpics, redefiner key jedi).
     "jedioceans": "jedi_oceans_cpics",
     "sykezooscan2024": "sykezooscan2024",
     "zoolake": "zoolake",
-    # Not yet in cfg.datasets / planktonzilla-17M (see the note above).
+    # Sixteenth entry (v1.2), appended last; not in the frozen 17M until the v1.2 push.
     "frepj": "frepj",
 }
 

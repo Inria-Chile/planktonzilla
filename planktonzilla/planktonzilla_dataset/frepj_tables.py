@@ -9,8 +9,11 @@ redefiner needs lives in ``Table_S3.csv`` (40x, ~62k rows) and ``Table_S4.csv``
 ``Table_S1.csv`` — three separate figshare files that are NOT inside the image
 zip. Rather than committing an ~2 MB derived index into VCS (the repo's Core
 Value is lean, output-preserving code), this module fetches the three CSVs once
-into a gitignored ``data/frepj_tables/`` directory via an md5-pinned
-:func:`ensure_frepj_tables`, and exposes pure parsers over them.
+into a gitignored ``frepj_tables/`` directory via an md5-pinned
+:func:`ensure_frepj_tables`, and exposes pure parsers over them. The build reaches that
+fetch through ``FREPJDatasetImporter.ensure_sidecars`` (into ``<data_dir>/frepj_tables``,
+with the importer's own download config), the crosswalk CLI through its legacy default;
+the ``manifest`` parameter is what lets a future source reuse the same engine.
 
 Load-bearing source-data facts (pinned from ``15-RESEARCH.md`` — do NOT "fix"):
 
@@ -86,8 +89,15 @@ FREPJ_TABLE_MANIFEST: list[dict] = [
 PACKAGE_DIR = Path(__file__).parent
 # Repo-root ``data/`` is gitignored (see .gitignore ``/data/``); the 8.5 MB tables land
 # here and are NEVER committed. PACKAGE_DIR.parents[1] == the repository root.
-DEFAULT_TABLES_DIR = PACKAGE_DIR.parents[1] / "data" / "frepj_tables"
+# The directory name is shared with FREPJDatasetImporter.sidecar_dir (``<data_dir>/<this>``),
+# so a default-data_dir build and the crosswalk CLI verify and reuse ONE copy.
+TABLES_DIRNAME = "frepj_tables"
+DEFAULT_TABLES_DIR = PACKAGE_DIR.parents[1] / "data" / TABLES_DIRNAME
+TABLE_NAMES = tuple(entry["name"] for entry in FREPJ_TABLE_MANIFEST)  # ("Table_S1.csv", "Table_S3.csv", "Table_S4.csv")
 DEFAULT_CROSSWALK_PATH = PACKAGE_DIR / "frepj_site_crosswalk.csv"
+# The key under which FREPJDatasetImporter.ensure_sidecars hands the crosswalk to the
+# redefiner, whatever the file is actually called (a test passes a fixture).
+CROSSWALK_SIDECAR_KEY = DEFAULT_CROSSWALK_PATH.name
 DEFAULT_OVERRIDES_PATH = PACKAGE_DIR / "frepj_site_overrides.csv"
 
 # The two magnification roots encoded in the merged filenames (see frepj_layout).
@@ -98,8 +108,21 @@ _MAGNIFICATION_PREFIXES = frozenset({"40", "100"})
 
 
 def _md5(path: str | Path) -> str:
-    """Return the hex md5 digest of a file (used for supply-chain verification)."""
-    return hashlib.md5(Path(path).read_bytes()).hexdigest()
+    """Return the hex md5 digest of a file, streamed (used for supply-chain verification)."""
+    with open(path, "rb") as handle:
+        return hashlib.file_digest(handle, "md5").hexdigest()
+
+
+def _verified(path: Path, md5: str) -> bool:
+    """True when ``path`` is a readable file whose bytes carry the pinned md5.
+
+    An unreadable file is unverifiable, hence not verified: a run would (re)fetch it, and
+    the pre-flight reports it rather than crashing on the ``OSError``.
+    """
+    try:
+        return path.is_file() and _md5(path) == md5
+    except OSError:
+        return False
 
 
 # --- Pure parsers ---------------------------------------------------------------------
@@ -443,39 +466,74 @@ def read_site_sampling_dates(s1_path: str | Path) -> dict[str, set[str]]:
 # --- md5-verified fetch ---------------------------------------------------------------
 
 
-def ensure_frepj_tables(dest_dir: str | Path, manifest: list[dict] | None = None) -> dict[str, Path]:
+def missing_frepj_tables(dest_dir: str | Path, manifest: list[dict] | None = None) -> list[dict]:
+    """Manifest entries NOT present under ``dest_dir`` with their pinned md5.
+
+    "Missing" covers both a file that is absent and one that is on disk but whose bytes
+    drifted from the pin (a truncated copy, an upstream re-upload): either way a run would
+    fetch it. Read-only — no directory is created, nothing is touched — so the pre-flight
+    can ask without side effects.
+    """
+    manifest = FREPJ_TABLE_MANIFEST if manifest is None else manifest
+    dest_dir = Path(dest_dir)
+    return [entry for entry in manifest if not _verified(dest_dir / entry["name"], entry["md5"])]
+
+
+def sidecar_instructions(dest_dir: str | Path, manifest: list[dict] | None = None, *, source: str = "frepj") -> str:
+    """The remedy when the tables cannot be fetched — the manual-download analogue.
+
+    ``source`` is the registry name the operator would pass to ``sources=``; a future
+    source reusing this engine passes its own.
+    """
+    manifest = FREPJ_TABLE_MANIFEST if manifest is None else manifest
+    dest_dir = Path(dest_dir)
+    lines = [f"«{source}» needs {len(manifest)} md5-pinned sidecar table(s) under {dest_dir}:"]
+    lines.extend(
+        f"  - {entry['url']}  ->  {dest_dir / entry['name']}  (md5 {entry['md5']}, {entry['size']} bytes)" for entry in manifest
+    )
+    lines.append(
+        "Place them there by hand if the host refuses this machine — a file with the pinned md5 is used as-is "
+        f"and never re-downloaded — then re-run. `pz_planktonzilla dry_run=true check_downloads=needed "
+        f"'sources=[{source}]'` probes them without building."
+    )
+    return "\n".join(lines)
+
+
+def ensure_frepj_tables(
+    dest_dir: str | Path, manifest: list[dict] | None = None, *, download_config: DownloadConfig | None = None
+) -> dict[str, Path]:
     """Ensure the three sidecar tables exist locally, md5-verified, downloading only misses.
 
-    For each manifest entry, if ``dest_dir/<name>`` already exists with the frozen
-    md5, it is used as-is with NO download. Otherwise it is fetched (via the same
-    ``datasets`` ``DownloadManager`` the importer uses) and md5-verified;
-    a post-download mismatch raises ``ValueError`` and the bytes are never used
-    (T-17-01). Returns ``{table_name: Path}``.
+    For each manifest entry, if ``dest_dir/<name>`` already exists with the frozen md5, it
+    is used as-is with NO download. Otherwise it is fetched (via the same ``datasets``
+    ``DownloadManager`` the importer uses) and md5-verified; a post-download mismatch
+    unlinks the file and raises ``ValueError`` so the bytes are never used (T-17-01).
+    Returns ``{table_name: Path}``.
+
+    ``download_config`` is the importer's when the build calls this (its User-Agent, its
+    retry budget, ``force_download`` for a file that is by definition not wanted from any
+    cache); ``None`` keeps the crosswalk CLI's original config verbatim.
     """
     manifest = FREPJ_TABLE_MANIFEST if manifest is None else manifest
     dest_dir = Path(dest_dir)
     dest_dir.mkdir(parents=True, exist_ok=True)
 
+    missing = missing_frepj_tables(dest_dir, manifest)
+    missing_names = {entry["name"] for entry in missing}
     paths: dict[str, Path] = {}
-    missing: list[dict] = []
     for entry in manifest:
-        target = dest_dir / entry["name"]
-        if target.exists() and _md5(target) == entry["md5"]:
-            logger.info(f"«{entry['name']}» already present with matching md5; skipping download.")
-            paths[entry["name"]] = target
-        else:
-            missing.append(entry)
+        if entry["name"] not in missing_names:
+            logger.debug(f"«{entry['name']}» already present with matching md5; skipping download.")
+            paths[entry["name"]] = dest_dir / entry["name"]
 
     if missing:
+        if download_config is None:
+            download_config = DownloadConfig(cache_dir=dest_dir, force_download=False, resume_download=True, max_retries=5)
         manager = DownloadManager(
-            base_path=dest_dir,
+            # str, not the Path — see DatasetImporter._download_and_extract for why.
+            base_path=str(dest_dir),
             data_dir=dest_dir,
-            download_config=DownloadConfig(
-                cache_dir=dest_dir,
-                force_download=False,
-                resume_download=True,
-                max_retries=5,
-            ),
+            download_config=download_config,
         )
         for entry in missing:
             target = dest_dir / entry["name"]
@@ -484,6 +542,9 @@ def ensure_frepj_tables(dest_dir: str | Path, manifest: list[dict] | None = None
             shutil.copyfile(downloaded, target)
             digest = _md5(target)
             if digest != entry["md5"]:
+                # Never leave unverified bytes under the pinned name: every later run
+                # would see a file that fails its pin and re-fetch it forever.
+                target.unlink(missing_ok=True)
                 raise ValueError(
                     f"md5 mismatch for «{entry['name']}»: expected {entry['md5']}, got {digest}. "
                     "Refusing to use unverified bytes (T-17-01)."

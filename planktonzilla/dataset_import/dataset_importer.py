@@ -964,6 +964,47 @@ class DatasetImporter:
         lines.append("Create the parent directory if needed, then re-run. Nothing else is required.")
         return "\n".join(lines)
 
+    # --- Sidecar inputs: what the REDEFINE step needs on every run ---------------------
+    #
+    # Everything above concerns the archive: fetched once, extracted once, turned into an
+    # imagefolder once, then reused. A source can also have inputs OUTSIDE that lifecycle
+    # which the redefine step joins on EVERY run, imagefolder reused or not — FREPJ's
+    # md5-pinned geodata tables and its committed site crosswalk. The three hooks below
+    # let a source declare, check and obtain them so the pipeline and the pre-flight treat
+    # them like any other download, without knowing the source by name. An archive-only
+    # source keeps the defaults: nothing declared, nothing missing, nothing to obtain.
+
+    def sidecar_targets(self) -> list[tuple[str, str]]:
+        """Build-time inputs outside the archive lifecycle, as ``(kind, location)``.
+
+        Same shape as :meth:`download_targets`, which appends them — and
+        :meth:`probe_downloads` guarantees them even under a subclass that overrides
+        ``download_targets`` without ``super()`` — so the pre-flight probes them like any
+        other download. Exactly two kinds are valid here: ``url`` for one
+        :meth:`ensure_sidecars` fetches, ``bundled`` for one that ships with the package.
+        ``[]`` for an archive-only source.
+        """
+        return []
+
+    def missing_sidecars(self) -> list[Path]:
+        """Sidecar files a real run would FETCH: not on disk, or on disk but failing their pin.
+
+        Free — no network, no side effect. Not a failure: the run obtains them itself. The
+        pre-flight uses this to know that a source will fetch even when its imagefolder is
+        already built.
+        """
+        return []
+
+    def ensure_sidecars(self) -> dict[str, Path]:
+        """Obtain every sidecar target, verified — fetching only the misses.
+
+        Returns ``{file name: path}``; raises with the exact remedy when it cannot. The one
+        step that also runs when the imagefolder is reused: ``import_and_redefine_source``
+        calls it before the imagefolder decision, and ``pz_planktonzilla`` calls it for every
+        selected source before the first import. Default: nothing to obtain, ``{}``.
+        """
+        return {}
+
     def download_targets(self) -> list[tuple[str, str]]:
         """What a real import of this source would have to obtain, as ``(kind, location)``.
 
@@ -981,11 +1022,13 @@ class DatasetImporter:
         :class:`SYKEZooScan2024DatasetImporter` (Fairdata). A source with a SECOND
         download outside the lifecycle — :class:`GlobalUVP5NetDatasetImporter`'s objects
         metadata, fetched from ``_prepare_imagefolder`` — adds it here as well, since a
-        build stops just as dead on that one.
+        build stops just as dead on that one. A source with inputs it needs on EVERY run,
+        imagefolder reused or not, declares them in :meth:`sidecar_targets` instead; they
+        are appended here, so a hand-downloaded archive shadows the URL but never them.
         """
         if self.manual_download_local_file_names:
-            return [("file", str(path)) for path in self.manual_download_paths()]
-        return [("url", uri) for uri in _as_uri_list(self.download_uris)]
+            return [("file", str(path)) for path in self.manual_download_paths()] + self.sidecar_targets()
+        return [("url", uri) for uri in _as_uri_list(self.download_uris)] + self.sidecar_targets()
 
     def probe_downloads(self, *, timeout: int = 30, session=None) -> list[ProbeResult]:
         """Check every :meth:`download_targets` entry without downloading anything.
@@ -993,7 +1036,7 @@ class DatasetImporter:
         Side-effect free and safe to run against the live services: URLs are probed with
         HEAD (falling back to a one-byte ranged GET), files are stat-ed, and the Fairdata
         API is only READ. Never raises for a network failure — each target's verdict is
-        returned so one dead host does not hide the state of the other fourteen sources.
+        returned so one dead host does not hide the state of the other sources.
 
         Each URL is probed AS the download identifies itself (:attr:`http_user_agent`),
         since at least one of these hosts answers differently by User-Agent. The Fairdata
@@ -1001,6 +1044,10 @@ class DatasetImporter:
         User-Agent either, and the probe's value is that it mirrors the real run.
         """
         targets = self.download_targets()
+        # Guaranteed here, not only in download_targets(): a subclass that overrides that
+        # method without calling super() (Lensless, SYKE ZooScan) would otherwise drop the
+        # sidecar targets it later declares, and the pre-flight would never probe them.
+        targets += [target for target in self.sidecar_targets() if target not in targets]
 
         if not targets:
             return [

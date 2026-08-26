@@ -72,8 +72,10 @@ from planktonzilla.dataset_import.dataset_importer import resolve_imagefolder_gl
 from planktonzilla.planktonzilla_dataset import constants
 from planktonzilla.planktonzilla_dataset.frepj_crosswalk import load_crosswalk, load_crosswalk_sites
 from planktonzilla.planktonzilla_dataset.frepj_tables import (
+    CROSSWALK_SIDECAR_KEY,
     DEFAULT_CROSSWALK_PATH,
     DEFAULT_TABLES_DIR,
+    TABLE_NAMES,
     parse_frepj_filename,
     parse_sampling_date,
     read_per_image_site_index,
@@ -387,6 +389,15 @@ class RedefineDataset:
     def _add_metadata(self, ds):
         """Attach the metadata as a JSON string. Defined by the subclasses."""
         raise NotImplementedError()
+
+    def attach_sidecars(self, sidecars: dict) -> None:
+        """Receive the importer's verified build-time sidecar files, as ``{name: path}``.
+
+        Called by ``import_and_redefine_source`` with whatever ``DatasetImporter.
+        ensure_sidecars`` obtained — ``{}`` for an archive-only source. Default: nothing to
+        receive; a redefiner that joins such files (``FrepjRedefiner``) overrides it.
+        """
+        return None
 
     def _serialize_metadata(self, ds):
         """Serialize the `metadata` column to a JSON string and cast it to ``string``.
@@ -730,9 +741,12 @@ class FrepjRedefiner(RedefineDataset):
 
     Unlike the API-backed redefiners, this one is fully offline. It reads the per-image
     ``(magnification, ID) -> (site_token, raw sampling date)`` index from the md5-pinned
-    Table_S3/S4 CSVs (fetched once into the gitignored ``data/frepj_tables/`` by
-    ``python -m planktonzilla.planktonzilla_dataset.frepj_crosswalk``) and resolves each
-    token to ``Latitude``/``Longitude`` through the committed site crosswalk (Plan 17-01).
+    Table_S3/S4 CSVs and resolves each token to ``Latitude``/``Longitude`` through the
+    committed site crosswalk (Plan 17-01). The tables are fetched md5-verified by
+    ``FREPJDatasetImporter.ensure_sidecars`` into ``<data_dir>/frepj_tables`` and handed
+    over through :meth:`attach_sidecars`; standalone, ``tables_dir`` (the crosswalk CLI's
+    cache by default) is read instead. This class NEVER downloads, and reads the files
+    lazily on first use so constructing it costs nothing and needs no table on disk.
     The join key is the Phase-16 merge-prefix filename (``40_<ID>.jpg`` / ``100_<ID>.jpg``).
 
     Everything it knows reaches the consolidated schema through the SHARED metadata path
@@ -753,25 +767,58 @@ class FrepjRedefiner(RedefineDataset):
 
     def __init__(self, csv_taxonomies_path, crosswalk_path=DEFAULT_CROSSWALK_PATH, tables_dir=DEFAULT_TABLES_DIR):
         super().__init__(csv_taxonomies_path)
-        s1_path = Path(tables_dir) / "Table_S1.csv"
-        s3_path = Path(tables_dir) / "Table_S3.csv"
-        s4_path = Path(tables_dir) / "Table_S4.csv"
-        for required in (s1_path, s3_path, s4_path, Path(crosswalk_path)):
+        self.crosswalk_path = Path(crosswalk_path)
+        self.tables_dir = Path(tables_dir)
+        # Nothing is read here: in the pipeline the importer's ensure_sidecars (run before the
+        # first import) is the one gate on every file, the committed crosswalk included.
+        self._sidecars: dict[str, Path] = {}
+        self._tables_loaded = False
+
+    def attach_sidecars(self, sidecars: dict) -> None:
+        """Take the importer's verified ``{name: path}``; they win over ``tables_dir``."""
+        self._sidecars = {name: Path(path) for name, path in dict(sidecars).items()}
+        self._tables_loaded = False
+
+    def _sidecar_path(self, name: str) -> Path:
+        """Attached path first (the pipeline), else ``tables_dir`` / ``crosswalk_path`` (standalone)."""
+        if name == CROSSWALK_SIDECAR_KEY:
+            return self._sidecars.get(name, self.crosswalk_path)
+        return self._sidecars.get(name, self.tables_dir / name)
+
+    def _load_tables(self) -> None:
+        """Read the four CSVs once, on first use. NEVER downloads.
+
+        All read from local files only, so redefine-time is zero-network:
+        (mag, id) -> (site_token, raw date); site_token -> (lat, lon);
+        site_token -> Table_S1 site name -> the sampling dates recorded for it.
+        """
+        if self._tables_loaded:
+            return
+        s1_path, s3_path, s4_path = (self._sidecar_path(name) for name in TABLE_NAMES)
+        crosswalk_path = self._sidecar_path(CROSSWALK_SIDECAR_KEY)
+        if not crosswalk_path.exists():
+            raise FileNotFoundError(
+                f"Required FREPJ crosswalk «{crosswalk_path}» is absent. It is committed to the repository: restore it "
+                f"with `git checkout -- {crosswalk_path}` or regenerate it with "
+                "`python -m planktonzilla.planktonzilla_dataset.frepj_crosswalk`."
+            )
+        for required in (s1_path, s3_path, s4_path):
             if not required.exists():
                 raise FileNotFoundError(
-                    f"Required FREPJ CSV «{required}» is absent. FrepjRedefiner NEVER downloads; "
-                    "run `python -m planktonzilla.planktonzilla_dataset.frepj_crosswalk` to fetch the "
-                    "md5-pinned sidecar tables and (re)generate the committed crosswalk."
+                    f"Required FREPJ CSV «{required}» is absent. FrepjRedefiner NEVER downloads: in `pz_planktonzilla` "
+                    "the FREPJ importer fetches the md5-pinned tables into <data_dir>/frepj_tables before this step "
+                    "(FREPJDatasetImporter.ensure_sidecars; `dry_run=true` reports them as sidecars:frepj). Standalone, "
+                    "run `python -m planktonzilla.planktonzilla_dataset.frepj_crosswalk` "
+                    f"(writes {DEFAULT_TABLES_DIR}) or pass tables_dir=."
                 )
-        # All read from local CSVs only, so redefine-time is zero-network:
-        #   (mag, id) -> (site_token, raw date);  site_token -> (lat, lon);
-        #   site_token -> Table_S1 site name -> the sampling dates recorded for it.
         self.site_index = read_per_image_site_index(s3_path, s4_path)
         self.crosswalk = load_crosswalk(crosswalk_path)
         self.crosswalk_sites = load_crosswalk_sites(crosswalk_path)
         self.site_dates = read_site_sampling_dates(s1_path)
+        self._tables_loaded = True
 
     def _add_metadata(self, ds):
+        self._load_tables()
         # Mirror the EcoTaxaRedefiner filename-from-original_path idiom; a defensive .get on
         # every lookup means an unparseable name / missing index row / unresolved token yields
         # a smaller dict, never a raise (T-17-04 — tokens are opaque metadata strings).
@@ -812,7 +859,7 @@ REDEFINERS = {
     "whoi": WHOIRedefiner,
     "ecotaxa": EcoTaxaRedefiner,
     "jedi": JediRedefiner,  # manual-download only; see the commented block in the config
-    "frepj": FrepjRedefiner,  # offline geodata join; not yet wired into cfg.datasets (Phase 20)
+    "frepj": FrepjRedefiner,  # offline geodata join over the importer's md5-verified sidecar tables
 }
 
 
@@ -856,7 +903,9 @@ def build_overrides(data_dir, import_name, cleanup, extra_overrides=(), refresh=
     return overrides
 
 
-def import_and_redefine_source(entry, *, data_dir, redefiner, num_proc_arg, refresh="reuse", import_overrides=()):
+def import_and_redefine_source(
+    entry, *, data_dir, redefiner, num_proc_arg, refresh="reuse", import_overrides=(), importer=None
+):
     """Import one source dataset and return it with taxonomy, IDs and metadata assigned.
 
     The per-source body of the generation pipeline: compose the importer config,
@@ -874,6 +923,10 @@ def import_and_redefine_source(entry, *, data_dir, redefiner, num_proc_arg, refr
         num_proc_arg: Worker count forwarded to ``redefine``.
         refresh: One of :data:`REFRESH_MODES`.
         import_overrides: Extra Hydra overrides appended to every source's block.
+        importer: An importer already instantiated by the caller — ``pz_planktonzilla``
+            builds every selected one up front to obtain their sidecar inputs before the
+            first import — so it is not composed a second time. ``None`` composes and
+            instantiates it here, as ``pz_generate_planktonzilla`` always has.
 
     Returns:
         The redefined dataset for this source, splits concatenated.
@@ -888,10 +941,19 @@ def import_and_redefine_source(entry, *, data_dir, redefiner, num_proc_arg, refr
         import_overrides=import_overrides,
     )
 
-    import_cfg = hydra.compose(config_name="import_dataset", overrides=overrides)
-
-    dataset_importer = hydra.utils.instantiate(import_cfg.dataset_import)
+    if importer is None:
+        import_cfg = hydra.compose(config_name="import_dataset", overrides=overrides)
+        dataset_importer = hydra.utils.instantiate(import_cfg.dataset_import)
+    else:
+        dataset_importer = importer
     imagefolder_dir = Path(dataset_importer.imagefolder_dir)
+
+    # Build-time inputs outside the archive (FREPJ's md5-pinned tables) are needed by
+    # redefine() on EVERY run, including one that reuses the imagefolder — the branch below
+    # that never calls import_dataset(). So they are obtained here, and first: a dead host
+    # fails this source before its multi-GB archive and before anything of it is removed.
+    # A source without any returns {} and its redefiner ignores it.
+    redefiner.attach_sidecars(dataset_importer.ensure_sidecars())
 
     # A non-empty imagefolder short-circuits the import below, so a genuine re-import
     # has to clear it first. imagefolder_dir is namespaced by the importer's class
@@ -922,7 +984,7 @@ def import_and_redefine_source(entry, *, data_dir, redefiner, num_proc_arg, refr
     # always 1, which makes `original_path` the last TWO path chunks
     # (`_taxonomy_row`). Those values are frozen in the published dataset, and rows
     # rebuilt by a per-source refresh sit beside rows carried over from it, so
-    # correcting the probe would make a rebuilt source disagree with the fourteen
+    # correcting the probe would make a rebuilt source disagree with the other
     # carried ones. (Splicing is whole-source, keyed on the `dataset` column, so the
     # disagreement is ACROSS sources in one artifact — never two identities for one
     # row.) One consequence remains live: a stray `train/` at the repo root would
@@ -991,6 +1053,11 @@ def main(cfg: DictConfig) -> None:
         "release. Use `pz_planktonzilla` instead — it creates or updates the dataset "
         "with one command. The equivalent of this run is the bare `pz_planktonzilla`."
     )
+
+    # Unlike pz_planktonzilla, this entry point does not obtain the sources' sidecar inputs
+    # up front: each source's redefiner receives them at that source's turn, through the
+    # seam below (for the sixteenth entry, hours in on a full build). Kept as is — the
+    # command is deprecated; `pz_planktonzilla` is where fail-in-seconds lives.
 
     # The dataset table now lives in configs/generate_planktonzilla.yaml under `datasets`.
     # Order is preserved exactly: cfg.datasets is iterated in declaration order and

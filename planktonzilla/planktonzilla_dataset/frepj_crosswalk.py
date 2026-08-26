@@ -18,7 +18,9 @@ Every crosswalk row records the winning ``method`` (``trivial|fuzzy|override|nul
 and the token's ``n_images`` (S3+S4 row count) so downstream coverage can be audited
 from the committed file alone, with no access to the raw tables.
 
-Only :func:`main` touches the network (via :func:`frepj_tables.ensure_frepj_tables`);
+Only :func:`main` touches the network (via :func:`frepj_tables.ensure_frepj_tables`; the
+build itself no longer needs this CLI first — ``FREPJDatasetImporter.ensure_sidecars``
+fetches the tables into ``<data_dir>/frepj_tables`` on its own);
 it is guarded by ``if __name__ == "__main__"`` and is never imported by the redefiner
 or the tests. ``difflib`` is stdlib — no new third-party dependency is introduced.
 """

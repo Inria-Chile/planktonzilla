@@ -18,11 +18,14 @@ builds the dataclass and derives its ``imagefolder_dir`` / ``raw_dir`` paths.
 """
 
 import glob
+import hashlib
 import inspect
 import logging
 import os
 import shutil
 from multiprocessing import cpu_count
+from pathlib import Path
+from types import SimpleNamespace
 
 import pyrootutils
 
@@ -43,6 +46,7 @@ from PIL import Image as PILImage
 # attributes, which needs the module object anyway, and mixing `import x` with
 # `from x import y` for the same module is the inconsistency the code-quality bot flags.
 from planktonzilla.dataset_import import dataset_importer as di
+from planktonzilla.planktonzilla_dataset import make_planktonzilla as mk
 from planktonzilla.planktonzilla_dataset.generate_planktonzilla import build_overrides as di_build_overrides
 
 # Every config in the group except the abstract base, which has `_target_: null`.
@@ -849,7 +853,7 @@ class _FakeHTTP:
 
 
 def test_download_targets_normalises_a_bare_string_and_a_list(tmp_path):
-    """13 of the 15 sources declare download_uris as a string; whoi declares nine.
+    """14 of the 16 sources declare download_uris as a string; whoi declares nine.
 
     Iterating the string form directly would probe one URL per CHARACTER, so the
     coercion is the difference between a report and nonsense.
@@ -1252,3 +1256,218 @@ class TestNumProcIsOverridable:
     def test_falsy_and_sentinel_values_are_preserved(self, tmp_path, value):
         """`or cpu_count()` would eat both; map_nested gives -1 its own meaning."""
         assert self._importer(tmp_path, [f"dataset_import.num_proc={value}"]).num_proc == value
+
+
+# --- sidecar protocol: what the redefine step needs on EVERY run ---------------------------
+
+
+def _frepj_sidecar_setup(monkeypatch, tmp_path, extra=()):
+    """A frepj importer over tmp_path with a synthetic manifest (fixture bytes, real md5s)."""
+    from planktonzilla.dataset_import.frepj_importer import FREPJDatasetImporter
+    from planktonzilla.planktonzilla_dataset import frepj_tables
+
+    fixtures = root / "tests" / "fixtures" / "frepj"
+    manifest = []
+    for name, fixture in (
+        ("Table_S1.csv", "table_s1_sample.csv"),
+        ("Table_S3.csv", "table_s3_sample.csv"),
+        ("Table_S4.csv", "table_s4_sample.csv"),
+    ):
+        data = (fixtures / fixture).read_bytes()
+        manifest.append(
+            {
+                "name": name,
+                "file_id": 0,
+                "url": f"https://example.invalid/{name}",
+                "md5": hashlib.md5(data).hexdigest(),
+                "size": len(data),
+                "_bytes": data,
+            }
+        )
+    monkeypatch.setattr(FREPJDatasetImporter, "SIDECAR_MANIFEST", manifest)
+    monkeypatch.setattr(FREPJDatasetImporter, "CROSSWALK_PATH", fixtures / "frepj_crosswalk_sample.csv")
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("DownloadManager must not be constructed")
+
+    monkeypatch.setattr(frepj_tables, "DownloadManager", _boom)
+    return _importer("frepj", tmp_path, extra=list(extra)), manifest, frepj_tables
+
+
+def _seed(importer, manifest, names=None):
+    importer.sidecar_dir.mkdir(parents=True, exist_ok=True)
+    for entry in manifest:
+        if names is None or entry["name"] in names:
+            (importer.sidecar_dir / entry["name"]).write_bytes(entry["_bytes"])
+
+
+def test_download_targets_frepj_appends_the_sidecar_tables_and_the_crosswalk(tmp_path):
+    """frepj probes five targets: the archive, the three md5-pinned tables, the committed crosswalk."""
+    from planktonzilla.dataset_import import frepj_layout
+    from planktonzilla.planktonzilla_dataset import frepj_tables
+
+    importer = _importer("frepj", tmp_path)
+    targets = importer.download_targets()
+
+    assert targets == [
+        ("url", frepj_layout.DOWNLOAD_URL),
+        *[("url", entry["url"]) for entry in frepj_tables.FREPJ_TABLE_MANIFEST],
+        ("bundled", str(frepj_tables.DEFAULT_CROSSWALK_PATH)),
+    ]
+    assert Path(targets[-1][1]).exists(), "the crosswalk is committed"
+    # The archive lifecycle is untouched: the bare string keeps extracted_dirs a single path.
+    assert importer._downloadable_uris() == frepj_layout.DOWNLOAD_URL
+
+
+@pytest.mark.parametrize("name", [n for n in IMPORT_CONFIG_NAMES if n != "frepj"])
+def test_sources_without_sidecars_are_unchanged(name, tmp_path):
+    """The fifteen archive-only sources: no sidecars, and download_targets() exactly as before."""
+    importer = _importer(name, tmp_path)
+    assert importer.sidecar_targets() == []
+    assert importer.missing_sidecars() == []
+    assert importer.ensure_sidecars() == {}
+    assert all(kind in {"url", "file", "bundled", "fairdata"} for kind, _ in importer.download_targets())
+    assert not any(str(location).endswith("frepj_site_crosswalk.csv") for _, location in importer.download_targets())
+
+
+def test_frepj_sidecar_dir_is_the_run_data_dir_not_the_repo(tmp_path):
+    """Tables live beside the imagefolder under the RUN's data_dir; the CLI default shares the name."""
+    from planktonzilla.planktonzilla_dataset import frepj_tables
+
+    importer = _importer("frepj", tmp_path)
+    assert importer.sidecar_dir == Path(importer.data_dir) / frepj_tables.TABLES_DIRNAME
+    assert importer.sidecar_dir.parent == importer.imagefolder_dir.parent
+    assert frepj_tables.DEFAULT_TABLES_DIR.name == frepj_tables.TABLES_DIRNAME
+
+
+def test_frepj_missing_sidecars_is_md5_aware_and_free(monkeypatch, tmp_path):
+    """Absent -> all three; seeded -> none; one drifted -> that one; never a download."""
+    importer, manifest, _ = _frepj_sidecar_setup(monkeypatch, tmp_path)
+    assert [p.name for p in importer.missing_sidecars()] == ["Table_S1.csv", "Table_S3.csv", "Table_S4.csv"]
+    assert all(p.parent == importer.sidecar_dir for p in importer.missing_sidecars())
+
+    _seed(importer, manifest)
+    assert importer.missing_sidecars() == []
+
+    (importer.sidecar_dir / "Table_S4.csv").write_bytes(b"drifted")
+    assert [p.name for p in importer.missing_sidecars()] == ["Table_S4.csv"]
+
+
+def test_frepj_ensure_sidecars_skips_the_download_when_all_verified(monkeypatch, tmp_path):
+    """Verified tables + the crosswalk come back as {name: path}; the boom manager is never built."""
+    importer, manifest, _ = _frepj_sidecar_setup(monkeypatch, tmp_path)
+    _seed(importer, manifest)
+
+    sidecars = importer.ensure_sidecars()
+
+    assert set(sidecars) == {"Table_S1.csv", "Table_S3.csv", "Table_S4.csv", "frepj_site_crosswalk.csv"}
+    assert sidecars["Table_S3.csv"] == importer.sidecar_dir / "Table_S3.csv"
+    assert Path(sidecars["frepj_site_crosswalk.csv"]).exists()
+
+
+def test_frepj_ensure_sidecars_fetches_only_the_misses_with_the_importers_download_config(monkeypatch, tmp_path):
+    """One miss -> one download, through a config carrying the importer's User-Agent and force_download."""
+    importer, manifest, frepj_tables = _frepj_sidecar_setup(monkeypatch, tmp_path)
+    _seed(importer, manifest, names={"Table_S1.csv", "Table_S3.csv"})
+    seen = {}
+
+    class _Manager:
+        def __init__(self, *args, **kwargs):
+            seen["config"] = kwargs["download_config"]
+            seen["downloads"] = []
+
+        def download(self, url):
+            seen["downloads"].append(url)
+            entry = next(e for e in manifest if e["url"] == url)
+            served = tmp_path / "served.bin"
+            served.write_bytes(entry["_bytes"])
+            return str(served)
+
+    monkeypatch.setattr(frepj_tables, "DownloadManager", _Manager)
+
+    sidecars = importer.ensure_sidecars()
+
+    assert seen["downloads"] == ["https://example.invalid/Table_S4.csv"]
+    config = seen["config"]
+    assert config.force_download is True
+    assert config.num_proc == 1
+    assert Path(config.cache_dir) == importer.sidecar_dir / ".download_cache", "blobs never land among the pinned CSVs"
+    assert config.storage_options["client_kwargs"]["headers"]["User-Agent"] == importer.http_user_agent
+    assert (importer.sidecar_dir / "Table_S4.csv").read_bytes() == manifest[2]["_bytes"]
+    assert set(sidecars) == {"Table_S1.csv", "Table_S3.csv", "Table_S4.csv", "frepj_site_crosswalk.csv"}
+
+
+def test_frepj_ensure_sidecars_names_the_remedy_on_failure(monkeypatch, tmp_path):
+    """A dead host becomes a RuntimeError carrying every URL, md5, the directory and the probe command."""
+    importer, manifest, frepj_tables = _frepj_sidecar_setup(monkeypatch, tmp_path)
+
+    class _Dead:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def download(self, url):
+            raise ConnectionError("host unreachable")
+
+    monkeypatch.setattr(frepj_tables, "DownloadManager", _Dead)
+
+    with pytest.raises(RuntimeError) as excinfo:
+        importer.ensure_sidecars()
+    message = str(excinfo.value)
+    assert isinstance(excinfo.value.__cause__, ConnectionError)
+    for entry in manifest:
+        assert entry["url"] in message and entry["md5"] in message
+    assert str(importer.sidecar_dir) in message
+    assert "check_downloads=needed" in message
+
+
+def test_frepj_ensure_sidecars_refuses_to_run_without_the_committed_crosswalk(monkeypatch, tmp_path):
+    """No fetch can repair a missing committed file: fail first, name `git checkout`."""
+    from planktonzilla.dataset_import.frepj_importer import FREPJDatasetImporter
+
+    importer, manifest, _ = _frepj_sidecar_setup(monkeypatch, tmp_path)
+    _seed(importer, manifest)
+    monkeypatch.setattr(FREPJDatasetImporter, "CROSSWALK_PATH", tmp_path / "gone" / "frepj_site_crosswalk.csv")
+
+    with pytest.raises(FileNotFoundError, match=r"frepj_site_crosswalk\.csv.*git checkout"):
+        importer.ensure_sidecars()
+
+
+def test_preflight_reports_the_real_frepj_importers_sidecars(monkeypatch, tmp_path):
+    """The generic sidecars:<name> Check over the REAL importer (no stub): missing -> fetcher; verified -> not."""
+    importer, manifest, _ = _frepj_sidecar_setup(monkeypatch, tmp_path)
+    entry = {"name": "frepj", "import_name": "frepj", "cleanup": False, "redefiner": "frepj"}
+    # A built imagefolder, so that only the sidecars decide whether the source fetches.
+    (importer.imagefolder_dir / "a_class").mkdir(parents=True)
+    (importer.imagefolder_dir / "a_class" / "img.png").write_bytes(b"x")
+
+    checks, fetch_names = mk.report_source_state([(entry, importer)], SimpleNamespace(refresh="reuse"))
+    assert fetch_names == ["frepj"]
+    (check,) = [c for c in checks if c.name == "sidecars:frepj"]
+    assert check.ok and "Table_S1.csv" in check.detail and str(importer.sidecar_dir) in check.detail
+
+    _seed(importer, manifest)
+    checks, fetch_names = mk.report_source_state([(entry, importer)], SimpleNamespace(refresh="reuse"))
+    assert fetch_names == []
+    (check,) = [c for c in checks if c.name == "sidecars:frepj"]
+    assert check.ok and check.detail == "3 sidecar file(s) on disk with their md5 pin, 1 bundled"
+
+
+def test_frepj_verified_sidecars_survive_refresh_redownload(monkeypatch, tmp_path):
+    """force_download (what refresh=redownload sets) never re-fetches a table that carries its pin."""
+    importer, manifest, _ = _frepj_sidecar_setup(monkeypatch, tmp_path, extra=["dataset_import.force_download=True"])
+    assert importer.force_download is True
+    _seed(importer, manifest)
+    sidecars = importer.ensure_sidecars()  # the boom DownloadManager proves nothing is fetched
+    assert set(sidecars) == {"Table_S1.csv", "Table_S3.csv", "Table_S4.csv", "frepj_site_crosswalk.csv"}
+
+
+def test_probe_downloads_covers_sidecars_even_when_download_targets_is_overridden(monkeypatch, tmp_path):
+    """Lensless overrides download_targets() without super(); a sidecar it declared is still probed."""
+    importer = _importer("lensless", tmp_path)
+    bundled = tmp_path / "declared_sidecar.csv"
+    bundled.write_text("x")
+    monkeypatch.setattr(importer, "sidecar_targets", lambda: [("bundled", str(bundled))])
+
+    assert ("bundled", str(bundled)) not in importer.download_targets(), "the override drops it"
+    results = importer.probe_downloads(timeout=1)
+    assert any(result.location == str(bundled) and result.ok for result in results), "probe_downloads guarantees it"

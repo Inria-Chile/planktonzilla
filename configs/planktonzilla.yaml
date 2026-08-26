@@ -159,6 +159,12 @@ dry_run: false
 #             every source in the registry still downloadable?" rather than "can this
 #             run proceed?".
 #
+# Sidecar inputs a source needs on EVERY run outside its archive (FREPJ's three md5-pinned
+# geodata tables) are probed with the same targets, and a source whose sidecars are
+# missing counts as one this run fetches even when its imagefolder is already built. A
+# verified sidecar is never re-fetched, refresh=redownload included — delete the file to
+# force it.
+#
 # Independent of dry_run on purpose: `check_downloads=needed` on a REAL run refuses to
 # start when something it needs is unreachable, instead of failing four sources in.
 #

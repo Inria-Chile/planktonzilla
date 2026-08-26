@@ -35,7 +35,7 @@ import pytest
 from datasets import Value
 from PIL import Image as PILImage
 
-from planktonzilla.planktonzilla_dataset import constants
+from planktonzilla.planktonzilla_dataset import constants, frepj_tables
 from planktonzilla.planktonzilla_dataset import generate_planktonzilla as gp
 
 # --- Synthetic sidecar tables ---------------------------------------------------------
@@ -124,6 +124,8 @@ def test_frepj_redefiner_offline_attaches_geodata_and_nulls_unresolved(monkeypat
 
     monkeypatch.setattr(gp.requests, "get", _no_network)
     monkeypatch.setattr(gp.requests.Session, "get", _no_network)
+    # The redefine path reads local files only: constructing a DownloadManager here is a bug.
+    monkeypatch.setattr(frepj_tables, "DownloadManager", _no_network)
 
     # Determinism: the module-level global read by _serialize/_flatten. Set via
     # monkeypatch so it auto-reverts and never leaks into later tests (e.g.
@@ -201,8 +203,9 @@ def test_frepj_redefiner_offline_attaches_geodata_and_nulls_unresolved(monkeypat
         assert rec["ObjID"] is None
 
 
-def test_frepj_redefiner_requires_table_s1_too(tmp_path):
-    """Table_S1 is now a redefine-time input (three-digit-day disambiguation): absent -> clear error."""
+def test_frepj_redefiner_is_lazy_and_names_the_importer_on_a_missing_table(tmp_path):
+    """Construction needs no table (the pipeline builds every redefiner up front); the first
+    read does, and its error points at the importer that fetches them."""
     tables_dir = tmp_path / "frepj_tables"
     tables_dir.mkdir()
     (tables_dir / "Table_S3.csv").write_text(_TABLE_S3)
@@ -210,5 +213,70 @@ def test_frepj_redefiner_requires_table_s1_too(tmp_path):
     csv_path = tmp_path / "taxo.csv"
     _write_taxonomy_csv(csv_path)
 
+    redefiner = gp.FrepjRedefiner(
+        csv_taxonomies_path=str(csv_path), crosswalk_path=str(_CROSSWALK_FIXTURE), tables_dir=str(tables_dir)
+    )
+    assert redefiner._tables_loaded is False
+
+    with pytest.raises(FileNotFoundError, match=r"Table_S1\.csv.*ensure_sidecars"):
+        redefiner._load_tables()
+
+
+def test_frepj_redefiner_names_the_checkout_remedy_for_a_missing_crosswalk(tmp_path):
+    """Construction reads nothing (in the pipeline the importer is the gate); the first read of
+    an absent crosswalk says it is committed and how to restore it."""
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(csv_path)
+    redefiner = gp.FrepjRedefiner(
+        csv_taxonomies_path=str(csv_path),
+        crosswalk_path=str(tmp_path / "frepj_site_crosswalk.csv"),
+        tables_dir=str(tmp_path),
+    )
+    with pytest.raises(FileNotFoundError, match=r"frepj_site_crosswalk\.csv.*git checkout"):
+        redefiner._load_tables()
+
+
+def test_attached_sidecars_win_over_tables_dir(tmp_path):
+    """What the importer hands over through attach_sidecars is read, not tables_dir."""
+    empty = tmp_path / "empty_tables"
+    empty.mkdir()
+    attached = tmp_path / "attached"
+    attached.mkdir()
+    (attached / "Table_S1.csv").write_text(_TABLE_S1)
+    (attached / "Table_S3.csv").write_text(_TABLE_S3)
+    (attached / "Table_S4.csv").write_text(_TABLE_S4)
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(csv_path)
+
+    redefiner = gp.FrepjRedefiner(
+        csv_taxonomies_path=str(csv_path), crosswalk_path=str(_CROSSWALK_FIXTURE), tables_dir=str(empty)
+    )
+    redefiner.attach_sidecars(
+        {
+            "Table_S1.csv": attached / "Table_S1.csv",
+            "Table_S3.csv": attached / "Table_S3.csv",
+            "Table_S4.csv": attached / "Table_S4.csv",
+            "frepj_site_crosswalk.csv": _CROSSWALK_FIXTURE,
+        }
+    )
+    redefiner._load_tables()
+
+    assert redefiner.site_index[(40, "5")] == ("biwako", "2021.11.011")
+    assert redefiner.crosswalk_sites["biwako"] == "Lake Biwa"
+    assert redefiner.site_dates["Lake Biwa"] == {"2021-11-01", "2021-11-15"}
+    # Attaching again REPLACES the mapping and invalidates the cache: with nothing attached
+    # the empty tables_dir is what gets read, and it has nothing.
+    redefiner.attach_sidecars({})
+    assert redefiner._tables_loaded is False
     with pytest.raises(FileNotFoundError, match=r"Table_S1\.csv"):
-        gp.FrepjRedefiner(csv_taxonomies_path=str(csv_path), crosswalk_path=str(_CROSSWALK_FIXTURE), tables_dir=str(tables_dir))
+        redefiner._load_tables()
+
+
+def test_attach_sidecars_is_a_no_op_on_the_other_redefiners(tmp_path):
+    """The fifteen archive-only sources' redefiners accept the seam's call and keep nothing."""
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(csv_path)
+    for klass in (gp.NoMetadataRedefiner, gp.WHOIRedefiner, gp.EcoTaxaRedefiner, gp.JediRedefiner):
+        redefiner = klass(csv_taxonomies_path=str(csv_path))
+        assert redefiner.attach_sidecars({"x": "y"}) is None
+        assert not hasattr(redefiner, "_sidecars")

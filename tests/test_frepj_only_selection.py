@@ -9,8 +9,8 @@ They pin, by construction (Hydra compose only — no build, no network):
   (a) generate_frepj_only.yaml composes to exactly ONE datasets entry
       {name: frepj, import_name: frepj, cleanup: false, redefiner: frepj} targeting
       project-oceania/planktonzilla-frepj with push_to_hub false,
-  (b) the DEFAULT generate_planktonzilla.yaml stays unchanged (all 15 published
-      sources, repo_id planktonzilla-17M, frepj absent) — the output-preserving pin,
+  (b) the DEFAULT generate_planktonzilla.yaml keeps the 15 published sources in place
+      and appends frepj LAST (v1.2), repo_id planktonzilla-17M — the output-preserving pin,
   (c) assert_not_frozen_repo rejects the frozen planktonzilla-17M (full id, bare
       basename, and a defensive case-insensitive basename) and allows the
       intermediate planktonzilla-frepj / a versioned release.
@@ -63,18 +63,38 @@ def test_frepj_only_config_single_entry():
         GlobalHydra.instance().clear()
 
 
-def test_default_config_unchanged_output_preserving_pin():
-    """The default generate_planktonzilla stays 15 entries / planktonzilla-17M / no frepj.
+# The fifteen sources of the frozen planktonzilla-17M, in their concatenation order.
+_FROZEN_FIFTEEN = [
+    "isiisnet",
+    "whoi",
+    "flowcamnet",
+    "lensless",
+    "medplanktonset",
+    "uvp6net",
+    "zoocamnet",
+    "zooscan",
+    "planktonset1.0",
+    "syke_ifcb_2022",
+    "planktoscope",
+    "global_uvp5",
+    "zoolake",
+    "jedioceans",
+    "sykezooscan2024",
+]
 
-    15 is the number of sources in the frozen planktonzilla-17M (the last three joined
-    cfg.datasets on 2026-08-01, see constants.DATASET_IMPORT_CONFIGS); frepj joins only
-    in Phase 20.
+
+def test_default_config_appends_frepj_last_keeping_the_fifteen_in_place():
+    """The default registry is the frozen fifteen, in order, plus frepj appended LAST (v1.2).
+
+    Registry order is the concatenation order of the output, so appending — never
+    inserting — is what keeps every published source at the index it already had.
     """
     cfg = _compose("generate_planktonzilla")
     try:
         assert cfg.repo_id == "project-oceania/planktonzilla-17M"
-        assert len(cfg.datasets) == 15
-        assert not any(d["name"] == "frepj" for d in cfg.datasets)
+        assert len(cfg.datasets) == 16
+        assert [d["name"] for d in cfg.datasets[:15]] == _FROZEN_FIFTEEN
+        assert dict(cfg.datasets[-1]) == {"name": "frepj", "import_name": "frepj", "cleanup": False, "redefiner": "frepj"}
     finally:
         GlobalHydra.instance().clear()
 

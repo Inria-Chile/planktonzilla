@@ -40,15 +40,16 @@ num_proc: null
 # rather than serving a direct URL — which its importer resolves through the Download API
 # (`fairdata_pid`).
 #
-# The registry therefore covers all 15 sources of the published dataset: a from-scratch
-# build reproduces it, rather than 12 of its 15 parts.
+# The registry therefore covers all 15 sources of the published dataset — a from-scratch
+# build reproduces it, rather than 12 of its 15 parts — plus `frepj` (v1.2), appended
+# last, which enters the published artifact with the v1.2 push.
 #
 # Each entry carries THREE distinct identifiers — do not interchange them:
 #   name        the source's identity. It is the `dataset` column value AND the
 #               taxonomy CSV `Dataset` value, so it must match the CSV exactly.
 #   import_name the configs/dataset_import/<stem>.yaml filename.
 #   redefiner   a key into the REDEFINERS map above.
-# For 5 of the 15 active entries name != import_name (whoi/whoi-plankton,
+# For 5 of the 16 active entries name != import_name (whoi/whoi-plankton,
 # zooscan/zooscannet, planktonset1.0/planktonset1, global_uvp5/global_uvp5net,
 # jedioceans/jedi_oceans_cpics).
 #
@@ -124,10 +125,22 @@ datasets:
   # direct URL — verified end to end on 2026-08-01: 20 class folders / 22,753 images,
   # matching its 20 taxonomy CSV labels exactly. cc-by-4.0, so it adds nothing new to the
   # licence mix. With this entry the registry covers all 15 sources of the published
-  # dataset, so a from-scratch build reproduces it.
+  # dataset, so a from-scratch build reproduces it (the frepj entry below is the one
+  # source the published 17M does not hold yet).
   - {
       name: sykezooscan2024,
       import_name: sykezooscan2024,
       cleanup: false,
       redefiner: none,
     }
+  # Sixteenth and LAST (milestone v1.2): appended so the fifteen sources of the published
+  # planktonzilla-17M keep the concatenation index they already had. cc-by-4.0, so the
+  # licence mix is unchanged. Besides its 963 MB figshare archive, its redefiner joins
+  # three md5-pinned sidecar tables (Table_S1/S3/S4, 8.6 MB, figshare article 26891563)
+  # and the committed site crosswalk. The importer fetches the tables into
+  # <data_dir>/frepj_tables on any run that lacks them, before the first import — no
+  # manual step. `dry_run=true` reports them as sidecars:frepj; `check_downloads` probes
+  # them under download:frepj. A verified table is never re-fetched, refresh=redownload
+  # included: delete the file to force one. cleanup:false keeps the raw archive for
+  # reuse, like the three entries above.
+  - { name: frepj, import_name: frepj, cleanup: false, redefiner: frepj }

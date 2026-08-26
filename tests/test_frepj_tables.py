@@ -29,6 +29,7 @@ root = pyrootutils.setup_root(
 import hashlib
 import json
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
@@ -332,3 +333,84 @@ def test_read_site_sampling_dates_normalizes_and_skips_unreadable(tmp_path):
     )
     dates = frepj_tables.read_site_sampling_dates(csv_path)
     assert dates == {"Lake Biwa": {"2021-11-01", "2021-11-15"}, "Lake Akan": {"2010-07-14"}}
+
+
+# --- sidecar protocol helpers: missing_frepj_tables / injectable download config -------
+
+
+def test_missing_frepj_tables_reports_absent_and_stale_read_only(tmp_path):
+    """Absent files and files failing their pin are both "missing"; nothing is created or touched."""
+    manifest = _synthetic_manifest(tmp_path)
+    assert frepj_tables.missing_frepj_tables(tmp_path, manifest) == []
+
+    (tmp_path / "Table_S3.csv").write_bytes(b"drifted")
+    assert [e["name"] for e in frepj_tables.missing_frepj_tables(tmp_path, manifest)] == ["Table_S3.csv"]
+
+    empty = tmp_path / "never_created"
+    assert [e["name"] for e in frepj_tables.missing_frepj_tables(empty, manifest)] == [e["name"] for e in manifest]
+    assert not empty.exists(), "a read-only check must not create the directory"
+
+
+class _RecordingManager:
+    """A DownloadManager double that records its construction and serves a fixture file."""
+
+    instances: ClassVar[list] = []
+
+    def __init__(self, *args, **kwargs):
+        self.kwargs = kwargs
+        _RecordingManager.instances.append(self)
+
+    def download(self, url):
+        return str(S1)
+
+
+def test_ensure_frepj_tables_defaults_to_the_crosswalk_cli_download_config(tmp_path, monkeypatch):
+    """Without download_config the legacy config is used verbatim — the crosswalk CLI is unchanged."""
+    monkeypatch.setattr(frepj_tables, "DownloadManager", _RecordingManager)
+    _RecordingManager.instances.clear()
+    manifest = _synthetic_manifest(tmp_path)
+    (tmp_path / "Table_S1.csv").unlink()  # one miss -> one manager
+
+    paths = frepj_tables.ensure_frepj_tables(tmp_path, manifest=manifest)
+
+    assert set(paths) == {"Table_S1.csv", "Table_S3.csv", "Table_S4.csv"}
+    (manager,) = _RecordingManager.instances
+    config = manager.kwargs["download_config"]
+    assert isinstance(manager.kwargs["base_path"], str)
+    assert (config.force_download, config.resume_download, config.max_retries) == (False, True, 5)
+    assert Path(config.cache_dir) == tmp_path
+
+
+def test_ensure_frepj_tables_honours_an_injected_download_config(tmp_path, monkeypatch):
+    """The importer's own config (its User-Agent, force_download) reaches the manager untouched."""
+    from datasets.download import DownloadConfig
+
+    monkeypatch.setattr(frepj_tables, "DownloadManager", _RecordingManager)
+    _RecordingManager.instances.clear()
+    manifest = _synthetic_manifest(tmp_path)
+    (tmp_path / "Table_S1.csv").unlink()
+    injected = DownloadConfig(cache_dir=tmp_path, force_download=True, num_proc=1)
+
+    frepj_tables.ensure_frepj_tables(tmp_path, manifest=manifest, download_config=injected)
+
+    (manager,) = _RecordingManager.instances
+    assert manager.kwargs["download_config"] is injected
+
+
+def test_ensure_frepj_tables_removes_a_file_that_failed_its_md5(tmp_path, monkeypatch):
+    """Unverified bytes never survive under the pinned name (they would fail the pin forever)."""
+
+    class _FakeDownloadManager:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def download(self, url):
+            bad = tmp_path / "_downloaded_bad.bin"
+            bad.write_bytes(b"corrupted-bytes-that-will-not-match")
+            return str(bad)
+
+    monkeypatch.setattr(frepj_tables, "DownloadManager", _FakeDownloadManager)
+    manifest = [{"name": "Table_S1.csv", "file_id": 0, "url": "https://example.invalid/x", "md5": "0" * 32, "size": 1}]
+    with pytest.raises(ValueError, match="md5"):
+        frepj_tables.ensure_frepj_tables(tmp_path, manifest=manifest)
+    assert not (tmp_path / "Table_S1.csv").exists()

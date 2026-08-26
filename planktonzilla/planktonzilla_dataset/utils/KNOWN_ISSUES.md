@@ -39,7 +39,7 @@ Phase 4, so these failures are no longer silent — only their *handling* is unc
 Entries are numbered in the order they were found, not the order they are read: KI-1..7 and
 KI-16..25 are **code behavior**, KI-8..13 are **data** defects in the frozen taxonomy CSV,
 KI-14..15 are **source-license** questions, and KI-26 is a **data** defect in a source's own
-sidecar tables. Numbers are never reused or renumbered — commits,
+sidecar tables; KI-27 is a decision log like KI-24. Numbers are never reused or renumbered — commits,
 code comments and tests cite them.
 
 **This file lists only what is still open.** Nine resolved entries — KI-11, KI-17..KI-23 and
@@ -64,7 +64,8 @@ number missing from the table below is *resolved*, not withdrawn; look for it th
 | KI-15 | open, bounded | downstream-legal | `planktonset1.0` recorded as `other` — states nothing |
 | KI-16 | open, **do not fix** | HIGH | split probe reads the repo root; splits discarded |
 | KI-24 | decision log | MEDIUM (rebuild) | `zoolake`/`jedioceans` joined; the licence mix widened |
-| KI-26 | open, source-side | none (17M) / republish (frepj) | FREPJ `Sampling date` is free text; 7.1% not a date — normalized, 1.9% null |
+| KI-26 | open, source-side | none (17M) / republished (frepj) | FREPJ `Sampling date` is free text; 7.1% not a date — normalized, 1.9% null |
+| KI-27 | decision log | MEDIUM (rebuild) | `frepj` joined the registry (16th, last); sidecar inputs became an importer protocol |
 
 Three obligations belong to archived entries but are **still open**, and are restated here so
 archiving cannot bury them:
@@ -329,8 +330,9 @@ verified for reachability and archive shape, not by a completed import.
 ## KI-26 — FREPJ `Sampling date` is hand-typed free text; 7.1% of rows are not a date
 
 **Where:** the upstream sidecar tables `Table_S3.csv` (40x) / `Table_S4.csv` (100x), column
-`Sampling date` — md5-pinned, fetched to the gitignored `data/frepj_tables/` — consumed by
-`FrepjRedefiner` through `frepj_tables.parse_sampling_date`.
+`Sampling date` — md5-pinned, fetched by `FREPJDatasetImporter.ensure_sidecars` into the
+gitignored `<data_dir>/frepj_tables/` (the crosswalk CLI's `DEFAULT_TABLES_DIR` on a default
+run) — consumed by `FrepjRedefiner` through `frepj_tables.parse_sampling_date`.
 
 **Found 2026-08-25** while assessing the v1.2 lifecycle. The `project-oceania/planktonzilla-frepj`
 published on 2026-07-11 carried the column verbatim as `date` and left the consolidated
@@ -359,13 +361,70 @@ Net: **86,979 rows (98.1%) dated, 1,707 null.** VAL-02 now fails on any non-ISO 
 (`Timestamp Shape`) and on coverage below the 98% floor (`Timestamp Coverage`,
 `--timestamp-floor`), so a regression in either direction blocks publish.
 
-**Frozen-output risk: none for `planktonzilla-17M`** — FREPJ is not in it yet (Phase 20). The
-intermediate `planktonzilla-frepj` repo is **republished** from this build with the Phase-19
-helper, which changes its schema: `date` / `magnification` / `site` become `timestamp` +
-`custom_metadata`, and the `license` / `license_url` columns it predated are added.
+**Frozen-output risk: none for `planktonzilla-17M`** — FREPJ is in the registry since
+2026-08-25 (KI-27) and enters the published artifact only with the v1.2 push. The
+intermediate `planktonzilla-frepj` repo was **republished** from this build on 2026-08-25
+with the Phase-19 helper (`v1.0.0-frepj` tags the old revision, `v1.2.0-frepj` the new),
+which changed its schema: `date` / `magnification` / `site` became `timestamp` +
+`custom_metadata`, and the `license` / `license_url` columns it predated were added.
 
 **Upstream.** Worth reporting to the FREPJ authors (the 352 Lake Biwa rows are unrecoverable
 without them); not blocking.
+
+---
+
+## KI-27 — `frepj` joined the registry (sixteenth, last); sidecar inputs became an importer protocol
+
+**Where:** `configs/generate_planktonzilla.yaml` `datasets`; `DatasetImporter.sidecar_targets` /
+`missing_sidecars` / `ensure_sidecars`; `RedefineDataset.attach_sidecars`;
+`make_planktonzilla.ensure_source_sidecars` and the `sidecars:<source>` pre-flight check.
+
+**Change (2026-08-25, maintainer decision).** `{name: frepj, import_name: frepj, cleanup: false,
+redefiner: frepj}` is **appended, not inserted** — registry order is the concatenation order of
+the output, so the fifteen published sources keep the index they already had. It is
+`cc-by-4.0`, so the licence mix's set of terms is unchanged.
+
+FREPJ is the first source whose *redefine* step needs inputs outside its archive on every
+run: three md5-pinned geodata tables (Table_S1/S3/S4, 8.6 MB, figshare article 26891563) and
+the committed site crosswalk. Rather than special-case the source name in the pipeline, the
+importer base class gained a three-method **sidecar protocol** (declare / check / obtain) and
+the redefiner base class a receiving hook; `make_planktonzilla.py` calls them for every source
+and knows no source by name. Consequences, stated plainly:
+
+- A from-scratch `pz_planktonzilla` needs no manual step: the FREPJ importer fetches the
+  tables into `<data_dir>/frepj_tables` — with its own download config and the project
+  User-Agent — **before the first import**, and hands them to `FrepjRedefiner` (which never
+  downloads and now reads them lazily, so constructing every redefiner up front is free).
+- A reuse run whose imagefolder exists but whose tables are missing is decided in seconds,
+  up front, not hours in at the sixteenth source; `check_downloads=needed` probes the tables
+  and counts such a source as one the run fetches. `dry_run=true` reports `sidecars:frepj`.
+- A verified table is never re-fetched, `refresh=redownload` included — delete the file to
+  force one. A committed file that is gone is a blocking failure (no run can repair a checkout).
+- `pz_generate_planktonzilla --config-name generate_frepj_only` (the standalone republish path)
+  goes through the same seam and behaves identically.
+
+**Frozen-output risk: MEDIUM, rebuild-only.** Nothing published changes; a from-scratch build now
+emits a sixteenth source, appended last. The fifteen existing sources' rows are byte-identical
+(`sidecar_targets() == []`, `ensure_sidecars() == {}` — pinned by
+`tests/test_dataset_import_configs.py::test_sources_without_sidecars_are_unchanged`; `attach_sidecars({})`
+is a no-op — pinned by `tests/test_frepj_redefiner.py::test_attach_sidecars_is_a_no_op_on_the_other_redefiners`).
+
+**Known imprecision (accepted).** On a `check_downloads=needed` run with the imagefolder built and
+only the tables missing, `download:frepj` probes all five targets, archive included, so a dead
+archive host blocks a run that would not have fetched it, and the 963 MB inflates the free-space
+estimate (a non-blocking WARN at worst). `global_uvp5` has the same shape on `refresh=rebuild`.
+
+**Three more consequences, accepted and stated here (review of 2026-08-25):**
+
+- An explicit `sources=[…the fifteen…]` list is now a *strict subset* of the registry, so the
+  partial-overwrite guard applies to it: over an existing `output_dir` with `base=null` it is
+  refused unless `allow_partial_overwrite=true`. `sources=all` (the default) is unaffected.
+- The deprecated `pz_generate_planktonzilla` obtains a source's sidecars at that source's turn
+  (through the shared seam), not up front — for the sixteenth entry, hours in on a full build.
+  `pz_planktonzilla` is where fail-in-seconds lives; the deprecated command is left as is.
+- `pz_planktonzilla` verifies the sidecars twice per source — up front in `ensure_source_sidecars`
+  and again in the seam, which also serves the deprecated command. Both calls are idempotent
+  (a streamed md5 per table, no download when the pin holds), so the second costs milliseconds.
 
 ---
 
@@ -375,8 +434,8 @@ and absent from a clone — see the caveat at the top of this file.
 KI-16 through KI-24 recorded 2026-08-01 during the `pz_planktonzilla` consolidation.
 KI-25, and the corrections dated 2026-08-04 throughout, from a full re-audit of every entry
 against the code as it stands — the same pass that archived the nine resolved entries to
-[`RESOLVED_ISSUES.md`](RESOLVED_ISSUES.md). KI-26 recorded 2026-08-25 during the v1.2 (FREPJ)
-lifecycle assessment.*
+[`RESOLVED_ISSUES.md`](RESOLVED_ISSUES.md). KI-26 and KI-27 recorded 2026-08-25 during the v1.2
+(FREPJ) lifecycle assessment and the registry join that followed it.*
 
 ---
 
