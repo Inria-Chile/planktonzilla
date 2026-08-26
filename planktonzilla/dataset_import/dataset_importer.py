@@ -1397,6 +1397,13 @@ class DatasetImporter:
                 raise RuntimeError("Cannot prepare imagefolder: extraction failed or raw data is unavailable.")
 
             logger.info(f"Preparing dataset as imagefolder in {self.imagefolder_dir}")
+            # The subclass hook may assume the imagefolder ROOT exists. Most
+            # implementations create it themselves as a side effect (copytree and
+            # mkdir(parents=True) both create missing parents), but WHOI's per-class
+            # `mkdir(exist_ok=True)` does not — on a data_dir that never held this
+            # source, a from-scratch build raised FileNotFoundError here before copying
+            # a single file.
+            self.imagefolder_dir.mkdir(parents=True, exist_ok=True)
             self._prepare_imagefolder()
 
         else:
