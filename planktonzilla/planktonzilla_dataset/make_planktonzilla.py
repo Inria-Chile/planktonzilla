@@ -157,6 +157,22 @@ def resolve_base_location(cfg, output_dir: Path):
     if base == "hub":
         return ("hub", cfg.base_repo_id)
     if base == "local":
+        if not output_dir.exists():
+            # A FIRST build on this machine: `local` means "what is already there", and
+            # nothing is. Refusing here made the documented incremental command
+            # unrunnable from scratch, so the run proceeds with only `sources` — which
+            # is exactly what base=null does on a machine with no output_dir, and loses
+            # nothing because there is nothing to lose. An output_dir that EXISTS but
+            # is broken still stops the run (the unconditional check below), and an
+            # explicit `base=<path>` never degrades: a typo must not silently become
+            # "no base".
+            logger.warning(
+                f"base=local, but there is no artifact at {output_dir} yet — a first build on this machine has "
+                "nothing to splice into, so this run builds ONLY the sources named in `sources` and saves them "
+                "as the new local artifact. To splice into the published dataset instead, pass base=hub "
+                "(and base_repo_id= when it should differ from repo_id)."
+            )
+            return None
         return ("disk", output_dir)
     return ("disk", Path(base))
 
@@ -1239,7 +1255,7 @@ def main(cfg: DictConfig) -> None:
 
     # A `base` on disk is not read until the very END of the run — after every selected
     # source has been imported and redefined. Verifying it is two small JSON reads and no
-    # network, so it is done up front and UNCONDITIONALLY: without this, a `base=local`
+    # network, so it is done up front and UNCONDITIONALLY: without this, a `base`
     # pointing at a directory that does not exist bought a full multi-hour build and then
     # raised FileNotFoundError from load_from_disk with everything discarded. Skipped only
     # when the pre-flight below is going to make the same check, so it is reported once.
