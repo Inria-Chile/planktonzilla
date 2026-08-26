@@ -109,7 +109,7 @@ def select_sources(cfg) -> list:
     Raises:
         ValueError: On an unknown source name, or a name in both ``sources`` and
             ``drop``. An ``import_name`` passed by mistake is called out by name,
-            since 4 of the 12 entries have an ``import_name`` that differs from their
+            since 5 of the 16 entries have an ``import_name`` that differs from their
             ``name``.
     """
     registry = list(cfg.datasets)
@@ -769,13 +769,31 @@ def instantiate_selected(selected, cfg) -> list:
     return importers
 
 
+def ensure_source_sidecars(importers) -> dict:
+    """Obtain every selected source's build-time sidecar inputs, BEFORE the first import.
+
+    Not part of the pre-flight — a plain run never pre-flights — but the plain run doing
+    in seconds what it would otherwise discover hours in, at the sixteenth source. A
+    no-op for a source without any. Returns ``{name: {file: path}}`` so the log can say
+    what was verified.
+    """
+    obtained = {}
+    for entry, importer in importers:
+        name = entry["name"]
+        sidecars = importer.ensure_sidecars()
+        if sidecars:
+            logger.info(f"╰─ {name:16s} {len(sidecars)} sidecar file(s) verified: {', '.join(sidecars)}")
+        obtained[name] = sidecars
+    return obtained
+
+
 def report_source_state(importers, cfg) -> tuple:
-    """Report each source's imagefolder and hand-downloaded archives.
+    """Report each source's imagefolder, hand-downloaded archives and sidecar inputs.
 
     Returns ``(checks, fetch_names)`` — the second being the sources a real run would
     actually download, decided exactly as ``import_and_redefine_source`` decides it: a
     non-empty imagefolder short-circuits the import unless ``refresh=redownload``
-    removes it first.
+    removes it first — or a sidecar input it lacks makes it fetch regardless.
     """
     checks, fetch_names = [], []
 
@@ -799,6 +817,45 @@ def report_source_state(importers, cfg) -> tuple:
                     logger.warning(f"   {line}")
                 wanted = f"{len(missing)} archive(s) must be downloaded by hand: {missing}"
                 checks.append(Check(f"manual:{name}", False, wanted))
+
+        # Inputs a source needs on EVERY run, imagefolder or not (FREPJ's md5-pinned geodata
+        # tables). Absent ones are not a failure — the run fetches them before its first
+        # import — but they make the source a fetcher, so `check_downloads=needed` probes
+        # it. A bundled one that is gone cannot be repaired by any run, so it blocks.
+        targets = importer.sidecar_targets()
+        if targets:
+            gone = [location for kind, location in targets if kind == "bundled" and not Path(location).exists()]
+            for location in gone:
+                detail = (
+                    f"{location} — not on disk, and it ships with the package rather than being downloaded: "
+                    "restore the checkout"
+                )
+                checks.append(Check(f"sidecars:{name}", False, detail))
+
+            absent = importer.missing_sidecars()
+            if absent:
+                if name not in fetch_names:
+                    fetch_names.append(name)
+                listed = ", ".join(path.name for path in absent)
+                logger.info(f"   sidecars: {len(absent)} absent/unverified -> would be fetched: {listed}")
+                fetched_into = absent[0].parent
+                detail = (
+                    f"{len(absent)} sidecar file(s) absent or failing their md5 pin ({listed}) -> would be fetched "
+                    f"md5-verified into {fetched_into} before the first import"
+                )
+                checks.append(Check(f"sidecars:{name}", True, detail))
+                for path in absent:
+                    if path.exists():
+                        drifted = (
+                            f"{path.name} is on disk but fails its md5 pin — would be re-fetched before the first "
+                            "import (an upstream re-upload, or a truncated copy)"
+                        )
+                        checks.append(Check(f"sidecars:{name}", False, drifted, blocking=False))
+            elif not gone:
+                fetched = sum(1 for kind, _ in targets if kind == "url")
+                bundled = sum(1 for kind, _ in targets if kind == "bundled")
+                detail = f"{fetched} sidecar file(s) on disk with their md5 pin, {bundled} bundled"
+                checks.append(Check(f"sidecars:{name}", True, detail))
 
     return checks, fetch_names
 
@@ -832,7 +889,7 @@ def check_source_downloads(importers, fetch_names, *, scope, timeout, session=No
 
         probe_downloads only promises to swallow requests' own exceptions. Anything else
         (a malformed header, a bug here) would propagate out of executor.map and take the
-        whole report down with it — losing the verdicts on the other fourteen sources,
+        whole report down with it — losing the verdicts on every other source,
         which is exactly what this pre-flight exists to avoid.
         """
         name, importer = target
@@ -849,7 +906,7 @@ def check_source_downloads(importers, fetch_names, *, scope, timeout, session=No
             return e
 
     if targets:
-        # Concurrent because 15 sources spread over 9 hosts are 22 mostly-idle requests;
+        # Concurrent because 16 sources spread over 9 hosts are ~26 mostly-idle requests;
         # sequentially that is a minute of waiting for a check meant to be instant.
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(targets))) as executor:
             probed = list(executor.map(_probe, targets))
@@ -887,8 +944,8 @@ def check_source_downloads(importers, fetch_names, *, scope, timeout, session=No
         )
 
     if skipped:
-        # Named rather than counted: a probe that silently covered 3 of 15 sources reads
-        # like a clean bill of health for all 15.
+        # Named rather than counted: a probe that silently covered 3 of 16 sources reads
+        # like a clean bill of health for all 16.
         checks.append(
             Check("downloads-skipped", True, f"imagefolder already built, not probed: {', '.join(skipped)}", blocking=False)
         )
@@ -1204,18 +1261,29 @@ def main(cfg: DictConfig) -> None:
     lookup = build_taxonomy_lookup(taxo_csv_path)
     sync_dict = build_sync_dict(taxo_csv_path) if (base_location is not None and cfg.sync_taxonomy) else None
 
+    # Every selected importer and redefiner, built BEFORE the first import. Construction
+    # is free (compose + dataclass; the CSV lookup is cached) and it is where a source's
+    # build-time inputs become known — a sidecar table its redefiner needs on every run,
+    # a committed crosswalk that is gone. Obtaining them now means the last source cannot
+    # fail hours in on an 8 MB file.
+    importers = instantiate_selected(selected, cfg)
+    redefiners = {entry["name"]: REDEFINERS[entry["redefiner"]](csv_taxonomies_path=taxo_csv_path) for entry in selected}
+    for name, sidecars in ensure_source_sidecars(importers).items():
+        redefiners[name].attach_sidecars(sidecars)
+
     fresh = {}
-    for entry in selected:
+    for entry, importer in importers:
         name = entry["name"]
         logger.info(f"Start importing dataset «{name}».")
 
         part = import_and_redefine_source(
             entry,
             data_dir=cfg.data_dir,
-            redefiner=REDEFINERS[entry["redefiner"]](csv_taxonomies_path=taxo_csv_path),
+            redefiner=redefiners[name],
             num_proc_arg=num_proc_arg,
             refresh=cfg.refresh,
             import_overrides=list(cfg.import_overrides),
+            importer=importer,
         )
 
         log_lookup_coverage(part, name, lookup)

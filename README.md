@@ -193,7 +193,7 @@ There is no mode switch. The run is described by three orthogonal parameters:
 | `sync_taxonomy` | re-apply the CSV to carried-over rows | `true` · `false` |
 
 ```bash
-# Create the whole dataset from scratch (all 15 sources) — the default
+# Create the whole dataset from scratch (all 16 sources) — the default
 uv run pz_planktonzilla
 
 # The taxonomy CSV changed: re-sync every row, rebuild nothing
@@ -224,7 +224,7 @@ doing any of it. `dry_run=true` resolves the plan and checks its local prerequis
 | Value | What is probed |
 | --- | --- |
 | `none` | nothing (the default) — local checks only |
-| `needed` | every file **this** run would fetch, plus the Hub endpoints it would use |
+| `needed` | every file **this** run would fetch (sidecar inputs included), plus the Hub endpoints it would use |
 | `all` | also the sources whose imagefolder is already built |
 
 ```bash
@@ -249,6 +249,14 @@ proceed. What it verifies:
   fallback spelled out; a `200` that returns HTML is flagged as the login wall it usually is.
   `sykezooscan2024` is checked through the Fairdata API **read-only** — the pre-flight never
   asks the service to package anything.
+- **Sidecars** — inputs a source needs on *every* run outside its archive (FREPJ's three
+  md5-pinned geodata tables and its committed site crosswalk), reported as `sidecars:<source>`:
+  on disk with their pin, or *would be fetched* — the run obtains them itself, md5-verified,
+  into `<data_dir>/frepj_tables` **before the first import**, so a source whose tables are
+  missing counts as one this run fetches and is probed under `download:<source>` even when
+  its imagefolder is already built. A verified table is never re-fetched (`refresh=redownload`
+  included — delete the file to force it); a committed file that is gone is a blocking failure,
+  since no run can repair a checkout.
 - **Taxonomy CSV** — it exists, parses, has every lookup column (a missing rank silently
   builds that column blank), and has rows for each source being rebuilt.
 - **`base`** — on disk, that the path really is a saved dataset, with its shards, row count
@@ -507,8 +515,11 @@ flowchart TB
 
 ### Source datasets
 
-Fifteen public plankton-imaging sources are assembled into `planktonzilla-17M`. Each has an
-importer config in `configs/dataset_import/`:
+Fifteen public plankton-imaging sources are assembled into `planktonzilla-17M`. A sixteenth,
+**FREPJ-Z**, is in the build registry since v1.2 and enters the composite with the v1.2
+release; until then it is published on its own as
+[`project-oceania/planktonzilla-frepj`](https://huggingface.co/datasets/project-oceania/planktonzilla-frepj).
+Each has an importer config in `configs/dataset_import/`:
 
 | Source | `dataset` value | Images | Description | License |
 | --- | --- | ---: | --- | --- |
@@ -527,6 +538,7 @@ importer config in `configs/dataset_import/`:
 | **SYKE ZooScan 2024** | `sykezooscan2024` | 22,753 | Finnish Environment Institute, ZooScan | `cc-by-4.0` |
 | **ZooLake** | `zoolake` | 17,942 | Lake Greifensee (Switzerland) zooplankton | `cc-by-4.0` |
 | **Lensless** | `lensless` | 6,400 | Lensless plankton microscopy (lab culture) | `cc-by-4.0` |
+| **FREPJ-Z** (v1.2) | `frepj` | 88,686 | Freshwater zooplankton of Japanese lakes and reservoirs, 40×/100× microscopy — registry only, not in the published 17M yet | `cc-by-4.0` |
 
 Note that the `dataset` column value does not always match the importer config stem (`whoi` vs
 `whoi-plankton.yaml`, `zooscan` vs `zooscannet.yaml`, and three more). The mapping is recorded in
@@ -551,7 +563,8 @@ are mutually incompatible. Every image therefore carries its source's terms in t
 terms are stated).
 
 The shares below describe the **published** dataset. The registry covers all 15 of its
-sources, so a from-scratch rebuild reproduces the same mix.
+sources plus `frepj` (v1.2), so a from-scratch rebuild reproduces the same mix of terms —
+`frepj` adds `cc-by-4.0` images only.
 
 | License | Images | Share | Reuse |
 | --- | ---: | ---: | --- |

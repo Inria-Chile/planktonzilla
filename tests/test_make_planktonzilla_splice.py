@@ -796,3 +796,93 @@ def test_filling_custom_metadata_on_a_base_while_refreshing_a_source(offline, tw
     rows = list(_load(tmp_path / "out"))
     assert [r["dataset"] for r in rows] == ["isiisnet"] * 3 + ["lensless"] * 5
     assert {r[constants.CUSTOM_METADATA_COL] for r in rows} == {constants.EMPTY_CUSTOM_METADATA}
+
+
+# --- v1.2: frepj joins a base that predates it, as the LAST source --------------------------
+
+
+def test_frepj_joins_a_base_that_predates_it_as_the_last_source(offline, two_source_env, tmp_path, monkeypatch):
+    """`base=<15-source-shaped> sources=[frepj]`: sidecars verified up front, frepj appended LAST.
+
+    The P20 scenario end to end, network-free: synthetic md5-pinned tables under
+    <data_dir>/frepj_tables (exactly where FREPJDatasetImporter looks), the fixture
+    crosswalk, and file names that join the sample tables. The base rows keep their
+    "{}" custom_metadata; the frepj rows carry magnification/site and a normalized date.
+    """
+    import pathlib
+
+    from planktonzilla.dataset_import.frepj_importer import FREPJDatasetImporter
+    from planktonzilla.planktonzilla_dataset import frepj_tables
+
+    data_dir, csv_path = two_source_env
+    fixtures = pathlib.Path(__file__).parent / "fixtures" / "frepj"
+
+    tables_dir = data_dir / frepj_tables.TABLES_DIRNAME
+    tables_dir.mkdir()
+    manifest = []
+    for name, fixture in (
+        ("Table_S1.csv", "table_s1_sample.csv"),
+        ("Table_S3.csv", "table_s3_sample.csv"),
+        ("Table_S4.csv", "table_s4_sample.csv"),
+    ):
+        (tables_dir / name).write_bytes((fixtures / fixture).read_bytes())
+        manifest.append(
+            {
+                "name": name,
+                "file_id": 0,
+                "url": "https://example.invalid/never",
+                "md5": frepj_tables._md5(tables_dir / name),
+                "size": 1,
+            }
+        )
+    monkeypatch.setattr(FREPJDatasetImporter, "SIDECAR_MANIFEST", manifest)
+    monkeypatch.setattr(FREPJDatasetImporter, "CROSSWALK_PATH", fixtures / "frepj_crosswalk_sample.csv")
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("verified sidecars must never be downloaded")
+
+    monkeypatch.setattr(frepj_tables, "DownloadManager", _boom)
+
+    # A built frepj imagefolder whose stems join the sample tables: 40_101 -> akigawadam 2018.03.15
+    # (resolved), 100_202 -> "(baiyou)" (no crosswalk row -> null lat/lon; year-only date -> null).
+    # Two class dirs: the imagefolder loader only emits a `label` column with more than one.
+    frepj_imagefolder = data_dir / "frepjdatasetimporter_imagefolder"
+    for filename in ("40_101.png", "40_102.png"):
+        _write_png(frepj_imagefolder / "copepoda" / filename)
+    for filename in ("100_201.png", "100_202.png"):
+        _write_png(frepj_imagefolder / "cladocera" / filename)
+    _write_csv(
+        csv_path,
+        [
+            _csv_row("lensless", "copepoda"),
+            _csv_row("isiisnet", "appendicularia", proposed="Appendicularia", phylum="Chordata"),
+            _csv_row("frepj", "copepoda"),
+            _csv_row("frepj", "cladocera", proposed="Cladocera"),
+        ],
+    )
+    common = [f"taxonomy_csv_path={csv_path}", f"data_dir={data_dir}", "num_proc=1"]
+
+    cfg = _compose([*common, f"output_dir={tmp_path / 'base'}", "sources=[isiisnet,lensless]"], "test_frepj_join_base")
+    _restrict_registry(cfg, ["isiisnet", "lensless", "frepj"])
+    _run(cfg)
+    base = _load(tmp_path / "base")
+    assert sorted(set(base["dataset"])) == ["isiisnet", "lensless"]
+
+    cfg2 = _compose(
+        [*common, f"output_dir={tmp_path / 'after'}", "sources=[frepj]", f"base={tmp_path / 'base'}"], "test_frepj_join"
+    )
+    _restrict_registry(cfg2, ["isiisnet", "lensless", "frepj"])
+    _run(cfg2)
+
+    after = _load(tmp_path / "after")
+    assert [r["dataset"] for r in after] == ["isiisnet"] * 3 + ["lensless"] * 5 + ["frepj"] * 4
+    assert set(after.column_names) == set(constants.CONSOLIDATED_COLUMNS)
+
+    rows = {r["original_path"].split("/")[-1]: r for r in after if r["dataset"] == "frepj"}
+    assert {r[constants.CUSTOM_METADATA_COL] for r in after if r["dataset"] != "frepj"} == {constants.EMPTY_CUSTOM_METADATA}
+    assert rows["40_101.png"][constants.CUSTOM_METADATA_COL] == '{"magnification": "40", "site": "akigawadam"}'
+    assert rows["40_101.png"]["timestamp"] == "2018-03-15"
+    assert rows["40_101.png"]["Latitude"] is not None
+    assert rows["100_202.png"]["Latitude"] is None and rows["100_202.png"]["Longitude"] is None
+    assert rows["100_202.png"]["timestamp"] is None
+    assert {r["license"] for r in after if r["dataset"] == "frepj"} == {"cc-by-4.0"}

@@ -2,9 +2,12 @@
 
 # FREPJ-only generation selection (Plan 19-01). This ADDITIVE config mirrors
 # generate_planktonzilla.yaml but selects ONLY the frepj source and targets the
-# intermediate validation repo — it NEVER touches the default datasets: list
-# (that is Phase 20). It is consumed by the SHARED pz_generate_planktonzilla
-# entry point; generate_planktonzilla.py is not edited:
+# intermediate validation repo (project-oceania/planktonzilla-frepj). Since v1.2
+# frepj is also the LAST entry of the default registry, so the consolidated command
+# can build it alongside the other fifteen; this config remains the way to build and
+# republish the standalone repo. It is consumed by the SHARED pz_generate_planktonzilla
+# entry point, which since v1.2 obtains the FREPJ sidecar tables itself
+# (FREPJDatasetImporter.ensure_sidecars) — no crosswalk CLI run is needed first:
 #   pz_generate_planktonzilla --config-name generate_frepj_only \
 #     data_dir=$PWD/data/frepj_only_build
 #

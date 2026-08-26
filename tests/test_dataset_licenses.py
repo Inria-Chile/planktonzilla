@@ -75,12 +75,12 @@ _NON_DEED_URLS = {
     "planktonset1.0": "https://doi.org/10.7289/v5d21vjd",
 }
 
-# Sources whose terms are recorded ahead of their merge into planktonzilla-17M: present in
-# the taxonomy CSV and configs/dataset_import, built via generate_frepj_only.yaml and
-# published on their own (project-oceania/planktonzilla-frepj), but absent from both the
-# default cfg.datasets and samples.json until Phase 20. Listed explicitly so the two
-# "exactly the published sources" tests tolerate nothing else — once frepj lands in the
-# frozen dataset and samples.json is regenerated, this set goes back to empty.
+# Sources whose terms are recorded ahead of their arrival in the PUBLISHED planktonzilla-17M:
+# in the taxonomy CSV, configs/dataset_import and (since 2026-08-25) the default registry,
+# published on their own (project-oceania/planktonzilla-frepj), but absent from samples.json
+# — a scan of the frozen artifact — until the v1.2 push. Listed explicitly so the
+# samples.json test tolerates nothing else; once the v1.2 artifact is published and
+# samples.json regenerated, this set goes back to empty.
 _RECORDED_BUT_NOT_YET_PUBLISHED = {"frepj"}
 
 
@@ -211,13 +211,12 @@ def test_generate_config_datasets_are_all_covered():
     assert not configured - set(DATASET_LICENSES), (
         f"cfg.datasets source(s) with no recorded license: {sorted(configured - set(DATASET_LICENSES))}"
     )
-    # The registry now carries all 15, so a from-scratch build reproduces every source
-    # of the published dataset. The table is still declared independently of
-    # cfg.datasets: it is the record of each source's TERMS, which must survive a source
-    # being temporarily removed from the build — or, as with frepj, being recorded
-    # before it joins the build.
-    assert set(DATASET_LICENSES) - configured == _RECORDED_BUT_NOT_YET_PUBLISHED
-    assert len(configured) == 15
+    # The registry carries all 15 published sources plus frepj (v1.2), so a from-scratch
+    # build reproduces every source of the published dataset and the one joining it. The
+    # table is still declared independently of cfg.datasets: it is the record of each
+    # source's TERMS, which must survive a source being temporarily removed from the build.
+    assert set(DATASET_LICENSES) - configured == set()
+    assert len(configured) == 16
 
 
 def test_pending_source_license_agrees_with_its_layout_constants():

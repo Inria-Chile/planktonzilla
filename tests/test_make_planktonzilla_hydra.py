@@ -71,6 +71,10 @@ def _drive(monkeypatch, cfg, tmp_path, entry_point, push_mock=None):
 
     importer = MagicMock()
     importer.imagefolder_dir = tmp_path
+    # The sidecar protocol: an archive-only source declares nothing and obtains nothing.
+    importer.sidecar_targets.return_value = []
+    importer.missing_sidecars.return_value = []
+    importer.ensure_sidecars.return_value = {}
     monkeypatch.setattr(gp.hydra.utils, "instantiate", lambda *a, **k: importer)
     monkeypatch.setattr(gp.os, "listdir", lambda p: ["dummy_category"])
     monkeypatch.setattr(gp, "load_dataset", lambda *a, **k: MagicMock())
@@ -791,12 +795,19 @@ def test_assemble_conforms_to_the_largest_part_not_the_first(tmp_path):
 
 
 class _StubImporter:
-    """An importer for the pre-flight to walk over: no Hydra, no network, no disk."""
+    """An importer for the pre-flight to walk over: no Hydra, no network, no disk.
 
-    def __init__(self, imagefolder, results=()):
+    Implements exactly the protocol the pre-flight consumes — the imagefolder, the
+    manual-download helpers, ``probe_downloads`` and the three sidecar hooks.
+    """
+
+    def __init__(self, imagefolder, results=(), sidecar_targets=(), missing_sidecars=()):
         self.imagefolder_dir = imagefolder
         self._results = list(results)
+        self._sidecar_targets = list(sidecar_targets)
+        self._missing_sidecars = list(missing_sidecars)
         self.probes = []
+        self.ensured = 0
 
     def missing_manual_downloads(self):
         return []
@@ -808,8 +819,18 @@ class _StubImporter:
         self.probes.append(timeout)
         return self._results
 
+    def sidecar_targets(self):
+        return self._sidecar_targets
 
-def _stub_importers(monkeypatch, tmp_path, results=(), built=False):
+    def missing_sidecars(self):
+        return self._missing_sidecars
+
+    def ensure_sidecars(self):
+        self.ensured += 1
+        return {}
+
+
+def _stub_importers(monkeypatch, tmp_path, results=(), built=False, sidecar_targets=(), missing_sidecars=()):
     """Replace importer instantiation with one stub per selected source.
 
     ``built`` gives every stub a non-empty imagefolder, which is what makes a real run
@@ -822,7 +843,7 @@ def _stub_importers(monkeypatch, tmp_path, results=(), built=False):
         if built:
             (imagefolder / "a_class").mkdir(parents=True)
             (imagefolder / "a_class" / "img.png").write_bytes(b"x")
-        made.append(_StubImporter(imagefolder, results))
+        made.append(_StubImporter(imagefolder, results, sidecar_targets, missing_sidecars))
         return made[-1]
 
     monkeypatch.setattr(gp.hydra, "compose", lambda *a, **k: MagicMock())
@@ -1156,3 +1177,128 @@ def test_check_writable_dir_warns_when_the_downloads_will_not_fit(tmp_path):
     assert not check.ok
     assert not check.blocking, "the estimate is a lower bound, not a verdict"
     assert f"{mk.DISK_SPACE_FACTOR}x" in check.detail
+
+
+# --- Sidecar inputs in the pre-flight and in a plain run ---------------------------------
+
+
+def _built_stub(tmp_path, **kwargs):
+    imagefolder = tmp_path / "imagefolder_built"
+    (imagefolder / "a_class").mkdir(parents=True)
+    (imagefolder / "a_class" / "img.png").write_bytes(b"x")
+    return _StubImporter(imagefolder, **kwargs)
+
+
+_SRC = {"name": "src", "import_name": "src", "cleanup": False, "redefiner": "none"}
+
+
+def test_missing_sidecars_make_a_built_source_a_fetcher(tmp_path):
+    """A built imagefolder normally skips the probes; a missing sidecar puts the source back on the list."""
+    stub = _built_stub(
+        tmp_path,
+        results=[_probe(location="https://example.invalid/Table_S1.csv")],
+        sidecar_targets=[("url", "https://example.invalid/Table_S1.csv")],
+        missing_sidecars=[tmp_path / "frepj_tables" / "Table_S1.csv"],
+    )
+    checks, fetch_names = mk.report_source_state([(_SRC, stub)], SimpleNamespace(refresh="reuse"))
+
+    assert fetch_names == ["src"]
+    (sidecar_check,) = [c for c in checks if c.name == "sidecars:src"]
+    assert sidecar_check.ok
+    assert "Table_S1.csv" in sidecar_check.detail and str(tmp_path / "frepj_tables") in sidecar_check.detail
+
+    download_checks, _ = mk.check_source_downloads([(_SRC, stub)], fetch_names, scope="needed", timeout=1, audit=True)
+    assert stub.probes == [1], "the source IS probed under `needed`, built imagefolder or not"
+    assert not any(c.name == "downloads-skipped" for c in download_checks)
+
+
+def test_verified_sidecars_leave_a_built_source_unprobed(tmp_path):
+    """Verified sidecars change nothing: a built source is still not one this run fetches."""
+    stub = _built_stub(tmp_path, sidecar_targets=[("url", "https://example.invalid/Table_S1.csv")], missing_sidecars=[])
+    checks, fetch_names = mk.report_source_state([(_SRC, stub)], SimpleNamespace(refresh="reuse"))
+
+    assert fetch_names == []
+    (sidecar_check,) = [c for c in checks if c.name == "sidecars:src"]
+    assert sidecar_check.ok and "on disk with their md5 pin" in sidecar_check.detail
+
+    download_checks, _ = mk.check_source_downloads([(_SRC, stub)], fetch_names, scope="needed", timeout=1, audit=True)
+    assert stub.probes == []
+    assert any(c.name == "downloads-skipped" and "src" in c.detail for c in download_checks)
+
+
+def test_a_drifted_sidecar_is_a_warning_not_a_failure(tmp_path):
+    """On disk but failing its pin: re-fetched before the first import, so a WARN, never a FAIL."""
+    drifted = tmp_path / "frepj_tables" / "Table_S3.csv"
+    drifted.parent.mkdir(parents=True)
+    drifted.write_bytes(b"drifted")
+    stub = _built_stub(tmp_path, sidecar_targets=[("url", "https://example.invalid/t")], missing_sidecars=[drifted])
+
+    checks, fetch_names = mk.report_source_state([(_SRC, stub)], SimpleNamespace(refresh="reuse"))
+
+    assert fetch_names == ["src"]
+    warnings = [c for c in checks if c.name == "sidecars:src" and not c.ok]
+    assert len(warnings) == 1 and not warnings[0].blocking and "fails its md5 pin" in warnings[0].detail
+
+
+def test_a_missing_bundled_sidecar_blocks_a_dry_run(monkeypatch, tmp_path):
+    """A committed file that is gone cannot be repaired by any run: a blocking FAIL, nothing built."""
+    gone = tmp_path / "gone.csv"
+    cfg = _preflight_cfg(tmp_path, ["dry_run=true"], "test_make_preflight_bundled_gone")
+    _stub_importers(monkeypatch, tmp_path, built=True, sidecar_targets=[("bundled", str(gone))])
+    monkeypatch.setattr(mk, "atomic_replace", lambda ds, path: pytest.fail("nothing may be written"))
+
+    with pytest.raises(RuntimeError, match="Pre-flight found") as excinfo:
+        mk.main(cfg)
+    assert "sidecars:" in str(excinfo.value) and "gone.csv" in str(excinfo.value)
+
+
+def _drive_plain_run(monkeypatch, cfg, tmp_path, ensure_side_effect, import_side_effect):
+    """A plain run (no pre-flight) with the sidecar step and the import step instrumented."""
+    monkeypatch.setattr(gp.hydra, "compose", lambda *a, **k: MagicMock())
+    importer = MagicMock()
+    importer.imagefolder_dir = tmp_path
+    importer.ensure_sidecars.side_effect = ensure_side_effect
+    monkeypatch.setattr(gp.hydra.utils, "instantiate", lambda *a, **k: importer)
+    monkeypatch.setattr(mk, "import_and_redefine_source", import_side_effect)
+    monkeypatch.setattr(mk, "assert_consolidated_schema", lambda ds, **k: None)
+    monkeypatch.setattr(mk, "log_lookup_coverage", lambda *a, **k: None)
+    monkeypatch.setattr(mk, "clean_corrupt_examples_optimized", lambda ds, **k: ds)
+    monkeypatch.setattr(gp.Dataset, "save_to_disk", lambda self, path: None)
+    mk.main(cfg)
+    return importer
+
+
+def test_a_plain_run_obtains_sidecars_before_the_first_import(monkeypatch, tmp_path):
+    """Every source's sidecars are obtained up front — seconds, not at the sixteenth source's turn."""
+    cfg = _preflight_cfg(tmp_path, [], "test_make_sidecars_first")
+    order = []
+    tiny = Dataset.from_dict({"x": [1]})
+
+    def _ensure():
+        order.append("ensure")
+        return {}
+
+    passed_importers = []
+
+    def _import(entry, **kwargs):
+        order.append("import")
+        passed_importers.append(kwargs["importer"])
+        return tiny
+
+    importer = _drive_plain_run(monkeypatch, cfg, tmp_path, _ensure, _import)
+
+    assert order == ["ensure"] * len(EXPECTED_TABLE) + ["import"] * len(EXPECTED_TABLE)
+    assert all(passed is importer for passed in passed_importers), "the up-front importer is reused, not composed again"
+    assert importer.ensure_sidecars.call_count == len(EXPECTED_TABLE)
+
+
+def test_a_plain_run_stops_on_a_sidecar_it_cannot_obtain(monkeypatch, tmp_path):
+    """A sidecar that cannot be obtained fails the run before any import — nothing is written."""
+    cfg = _preflight_cfg(tmp_path, [], "test_make_sidecars_fail_fast")
+    monkeypatch.setattr(mk, "atomic_replace", lambda ds, path: pytest.fail("nothing may be written"))
+
+    def _ensure():
+        raise RuntimeError("«frepj» could not obtain its md5-pinned sidecar tables: Table_S3.csv")
+
+    with pytest.raises(RuntimeError, match=r"Table_S3\.csv"):
+        _drive_plain_run(monkeypatch, cfg, tmp_path, _ensure, lambda *a, **k: pytest.fail("no import may start"))
