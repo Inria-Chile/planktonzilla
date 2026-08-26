@@ -68,6 +68,9 @@ def _drive(monkeypatch, cfg, tmp_path, entry_point, push_mock=None):
         return MagicMock()
 
     monkeypatch.setattr(gp.hydra, "compose", _fake_compose)
+    # The tokenless-push guard fires before any import; wiring tests are not about
+    # tokens, so give them one (CI has none).
+    monkeypatch.setattr(mk, "get_token", lambda: "test-token")
 
     importer = MagicMock()
     importer.imagefolder_dir = tmp_path
@@ -937,6 +940,18 @@ def test_base_local_with_no_artifact_yet_degrades_to_a_sources_only_build(monkey
     _drive(monkeypatch, cfg, tmp_path, mk.main)
 
     assert seen == {"base": None}
+
+
+def test_push_without_a_token_stops_the_run_before_any_import(monkeypatch, tmp_path):
+    """push_to_hub=true with no token anywhere cannot succeed, and the push happens at
+    the END — after every import. Resolving a token is a local read, so a plain run
+    checks it up front instead of discovering the doomed push hours later."""
+    cfg = _preflight_cfg(tmp_path, ["push_to_hub=true", "sources=[isiisnet]"], "test_make_tokenless_push")
+    cfg.hf_token = None  # an ambient HF_TOKEN in the environment must not leak into the scenario
+    monkeypatch.setattr(mk, "get_token", lambda: None)
+
+    with pytest.raises(RuntimeError, match="no HuggingFace token"):
+        mk.main(cfg)
 
 
 def test_base_local_with_a_broken_artifact_still_stops_the_run(monkeypatch, tmp_path):

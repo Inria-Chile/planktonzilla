@@ -1270,6 +1270,22 @@ def main(cfg: DictConfig) -> None:
                 "published dataset, or point base= at a directory that holds a saved dataset."
             )
 
+    # The push, like a base on disk, only happens at the very END of the run — and
+    # resolving a token is a local read (cfg, the HF_TOKEN variable, the `hf auth login`
+    # store), no network. So when this run is going to push, having SOME token is
+    # required up front: without this, push_to_hub=true on a machine that was never
+    # logged in bought the entire multi-day build and then failed inside push_to_hub
+    # with nothing published. Whether the token can actually write to repo_id is a
+    # network question, answered by the pre-flight (check_downloads religiously checks
+    # it) — this guard only refuses the push that cannot possibly succeed.
+    if cfg.get("push_to_hub", False) and not preflight_will_run:
+        if not cfg.get("hf_token", None) and not get_token():
+            raise RuntimeError(
+                "Nothing was built: push_to_hub=true, but no HuggingFace token is available anywhere (hf_token=, "
+                "HF_TOKEN, or `hf auth login`), and the push only happens at the END of the build. Provide a "
+                "token, or pass push_to_hub=false to build without publishing."
+            )
+
     # The pre-flight runs for a dry run (which is nothing else) and whenever the network
     # checks were asked for on a real run — there, refusing to start beats failing four
     # sources in. A plain run skips it entirely and behaves exactly as it always has.
