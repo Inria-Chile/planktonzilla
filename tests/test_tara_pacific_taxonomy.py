@@ -239,6 +239,46 @@ def test_the_rank_gap_guard_rejects_a_hole():
         builder._assert_no_rank_gaps(holed)
 
 
+def test_divergent_donors_are_exactly_the_acknowledged_ones():
+    """A verbatim donor the master CSV maps two ways is a RECORDED pick, never file order.
+
+    Equality cuts both ways: a new divergence (or a reorder that flips a pick) must fail,
+    and a stale acknowledgment must be dropped once the divergence it recorded is gone.
+    KNOWN_ISSUES KI-32 documents the divergences themselves.
+    """
+    class_dirs = {entry["class_dir"] for entry in builder.read_class_map()}
+    payload_columns = [column for column in builder.CSV_COLUMNS if column not in ("Dataset", "Raw_Labels")]
+
+    grouped = defaultdict(list)
+    for row in builder.read_master_csv():
+        if row["Dataset"] in builder.DATASET_NAMES:
+            continue
+        grouped[row["Raw_Labels"]].append(row)
+
+    actual = {}
+    for class_dir in class_dirs:
+        matches = grouped.get(class_dir, [])
+        if len({tuple(row[column] for column in payload_columns) for row in matches}) > 1:
+            actual[class_dir] = (matches[0]["proposed_label"] or "").strip().lower()
+
+    assert actual == builder.DIVERGENT_DONORS
+
+
+def test_an_unacknowledged_divergent_donor_refuses_to_build():
+    """The guard: an ambiguous donor nobody signed off on is an error, not a silent pick."""
+    blank = {column: "" for column in builder.CSV_COLUMNS}
+    master = [
+        {**blank, "Dataset": "zooscan", "Raw_Labels": "Ambiguous", "proposed_label": "first pick"},
+        {**blank, "Dataset": "uvp6net", "Raw_Labels": "Ambiguous", "proposed_label": "second pick"},
+    ]
+    class_map = [{"dataset": "tara_pacific_hsn", "class_dir": "Ambiguous", "taxon_id": 1}]
+    with pytest.raises(ValueError, match="DIVERGENT_DONORS"):
+        builder._assert_divergent_donors_acknowledged(class_map, master)
+
+    # An identical duplicate is NOT ambiguous, and an acknowledged pick passes.
+    builder._assert_divergent_donors_acknowledged(class_map, [master[0], dict(master[0])])
+
+
 def test_the_reconciliation_report_is_committed_and_current():
     """The human-verify record of how the derived rows were decided."""
     report = builder.DEFAULT_RECONCILIATION_MD

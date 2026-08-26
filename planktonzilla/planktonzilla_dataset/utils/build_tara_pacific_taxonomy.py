@@ -376,6 +376,27 @@ RANK_GAP_FILLS = {
     "branchiostoma lanceolatum": {"Order": "amphioxiformes"},
 }
 
+# A class dir whose verbatim donor is AMBIGUOUS: the master CSV maps that exact
+# `Raw_Labels` string differently in different sources (KNOWN_ISSUES KI-32), and
+# `_existing_indexes` keeps only the FIRST such row in file order — so file position, not
+# a decision, would pick which mapping the new source inherits. Each affected class dir
+# is listed here with the `proposed_label` the first-in-file donor carries, and
+# `_assert_divergent_donors_acknowledged` fails the build on any unlisted one (or on a
+# reorder that flips a pick) — the same cannot-slip-in-unremarked contract as
+# HOMONYM_NOTES. Acknowledging a pick is not endorsing it: `Creseidae` and
+# `Harpacticoida` land on the SUSPECT side of their divergence (zooscan's rows — KI-32),
+# and re-picking either is a data change gated like every other KNOWN_ISSUES item.
+DIVERGENT_DONORS = {
+    "Acantharia": "acantharia",  # planktoscope's class-level row, not flowcamnet's `amphibelone`
+    "Annelida": "annelida",  # global_uvp5's phylum-level row, not uvp6net's `poeobius`
+    "Creseidae": "clio pyramidata",  # zooscan's cross-family species, not global_uvp5's `creseidae`
+    "Dinophyceae": "dinophyceae",  # global_uvp5's class-level row, not flowcamnet's `gonyaulacales`
+    "Foraminifera": "foraminifera",  # flowcamnet's phylum-level row, not zooscan's `globigerinidae`
+    "Harpacticoida": "euterpina",  # zooscan's genus, not global_uvp5's order-level `harpacticoida`
+    "Neoceratium": "neoceratium",  # flowcamnet's genus row, not zooscan's synonym `tripos` (KI-33)
+    "Ornithocercus": "ornithocercus",  # planktoscope's genus row, not flowcamnet's `ornithocercus magnificus`
+}
+
 TOKENS_WITHOUT_PRECEDENT = frozenset(
     {
         "attached",
@@ -647,8 +668,44 @@ def _assert_no_rank_gaps(rows) -> None:
         )
 
 
+def _assert_divergent_donors_acknowledged(class_map, master_rows) -> None:
+    """Fail the build when a verbatim donor is ambiguous and the pick is not on record.
+
+    ``_existing_indexes`` keeps the FIRST row per ``Raw_Labels`` value, so when the
+    master table maps the same raw label differently in different sources (KNOWN_ISSUES
+    KI-32) the verbatim rule would silently copy whichever mapping sits earliest in the
+    file — which is exactly how this block inherited zooscan's ``Creseidae`` and
+    ``Harpacticoida`` readings. Every such pick must be listed in
+    :data:`DIVERGENT_DONORS`, so a new divergence (or a file reorder that flips a pick)
+    is an error at build time rather than an accident of position.
+    """
+    grouped = defaultdict(list)
+    for row in master_rows:
+        if row["Dataset"] in DATASET_NAMES:
+            continue
+        grouped[row["Raw_Labels"]].append(row)
+
+    payload_columns = [column for column in CSV_COLUMNS if column not in ("Dataset", "Raw_Labels")]
+    offenders = []
+    for class_dir in sorted({entry["class_dir"] for entry in class_map}):
+        rows = grouped.get(class_dir, [])
+        if len({tuple(row[column] for column in payload_columns) for row in rows}) <= 1:
+            continue
+        landed = (rows[0]["proposed_label"] or "").strip().lower()
+        if DIVERGENT_DONORS.get(class_dir) != landed:
+            candidates = sorted({(row["Dataset"], row["proposed_label"]) for row in rows})
+            offenders.append(f"`{class_dir}` lands on {landed!r} among {candidates}")
+    if offenders:
+        raise ValueError(
+            f"{len(offenders)} class dir(s) resolve through a Raw_Labels value the master CSV maps more than one "
+            f"way, and the first-in-file pick is not acknowledged in DIVERGENT_DONORS: {'; '.join(offenders[:5])}. "
+            "Record each pick there (KI-32) so it is a decision, not an accident of file order."
+        )
+
+
 def build_rows(class_map, taxa, master_rows):
     """Turn the frozen tuples into complete CSV rows. Returns ``(rows, decisions)``."""
+    _assert_divergent_donors_acknowledged(class_map, master_rows)
     by_raw, by_label = _existing_indexes(master_rows)
     rows, decisions = [], []
 
