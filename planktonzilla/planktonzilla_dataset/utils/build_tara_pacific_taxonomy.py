@@ -770,6 +770,45 @@ def append_to_master(rows, path=None) -> int:
     return len(rows)
 
 
+# The report's static prose, one constant per paragraph.
+#
+# Named rather than inlined because a multi-line paragraph inside a list literal is written
+# as adjacent string literals, and that is indistinguishable at a glance from a list whose
+# comma was dropped — the shape CodeQL flags as `py/implicit-string-concatenation-in-list`.
+# Hoisting them removes the ambiguity for a reader and for the linter alike, and puts the
+# report's wording somewhere it can be edited without picking through list construction.
+_ECOTAXA_ID_NOTE = (
+    "`ecotaxa_ID` is never written here, only inherited with the rest of a donor row's IDs: that "
+    "column holds a legacy crosswalk in a DIFFERENT id space from today's EcoTaxa taxon ids, so a row "
+    "with nothing to inherit leaves it blank rather than minting one. The authoritative EcoTaxa taxon "
+    "id per label lives in `planktonzilla/dataset_import/tara_pacific_classes.tsv`."
+)
+
+_B1_INTRO = (
+    "These carry a `root_class`/`qualifier` decision that was reasoned from the closest analogue "
+    "rather than copied from an existing row."
+)
+
+_B2_INTRO = (
+    "These fell through to the artefact default. A non-empty list means `MORPH_RULES` needs an entry before the next build."
+)
+
+_B3_INTRO = (
+    "All three take the lineage the master CSV already records for their `proposed_label`, because "
+    "the table's invariant is one lineage per label. Two of them repair an upstream misplacement; "
+    "one inherits an issue the table already had. A test asserts these are the only three."
+)
+
+_B5_NOTE = (
+    "EcoTaxa carries diatoms under BOTH `Chromista>Bacillariophyta` and "
+    "`Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae`. Rows anchored on the first "
+    "(`centric`, `pennate<Bacillariophyta`, `Coscinodiscids`, `Rhizosolenids`) therefore carry "
+    "`Phylum=bacillariophyta`, while every diatom row with a genus carries the "
+    "`heterokontophyta`/`bacillariophyceae` spelling the rest of the CSV uses. Both spellings are "
+    "kept as upstream states them; no row was rewritten to hide the duality."
+)
+
+
 def write_reconciliation(decisions, path=DEFAULT_RECONCILIATION_MD) -> Path:
     """Emit the human-verify report: how each row was decided and what is genuinely new."""
     by_rule = Counter(decision["rule"] for decision in decisions)
@@ -783,10 +822,7 @@ def write_reconciliation(decisions, path=DEFAULT_RECONCILIATION_MD) -> Path:
         f"{len(decisions)} `tara_pacific_*` rows of `planktonzilla_taxonomy.csv` was decided, so the "
         "human-verify checkpoint knows exactly what to spot-check instead of re-reading every row.",
         "",
-        "`ecotaxa_ID` is never written here, only inherited with the rest of a donor row's IDs: that "
-        "column holds a legacy crosswalk in a DIFFERENT id space from today's EcoTaxa taxon ids, so a row "
-        "with nothing to inherit leaves it blank rather than minting one. The authoritative EcoTaxa taxon "
-        "id per label lives in `planktonzilla/dataset_import/tara_pacific_classes.tsv`.",
+        _ECOTAXA_ID_NOTE,
         "",
         "## Section A — how many rows took each rule",
         "",
@@ -803,8 +839,7 @@ def write_reconciliation(decisions, path=DEFAULT_RECONCILIATION_MD) -> Path:
         "",
         f"### B1. Morphology tokens with no precedent in the master CSV ({len(new_tokens)})",
         "",
-        "These carry a `root_class`/`qualifier` decision that was reasoned from the closest analogue "
-        "rather than copied from an existing row.",
+        _B1_INTRO,
         "",
     ]
     lines.extend(f"- `{class_dir}`" for class_dir in new_tokens)
@@ -813,8 +848,7 @@ def write_reconciliation(decisions, path=DEFAULT_RECONCILIATION_MD) -> Path:
             "",
             f"### B2. Morphology tokens with no rule at all ({len(needs_rule)})",
             "",
-            "These fell through to the artefact default. A non-empty list means `MORPH_RULES` needs an "
-            "entry before the next build.",
+            _B2_INTRO,
             "",
         ]
     )
@@ -824,9 +858,7 @@ def write_reconciliation(decisions, path=DEFAULT_RECONCILIATION_MD) -> Path:
             "",
             f"### B3. Rows whose lineage departs from EcoTaxa's tree ({len(HOMONYM_NOTES)})",
             "",
-            "All three take the lineage the master CSV already records for their `proposed_label`, because "
-            "the table's invariant is one lineage per label. Two of them repair an upstream misplacement; "
-            "one inherits an issue the table already had. A test asserts these are the only three.",
+            _B3_INTRO,
             "",
         ]
     )
@@ -846,12 +878,7 @@ def write_reconciliation(decisions, path=DEFAULT_RECONCILIATION_MD) -> Path:
             "",
             "### B5. EcoTaxa's two diatom lineages",
             "",
-            "EcoTaxa carries diatoms under BOTH `Chromista>Bacillariophyta` and "
-            "`Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae`. Rows anchored on the first "
-            "(`centric`, `pennate<Bacillariophyta`, `Coscinodiscids`, `Rhizosolenids`) therefore carry "
-            "`Phylum=bacillariophyta`, while every diatom row with a genus carries the "
-            "`heterokontophyta`/`bacillariophyceae` spelling the rest of the CSV uses. Both spellings are "
-            "kept as upstream states them; no row was rewritten to hide the duality.",
+            _B5_NOTE,
             "",
             "## Section C — every derived row",
             "",
