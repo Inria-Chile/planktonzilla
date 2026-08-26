@@ -1021,6 +1021,26 @@ class DatasetImporter:
         """
         return {}
 
+    def imagefolder_is_complete(self) -> bool:
+        """Whether the imagefolder on disk holds EVERYTHING this source should import.
+
+        The gate on rebuilding: :meth:`import_dataset` prepares the imagefolder when this
+        is False, and ``generate_planktonzilla.import_and_redefine_source`` reuses it when
+        it is True. Both used to test "is the directory non-empty?" inline, which this
+        default reproduces exactly — for an archive-backed source the imagefolder is
+        written in one pass out of an already-extracted archive, so non-empty and complete
+        are the same answer.
+
+        They are NOT the same answer for a source whose imagefolder is filled
+        incrementally over hours, one network fetch per image, and can therefore be left
+        genuinely half-built by an interruption
+        (:class:`~planktonzilla.dataset_import.tara_pacific_importer.TaraPacificDatasetImporter`).
+        There, "non-empty" would silently accept a fraction of the source as the whole of
+        it — so it overrides this with a real count, and a partial imagefolder resumes
+        instead of being published as if it were finished.
+        """
+        return not is_dir_empty(self.imagefolder_dir)
+
     def download_targets(self) -> list[tuple[str, str]]:
         """What a real import of this source would have to obtain, as ``(kind, location)``.
 
@@ -1359,10 +1379,9 @@ class DatasetImporter:
             RuntimeError: If extraction failed and no raw data is available to prepare
                 the imagefolder.
         """
-        imagefolder_exists = not is_dir_empty(self.imagefolder_dir)
         raw_exists = self.raw_dir.exists() and bool(os.listdir(self.raw_dir))
 
-        need_to_build_imagefolder = not imagefolder_exists or self.force_imagefolder_preparation
+        need_to_build_imagefolder = not self.imagefolder_is_complete() or self.force_imagefolder_preparation
 
         if need_to_build_imagefolder:
             if raw_exists:

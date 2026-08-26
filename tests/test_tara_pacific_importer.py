@@ -348,6 +348,102 @@ def test_prepare_imagefolder_accepts_a_tolerated_remainder(tmp_path, monkeypatch
     importer._prepare_imagefolder()  # does not raise
 
 
+# --- Completeness: a partial imagefolder must never pass as a finished one -------------
+
+
+def _seed_images(importer, objids, class_dir="Harosa"):
+    folder = importer.imagefolder_dir / class_dir
+    folder.mkdir(parents=True, exist_ok=True)
+    for objid in objids:
+        (folder / tara_pacific_layout.image_file_name(objid)).write_bytes(b"jpeg")
+
+
+def test_expected_image_count_counts_only_the_rows_that_become_a_fetch(tmp_path):
+    """Rows with an unknown taxon or no image are skipped by the import, so they are not
+    part of what a finished imagefolder holds — or the count could never be reached."""
+    importer = _importer(tmp_path)
+    _seed_manifest(
+        importer,
+        [
+            _manifest_row(1, 5, "Harosa", "a/1.jpg"),
+            _manifest_row(2, 25828, "Copepoda<Multicrustacea", "a/2.jpg"),
+            _manifest_row(3, 999999, "Brand New Taxon", "a/3.jpg"),
+            _manifest_row(4, 5, "Harosa", None),
+        ],
+    )
+    assert importer.expected_image_count() == 2
+
+
+def test_a_partial_imagefolder_is_not_complete(tmp_path, caplog):
+    """THE BUG THIS GUARDS: an interrupted fetch leaves the folder non-empty but partial.
+
+    Inheriting the base class's "non-empty == complete" made the pipeline carry that
+    fraction into the consolidated dataset as though it were the whole deposit.
+    """
+    importer = _importer(tmp_path)
+    _seed_manifest(
+        importer,
+        [_manifest_row(objid, 5, "Harosa", f"a/{objid}.jpg") for objid in (1, 2, 3)],
+    )
+    _seed_images(importer, [1])
+
+    with caplog.at_level("WARNING"):
+        assert importer.imagefolder_is_complete() is False
+
+    # The report names both numbers, so a reader can tell a resume from a fresh import.
+    assert "holds 1 of the 3" in caplog.text
+    assert "Resuming" in caplog.text
+
+
+def test_a_full_imagefolder_is_complete(tmp_path):
+    importer = _importer(tmp_path)
+    _seed_manifest(importer, [_manifest_row(objid, 5, "Harosa", f"a/{objid}.jpg") for objid in (1, 2, 3)])
+    _seed_images(importer, [1, 2, 3])
+
+    assert importer.imagefolder_is_complete() is True
+
+
+def test_an_empty_imagefolder_is_not_complete(tmp_path):
+    importer = _importer(tmp_path)
+    _seed_manifest(importer, [_manifest_row(1, 5, "Harosa", "a/1.jpg")])
+    assert importer.imagefolder_is_complete() is False
+
+
+def test_a_tolerated_remainder_counts_as_complete(tmp_path):
+    """Vignettes permanently gone upstream must not make every future run re-walk."""
+    importer = _importer(tmp_path, max_missing=1)
+    _seed_manifest(importer, [_manifest_row(objid, 5, "Harosa", f"a/{objid}.jpg") for objid in (1, 2, 3)])
+    _seed_images(importer, [1, 2])
+
+    assert importer.imagefolder_is_complete() is True
+
+
+def test_completeness_never_raises_without_a_manifest(tmp_path):
+    """Asked before ensure_sidecars has run, the answer is "not complete", not an error."""
+    importer = _importer(tmp_path)
+    _seed_images(importer, [1])
+
+    assert importer.imagefolder_is_complete() is False
+
+
+def test_import_dataset_rebuilds_when_the_imagefolder_is_incomplete(tmp_path, monkeypatch):
+    """The same hook gates ``import_dataset``, so `pz_import_dataset` resumes too."""
+    importer = _importer(tmp_path)
+    _seed_manifest(importer, [_manifest_row(objid, 5, "Harosa", f"a/{objid}.jpg") for objid in (1, 2, 3)])
+    _seed_images(importer, [1])
+
+    prepared = []
+    monkeypatch.setattr(type(importer), "_prepare_imagefolder", lambda self: prepared.append(True))
+    monkeypatch.setattr(type(importer), "_push_to_hub", lambda self: None)
+    monkeypatch.setattr(type(importer), "cleanup", lambda self: None)
+    monkeypatch.setattr(tara_pacific_importer, "load_dataset", lambda *a, **k: "DS", raising=False)
+    monkeypatch.setattr("planktonzilla.dataset_import.dataset_importer.load_dataset", lambda *a, **k: "DS", raising=False)
+
+    importer.import_dataset()
+
+    assert prepared == [True], "a partial imagefolder must be resumed, not accepted"
+
+
 # --- The four sources -----------------------------------------------------------------
 
 

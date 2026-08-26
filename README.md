@@ -571,6 +571,11 @@ Practical consequences:
 - The vignette fetch is **resumable**: an image already on disk is skipped, so an interrupted run is
   finished by re-running it, not restarted. An import refuses to finish while more than
   `dataset_import.ecotaxa_max_missing_images` (default 0) vignettes are still missing.
+- Because that imagefolder is filled one fetch at a time, "non-empty" does **not** mean "finished" —
+  an interruption leaves it genuinely half-built. These importers therefore report completeness by
+  COUNTING the images on disk against the objects their manifest names, so `pz_planktonzilla` resumes
+  a partial imagefolder instead of carrying a fraction of the deposit into the composite as though it
+  were the whole of it. The count is logged (`holds N of the M vignette(s) its manifest names`).
 - Class folders are named from the committed `planktonzilla/dataset_import/tara_pacific_classes.tsv`
   map keyed by the EcoTaxa taxon id, **not** from the live display name — EcoTaxa renames taxa in
   place, and a renamed folder would silently repoint every `Raw_Labels` join key. A rename is

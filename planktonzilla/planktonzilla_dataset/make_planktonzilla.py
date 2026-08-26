@@ -1235,10 +1235,29 @@ def main(cfg: DictConfig) -> None:
         dropped=dropped,
     )
 
+    preflight_will_run = bool(cfg.dry_run) or cfg.check_downloads != "none"
+
+    # A `base` on disk is not read until the very END of the run — after every selected
+    # source has been imported and redefined. Verifying it is two small JSON reads and no
+    # network, so it is done up front and UNCONDITIONALLY: without this, a `base=local`
+    # pointing at a directory that does not exist bought a full multi-hour build and then
+    # raised FileNotFoundError from load_from_disk with everything discarded. Skipped only
+    # when the pre-flight below is going to make the same check, so it is reported once.
+    if base_location is not None and base_location[0] == "disk" and not preflight_will_run:
+        broken = [check for check in check_base_on_disk(base_location[1]) if not check.ok and check.blocking]
+        if broken:
+            raise RuntimeError(
+                "Nothing was built: the `base` this run would splice into is not usable, and it is only read at the "
+                "END of the build. " + " | ".join(check.detail for check in broken) + ". "
+                "Pass base=null to build only the sources named in `sources` (add allow_partial_overwrite=true if a "
+                "PARTIAL rebuild really should overwrite an existing output_dir), base=hub to splice into the "
+                "published dataset, or point base= at a directory that holds a saved dataset."
+            )
+
     # The pre-flight runs for a dry run (which is nothing else) and whenever the network
     # checks were asked for on a real run — there, refusing to start beats failing four
     # sources in. A plain run skips it entirely and behaves exactly as it always has.
-    if cfg.dry_run or cfg.check_downloads != "none":
+    if preflight_will_run:
         checks = run_preflight(
             selected=selected,
             cfg=cfg,

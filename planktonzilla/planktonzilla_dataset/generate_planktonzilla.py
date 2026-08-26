@@ -1120,9 +1120,15 @@ def import_and_redefine_source(
         logger.info(f"╰─ Removing imagefolder {imagefolder_dir} for a full re-import.")
         shutil.rmtree(imagefolder_dir, ignore_errors=True)
 
-    # Reuse the imagefolder if it already exists; otherwise build it.
-    has_content = imagefolder_dir.exists() and bool(os.listdir(imagefolder_dir))
-    if has_content:
+    # Reuse the imagefolder only if it holds EVERYTHING the source should import.
+    #
+    # This asks the importer rather than testing `os.listdir(...)` inline, and the default
+    # `imagefolder_is_complete` is exactly that inline test — so every archive-backed
+    # source decides as it always did. The difference is for a source whose imagefolder is
+    # filled one network fetch at a time (Tara Pacific): an interrupted run leaves it
+    # non-empty but PARTIAL, and "non-empty" would carry a fraction of the source into the
+    # output as though it were the whole of it. Asking lets that source resume instead.
+    if dataset_importer.imagefolder_is_complete():
         num_items = len(os.listdir(imagefolder_dir))
         logger.info(f"╰─ Using existing imagefolder with {num_items} categories in {imagefolder_dir}.")
     else:

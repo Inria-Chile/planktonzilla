@@ -864,6 +864,47 @@ def _preflight_cfg(tmp_path, overrides, job_name):
     return cfg
 
 
+def test_a_missing_base_on_disk_stops_the_run_before_any_import(monkeypatch, tmp_path):
+    """A `base` on disk is read at the END of the build; verifying it is two JSON reads.
+
+    Without this the run imported and redefined every selected source — hours, and on the
+    Tara Pacific sources a multi-million-image fetch — and only then raised
+    FileNotFoundError from `load_from_disk`, discarding all of it. The check is local and
+    free, so it runs on a plain run too, where no pre-flight does.
+    """
+    cfg = _preflight_cfg(tmp_path, ["base=local", "sources=[isiisnet]"], "test_make_missing_base")
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("nothing may be imported before the base is known to be usable")
+
+    monkeypatch.setattr(mk, "import_and_redefine_source", _boom)
+    monkeypatch.setattr(mk, "atomic_replace", lambda ds, path: None)
+
+    with pytest.raises(RuntimeError) as excinfo:
+        _drive(monkeypatch, cfg, tmp_path, mk.main)
+
+    message = str(excinfo.value)
+    assert "does not exist" in message
+    # The remedy, not just the diagnosis.
+    assert "base=null" in message and "base=hub" in message
+
+
+def test_a_usable_base_on_disk_does_not_stop_the_run(monkeypatch, tmp_path):
+    """The guard is about an unusable base, not about having one at all."""
+    output_dir = tmp_path / "planktonzilla-17M"
+    Dataset.from_dict({"x": [1]}).save_to_disk(str(output_dir))
+
+    cfg = _preflight_cfg(tmp_path, ["base=local", "sources=[isiisnet]"], "test_make_present_base")
+    monkeypatch.setattr(mk, "atomic_replace", lambda ds, path: None)
+    monkeypatch.setattr(mk, "load_base", lambda location: Dataset.from_dict({"x": [1]}))
+    monkeypatch.setattr(mk, "ensure_license_columns", lambda ds, where: ds)
+    monkeypatch.setattr(mk, "ensure_custom_metadata", lambda ds, where: ds)
+    monkeypatch.setattr(mk, "assert_consolidated_schema", lambda ds, where, reference=None: None)
+    monkeypatch.setattr(mk, "assemble", lambda **kwargs: Dataset.from_dict({"x": [1]}))
+
+    _drive(monkeypatch, cfg, tmp_path, mk.main)
+
+
 def test_a_plain_run_never_pre_flights(monkeypatch, tmp_path):
     """check_downloads=none without dry_run leaves the run exactly as it always was.
 

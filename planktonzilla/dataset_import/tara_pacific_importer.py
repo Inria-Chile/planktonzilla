@@ -41,7 +41,7 @@ from pathlib import Path
 import requests
 
 from planktonzilla.dataset_import import ecotaxa_client, tara_pacific_layout
-from planktonzilla.dataset_import.dataset_importer import DatasetImporter
+from planktonzilla.dataset_import.dataset_importer import DatasetImporter, is_dir_empty
 from planktonzilla.utils.logger import get_pylogger
 
 logger = get_pylogger(__name__)
@@ -201,6 +201,55 @@ class TaraPacificDatasetImporter(DatasetImporter):
                 )
             rows.extend(ecotaxa_client.read_manifest(path))
         return rows
+
+    def expected_image_count(self) -> int:
+        """How many vignettes a finished imagefolder holds, per the manifest.
+
+        Counts exactly the rows :meth:`_prepare_imagefolder` turns into a fetch: an object
+        whose taxon is in the committed class map AND that carries an image. Rows it skips
+        are excluded, so a complete import really does reach this number.
+        """
+        rows = self.load_manifest()
+        return sum(1 for row in rows if self.class_map.get(row["classif_id"]) is not None and row["img_file_name"])
+
+    def imagefolder_is_complete(self) -> bool:
+        """True only when the imagefolder holds every vignette the manifest names.
+
+        The base class answers "is the directory non-empty?", which is the right question
+        for a source whose imagefolder is written in one pass out of an extracted archive.
+        It is the WRONG question here. This imagefolder is filled one HTTP fetch at a time
+        over hours, so an interrupted run leaves it non-empty and PARTIAL — and under the
+        inherited answer the pipeline reused that fraction as though it were the finished
+        source, carrying it into the consolidated dataset (and, with ``push_to_hub``, onto
+        the Hub) labelled as the whole deposit.
+
+        So the question is asked with a count instead. Both sides are cheap relative to the
+        fetch they gate: the manifest is a local TSV read, and the images are a directory
+        walk. ``ecotaxa_max_missing_images`` is honoured, so vignettes that are permanently
+        gone upstream do not make every future run re-walk the whole source.
+
+        Never raises: a missing manifest (the state before ``ensure_sidecars`` has run)
+        means "not complete", which is the answer that makes the caller build.
+        """
+        if is_dir_empty(self.imagefolder_dir):
+            return False
+        try:
+            expected = self.expected_image_count()
+        except (FileNotFoundError, ValueError) as e:
+            logger.info(f"«{self.SOURCE_NAME}» cannot count its manifest yet ({type(e).__name__}); treating as incomplete.")
+            return False
+
+        present = sum(1 for _ in self.imagefolder_dir.rglob(f"*{tara_pacific_layout.IMAGE_SUFFIX}"))
+        if present + self.ecotaxa_max_missing_images >= expected:
+            return True
+
+        logger.warning(
+            f"«{self.SOURCE_NAME}» imagefolder «{self.imagefolder_dir}» holds {present} of the {expected} vignette(s) "
+            f"its manifest names — an earlier run was interrupted. Resuming the fetch; nothing already on disk is "
+            "re-downloaded. Raise dataset_import.ecotaxa_max_missing_images if the remainder is permanently gone "
+            "upstream."
+        )
+        return False
 
     def _prepare_imagefolder(self):
         """Fetch one vignette per manifest row into ``<class dir>/<objid>.jpg``.

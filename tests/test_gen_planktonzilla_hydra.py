@@ -32,6 +32,7 @@ root = pyrootutils.setup_root(
 )
 
 
+import os
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -376,11 +377,21 @@ _SEAM_ENTRY = {"name": "src", "import_name": "src", "cleanup": False, "redefiner
 class _FakeImporter:
     """Records the order of ensure_sidecars / import_dataset; import creates one class dir."""
 
-    def __init__(self, imagefolder, sidecars):
+    def __init__(self, imagefolder, sidecars, complete=None):
         self.imagefolder_dir = imagefolder
         self.sidecars = sidecars
         self.calls = []
         self.folder_existed_at_ensure = None
+        # None -> answer like DatasetImporter's default (non-empty == complete). A bool
+        # forces the answer, which is how a source with an incrementally-built imagefolder
+        # reports a PARTIAL one.
+        self._complete = complete
+
+    def imagefolder_is_complete(self):
+        if self._complete is not None:
+            return self._complete
+        folder = Path(self.imagefolder_dir)
+        return folder.exists() and bool(os.listdir(folder))
 
     def ensure_sidecars(self):
         self.calls.append("ensure_sidecars")
@@ -440,6 +451,36 @@ def test_import_and_redefine_source_ensures_sidecars_before_the_archive_and_the_
     _seam(monkeypatch, tmp_path, importer, refresh="redownload")
     assert importer.calls == ["ensure_sidecars", "import_dataset"]
     assert importer.folder_existed_at_ensure is True, "the folder is removed only after the sidecars are in hand"
+
+
+def test_import_and_redefine_source_rebuilds_a_partial_imagefolder(monkeypatch, tmp_path):
+    """A NON-EMPTY imagefolder is not automatically a finished one.
+
+    The reuse decision asks the importer instead of testing `os.listdir` inline. A source
+    whose imagefolder is filled one network fetch at a time (Tara Pacific) can be left
+    genuinely half-built by an interruption; reusing that would carry a fraction of the
+    source into the consolidated dataset as though it were the whole deposit.
+    """
+    imagefolder = tmp_path / "src_imagefolder"
+    (imagefolder / "cls").mkdir(parents=True)
+    (imagefolder / "cls" / "img.png").write_bytes(b"x")
+
+    importer = _FakeImporter(imagefolder, {}, complete=False)
+    _seam(monkeypatch, tmp_path, importer)
+
+    assert importer.calls == ["ensure_sidecars", "import_dataset"]
+
+
+def test_import_and_redefine_source_reuses_a_complete_imagefolder(monkeypatch, tmp_path):
+    """...and a source that reports itself complete is still reused, import untouched."""
+    imagefolder = tmp_path / "src_imagefolder"
+    (imagefolder / "cls").mkdir(parents=True)
+    (imagefolder / "cls" / "img.png").write_bytes(b"x")
+
+    importer = _FakeImporter(imagefolder, {}, complete=True)
+    _seam(monkeypatch, tmp_path, importer)
+
+    assert importer.calls == ["ensure_sidecars"]
 
 
 def test_import_and_redefine_source_accepts_an_instantiated_importer(monkeypatch, tmp_path):
