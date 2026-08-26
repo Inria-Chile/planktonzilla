@@ -12,6 +12,8 @@ URL scheme, so ``_download_single`` takes it for a relative path and joins it on
 source. Only whoi declares a list, so every other source worked and this stayed hidden.
 """
 
+from pathlib import Path
+
 import hydra
 import pytest
 from hydra import initialize_config_dir
@@ -20,7 +22,9 @@ from omegaconf import ListConfig
 from planktonzilla.dataset_import.dataset_importer import _as_uri_list
 from planktonzilla.planktonzilla_dataset.generate_planktonzilla import build_overrides
 
-CONFIG_DIR = "/Users/luismarti/test/planktonzilla/configs"
+# Resolved from this file — never from the cwd or a developer's checkout path:
+# initialize_config_dir wants an absolute path, and tests/../configs is where it lives.
+CONFIG_DIR = str(Path(__file__).resolve().parents[1] / "configs")
 
 
 def _importer(stem, tmp_path):

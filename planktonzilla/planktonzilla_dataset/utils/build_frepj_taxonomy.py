@@ -474,11 +474,11 @@ def render_report(parsed: list[Parsed]) -> str:
         if p.reused_genus is not None and p.reused_genus not in overlaps:
             overlaps[p.reused_genus] = p
 
-    overlap_lines = [
+    overlap_header = (
         "| FREPJ genus | Reused source(s) | Reused lineage (Kingdom/Phylum/Class/Order/Family) "
-        "| External IDs to copy verbatim in Plan 18-02 |",
-        "| --- | --- | --- | --- |",
-    ]
+        "| External IDs to copy verbatim in Plan 18-02 |"
+    )
+    overlap_lines = [overlap_header, "| --- | --- | --- | --- |"]
     for gen in sorted(overlaps):
         p = overlaps[gen]
         lineage = f"{p.kingdom}/{p.phylum}/{p.class_}/{p.order}/{p.family}"
