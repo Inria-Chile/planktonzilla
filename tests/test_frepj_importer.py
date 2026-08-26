@@ -32,7 +32,6 @@ from PIL import Image
 
 import planktonzilla.dataset_import.dataset_importer as dataset_importer
 from planktonzilla.dataset_import import frepj_layout
-from planktonzilla.dataset_import.dataset_importer import is_valid_image_file
 from planktonzilla.dataset_import.frepj_importer import FREPJDatasetImporter
 
 # Real comma-preserving FREPJ Class,Order,Family,Genus,Species class-dir names.
@@ -240,7 +239,7 @@ def test_layout_is_deterministic(tmp_path, monkeypatch):
 
 def test_corrupt_image_is_left_for_integrity_filter(tmp_path):
     """IMP-03: ``_prepare_imagefolder`` never raises on a corrupt file; it leaves it in
-    place so the base class's ``is_valid_image_file`` integrity filter can drop it."""
+    place so the base class's ``dataset_importer.is_valid_image_file`` integrity filter can drop it."""
     extracted = _build_extracted(tmp_path)
     bad = extracted / frepj_layout.ARCHIVE_ROOT / "images_40" / TAXON_B / "bad.jpg"
     bad.write_bytes(b"not a real image")
@@ -252,9 +251,9 @@ def test_corrupt_image_is_left_for_integrity_filter(tmp_path):
     imagefolder_dir = imp.imagefolder_dir
     # The corrupt file was copied+kept but the integrity gate would reject it.
     assert (imagefolder_dir / TAXON_B / "40_bad.jpg").exists()
-    assert is_valid_image_file(imagefolder_dir / TAXON_B / "40_bad.jpg") is False
+    assert dataset_importer.is_valid_image_file(imagefolder_dir / TAXON_B / "40_bad.jpg") is False
     # A valid neighbor still passes the integrity gate.
-    assert is_valid_image_file(imagefolder_dir / TAXON_B / "40_1.jpg") is True
+    assert dataset_importer.is_valid_image_file(imagefolder_dir / TAXON_B / "40_1.jpg") is True
 
 
 def test_decompression_bomb_header_is_left_for_integrity_filter(tmp_path):
@@ -264,7 +263,7 @@ def test_decompression_bomb_header_is_left_for_integrity_filter(tmp_path):
     propagate this (or any decode failure); it must log and leave the file in place for
     the base class's ``check_image_file_integrity`` gate, exactly like any other
     undecodable file. (Note: unlike the plain-corrupt-bytes case, we don't additionally
-    assert ``is_valid_image_file() is False`` here -- that base-class helper has its own
+    assert ``dataset_importer.is_valid_image_file() is False`` here -- that base-class helper has its own
     unrelated, out-of-Phase-16-scope gap on this exact exception type; asserting only what
     this phase owns keeps the test honest about what it covers.)"""
     extracted = _build_extracted(tmp_path)
@@ -279,7 +278,7 @@ def test_decompression_bomb_header_is_left_for_integrity_filter(tmp_path):
     # The malformed file was copied+kept, untouched, for the integrity filter to inspect.
     assert (imagefolder_dir / TAXON_B / "40_bomb.jpg").exists()
     # A valid neighbor was still normalized/kept correctly.
-    assert is_valid_image_file(imagefolder_dir / TAXON_B / "40_1.jpg") is True
+    assert dataset_importer.is_valid_image_file(imagefolder_dir / TAXON_B / "40_1.jpg") is True
 
 
 def test_integrity_removal_loop_removes_corrupt_end_to_end(tmp_path, monkeypatch):
