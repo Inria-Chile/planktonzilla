@@ -1,0 +1,35 @@
+defaults:
+  - default.yaml
+
+_target_: planktonzilla.dataset_import.frepj_importer.FREPJDatasetImporter
+hf_dataset_name: frepj
+push_to_hub: false
+check_image_file_integrity: true
+
+human_readable_name: "FREPJ-Z: Freshwater Plankton in Japanese Lakes and Reservoirs (I. Zooplankton)"
+license: "cc-by-4.0"
+source_url: "https://jstagedata.jst.go.jp/articles/dataset/26891563"
+download_uris: "https://ndownloader.figshare.com/files/48928918"
+description: |
+  FREPJ-Z: high-resolution microscopic images of freshwater zooplankton from Japanese
+  lakes and reservoirs, organized into 229 taxon classes. Two magnifications (40x and
+  100x) are merged into one class per taxon via magnification-prefixed filenames, and
+  every image is normalized to RGB by decoded content. Released under CC BY 4.0.
+citation_apa: |
+  Otake, Y., Osone, A., Makino, W., Ito, K., Aoki, T., Miura, K., Hayakawa, K.,
+  Yoshida, T., Ichise, S., Tuji, A., & Urabe, J. (2024).
+  High-resolution Microscopic Image Dataset of Freshwater Plankton in Japanese Lakes
+  and Reservoirs (FREPJ): I. Zooplankton.
+  Bulletin of the National Museum of Nature and Science, Series B, 50(4), 159-164.
+  https://doi.org/10.50826/bnmnsbot.50.4_159
+citation_bibtex: |
+  @article{dataset:frepj,
+    title   = {High-resolution Microscopic Image Dataset of Freshwater Plankton
+  in Japanese Lakes and Reservoirs (FREPJ): I. Zooplankton},
+    author  = {Otake, Yurie and Osone, Aoi and Makino, Wataru and Ito, Koichi
+  and Aoki, Takafumi and Miura, Kanta and Hayakawa, Kazuhide and Yoshida, Takehito
+  and Ichise, Satoshi and Tuji, Akihiro and Urabe, Jotaro},
+    journal = {Bulletin of the National Museum of Nature and Science, Series B},
+    volume  = {50}, number = {4}, pages = {159--164}, year = {2024},
+    doi     = {10.50826/bnmnsbot.50.4_159}
+  }

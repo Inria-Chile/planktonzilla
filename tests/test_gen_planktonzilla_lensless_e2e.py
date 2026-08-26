@@ -204,3 +204,7 @@ def test_lensless_only_e2e_generation_is_offline_and_pins_behavior(monkeypatch, 
     for col in metadata_cols:
         assert col in ds.column_names
         assert all(row[col] is None for row in rows)
+    # ... while custom_metadata is the EMPTY JSON object — never null — for a source with
+    # nothing of its own to add (constants.EMPTY_CUSTOM_METADATA).
+    assert constants.CUSTOM_METADATA_COL in ds.column_names
+    assert all(row[constants.CUSTOM_METADATA_COL] == constants.EMPTY_CUSTOM_METADATA for row in rows)

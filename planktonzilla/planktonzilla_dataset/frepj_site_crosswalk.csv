@@ -1,0 +1,84 @@
+site_token,resolved_site,Latitude,Longitude,method,n_images
+(baiyou),"",,,null,201
+A pond in Toyama,A pond in Toyama,36.694,137.07,trivial,240
+Akiu Natural Park,Akiu Natural Park,38.22990968,140.710955,trivial,142
+adachimonuma,Lake Adachi,38.258,140.818,override,2666
+ahadam,"",,,null,500
+aio,Aiofutajima pond,34.045,131.418,override,954
+akanko,Lake Akan,43.455000000000005,144.11,override,866
+akigawadam,Akigawa Dam,35.42534327,137.4318704,trivial,2472
+arakawadam,"",,,null,34
+asahiyama,Asahiyama Park,38.11497719,140.8513749,override,20
+ashinoko,Lake Ashino,35.2040435,139.01898275,override,246
+baiyou,"",,,null,23
+biwako,Lake Biwa,34.973,135.907,override,10017
+biwako_littoral,Lake Biwa littoral area,35.026,135.868762,override,13
+fukujidam,"",,,null,25
+funakoshiyama,"",,,null,201
+fungawadam,Fukugawa Dam,26.74170526,128.2796823,fuzzy,79
+furuichi,Furuichi-Oike,35.391,133.339,override,162
+furukawa,Furukawa,38.57509879,140.9570911,trivial,5
+furutsuzumi,Furutsutsumi (Kiyotake),31.853,131.37,override,382
+haidukadam,Haiduka Dam,34.78123481,132.9889517,trivial,1052
+hajidam,Haji Dam,34.6445612,132.6210308,trivial,6469
+hasudam,Hasu Dam,34.37729814,136.2088081,trivial,205
+hatayaohnuma,Lake Hataya-Onuma,38.245,140.204,override,4826
+hinachidam,Hinachi Dam,34.61453921,136.1551973,trivial,447
+hitokuradam,"",,,null,331
+imori,Imori Pond,35.15796734,139.0264613,override,105
+inba_funato,"",,,null,631
+inba_fusha,"",,,null,120
+iwaodam,"",,,null,6062
+iwaonaidam,Iwawonai Dam,44.11569179714286,142.70763558571429,fuzzy,2353
+kakegawa,A pond in Kakegawa,34.766,138.028,override,340
+kamahusadam,Kamafusa Dam,38.20350303,140.6970296,fuzzy,434
+kannadam,Kanna Dam,26.48243403,127.9495442,trivial,913
+kanoko,Kanoko Dam,43.60767432,143.3886166,override,1740
+kasenumapark,Kasenuma Park,38.309963,140.982023,trivial,49
+kato,Oike (Kato),34.899,134.945,override,135
+kejonuma,A pond near Lake Kejo,38.627,140.972,override,432
+kindam,"",,,null,1900
+kitanomaru,Kitanomaru Park,35.69080738,139.7507104,override,40
+kitaura,Kitaura,36.031,140.558,trivial,2017
+kizakiko,Lake Kizaki,36.559,137.838,override,313
+komatsujima,Komatsujima Park,38.28522392,140.8877891,override,16
+korigaike,Pond Korigaike,35.0866309,139.0304439,override,104
+kuzuryu,Kuzuryu Dam,35.89624506,136.6880856,override,43
+managawadam,Managawa Dam,35.91836656,136.5421803,trivial,1924
+miharudam,Miharu Dam,37.406176900000006,140.4806516,trivial,1957
+mikata,Lake Mikata,35.56001411,135.8934894,override,12
+misogawadam,Misokawa Dam,35.97735277,137.7703107,fuzzy,1211
+moriyoshizandam,Moriyoshizan Dam,40.03531332,140.4590625,trivial,2432
+muroodam,Muroo Dam,34.55572189,136.0069412,trivial,736
+nagashimadam,Nagashima Dam,35.16686999,138.155679,trivial,397
+nibutanidam,"",,,null,60
+nukuidam,Nukui Dam,34.63495425,132.2996869,trivial,55
+nunomedam,Nunome Dam,34.70038247,135.97817196666668,trivial,227
+obaradam,Obara Dam,35.22491601,132.9512613,trivial,464
+ohhori,Ohori Pond,33.588,130.374,override,884
+ohtsutsumi,Ohtsutsumi (Sendai),38.34,140.854,override,982
+ojagaike,Ojaga Pond,35.563,140.332,override,63
+oji,Oji Park,35.02281913,135.8530249,override,17
+oododam,"",,,null,790
+origawa,Origawa Dam,35.328565,137.3028279,override,12372
+oshioko,Oshioko,36.132,138.523,trivial,1809
+oyatsu,Oyatsutsutsumi,38.26555952,140.805425,override,698
+rumoidam,Rumoi Dam,43.83564987,141.7635841,trivial,1670
+sakurajo,Sakurajo_2,35.7232383,140.215272,fuzzy,65
+sanuma,Lake Sanuma,36.19,139.952,override,875
+shintoyonedam,Shintoyone Dam,35.12598952,137.7604162,trivial,150
+shitsumidam,Shidumi Dam,35.17033334,132.6797312,fuzzy,102
+shourenjidam,Shorenji Dam,34.60448235,136.1199466,fuzzy,16
+sugesawadam,Sugasawa Dam,35.20558987,133.3143814,fuzzy,710
+suigetsuko,Lake Suigetsu,35.58509202,135.8830453,override,142
+surikamigawadam,"",,,null,422
+syakujii,"",,,null,199
+takayamadam,Takayama Dam,34.75315443,136.01107834285716,trivial,301
+tobiike,Tobiike,33.73,130.523,trivial,674
+tomatadam,Tomada Dam,35.12733662,133.8938966,fuzzy,327
+tsurudadam,Tsuruta Dam,31.98888208,130.4938046,fuzzy,1117
+tsurugajo,"",,,null,65
+tsuruike,Tsuruike,34.836,134.888,trivial,253
+tsuruoka,"",,,null,39
+wakayamakuroiwa,A ponds in Kuroiwa,34.181,135.279,override,36
+yokoyamadam,Yokoyama Dam,35.593261,136.45524815,trivial,4102

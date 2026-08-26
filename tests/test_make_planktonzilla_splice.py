@@ -740,3 +740,59 @@ def test_migrating_a_licenseless_base_while_refreshing_a_source(offline, two_sou
     assert {r["license"] for r in rows if r["dataset"] == "isiisnet"} == {"cc-by-nc-4.0"}
     assert {r["license"] for r in rows if r["dataset"] == "lensless"} == {"cc-by-4.0"}
     assert all(r["license_url"] for r in rows)
+
+
+def test_a_base_predating_custom_metadata_is_filled_not_rejected(offline, two_source_env, tmp_path):
+    """`base=<v1.1-shaped> sources=[]` fills custom_metadata with "{}" instead of failing on it.
+
+    Every source published before v1.2 had nothing to put in custom_metadata, so the
+    literal empty object is the same value a from-scratch rebuild writes for them —
+    derivation, not invention — and the migration stays expressible with this command.
+    """
+    data_dir, csv_path = two_source_env
+    common = [f"taxonomy_csv_path={csv_path}", f"data_dir={data_dir}", "num_proc=1"]
+
+    cfg = _compose([*common, f"output_dir={tmp_path / 'built'}"], "test_cmmig_build")
+    _restrict_registry(cfg, ["isiisnet", "lensless"])
+    _run(cfg)
+
+    frozen = _load(tmp_path / "built").remove_columns([constants.CUSTOM_METADATA_COL])
+    frozen.save_to_disk(str(tmp_path / "frozen"))
+    assert constants.CUSTOM_METADATA_COL not in frozen.column_names
+
+    cfg2 = _compose(
+        [*common, f"output_dir={tmp_path / 'migrated'}", "sources=[]", f"base={tmp_path / 'frozen'}", "sync_taxonomy=false"],
+        "test_cmmig",
+    )
+    _restrict_registry(cfg2, ["isiisnet", "lensless"])
+    _run(cfg2)
+
+    out = _load(tmp_path / "migrated")
+    assert set(out.column_names) == set(constants.CONSOLIDATED_COLUMNS)
+    assert len(out) == len(frozen), "a strictly additive run must not change the row count"
+    assert out.features[constants.CUSTOM_METADATA_COL].dtype == "string"
+    assert set(out[constants.CUSTOM_METADATA_COL]) == {constants.EMPTY_CUSTOM_METADATA}
+
+
+def test_filling_custom_metadata_on_a_base_while_refreshing_a_source(offline, two_source_env, tmp_path):
+    """On the splice path the filled base rows and the rebuilt rows carry the same "{}"."""
+    data_dir, csv_path = two_source_env
+    common = [f"taxonomy_csv_path={csv_path}", f"data_dir={data_dir}", "num_proc=1"]
+
+    cfg = _compose([*common, f"output_dir={tmp_path / 'built'}"], "test_cmmig2_build")
+    _restrict_registry(cfg, ["isiisnet", "lensless"])
+    _run(cfg)
+
+    frozen = _load(tmp_path / "built").remove_columns([constants.CUSTOM_METADATA_COL])
+    frozen.save_to_disk(str(tmp_path / "frozen"))
+
+    cfg2 = _compose(
+        [*common, f"output_dir={tmp_path / 'out'}", "sources=[lensless]", f"base={tmp_path / 'frozen'}", "refresh=rebuild"],
+        "test_cmmig2",
+    )
+    _restrict_registry(cfg2, ["isiisnet", "lensless"])
+    _run(cfg2)
+
+    rows = list(_load(tmp_path / "out"))
+    assert [r["dataset"] for r in rows] == ["isiisnet"] * 3 + ["lensless"] * 5
+    assert {r[constants.CUSTOM_METADATA_COL] for r in rows} == {constants.EMPTY_CUSTOM_METADATA}

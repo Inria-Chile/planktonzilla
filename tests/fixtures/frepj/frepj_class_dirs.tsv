@@ -1,0 +1,230 @@
+class_dir	in_40x	in_100x	n_40x	n_100x	n_total
+Arachnida,Trombidiformes,Hydrachnidia,Ge._unk,Ge._unk	1	0	1	0	1
+Branchiopoda,Diplostraca,Bosminidae,Bosmina,Bosmina fatalis	1	1	1688	65	1753
+Branchiopoda,Diplostraca,Bosminidae,Bosmina,Bosmina freyi	1	0	211	0	211
+Branchiopoda,Diplostraca,Bosminidae,Bosmina,Bosmina longirostris	1	1	7310	1493	8803
+Branchiopoda,Diplostraca,Bosminidae,Bosmina,Bosmina tanakai	1	1	970	28	998
+Branchiopoda,Diplostraca,Bosminidae,Bosmina,Sp._unk	1	1	494	114	608
+Branchiopoda,Diplostraca,Bosminidae,Bosminopsis,Bosminopsis deitersi	1	1	849	265	1114
+Branchiopoda,Diplostraca,Chydoridae,Alona,Alona affinis	1	1	9	3	12
+Branchiopoda,Diplostraca,Chydoridae,Alona,Alona costata	1	1	28	24	52
+Branchiopoda,Diplostraca,Chydoridae,Alona,Alona guttata	1	0	1	0	1
+Branchiopoda,Diplostraca,Chydoridae,Alona,Alona intermedia	0	1	0	6	6
+Branchiopoda,Diplostraca,Chydoridae,Alona,Sp._unk	1	1	307	2	309
+Branchiopoda,Diplostraca,Chydoridae,Alonella,Alonella excisa	1	1	2	1	3
+Branchiopoda,Diplostraca,Chydoridae,Camptocercus,Camptocercus australis	1	1	3	1	4
+Branchiopoda,Diplostraca,Chydoridae,Camptocercus,Sp._unk	1	0	2	0	2
+Branchiopoda,Diplostraca,Chydoridae,Chydorus,Chydorus brevilabris	1	1	66	40	106
+Branchiopoda,Diplostraca,Chydoridae,Chydorus,Chydorus sphaericus	1	1	232	6	238
+Branchiopoda,Diplostraca,Chydoridae,Chydorus,Sp._unk	1	1	14	3	17
+Branchiopoda,Diplostraca,Chydoridae,Disparalona,Disparalona rostrata	1	1	2	3	5
+Branchiopoda,Diplostraca,Chydoridae,Ge._unk,Ge._unk	1	0	4	0	4
+Branchiopoda,Diplostraca,Chydoridae,Leydigia,Leydigia cliata	1	0	1	0	1
+Branchiopoda,Diplostraca,Chydoridae,Leydigia,Leydigia leydigi	1	1	12	7	19
+Branchiopoda,Diplostraca,Chydoridae,Monospilus,Monospilus dispar	1	1	1	1	2
+Branchiopoda,Diplostraca,Chydoridae,Pleuroxus,Pleuroxus hamulatus	0	1	0	4	4
+Branchiopoda,Diplostraca,Chydoridae,Pleuroxus,Pleuroxus laevis	1	1	4	3	7
+Branchiopoda,Diplostraca,Daphniida,Simocephalus,Simocephalus serrulatus	1	0	13	0	13
+Branchiopoda,Diplostraca,Daphniida,Simocephalus,Simocephalus vetulus	1	1	1	1	2
+Branchiopoda,Diplostraca,Daphniidae,Ceriodaphnia,Ceriodaphnia cornuta	1	1	114	23	137
+Branchiopoda,Diplostraca,Daphniidae,Ceriodaphnia,Ceriodaphnia dubia	1	1	33	11	44
+Branchiopoda,Diplostraca,Daphniidae,Ceriodaphnia,Ceriodaphnia pulchella	1	1	289	8	297
+Branchiopoda,Diplostraca,Daphniidae,Ceriodaphnia,Ceriodaphnia sp2	1	1	462	275	737
+Branchiopoda,Diplostraca,Daphniidae,Ceriodaphnia,Sp._unk	1	1	196	10	206
+Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnai galeata or daphnia dentifera	1	1	28	12	40
+Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia ambigua	1	1	445	65	510
+Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia cristata	1	0	46	0	46
+Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia dentifera	0	1	0	12	12
+Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia galeata	1	1	1256	383	1639
+Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia longiremis	1	0	43	0	43
+Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia mitsukuri	1	1	49	12	61
+Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia pulex	1	0	155	0	155
+Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia tanakai	1	0	13	0	13
+Branchiopoda,Diplostraca,Daphniidae,Daphnia,Sp._unk	1	1	269	5	274
+Branchiopoda,Diplostraca,Daphniidae,Scapholeberis,Scapholeberis smirnovi	1	1	42	9	51
+Branchiopoda,Diplostraca,Holopediidae,Holopedium,Holopedium gibberum	1	1	214	7	221
+Branchiopoda,Diplostraca,Leptodoridae,Leptodora,Leptodora kindtii	1	0	19	0	19
+Branchiopoda,Diplostraca,Macrothricidae,Macrothrix,Sp._unk	1	1	2	1	3
+Branchiopoda,Diplostraca,Moinidae,Moina,Moina affinis	1	1	14	2	16
+Branchiopoda,Diplostraca,Moinidae,Moina,Moina micrura jpn1	1	1	890	13	903
+Branchiopoda,Diplostraca,Moinidae,Moina,Moina micrura jpn2	1	0	23	0	23
+Branchiopoda,Diplostraca,Moinidae,Moina,Moina sp	0	1	0	5	5
+Branchiopoda,Diplostraca,Moinidae,Moina,Sp._unk	1	0	7	0	7
+Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma brachyurum	1	1	8	7	15
+Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma cf. amurensis	1	0	187	0	187
+Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma dubium	1	1	708	84	792
+Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma macrophthalma	1	1	60	5	65
+Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma nipponica	1	1	3	10	13
+Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma orientalis	1	1	538	144	682
+Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Sp._unk	1	1	131	14	145
+Branchiopoda,Diplostraca,Sididae,Sida,Sp._unk	1	0	12	0	12
+Branchiopoda,Or._unk,Or._unk,Or._unk,Or._unk	1	0	3	0	3
+Copepoda,Calanoida,Centropagidae,Sinocalanus,Sinocalanus tenellus	1	1	170	2	172
+Copepoda,Calanoida,Diaptomidae,Acanthodiaptomus,Acanthodiaptomus pacificus	1	1	198	2	200
+Copepoda,Calanoida,Diaptomidae,Eodiaptomus,Eodiaptomus japonicus	1	1	1133	274	1407
+Copepoda,Calanoida,Diaptomidae,Heliodiaptomus,Heliodiaptomus kikuchii	1	0	86	0	86
+Copepoda,Calanoida,Diaptomidae,Heliodiaptomus,Heliodiaptomus nipponicus	1	0	172	0	172
+Copepoda,Calanoida,Diaptomidae,Neodiaptomus,Neodiaptomus schmackeri	1	0	151	0	151
+Copepoda,Calanoida,Diaptomidae,Neutrodiaptomus,Neutrodiaptomus formosus	1	0	176	0	176
+Copepoda,Calanoida,Diaptomidae,Sinodiaptomus,Sinodiaptomus sarsi	1	0	214	0	214
+Copepoda,Calanoida,Diaptomidae,Sinodiaptomus,Sinodiaptomus valkano	1	1	160	1	161
+Copepoda,Calanoida,Fa._unk,Fa._unk,Fa._unk	0	1	0	2	2
+Copepoda,Calanoida,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage	1	1	1647	401	2048
+Copepoda,Calanoida,Temoridae,Eurytemora,Eurytemora affinis	1	0	14	0	14
+Copepoda,Cyclopoida,Cyclopidae,Acanthocyclops,Sp._unk	0	1	0	1	1
+Copepoda,Cyclopoida,Cyclopidae,Cyclops,Cyclops kikuchii	1	1	264	4	268
+Copepoda,Cyclopoida,Cyclopidae,Cyclops,Cyclops vicinus	1	1	222	1	223
+Copepoda,Cyclopoida,Cyclopidae,Cyclops,Sp._unk	1	1	56	13	69
+Copepoda,Cyclopoida,Cyclopidae,Diacyclops,Diacyclops biscuspidatus	1	1	18	2	20
+Copepoda,Cyclopoida,Cyclopidae,Diacyclops,Sp._unk	1	1	71	20	91
+Copepoda,Cyclopoida,Cyclopidae,Eucyclops,Sp._unk	1	0	17	0	17
+Copepoda,Cyclopoida,Cyclopidae,Ge._unk,Ge._unk	1	1	9	2	11
+Copepoda,Cyclopoida,Cyclopidae,Macrocyclops,Sp._unk	1	0	3	0	3
+Copepoda,Cyclopoida,Cyclopidae,Megacyclops,Megacyclops viridis	1	0	2	0	2
+Copepoda,Cyclopoida,Cyclopidae,Mesocyclops,Mesocyclops dissimilis	1	1	98	12	110
+Copepoda,Cyclopoida,Cyclopidae,Mesocyclops,Sp._unk	1	1	71	51	122
+Copepoda,Cyclopoida,Cyclopidae,Microcyclops,Sp._unk	0	1	0	1	1
+Copepoda,Cyclopoida,Cyclopidae,Thermocyclops,Sp._unk	1	0	11	0	11
+Copepoda,Cyclopoida,Cyclopidae,Thermocyclops,Thermocyclops crassus	1	1	277	60	337
+Copepoda,Cyclopoida,Cyclopidae,Thermocyclops,Thermocyclops taihokuensis	1	1	364	149	513
+Copepoda,Cyclopoida,Cyclopidae,Tropocyclops,Sp._unk	1	0	15	0	15
+Copepoda,Cyclopoida,Ergasilidae,Ergasilus,Sp._unk	1	1	60	1	61
+Copepoda,Cyclopoida,Ergasilidae,Ergasilus,Sp._unk_copepodid_stage	1	1	22	1	23
+Copepoda,Cyclopoida,Fa._unk,Fa._unk,Fa._unk	1	1	45	9	54
+Copepoda,Cyclopoida,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage	1	1	3047	969	4016
+Copepoda,Cyclopoida,Oithonidae,Oithona,Sp._unk_naupliar_stage	0	1	0	5	5
+Copepoda,Harpacticoida,Fa._unk,Fa._unk,Fa._unk	0	1	0	1	1
+Copepoda,Harpacticoida,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage	1	1	6	1	7
+Copepoda,Or._unk_naupliar_stage,Or._unk_naupliar_stage,Or._unk_naupliar_stage,Or._unk_naupliar_stage	1	1	8035	2459	10494
+Dinophyceae,Gonyaulacales,Ceratiaceae,Ceratium,Ceratium hirundinella	1	1	677	47	724
+Eurotatoria,Bdelloidea,Fa._unk,Fa._unk,Fa._unk	1	1	14	51	65
+Eurotatoria,Bdelloidea,Habrotrochidae,Ge._unk,Ge._unk	0	1	0	15	15
+Eurotatoria,Bdelloidea,Philodinidae,Dissotrocha,Sp._unk	0	1	0	1	1
+Eurotatoria,Bdelloidea,Philodinidae,Ge._unk,Ge._unk	1	1	23	16	39
+Eurotatoria,Bdelloidea,Philodinidae,Rotaria,Rotaria neptunia	0	1	0	1	1
+Eurotatoria,Collothecacea,Collothecidae,Collotheca,Sp._unk	1	1	19	86	105
+Eurotatoria,Flosculariaceae,Conochilidae,Conochiloides,Conochiloides dossuarius	1	0	1	0	1
+Eurotatoria,Flosculariaceae,Conochilidae,Conochiloides,Sp._unk	1	1	60	93	153
+Eurotatoria,Flosculariaceae,Conochilidae,Conochilus,Conochilus unicornis	0	1	0	60	60
+Eurotatoria,Flosculariaceae,Conochilidae,Conochilus,Sp._unk	1	1	1059	905	1964
+Eurotatoria,Flosculariaceae,Flosculariidae,Ge._unk,Ge._unk	0	1	0	1	1
+Eurotatoria,Flosculariaceae,Flosculariidae,Lacinularia,Lacinularia flosculosa	1	1	50	69	119
+Eurotatoria,Flosculariaceae,Hexarthridae,Hexarthra,Sp._unk	1	1	107	156	263
+Eurotatoria,Flosculariaceae,Testudinellidae,Pompholyx,Pompholyx complanata	1	1	1	1	2
+Eurotatoria,Flosculariaceae,Testudinellidae,Pompholyx,Pompholyx sulcata	1	1	47	247	294
+Eurotatoria,Flosculariaceae,Testudinellidae,Pompholyx,Sp._unk	1	1	632	295	927
+Eurotatoria,Flosculariaceae,Testudinellidae,Testudinella,Sp._unk	1	1	1	2	3
+Eurotatoria,Flosculariaceae,Testudinellidae,Testudinella,Testudinella brevicaudata	0	1	0	3	3
+Eurotatoria,Flosculariaceae,Testudinellidae,Testudinella,Testudinella patina	1	1	13	11	24
+Eurotatoria,Flosculariaceae,Trochosphaeridae,Filinia,Filinia longiseta	1	1	637	297	934
+Eurotatoria,Flosculariaceae,Trochosphaeridae,Tetramastix,Tetramastix opoliensis	0	1	0	6	6
+Eurotatoria,Ploima,Asplanchnidae,Asplanchna,Asplanchna priodonta	1	0	804	0	804
+Eurotatoria,Ploima,Asplanchnidae,Asplanchna,Asplanchna sieboldi	1	0	4	0	4
+Eurotatoria,Ploima,Asplanchnidae,Asplanchna,Sp._unk	1	1	702	937	1639
+Eurotatoria,Ploima,Asplanchnidae,Asplanchnopus,Sp._unk	0	1	0	1	1
+Eurotatoria,Ploima,Brachionidae,Anuraeopsis,Anuraeopsis fissa	1	1	56	58	114
+Eurotatoria,Ploima,Brachionidae,Anuraeopsis,Sp._unk	1	1	1	1	2
+Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus angularis	1	1	173	103	276
+Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus budapestinensis	1	1	13	26	39
+Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus calyciflorus	1	1	423	378	801
+Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus caudatus	1	1	12	2	14
+Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus dimidiatus	1	1	1	3	4
+Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus diversicornis	1	1	456	183	639
+Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus falcatus	1	1	287	221	508
+Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus forficula	1	1	29	39	68
+Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus plicatilis	1	1	30	12	42
+Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus quadridentatus	1	1	36	28	64
+Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus sessilis	1	0	1	0	1
+Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus urceolaris	1	1	1	5	6
+Eurotatoria,Ploima,Brachionidae,Kellicottia,Kellicottia bostoniensis	1	1	3130	756	3886
+Eurotatoria,Ploima,Brachionidae,Kellicottia,Kellicottia longispina	1	1	2465	248	2713
+Eurotatoria,Ploima,Brachionidae,Keratella,Keratella cochlearis	1	1	3231	2342	5573
+Eurotatoria,Ploima,Brachionidae,Keratella,Keratella quadrata	1	1	641	146	787
+Eurotatoria,Ploima,Brachionidae,Keratella,Keratella valga or tropica	1	1	306	219	525
+Eurotatoria,Ploima,Brachionidae,Notholca,Notholca labis	0	1	0	1	1
+Eurotatoria,Ploima,Brachionidae,Platyias,Platyias patulus	1	1	2	3	5
+Eurotatoria,Ploima,Brachionidae,Platyias,Platyias quadricornis	1	1	10	14	24
+Eurotatoria,Ploima,Dicranophoridae,Dicranophorus,Dicranophorus uncinatus	0	1	0	3	3
+Eurotatoria,Ploima,Dicranophoridae,Dicranophorus,Sp._unk	1	1	7	2	9
+Eurotatoria,Ploima,Dicranophoridae,Encentrum,Sp._unk	1	1	1	2	3
+Eurotatoria,Ploima,Epiphanidae,Epiphanes,Sp._unk	0	1	0	2	2
+Eurotatoria,Ploima,Euchlanidae,Dipleuchlanis,Dipleuchlanis propatula	1	1	2	1	3
+Eurotatoria,Ploima,Euchlanidae,Euchlanis,Euchlanis pyriformis	1	1	2	2	4
+Eurotatoria,Ploima,Euchlanidae,Euchlanis,Sp._unk	1	1	188	141	329
+Eurotatoria,Ploima,Euchlanidae,Eudactylota,Eudactylota eudactylota	1	0	1	0	1
+Eurotatoria,Ploima,Flosculariaceae,Flosculariidae,Floscularia,Floscularia sp	0	1	0	3	3
+Eurotatoria,Ploima,Gastropoidae,Ascomorpha,Sp._unk	1	1	80	640	720
+Eurotatoria,Ploima,Gastropoidae,Gastropus,Gastropus stylifer	1	1	1	2	3
+Eurotatoria,Ploima,Lecanidae,Ge._unk,Ge._unk	1	0	1	0	1
+Eurotatoria,Ploima,Lecanidae,Lecane,Lecane curvicornis	1	1	2	7	9
+Eurotatoria,Ploima,Lecanidae,Lecane,Lecane flexilis	1	1	1	9	10
+Eurotatoria,Ploima,Lecanidae,Lecane,Lecane hastata	1	1	2	7	9
+Eurotatoria,Ploima,Lecanidae,Lecane,Lecane hornemanni	0	1	0	1	1
+Eurotatoria,Ploima,Lecanidae,Lecane,Lecane infula	0	1	0	2	2
+Eurotatoria,Ploima,Lecanidae,Lecane,Lecane latissima	0	1	0	2	2
+Eurotatoria,Ploima,Lecanidae,Lecane,Lecane leontina	0	1	0	1	1
+Eurotatoria,Ploima,Lecanidae,Lecane,Lecane luna	1	1	6	12	18
+Eurotatoria,Ploima,Lecanidae,Lecane,Lecane nana	0	1	0	2	2
+Eurotatoria,Ploima,Lecanidae,Lecane,Lecane papuana	1	1	2	3	5
+Eurotatoria,Ploima,Lecanidae,Lecane,Lecane stichaea	1	1	3	5	8
+Eurotatoria,Ploima,Lecanidae,Lecane,Lecane ungulata	1	1	1	1	2
+Eurotatoria,Ploima,Lecanidae,Lecane,Sp._unk	1	1	5	5	10
+Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla acus	0	1	0	2	2
+Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla bulla	1	1	6	31	37
+Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla closterocerca	0	1	0	5	5
+Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla furcata	0	1	0	4	4
+Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla hamata	0	1	0	1	1
+Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla lunaris	1	1	3	22	25
+Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla opias	0	1	0	1	1
+Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla pyriformis	0	1	0	6	6
+Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla quadridentata	0	1	0	1	1
+Eurotatoria,Ploima,Lecanidae,Monostyla,Sp._unk	1	1	9	6	15
+Eurotatoria,Ploima,Lepadellidae,Colurella,Sp._unk	1	1	5	20	25
+Eurotatoria,Ploima,Lepadellidae,Lepadella,Lepadella acuminata	0	1	0	2	2
+Eurotatoria,Ploima,Lepadellidae,Lepadella,Lepadella oblonga	0	1	0	1	1
+Eurotatoria,Ploima,Lepadellidae,Lepadella,Lepadella ovalis	0	1	0	1	1
+Eurotatoria,Ploima,Lepadellidae,Lepadella,Lepadella patella	1	1	14	45	59
+Eurotatoria,Ploima,Lepadellidae,Lepadella,Sp._unk	1	1	8	9	17
+Eurotatoria,Ploima,Mytilinidae,Mytilina,Mytilina compressa	0	1	0	1	1
+Eurotatoria,Ploima,Mytilinidae,Mytilina,Mytilina trigona	1	1	2	5	7
+Eurotatoria,Ploima,Mytilinidae,Mytilina,Mytilina ventralis	1	1	1	6	7
+Eurotatoria,Ploima,Mytilinidae,Mytilina,Sp._unk	1	1	7	6	13
+Eurotatoria,Ploima,Notommatidae,Cephalodella,Sp._unk	1	1	5	6	11
+Eurotatoria,Ploima,Notommatidae,Ge._unk,Ge._unk	1	1	1	2	3
+Eurotatoria,Ploima,Notommatidae,Notommata,Sp._unk	1	1	1	2	3
+Eurotatoria,Ploima,Scaridiidae,Scaridium,Scaridium longicaudum	1	1	10	11	21
+Eurotatoria,Ploima,Synchaetidae,Ploesoma,Ploesoma hudsoni	1	1	92	77	169
+Eurotatoria,Ploima,Synchaetidae,Ploesoma,Ploesoma lenticulare	1	1	27	46	73
+Eurotatoria,Ploima,Synchaetidae,Ploesoma,Ploesoma truncatum	1	1	789	367	1156
+Eurotatoria,Ploima,Synchaetidae,Ploesoma,Sp._unk	1	1	133	106	239
+Eurotatoria,Ploima,Synchaetidae,Polyarthra,Polyarthra euryptera	1	1	1	2	3
+Eurotatoria,Ploima,Synchaetidae,Polyarthra,Polyarthra remata	0	1	0	61	61
+Eurotatoria,Ploima,Synchaetidae,Polyarthra,Polyarthra vulgaris	1	1	66	120	186
+Eurotatoria,Ploima,Synchaetidae,Polyarthra,Sp._unk	1	1	4472	4888	9360
+Eurotatoria,Ploima,Synchaetidae,Synchaeta,Sp._unk	1	1	3380	1734	5114
+Eurotatoria,Ploima,Synchaetidae,Synchaeta,Synchaeta oblonga	0	1	0	22	22
+Eurotatoria,Ploima,Synchaetidae,Synchaeta,Synchaeta stylata	1	1	105	128	233
+Eurotatoria,Ploima,Synchaetidae,Synchaeta,Synchaeta tremula	0	1	0	1	1
+Eurotatoria,Ploima,Trichocercidae,Diurella,Diurella collaris	0	1	0	5	5
+Eurotatoria,Ploima,Trichocercidae,Diurella,Diurella dixon-nuttalli	1	1	9	93	102
+Eurotatoria,Ploima,Trichocercidae,Diurella,Diurella porcellus	1	1	270	373	643
+Eurotatoria,Ploima,Trichocercidae,Diurella,Diurella rousseleti	1	1	2	29	31
+Eurotatoria,Ploima,Trichocercidae,Trichocerca,Sp._unk	1	1	298	34	332
+Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca bicristata	1	1	2	5	7
+Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca birostris	1	1	354	736	1090
+Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca capucina	1	1	125	113	238
+Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca cylindrica	1	1	207	216	423
+Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca elongata	1	1	11	12	23
+Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca longiseta	1	1	169	142	311
+Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca mucosa	0	1	0	1	1
+Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca pusilla	0	1	0	7	7
+Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca rattus	1	1	3	6	9
+Eurotatoria,Ploima,Trichotriidae,Trichotria,Trichotria tetractis	1	1	23	78	101
+Heterotrichea,Or._unk,Or._unk,Or._unk,Or._unk	1	0	1	0	1
+Insecta,Diptera,Chaoboridae,Chaoborus,Sp._unk_larva_stage	1	0	14	0	14
+Insecta,Diptera,Chironomidae,Ge._unk_larva_stage,Ge._unk_larva_stage	1	0	7	0	7
+Litostomatea,Dileptida,Dileptidae,Paradileptus,Sp._unk	1	0	89	0	89
+Lobosa,Arcellinida,Centropyxidae,Centropyxis,Centropyxis discoides	1	1	1	1	2
+Lobosa,Arcellinida,Centropyxidae,Centropyxis,Sp._unk	1	1	2	5	7
+Oligophymenophorea,Peritrichida,Vorticellidae,Vorticella,Sp._unk	0	1	0	3	3
+Ostracoda,Or._unk,Or._unk,Or._unk,Or._unk	1	1	1	1	2

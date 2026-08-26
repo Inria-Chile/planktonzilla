@@ -73,6 +73,12 @@ LICENSE_COLS = ("license", "license_url")
 # documented as requiring. Note the JEDI source carries three different strings:
 # `jedioceans` in the data, `jedi_oceans_cpics` as a config stem, `jedi` as a redefiner
 # key.
+#
+# `frepj` (FREPJ-Z, milestone v1.2) is the sixteenth entry: it has taxonomy rows and an
+# importer config, and is published on its own as project-oceania/planktonzilla-frepj,
+# but it is NOT in the default cfg.datasets nor in the frozen planktonzilla-17M until
+# Phase 20 merges it. It is recorded here so its terms travel with its taxonomy rows and
+# so `pz_generate_planktonzilla --config-name generate_frepj_only` can build it.
 DATASET_IMPORT_CONFIGS = {
     "isiisnet": "isiisnet",
     "whoi": "whoi-plankton",
@@ -90,6 +96,8 @@ DATASET_IMPORT_CONFIGS = {
     "jedioceans": "jedi_oceans_cpics",
     "sykezooscan2024": "sykezooscan2024",
     "zoolake": "zoolake",
+    # Not yet in cfg.datasets / planktonzilla-17M (see the note above).
+    "frepj": "frepj",
 }
 
 # Canonical deed URL per license slug, used to fill ``license_url`` for the standard
@@ -114,7 +122,8 @@ _LICENSE_DEEDS = {
 # Cross-checked against the published dataset's LICENSE.md on 2026-08-01 — all fifteen
 # agree. `zoolake` was corrected there and then: it had been recorded as cc-by-4.0,
 # over-stating the restriction, when the originating EAWAG deposit is CC0 (no
-# attribution required at all).
+# attribution required at all). `frepj` post-dates that LICENSE.md; its slug is pinned
+# against configs/dataset_import/frepj.yaml and dataset_import.frepj_layout.LICENSE.
 #
 # Two entries carry a URL that is not a license deed, because their slug alone is not
 # actionable (see KI-14/KI-15 in utils/KNOWN_ISSUES.md):
@@ -142,6 +151,7 @@ DATASET_LICENSES = {
         ("jedioceans", "cc-by-sa-4.0", None),
         ("sykezooscan2024", "cc-by-4.0", None),
         ("zoolake", "cc0-1.0", None),
+        ("frepj", "cc-by-4.0", None),
     )
 }
 
@@ -204,6 +214,19 @@ METADATA_COLS = (
     "timestamp",
 )
 
+# Source-specific metadata that has no consolidated column of its own, kept as ONE JSON
+# object per row so a source can carry what only it knows (FREPJ: the magnification and
+# the raw sampling-site token) without adding a sparse column to the schema for every
+# source. Filled generically by RedefineDataset._flatten_metadata from whatever keys of
+# the per-source metadata JSON the consolidated columns do not consume, sorted by key so
+# equal content is equal text. The value is always a JSON object — the literal "{}" when
+# a source has nothing to add — never null, so a consumer can json.loads() every row
+# without a null check. Rows carried over from a base that predates the column get the
+# same literal (make_planktonzilla.ensure_custom_metadata), so a rebuilt row and a
+# carried-over row are indistinguishable.
+CUSTOM_METADATA_COL = "custom_metadata"
+EMPTY_CUSTOM_METADATA = "{}"
+
 # Every column of the consolidated dataset. Used to check that a base dataset and a
 # freshly built part agree before they are concatenated: datasets.concatenate_datasets
 # silently NULL-FILLS a column missing from one side rather than raising, which would
@@ -217,6 +240,7 @@ CONSOLIDATED_COLUMNS = (
     *ID_NUM_COLS,
     *METADATA_COLS,
     *LICENSE_COLS,
+    CUSTOM_METADATA_COL,
 )
 
 

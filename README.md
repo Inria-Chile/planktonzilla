@@ -329,6 +329,12 @@ uv run pz_planktonzilla base=hub sources=[] sync_taxonomy=false \
 published taxonomy/ID value is carried through untouched. Drop it only when you actually intend
 to republish the taxonomy too.
 
+The same holds for `custom_metadata` (added for v1.2): one JSON object per image holding what
+only its source knows and no consolidated column covers — FREPJ's `magnification` and raw `site`
+token; the literal `{}` for the fifteen existing sources. A base that predates the column is
+filled with `{}` on its next `pz_planktonzilla base=…` run (logged loudly), so that run too
+belongs on a new `push_revision`, not over the frozen one.
+
 `push_revision` targets a branch; `version` tags it. Tag the frozen state *first* so `v1.0`
 keeps pointing at the original bytes:
 

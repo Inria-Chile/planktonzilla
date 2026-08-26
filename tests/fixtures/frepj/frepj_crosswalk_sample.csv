@@ -1,0 +1,4 @@
+site_token,resolved_site,Latitude,Longitude,method,n_images
+akigawadam,Akigawa Dam,35.42534327,137.4318704,trivial,3
+biwako,Lake Biwa,35.25,136.05,override,2
+hajidamu,Haji Dam,34.6,132.5,override,1

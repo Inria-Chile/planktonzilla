@@ -1,0 +1,52 @@
+site_token,resolved_site
+# Hand-curated romanized sampling-site token -> Table_S1 site-name overrides.
+# Only tokens that neither trivially normalize NOR auto-fuzzy match (difflib, high
+# confidence) belong here. build_crosswalk applies these AFTER the fuzzy pass, so an
+# override only fires when no confident automatic match exists. GENUINELY ambiguous
+# tokens are intentionally LEFT OUT so they stay null — never guess a coordinate.
+# Format (one per line, no quoting needed): <raw_token>,<exact Table_S1 site name>
+#
+# --- High-confidence: dropped Dam/Pond suffix or -ko(lake)/-numa/-ike(pond) reading ---
+origawa,Origawa Dam
+biwako,Lake Biwa
+biwako_littoral,Lake Biwa littoral area
+hatayaohnuma,Lake Hataya-Onuma
+kanoko,Kanoko Dam
+ohtsutsumi,Ohtsutsumi (Sendai)
+ohhori,Ohori Pond
+sanuma,Lake Sanuma
+akanko,Lake Akan
+oyatsu,Oyatsutsutsumi
+furutsuzumi,Furutsutsumi (Kiyotake)
+kakegawa,A pond in Kakegawa
+kizakiko,Lake Kizaki
+ashinoko,Lake Ashino
+furuichi,Furuichi-Oike
+suigetsuko,Lake Suigetsu
+imori,Imori Pond
+korigaike,Pond Korigaike
+ojagaike,Ojaga Pond
+kuzuryu,Kuzuryu Dam
+kitanomaru,Kitanomaru Park
+asahiyama,Asahiyama Park
+oji,Oji Park
+komatsujima,Komatsujima Park
+mikata,Lake Mikata
+#
+# --- Recognizable but romanization-judgement-dependent: FLAG for 17-03 human verify ---
+adachimonuma,Lake Adachi
+kindam,Kincho Dam
+aio,Aiofutajima pond
+kejonuma,A pond near Lake Kejo
+kato,Oike (Kato)
+wakayamakuroiwa,A ponds in Kuroiwa
+#
+# --- Intentionally NOT mapped (stay null; candidates for 17-03 human resolution) ---
+# iwaodam (6062 imgs)  : Iwawonai Dam already taken by token 'iwaonaidam'; likely Iwaya
+#                        Dam but iwao != iwaya reading — needs confirmation, not guessed.
+# inba_funato / inba_fusha : Lake Inba, but which of Lake Inba_1 / Lake Inba_2 is unclear.
+# syakujii             : Shakujii Park, but which of _1/_2/_3/_4 sub-site is unclear.
+# surikamigawadam      : plausibly Suriagegawa Dam (same kanji reading?) — unverified.
+# oododam, ahadam, hitokuradam, funakoshiyama, nibutanidam, tsuruoka, arakawadam,
+# fukujidam            : no confident Table_S1 match.
+# (baiyou) / baiyou    : the source's explicit unresolvable placeholder.

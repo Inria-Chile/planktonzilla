@@ -58,6 +58,7 @@ import pyrootutils
 import requests
 from datasets import (
     Dataset,
+    Features,
     Image,
     Value,
     concatenate_datasets,
@@ -69,6 +70,15 @@ from tqdm import tqdm
 
 from planktonzilla.dataset_import.dataset_importer import resolve_imagefolder_glob
 from planktonzilla.planktonzilla_dataset import constants
+from planktonzilla.planktonzilla_dataset.frepj_crosswalk import load_crosswalk, load_crosswalk_sites
+from planktonzilla.planktonzilla_dataset.frepj_tables import (
+    DEFAULT_CROSSWALK_PATH,
+    DEFAULT_TABLES_DIR,
+    parse_frepj_filename,
+    parse_sampling_date,
+    read_per_image_site_index,
+    read_site_sampling_dates,
+)
 from planktonzilla.planktonzilla_dataset.timestamps import extract_path_timestamp, merge_timestamp
 from planktonzilla.utils.logger import get_pylogger
 
@@ -320,6 +330,14 @@ def _taxonomy_row(example, *, class_names, n_splits, dataset_name, lookup, looku
     }
 
 
+# Keys of the per-source metadata JSON that RedefineDataset._flatten_metadata turns into
+# consolidated columns. Every OTHER key a redefiner emits is source-specific and lands, as
+# one JSON object per row, in the `custom_metadata` column (constants.CUSTOM_METADATA_COL).
+_CONSUMED_METADATA_KEYS = frozenset(
+    {"ObjID", "BinID", "Depth", "Depth_max", "Depth_min", "Latitude", "Longitude", "Humidity", "Temperature", "Timestamp"}
+)
+
+
 class RedefineDataset:
     """Assign taxonomy, external IDs and metadata to a source dataset.
 
@@ -422,6 +440,14 @@ class RedefineDataset:
             ts = md.get("Timestamp")
             example["timestamp"] = ts if ts not in (None, "") else None
 
+            # Whatever the source knows that has no consolidated column of its own
+            # (FREPJ: the magnification and the raw site token) rides along as ONE JSON
+            # object, sorted by key so equal content is equal text. Blank values are
+            # dropped; a source with nothing to add gets the literal "{}" — never null —
+            # so every row can be json.loads()-ed without a null check.
+            extra = {k: md[k] for k in sorted(md) if k not in _CONSUMED_METADATA_KEYS and md[k] not in (None, "")}
+            example[constants.CUSTOM_METADATA_COL] = json.dumps(extra, sort_keys=True, ensure_ascii=False)
+
             return example
 
         ds = ds.map(extract, desc="Flattening metadata", num_proc=num_proc)
@@ -521,6 +547,7 @@ class RedefineDataset:
             "original_path",
             "ObjID",
             "timestamp",
+            constants.CUSTOM_METADATA_COL,
             *constants.LICENSE_COLS,
             *self.ID_STR_COLS,
             *self.ID_NUM_COLS,
@@ -560,7 +587,32 @@ class RedefineDataset:
             )
 
             logger.info(f"Processing split {split}...")
-            ds = ds.map(process_row, desc="Mapping taxonomy", num_proc=num_proc, features=self._mapped_features(ds))
+            # Pin the map output schema instead of letting datasets infer it per
+            # write batch. Without this, a SPARSE-NULL source (e.g. FREPJ: many
+            # blank external IDs, null Species/Genus) can hand the ArrowWriter a
+            # first batch whose taxonomy/ID column is entirely None -> inferred as
+            # pyarrow `null`; a later batch (or, under num_proc>1, a sibling shard)
+            # holding strings then fails with "Couldn't cast array of type string
+            # to null" in iflatmap_unordered, crashing before _cast_scalar_types
+            # (below) can coerce the types. These are EXACTLY the string types
+            # _cast_scalar_types produces here (taxonomy/ID cols + dataset/
+            # original_label/original_path -> string; `plankton` stays string at
+            # this stage and only becomes bool in _cast_scalar_types), so pinning
+            # them is output-preserving — it just forbids the transient `null`.
+            # Every column _taxonomy_row emits MUST be listed: with an explicit
+            # ``features=`` the ArrowWriter raises KeyError on any unlisted output
+            # column, so the license provenance pair rides along here too.
+            map_features = Features(
+                {
+                    **ds.features,
+                    "dataset": Value("string"),
+                    "original_label": Value("string"),
+                    "original_path": Value("string"),
+                    **{col: Value("string") for col in constants.LICENSE_COLS},
+                    **{col: Value("string") for col in self.lookup_cols},
+                }
+            )
+            ds = ds.map(process_row, desc="Mapping taxonomy", num_proc=num_proc, features=map_features)
 
             ds = self._add_metadata(ds)
             ds = self._flatten_metadata(ds)
@@ -673,6 +725,85 @@ class JediRedefiner(RedefineDataset):
         return self._serialize_metadata(ds)
 
 
+class FrepjRedefiner(RedefineDataset):
+    """FREPJ-Z dataset: per-image geodata joined OFFLINE from the shipped sidecar tables.
+
+    Unlike the API-backed redefiners, this one is fully offline. It reads the per-image
+    ``(magnification, ID) -> (site_token, raw sampling date)`` index from the md5-pinned
+    Table_S3/S4 CSVs (fetched once into the gitignored ``data/frepj_tables/`` by
+    ``python -m planktonzilla.planktonzilla_dataset.frepj_crosswalk``) and resolves each
+    token to ``Latitude``/``Longitude`` through the committed site crosswalk (Plan 17-01).
+    The join key is the Phase-16 merge-prefix filename (``40_<ID>.jpg`` / ``100_<ID>.jpg``).
+
+    Everything it knows reaches the consolidated schema through the SHARED metadata path
+    of the base class — no column of its own:
+
+    - ``Latitude`` / ``Longitude`` from the crosswalk (86.9% of images; the rest null,
+      never a guessed coordinate);
+    - ``timestamp`` from the upstream "Sampling date", normalized to ISO ``YYYY-MM-DD``
+      by :func:`frepj_tables.parse_sampling_date` — 7% of the upstream values are
+      malformed (KI-26): fixed rules recover most, Table_S1 disambiguates three-digit
+      days, and the remaining ~2% are null rather than guessed;
+    - ``custom_metadata`` = ``{"magnification": "40"|"100", "site": "<raw token>"}``, the
+      two facts only FREPJ has, as the JSON object every source carries.
+
+    Surface net tows carry NO depth, and FREPJ file names encode no capture time, so the
+    path-timestamp pass leaves ``timestamp`` exactly as set here.
+    """
+
+    def __init__(self, csv_taxonomies_path, crosswalk_path=DEFAULT_CROSSWALK_PATH, tables_dir=DEFAULT_TABLES_DIR):
+        super().__init__(csv_taxonomies_path)
+        s1_path = Path(tables_dir) / "Table_S1.csv"
+        s3_path = Path(tables_dir) / "Table_S3.csv"
+        s4_path = Path(tables_dir) / "Table_S4.csv"
+        for required in (s1_path, s3_path, s4_path, Path(crosswalk_path)):
+            if not required.exists():
+                raise FileNotFoundError(
+                    f"Required FREPJ CSV «{required}» is absent. FrepjRedefiner NEVER downloads; "
+                    "run `python -m planktonzilla.planktonzilla_dataset.frepj_crosswalk` to fetch the "
+                    "md5-pinned sidecar tables and (re)generate the committed crosswalk."
+                )
+        # All read from local CSVs only, so redefine-time is zero-network:
+        #   (mag, id) -> (site_token, raw date);  site_token -> (lat, lon);
+        #   site_token -> Table_S1 site name -> the sampling dates recorded for it.
+        self.site_index = read_per_image_site_index(s3_path, s4_path)
+        self.crosswalk = load_crosswalk(crosswalk_path)
+        self.crosswalk_sites = load_crosswalk_sites(crosswalk_path)
+        self.site_dates = read_site_sampling_dates(s1_path)
+
+    def _add_metadata(self, ds):
+        # Mirror the EcoTaxaRedefiner filename-from-original_path idiom; a defensive .get on
+        # every lookup means an unparseable name / missing index row / unresolved token yields
+        # a smaller dict, never a raise (T-17-04 — tokens are opaque metadata strings).
+        metadata = []
+        for path in ds["original_path"]:
+            parsed = parse_frepj_filename(path.split("/")[-1])
+            entry = {}
+            if parsed is not None:
+                magnification, image_id = parsed
+                entry["magnification"] = str(magnification)
+                site_token, raw_date = self.site_index.get((magnification, image_id), ("", ""))
+                if site_token:
+                    entry["site"] = site_token
+                    latitude, longitude = self.crosswalk.get(site_token, (None, None))
+                    # Emit coords as strings so they flow through the base flatten path exactly
+                    # like the other redefiners (np.float32(str) downstream); only when resolved.
+                    if latitude is not None:
+                        entry["Latitude"] = str(latitude)
+                    if longitude is not None:
+                        entry["Longitude"] = str(longitude)
+                # The Table_S1 dates of the token's resolved site disambiguate a three-digit
+                # day; an unresolved token simply has none to offer.
+                site_dates = self.site_dates.get(self.crosswalk_sites.get(site_token))
+                iso_date = parse_sampling_date(raw_date, site_dates)
+                if iso_date is not None:
+                    entry["Timestamp"] = iso_date
+            metadata.append(entry)
+
+        ds = ds.add_column("metadata", metadata)
+        return self._serialize_metadata(ds)
+
+
 # Redefiner key -> class. Keys match the `redefiner` field of each entry in
 # cfg.datasets (configs/generate_planktonzilla.yaml). Each class is constructed with the
 # taxonomy CSV path inside main().
@@ -681,6 +812,7 @@ REDEFINERS = {
     "whoi": WHOIRedefiner,
     "ecotaxa": EcoTaxaRedefiner,
     "jedi": JediRedefiner,  # manual-download only; see the commented block in the config
+    "frepj": FrepjRedefiner,  # offline geodata join; not yet wired into cfg.datasets (Phase 20)
 }
 
 

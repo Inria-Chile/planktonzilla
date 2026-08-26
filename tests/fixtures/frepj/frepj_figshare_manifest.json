@@ -1,0 +1,57 @@
+{
+  "article_id": 26891563,
+  "version": 1,
+  "data_doi": "10.57400/data.bnmnsbot.26891563.v1",
+  "paper_doi": "10.50826/bnmnsbot.50.4_159",
+  "license": {
+    "value": 1,
+    "name": "CC BY 4.0",
+    "url": "https://creativecommons.org/licenses/by/4.0/"
+  },
+  "published": "2024-11-22T00:10:08Z",
+  "citation": "Otake, Yurie; Osone, Aoi; Makino, Wataru; Ito, Koichi; Aoki, Takafumi; Miura, Kanta; et al. (2024). High-resolution Microscopic Image Dataset of Freshwater Plankton in Japanese Lakes and Reservoirs (FREPJ): I. Zooplankton. National Museum of Nature and Science. Dataset. https://doi.org/10.57400/data.bnmnsbot.26891563.v1",
+  "files": [
+    {
+      "name": "Zooplankton_images.zip",
+      "id": 48928918,
+      "size": 963090073,
+      "md5": "5c8722abb72da5035f5ee70b1fc3d27c",
+      "url": "https://ndownloader.figshare.com/files/48928918"
+    },
+    {
+      "name": "Table_S1.csv",
+      "id": 49092727,
+      "size": 14088,
+      "md5": "15a9b8c25c483c0e42d3c637a955eb08",
+      "url": "https://ndownloader.figshare.com/files/49092727"
+    },
+    {
+      "name": "Table_S2.csv",
+      "id": 49092733,
+      "size": 28525,
+      "md5": "4a76b5a351e826a1e6145469e62581b4",
+      "url": "https://ndownloader.figshare.com/files/49092733"
+    },
+    {
+      "name": "Table_S3.csv",
+      "id": 49092739,
+      "size": 6064306,
+      "md5": "3edfbeca846bfad2f324252e925a641c",
+      "url": "https://ndownloader.figshare.com/files/49092739"
+    },
+    {
+      "name": "Table_S4.csv",
+      "id": 49092742,
+      "size": 2527004,
+      "md5": "3714ffbc3f99a221a0fbc70f8f3bdde6",
+      "url": "https://ndownloader.figshare.com/files/49092742"
+    },
+    {
+      "name": "meta_data.docx",
+      "id": 49093003,
+      "size": 42545,
+      "md5": "b3293cf8c37ee686801a5f0ceef64dcb",
+      "url": "https://ndownloader.figshare.com/files/49093003"
+    }
+  ]
+}

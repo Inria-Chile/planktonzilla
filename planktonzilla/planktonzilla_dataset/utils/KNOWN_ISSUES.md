@@ -37,8 +37,9 @@ Phase 4, so these failures are no longer silent — only their *handling* is unc
 ## Index
 
 Entries are numbered in the order they were found, not the order they are read: KI-1..7 and
-KI-16..25 are **code behavior**, KI-8..13 are **data** defects in the frozen taxonomy CSV, and
-KI-14..15 are **source-license** questions. Numbers are never reused or renumbered — commits,
+KI-16..25 are **code behavior**, KI-8..13 are **data** defects in the frozen taxonomy CSV,
+KI-14..15 are **source-license** questions, and KI-26 is a **data** defect in a source's own
+sidecar tables. Numbers are never reused or renumbered — commits,
 code comments and tests cite them.
 
 **This file lists only what is still open.** Nine resolved entries — KI-11, KI-17..KI-23 and
@@ -63,6 +64,7 @@ number missing from the table below is *resolved*, not withdrawn; look for it th
 | KI-15 | open, bounded | downstream-legal | `planktonset1.0` recorded as `other` — states nothing |
 | KI-16 | open, **do not fix** | HIGH | split probe reads the repo root; splits discarded |
 | KI-24 | decision log | MEDIUM (rebuild) | `zoolake`/`jedioceans` joined; the licence mix widened |
+| KI-26 | open, source-side | none (17M) / republish (frepj) | FREPJ `Sampling date` is free text; 7.1% not a date — normalized, 1.9% null |
 
 Three obligations belong to archived entries but are **still open**, and are restated here so
 archiving cannot bury them:
@@ -324,13 +326,57 @@ verified for reachability and archive shape, not by a completed import.
 
 ---
 
+## KI-26 — FREPJ `Sampling date` is hand-typed free text; 7.1% of rows are not a date
+
+**Where:** the upstream sidecar tables `Table_S3.csv` (40x) / `Table_S4.csv` (100x), column
+`Sampling date` — md5-pinned, fetched to the gitignored `data/frepj_tables/` — consumed by
+`FrepjRedefiner` through `frepj_tables.parse_sampling_date`.
+
+**Found 2026-08-25** while assessing the v1.2 lifecycle. The `project-oceania/planktonzilla-frepj`
+published on 2026-07-11 carried the column verbatim as `date` and left the consolidated
+`timestamp` null for every FREPJ row. 6,273 of its 88,686 rows (7.07%) held something other
+than `YYYY.MM.DD` — `20200917`, `2022.06,10`, `230815inba_funato`, `2021.11.011`, `2020.08.dd`,
+`akanko1`, `tsuruoka_100`, … — copied straight from the upstream tables (5,906 rows in
+Table_S3, 367 in Table_S4). The VAL-02 gate tested the column for non-null only, so it passed.
+
+**What the build does now (maintainer decision, 2026-08-25).** The date lives in `timestamp`
+only, as ISO `YYYY-MM-DD`; no raw copy is kept (the tables are pinned and refetchable), and
+the magnification and raw site token moved into the `custom_metadata` JSON object.
+`parse_sampling_date` applies fixed rules and **never guesses**:
+
+| family | rows | rule | result |
+| --- | ---: | --- | --- |
+| `YYYY.MM.DD` (incl. `2019.11.6`) | 82,427 | the intended format | date |
+| `YYYYMMDD` | 3,704 | dots omitted | date |
+| `YYMMDD<site>` (`230815inba_funato`) | 430 | six-digit 20YY prefix | date |
+| `YYYY.MM,DD` | 65 | a comma for the second dot | date |
+| embedded run (`biwako_20211122(462)`, `biwa230213_100`) | 94 | first 8- or 6-digit run | date |
+| `YYYY.MM.DDD` (`2021.11.011`) | 611 | drop one digit → candidates; kept only if Table_S1 records exactly **one** of them for the site | 259 dated, 352 null |
+| month-only (`2020.08.dd`, `2016.11.`, `2311asahiyama_dai`) | 464 | — | null |
+| bare site token (`akanko1`, `tsuruoka_100`, `akanko_557,558`) | 891 | — | null |
+
+Net: **86,979 rows (98.1%) dated, 1,707 null.** VAL-02 now fails on any non-ISO `timestamp`
+(`Timestamp Shape`) and on coverage below the 98% floor (`Timestamp Coverage`,
+`--timestamp-floor`), so a regression in either direction blocks publish.
+
+**Frozen-output risk: none for `planktonzilla-17M`** — FREPJ is not in it yet (Phase 20). The
+intermediate `planktonzilla-frepj` repo is **republished** from this build with the Phase-19
+helper, which changes its schema: `date` / `magnification` / `site` become `timestamp` +
+`custom_metadata`, and the `license` / `license_url` columns it predated are added.
+
+**Upstream.** Worth reporting to the FREPJ authors (the 352 Lake Biwa rows are unrecoverable
+without them); not blocking.
+
+---
+
 *Recorded 2026-06-17 during the v1.0 dataset-generation cleanup (Phase 7, `KNOWN-01`).
 `HARDEN-01` / `HARDEN-02` are defined in `.planning/REQUIREMENTS.md`, which is **gitignored**
 and absent from a clone — see the caveat at the top of this file.
 KI-16 through KI-24 recorded 2026-08-01 during the `pz_planktonzilla` consolidation.
 KI-25, and the corrections dated 2026-08-04 throughout, from a full re-audit of every entry
 against the code as it stands — the same pass that archived the nine resolved entries to
-[`RESOLVED_ISSUES.md`](RESOLVED_ISSUES.md).*
+[`RESOLVED_ISSUES.md`](RESOLVED_ISSUES.md). KI-26 recorded 2026-08-25 during the v1.2 (FREPJ)
+lifecycle assessment.*
 
 ---
 

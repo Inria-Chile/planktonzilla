@@ -17,7 +17,10 @@ transcription can drift, so these tests pin it from two independent directions:
   (b) COVERAGE — the table covers exactly the fifteen source datasets that actually
       appear in the published planktonzilla-17M, no more and no fewer. The source of
       that list is ``samples.json`` (a real scan of the frozen dataset), so a
-      hand-maintained table cannot silently miss a source or invent one.
+      hand-maintained table cannot silently miss a source or invent one. The one
+      tolerated extra is spelled out in ``_RECORDED_BUT_NOT_YET_PUBLISHED``: a source
+      whose taxonomy rows and importer config are already in the tree but whose merge
+      into planktonzilla-17M is still pending.
 
 Coverage is what makes the frozen artifact safe to relicense-annotate: a missing entry
 would mean published images shipping a null license, and (b) fails before that can
@@ -72,6 +75,14 @@ _NON_DEED_URLS = {
     "planktonset1.0": "https://doi.org/10.7289/v5d21vjd",
 }
 
+# Sources whose terms are recorded ahead of their merge into planktonzilla-17M: present in
+# the taxonomy CSV and configs/dataset_import, built via generate_frepj_only.yaml and
+# published on their own (project-oceania/planktonzilla-frepj), but absent from both the
+# default cfg.datasets and samples.json until Phase 20. Listed explicitly so the two
+# "exactly the published sources" tests tolerate nothing else — once frepj lands in the
+# frozen dataset and samples.json is regenerated, this set goes back to empty.
+_RECORDED_BUT_NOT_YET_PUBLISHED = {"frepj"}
+
 
 def _published_dataset_names():
     """The distinct ``dataset`` values present in the published planktonzilla-17M.
@@ -121,7 +132,8 @@ def test_covers_exactly_the_published_source_datasets():
     """(b) COVERAGE: the table matches the fifteen sources in the frozen dataset.
 
     An unrecorded source would ship published images with a null license; a stale extra
-    entry would mean the table is describing something the dataset no longer contains.
+    entry would mean the table is describing something the dataset no longer contains —
+    except the explicitly pending ``_RECORDED_BUT_NOT_YET_PUBLISHED`` sources.
     """
     published = _published_dataset_names()
 
@@ -129,8 +141,10 @@ def test_covers_exactly_the_published_source_datasets():
     assert not published - set(DATASET_LICENSES), (
         f"Published source(s) with no recorded license: {sorted(published - set(DATASET_LICENSES))}"
     )
-    assert not set(DATASET_LICENSES) - published, (
-        f"Recorded license(s) for source(s) not in the dataset: {sorted(set(DATASET_LICENSES) - published)}"
+    extra = set(DATASET_LICENSES) - published
+    assert extra == _RECORDED_BUT_NOT_YET_PUBLISHED, (
+        f"Recorded license(s) for source(s) not in the dataset: {sorted(extra - _RECORDED_BUT_NOT_YET_PUBLISHED)}; "
+        f"pending source(s) that are now published: {sorted(_RECORDED_BUT_NOT_YET_PUBLISHED - extra)}"
     )
 
 
@@ -200,6 +214,14 @@ def test_generate_config_datasets_are_all_covered():
     # The registry now carries all 15, so a from-scratch build reproduces every source
     # of the published dataset. The table is still declared independently of
     # cfg.datasets: it is the record of each source's TERMS, which must survive a source
-    # being temporarily removed from the build.
-    assert configured == set(DATASET_LICENSES)
+    # being temporarily removed from the build — or, as with frepj, being recorded
+    # before it joins the build.
+    assert set(DATASET_LICENSES) - configured == _RECORDED_BUT_NOT_YET_PUBLISHED
     assert len(configured) == 15
+
+
+def test_pending_source_license_agrees_with_its_layout_constants():
+    """frepj's slug is transcribed in three places; they must not drift apart."""
+    from planktonzilla.dataset_import import frepj_layout
+
+    assert DATASET_LICENSES["frepj"] == {"license": frepj_layout.LICENSE, "license_url": frepj_layout.LICENSE_URL}

@@ -1,0 +1,44 @@
+# @package _global_
+
+# FREPJ-only generation selection (Plan 19-01). This ADDITIVE config mirrors
+# generate_planktonzilla.yaml but selects ONLY the frepj source and targets the
+# intermediate validation repo — it NEVER touches the default datasets: list
+# (that is Phase 20). It is consumed by the SHARED pz_generate_planktonzilla
+# entry point; generate_planktonzilla.py is not edited:
+#   pz_generate_planktonzilla --config-name generate_frepj_only \
+#     data_dir=$PWD/data/frepj_only_build
+#
+# specify here default configuration
+# order of defaults determines the order in which configs override each other
+defaults:
+  - _self_
+  - paths: default.yaml
+  - extras: default.yaml
+  - hydra: default.yaml
+
+task_name: "generate_frepj_only"
+tags: ["dev"]
+
+# HuggingFace Hub repo id for the intermediate FREPJ-only validation dataset.
+# NEVER the frozen planktonzilla-17M — the frozen_repo_guard preflight enforces this.
+repo_id: project-oceania/planktonzilla-frepj
+
+# push_to_hub stays false in this plan: build + validate locally only. The gated
+# publish (Plan 19-02) flips it after the frozen_repo_guard preflight + sign-off.
+push_to_hub: false
+push_as_private: true
+hf_token: ${oc.env:HF_TOKEN, null}
+
+data_dir: ${paths.data_dir}
+
+# Null defaults: the in-code fallbacks.
+#   - taxonomy_csv_path -> constants.DEFAULT_TAXONOMY_CSV_FILENAME (a raw Path).
+#   - num_proc          -> constants.default_num_proc().
+taxonomy_csv_path: null
+num_proc: null
+
+# A SINGLE source: the frepj imagefolder redefined by REDEFINERS['frepj']
+# (FrepjRedefiner, offline geodata join). cleanup:false keeps the raw + imagefolder
+# for re-runs and for the per-class reconciliation in the validation gate.
+datasets:
+  - { name: frepj, import_name: frepj, cleanup: false, redefiner: frepj }
