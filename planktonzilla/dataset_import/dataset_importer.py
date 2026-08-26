@@ -1038,8 +1038,17 @@ class DatasetImporter:
         There, "non-empty" would silently accept a fraction of the source as the whole of
         it — so it overrides this with a real count, and a partial imagefolder resumes
         instead of being published as if it were finished.
+
+        "Holds at least one FILE" rather than the literal "directory is non-empty" the
+        gates once tested inline: a preparation broken by an upstream layout change can
+        leave an imagefolder of empty class dirs (WHOI's year wrapper did), and reusing
+        that hollow tree crashes the loader with "Instruction \"train\" corresponds to
+        no data!" on every later run. Any REAL imagefolder answers this from its first
+        class folder's first entry, so the strengthening is free for them.
         """
-        return not is_dir_empty(self.imagefolder_dir)
+        if is_dir_empty(self.imagefolder_dir):
+            return False
+        return any(path.is_file() for path in self.imagefolder_dir.rglob("*"))
 
     def download_targets(self) -> list[tuple[str, str]]:
         """What a real import of this source would have to obtain, as ``(kind, location)``.
@@ -1406,6 +1415,18 @@ class DatasetImporter:
             self.imagefolder_dir.mkdir(parents=True, exist_ok=True)
             self._prepare_imagefolder()
 
+            # Zero files is never a valid result of preparation. Without this, a layout
+            # mismatch slipped through as a tree of empty class dirs: nothing was
+            # copied, nothing raised, this run died later inside the HF loader with
+            # "Instruction "train" corresponds to no data!" — and a subsequent run
+            # reused the hollow tree as if it were the built source.
+            if not any(path.is_file() for path in self.imagefolder_dir.rglob("*")):
+                raise RuntimeError(
+                    f"_prepare_imagefolder finished but {self.imagefolder_dir} holds no files at all: the "
+                    f"extracted layout did not match what {type(self).__name__} expects. Inspect what was "
+                    f"extracted under {self.raw_dir} and fix the importer before re-running."
+                )
+
         else:
             logger.info(
                 f"Using existing imagefolder at {self.imagefolder_dir}. Set force_imagefolder_preparation=True to rebuild."
@@ -1587,6 +1608,13 @@ class WHOIPlanktonDatasetImporter(DatasetImporter):
     Iterates the extracted release folders and copies each release's per-class ``.png``
     images into the imagefolder root (merging classes across releases), then deletes
     each consumed release folder from ``raw_dir`` to save space.
+
+    The class folders are LOCATED per release, not assumed to be the extraction root's
+    immediate children: each archive wraps them in a year directory
+    (``2014/<class>/*.png`` — verified against the live bitstreams' central
+    directories, 2026-08-26). Iterating the extraction root itself created one EMPTY
+    dir per year and copied nothing, which a later run then reused as if it were the
+    built source.
     """
 
     def _prepare_imagefolder(self):
@@ -1597,8 +1625,9 @@ class WHOIPlanktonDatasetImporter(DatasetImporter):
             position=0,
             disable=not self.show_progress,
         ):
+            class_root = find_class_root(self.raw_dir / release_folder)
             for folder in tqdm(
-                [item for item in (self.raw_dir / release_folder).glob("*") if item.is_dir()],
+                [item for item in class_root.glob("*") if item.is_dir()],
                 desc=f"Moving release {release_folder}",
                 leave=False,
                 position=1,

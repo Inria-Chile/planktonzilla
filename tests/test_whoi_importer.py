@@ -1,18 +1,24 @@
-"""Regression tests for preparing an imagefolder into a data_dir that never held it.
+"""Regression tests for WHOI's imagefolder preparation on a from-scratch machine.
 
-A real from-scratch ``pz_planktonzilla`` build (fresh machine, empty ``data`` directory)
-died at «whoi» with::
+A real from-scratch ``pz_planktonzilla`` build surfaced two WHOI defects in sequence:
 
-    FileNotFoundError: .../whoiplanktondatasetimporter_imagefolder/2014
+1. ``FileNotFoundError: .../whoiplanktondatasetimporter_imagefolder/2014`` — the
+   per-class ``mkdir(exist_ok=True)`` (no ``parents=True``) silently assumed the
+   imagefolder ROOT existed. Every other importer creates the root as a side effect
+   (``copytree`` and ``mkdir(parents=True)`` both create missing parents), which is why
+   the assumption held on any data_dir that had ever completed a run.
+   ``import_dataset`` now guarantees the root before invoking the subclass hook.
 
-because WHOI's ``_prepare_imagefolder`` creates each class dir with a bare
-``mkdir(exist_ok=True)`` — no ``parents=True`` — silently assuming the imagefolder ROOT
-already exists. Every other importer creates the root as a side effect (``copytree`` and
-``mkdir(parents=True)`` both create missing parents), which is why the assumption held on
-any data_dir that had ever completed a run and only a truly from-scratch build hit it.
-
-``import_dataset`` now guarantees the root exists before invoking the subclass hook, so
-the guarantee is tested on the base class and reproduced end-to-end on WHOI.
+2. With the root guaranteed, the same run produced an imagefolder of EMPTY year dirs
+   and zero images: each WHOI archive wraps its class folders in a year directory
+   (``2014/<class>/*.png`` — verified against the live bitstreams' central
+   directories), and the copy loop iterated the extraction root's immediate children,
+   treating ``2014`` itself as a class. The NEXT run then reused the hollow tree
+   ("Using existing imagefolder with 9 categories") and died in the HF loader with
+   ``Instruction "train" corresponds to no data!``. Three fixes, each tested here:
+   WHOI locates the class root per release (``find_class_root``), a preparation that
+   copies zero files raises at the point of failure, and a hollow imagefolder no
+   longer counts as complete — so an already-poisoned data_dir heals on re-run.
 """
 
 import pyrootutils
@@ -26,6 +32,7 @@ root = pyrootutils.setup_root(
 
 from pathlib import Path
 
+import pytest
 from PIL import Image
 
 import planktonzilla.dataset_import.dataset_importer as dataset_importer
@@ -36,37 +43,58 @@ def _write_rgb_png(path: Path, color=(90, 130, 170), size=8):
     Image.new("RGB", (size, size), color).save(path, "PNG")
 
 
-def test_whoi_prepares_into_a_data_dir_that_never_held_it(tmp_path, monkeypatch):
-    """The observed crash: a from-scratch build must not assume the imagefolder root."""
-    imp = dataset_importer.WHOIPlanktonDatasetImporter(
+def _whoi(tmp_path):
+    return dataset_importer.WHOIPlanktonDatasetImporter(
         data_dir=tmp_path,
         hf_dataset_name="whoi",
         push_to_hub=False,
         show_progress=False,
     )
 
-    # One extracted release holding one class dir, as _download_and_extract leaves them.
-    _write_rgb_png(imp.raw_dir / "2014" / "Ciliate" / "img_0.png")
-    _write_rgb_png(imp.raw_dir / "2014" / "Ciliate" / "img_1.png")
+
+def _stub_pipeline(monkeypatch, importer, extracted_dirs):
     monkeypatch.setattr(
-        dataset_importer.WHOIPlanktonDatasetImporter,
+        type(importer),
         "_download_and_extract",
-        lambda self: setattr(self, "extracted_dirs", ["2014"]),
+        lambda self: setattr(self, "extracted_dirs", extracted_dirs),
     )
     # Stub the HF loader: no network or dataset processing, the copy is what matters.
     monkeypatch.setattr(dataset_importer, "load_dataset", lambda *args, **kwargs: "FAKE_DATASET")
+
+
+def test_whoi_prepares_into_a_data_dir_that_never_held_it(tmp_path, monkeypatch):
+    """The observed crashes end-to-end: fresh data_dir, and the REAL archive layout —
+    class folders wrapped in a year directory, not sitting at the extraction root."""
+    imp = _whoi(tmp_path)
+    _write_rgb_png(imp.raw_dir / "release_2014" / "2014" / "Ciliate" / "img_0.png")
+    _write_rgb_png(imp.raw_dir / "release_2014" / "2014" / "Ciliate" / "img_1.png")
+    _write_rgb_png(imp.raw_dir / "release_2014" / "2014" / "detritus" / "img_2.png")
+    _stub_pipeline(monkeypatch, imp, ["release_2014"])
 
     assert not imp.imagefolder_dir.exists()  # the precondition that used to crash
 
     imp.import_dataset()
 
-    copied = sorted(path.name for path in (imp.imagefolder_dir / "Ciliate").glob("*.png"))
-    assert copied == ["img_0.png", "img_1.png"]
+    assert sorted(path.name for path in (imp.imagefolder_dir / "Ciliate").glob("*.png")) == ["img_0.png", "img_1.png"]
+    assert [path.name for path in (imp.imagefolder_dir / "detritus").glob("*.png")] == ["img_2.png"]
+    assert not (imp.imagefolder_dir / "2014").exists()  # the year wrapper is NOT a class
     assert imp.hf_dataset == "FAKE_DATASET"
 
 
+def test_whoi_copes_with_a_release_without_the_year_wrapper(tmp_path, monkeypatch):
+    """find_class_root also accepts classes at the extraction root, so a re-release
+    that DROPS the wrapper would not break the importer either."""
+    imp = _whoi(tmp_path)
+    _write_rgb_png(imp.raw_dir / "release_flat" / "Ciliate" / "img_0.png")
+    _stub_pipeline(monkeypatch, imp, ["release_flat"])
+
+    imp.import_dataset()
+
+    assert [path.name for path in (imp.imagefolder_dir / "Ciliate").glob("*.png")] == ["img_0.png"]
+
+
 def test_import_dataset_creates_the_imagefolder_root_before_the_subclass_hook(tmp_path, monkeypatch):
-    """The guarantee is the BASE class's, so every _prepare_imagefolder may rely on it."""
+    """The root guarantee is the BASE class's, so every _prepare_imagefolder may rely on it."""
     seen = {}
 
     class _ProbeImporter(dataset_importer.DatasetImporter):
@@ -88,3 +116,41 @@ def test_import_dataset_creates_the_imagefolder_root_before_the_subclass_hook(tm
     imp.import_dataset()
 
     assert seen == {"root_existed": True}
+
+
+def test_a_preparation_that_copies_nothing_raises_at_the_point_of_failure(tmp_path, monkeypatch):
+    """Zero files is never a valid result of preparation: without this the run died
+    later inside the HF loader, and the hollow tree poisoned every later run."""
+
+    class _HollowImporter(dataset_importer.DatasetImporter):
+        def _download_and_extract(self):
+            self.extracted_dirs = "unused"
+
+        def _prepare_imagefolder(self):
+            (self.imagefolder_dir / "2014").mkdir()  # a class dir, but nothing in it
+
+    imp = _HollowImporter(
+        data_dir=tmp_path,
+        hf_dataset_name="hollow",
+        push_to_hub=False,
+        show_progress=False,
+    )
+    monkeypatch.setattr(dataset_importer, "load_dataset", lambda *args, **kwargs: "FAKE_DATASET")
+
+    with pytest.raises(RuntimeError, match="holds no files at all"):
+        imp.import_dataset()
+
+
+def test_a_hollow_imagefolder_is_not_complete(tmp_path):
+    """Empty class dirs — what a broken preparation leaves behind — must trigger a
+    rebuild on the next run, not be reused as "9 categories" of nothing."""
+    imp = _whoi(tmp_path)
+
+    assert imp.imagefolder_is_complete() is False  # missing entirely
+
+    for year in ("2006", "2014"):
+        (imp.imagefolder_dir / year).mkdir(parents=True)
+    assert imp.imagefolder_is_complete() is False  # non-empty, but not one file
+
+    _write_rgb_png(imp.imagefolder_dir / "Ciliate" / "img_0.png")
+    assert imp.imagefolder_is_complete() is True
