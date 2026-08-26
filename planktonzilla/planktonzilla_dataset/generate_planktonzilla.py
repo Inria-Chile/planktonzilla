@@ -47,6 +47,7 @@ import json
 import os
 import shutil
 from collections import Counter
+from datetime import datetime
 from functools import lru_cache, partial
 from pathlib import Path
 
@@ -68,6 +69,7 @@ from joblib import Parallel, delayed
 from omegaconf import DictConfig
 from tqdm import tqdm
 
+from planktonzilla.dataset_import import ecotaxa_client, tara_pacific_layout
 from planktonzilla.dataset_import.dataset_importer import resolve_imagefolder_glob
 from planktonzilla.planktonzilla_dataset import constants
 from planktonzilla.planktonzilla_dataset.frepj_crosswalk import load_crosswalk, load_crosswalk_sites
@@ -851,6 +853,157 @@ class FrepjRedefiner(RedefineDataset):
         return self._serialize_metadata(ds)
 
 
+class TaraPacificRedefiner(RedefineDataset):
+    """Tara Pacific sources: per-object metadata joined OFFLINE from the EcoTaxa manifest.
+
+    The four Tara Pacific sources come from EcoTaxa like ``flowcamnet`` and ``zooscan`` do,
+    but they do NOT use :class:`EcoTaxaRedefiner`, and the difference is not stylistic. That
+    redefiner issues one ``GET /api/object/{objid}`` per image; across these four sources
+    that would be 2.35 MILLION requests to somebody else's public service, to re-learn
+    facts the importer already had to fetch. The manifest their
+    :class:`~planktonzilla.dataset_import.tara_pacific_importer.TaraPacificDatasetImporter`
+    pages to lay out the imagefolder already carries every one of those fields, so this
+    redefiner reads it and makes ZERO requests.
+
+    Like :class:`FrepjRedefiner` it receives its inputs through :meth:`attach_sidecars` and
+    never downloads. Everything it knows reaches the consolidated schema through the SHARED
+    metadata path of the base class — no column of its own:
+
+    - ``ObjID`` — the EcoTaxa object id, which is also the image's file name;
+    - ``Latitude`` / ``Longitude`` / ``Depth_min`` / ``Depth_max`` as recorded by EcoTaxa;
+    - ``timestamp`` — ``objdate`` refined with ``objtime`` into a full ISO timestamp when
+      both are present, the bare date when only the date is;
+    - ``custom_metadata`` = ``{"ecotaxa_project": "<projid>", "orig_id": "<orig id>"}``, the
+      two facts only this source has. ``orig_id`` is the upstream object name
+      (``tara_pacific_2016_i06oa053_d_manta_333_microplastik_1_1``), which encodes the
+      expedition year, the station and the tow — the join key back to the SEANOE deposit's
+      TSV export, and the only route from an image to its station.
+
+    Tara Pacific file names are EcoTaxa object ids, which match no naming convention in
+    ``timestamps``, so the path-timestamp pass leaves ``timestamp`` exactly as set here
+    (verified with ``timestamps.audit_paths``).
+    """
+
+    def __init__(self, csv_taxonomies_path):
+        super().__init__(csv_taxonomies_path)
+        # Nothing is read here: in the pipeline the importer's ensure_sidecars (run before
+        # the imagefolder decision) is the one gate on every manifest.
+        self._sidecars: dict[str, Path] = {}
+        self._index: dict[str, dict] = {}
+        self._loaded = False
+
+    def attach_sidecars(self, sidecars: dict) -> None:
+        """Take the importer's verified ``{name: path}`` — the per-project manifests."""
+        self._sidecars = {name: Path(path) for name, path in dict(sidecars).items()}
+        self._loaded = False
+
+    def _load_manifests(self) -> None:
+        """Index every attached manifest by object id, once, on first use.
+
+        Keyed by the id as TEXT because that is what ``original_path`` yields; the manifest
+        holds it as an int, and one side would otherwise have to be converted per row.
+        """
+        if self._loaded:
+            return
+        index: dict[str, dict] = {}
+        # The committed class map is attached as a sidecar too, and is also a .tsv; the
+        # manifests are the ones the importer names `ecotaxa_project_<projid>.tsv`. Sorted
+        # so the same set of files always indexes in the same order.
+        manifests = sorted(path for path in self._sidecars.values() if path.name.startswith("ecotaxa_project_"))
+        if not manifests:
+            raise FileNotFoundError(
+                "TaraPacificRedefiner received no EcoTaxa manifest. In `pz_planktonzilla` the Tara Pacific importer "
+                "fetches one per project into <data_dir>/tara_pacific_manifests before this step "
+                "(TaraPacificDatasetImporter.ensure_sidecars; `dry_run=true` reports them as sidecars). This class "
+                "NEVER downloads."
+            )
+        for path in manifests:
+            for row in ecotaxa_client.read_manifest(path):
+                index[str(row["objid"])] = row
+        self._index = index
+        self._loaded = True
+
+    @staticmethod
+    def _iso_timestamp(row) -> str | None:
+        """``objdate`` refined by ``objtime``, or the bare date, or None.
+
+        EcoTaxa records the two separately and either may be blank. A malformed time is
+        dropped rather than guessed at: the date alone is still true.
+        """
+        date = (row.get("objdate") or "").strip()
+        if not date:
+            return None
+        time = (row.get("objtime") or "").strip()
+        if not time:
+            return date
+        try:
+            return datetime.fromisoformat(f"{date}T{time}").isoformat()
+        except ValueError:
+            return date
+
+    def _add_metadata(self, ds):
+        self._load_manifests()
+        # Mirror the EcoTaxaRedefiner filename-from-original_path idiom; a defensive .get on
+        # every lookup means an unknown id yields a smaller dict, never a raise part-way
+        # through a multi-million-row build.
+        metadata = []
+        for path in ds["original_path"]:
+            object_id = tara_pacific_layout.object_id_from_file_name(path.split("/")[-1])
+            row = self._index.get(object_id)
+            if row is None:
+                metadata.append({"ObjID": object_id} if object_id else {})
+                continue
+            entry = {"ObjID": object_id}
+            # Emitted as strings so they flow through the base flatten path exactly like the
+            # other redefiners (np.float32(str) downstream); only when actually recorded.
+            for source_key, column in (
+                ("latitude", "Latitude"),
+                ("longitude", "Longitude"),
+                ("depth_min", "Depth_min"),
+                ("depth_max", "Depth_max"),
+            ):
+                value = row.get(source_key)
+                if value not in (None, ""):
+                    entry[column] = str(value)
+            timestamp = self._iso_timestamp(row)
+            if timestamp:
+                entry["Timestamp"] = timestamp
+            if row.get("orig_id"):
+                entry["orig_id"] = str(row["orig_id"])
+            # The project id is the leading digits of every EcoTaxa object id, but reading
+            # it off the manifest file the row came from would need per-file bookkeeping;
+            # the id itself carries it, so record what the row states rather than infer.
+            project = self._project_of(object_id)
+            if project:
+                entry["ecotaxa_project"] = project
+            metadata.append(entry)
+
+        ds = ds.add_column("metadata", metadata)
+        return self._serialize_metadata(ds)
+
+    # EcoTaxa mints an object id as its project id followed by an 8-digit sequence, which
+    # is why project 1345 yields `134500000001` and project 11292 yields `1129200000001`.
+    _OBJECT_ID_SEQUENCE_DIGITS = 8
+
+    @classmethod
+    def _project_of(cls, object_id: str) -> str:
+        """The EcoTaxa project id an object id belongs to, or ``""``.
+
+        Decoded by matching the KNOWN project ids as a prefix — longest first — and
+        requiring the remainder to be exactly the 8-digit sequence, rather than by slicing
+        at a fixed offset: project ids are 4 and 5 digits long, so a fixed offset would
+        mis-read one of the two families. An id that matches no project yields no project
+        rather than a wrong one.
+        """
+        if not object_id.isdigit():
+            return ""
+        for project in sorted(tara_pacific_layout.ALL_PROJECTS, key=lambda p: -len(str(p))):
+            prefix = str(project)
+            if object_id.startswith(prefix) and len(object_id) - len(prefix) == cls._OBJECT_ID_SEQUENCE_DIGITS:
+                return prefix
+        return ""
+
+
 # Redefiner key -> class. Keys match the `redefiner` field of each entry in
 # cfg.datasets (configs/generate_planktonzilla.yaml). Each class is constructed with the
 # taxonomy CSV path inside main().
@@ -860,6 +1013,8 @@ REDEFINERS = {
     "ecotaxa": EcoTaxaRedefiner,
     "jedi": JediRedefiner,  # manual-download only; see the commented block in the config
     "frepj": FrepjRedefiner,  # offline geodata join over the importer's md5-verified sidecar tables
+    # offline join over the per-object EcoTaxa manifests the Tara Pacific importer fetched
+    "tara_pacific": TaraPacificRedefiner,
 }
 
 

@@ -1319,7 +1319,12 @@ def test_download_targets_frepj_appends_the_sidecar_tables_and_the_crosswalk(tmp
     assert importer._downloadable_uris() == frepj_layout.DOWNLOAD_URL
 
 
-@pytest.mark.parametrize("name", [n for n in IMPORT_CONFIG_NAMES if n != "frepj"])
+# The sources that DO declare sidecars: frepj (its md5-pinned geodata tables) and the four
+# Tara Pacific deposits (their per-object EcoTaxa manifests). Everything else is archive-only.
+SIDECAR_CONFIG_NAMES = {"frepj", *(name for name in IMPORT_CONFIG_NAMES if name.startswith("tara_pacific_"))}
+
+
+@pytest.mark.parametrize("name", [n for n in IMPORT_CONFIG_NAMES if n not in SIDECAR_CONFIG_NAMES])
 def test_sources_without_sidecars_are_unchanged(name, tmp_path):
     """The fifteen archive-only sources: no sidecars, and download_targets() exactly as before."""
     importer = _importer(name, tmp_path)
@@ -1449,7 +1454,7 @@ def test_preflight_reports_the_real_frepj_importers_sidecars(monkeypatch, tmp_pa
     checks, fetch_names = mk.report_source_state([(entry, importer)], SimpleNamespace(refresh="reuse"))
     assert fetch_names == []
     (check,) = [c for c in checks if c.name == "sidecars:frepj"]
-    assert check.ok and check.detail == "3 sidecar file(s) on disk with their md5 pin, 1 bundled"
+    assert check.ok and check.detail == "3 fetched sidecar target(s) satisfied, 1 bundled"
 
 
 def test_frepj_verified_sidecars_survive_refresh_redownload(monkeypatch, tmp_path):

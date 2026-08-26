@@ -144,3 +144,46 @@ datasets:
   # included: delete the file to force one. cleanup:false keeps the raw archive for
   # reuse, like the three entries above.
   - { name: frepj, import_name: frepj, cleanup: false, redefiner: frepj }
+  # Entries 17-20 (milestone v1.2): the four Tara Pacific deposits of Mériguet et al. 2025
+  # (essd-17-2761-2025), appended last so every source above keeps its concatenation index.
+  # All four are cc-by-4.0, so the licence mix is unchanged.
+  #
+  # These are the only sources with NO archive. Their SEANOE deposits publish EcoTaxa TSV
+  # exports — per-object metadata and morphological features, no vignettes — and point at
+  # public EcoTaxa projects for the images, which is what the importer walks: a per-object
+  # manifest from the read API, then one vignette per object from the vault. Both are
+  # declared as SIDECARS, so `dry_run=true` reports them under `sidecars:` and
+  # `check_downloads` probes the EcoTaxa endpoints; the manifests land in
+  # <data_dir>/tara_pacific_manifests and are reused until deleted (or until
+  # refresh=redownload). `redefiner: tara_pacific` reads those same manifests offline, so
+  # the redefine step makes ZERO requests — unlike `redefiner: ecotaxa`, which would issue
+  # one per image, i.e. 2.35 million for these four.
+  #
+  # They are large: ~2.35 M objects in total, decknet alone ~1.58 M. cleanup:false, like
+  # the entries above, so a re-run reuses what is already on disk.
+  - {
+      name: tara_pacific_bongo,
+      import_name: tara_pacific_bongo,
+      cleanup: false,
+      redefiner: tara_pacific,
+    }
+  - {
+      name: tara_pacific_decknet,
+      import_name: tara_pacific_decknet,
+      cleanup: false,
+      redefiner: tara_pacific,
+    }
+  - {
+      name: tara_pacific_hsn,
+      import_name: tara_pacific_hsn,
+      cleanup: false,
+      redefiner: tara_pacific,
+    }
+  # The only source whose label space includes anthropogenic microplastics, from the
+  # separate EcoTaxa plastics project 1345 alongside the plankton project 1344.
+  - {
+      name: tara_pacific_manta,
+      import_name: tara_pacific_manta,
+      cleanup: false,
+      redefiner: tara_pacific,
+    }

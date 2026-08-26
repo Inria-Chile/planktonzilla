@@ -67,9 +67,16 @@ EXPECTED_TABLE = [
     ("zoolake", "zoolake", False, "none"),
     ("jedioceans", "jedi_oceans_cpics", False, "jedi"),
     ("sykezooscan2024", "sykezooscan2024", False, "none"),
-    # Appended 2026-08-25 (v1.2), LAST, so every source above keeps its index. Its redefiner
+    # Appended 2026-08-25 (v1.2), so every source above keeps its index. Its redefiner
     # joins md5-pinned sidecar tables the importer fetches before the first import.
     ("frepj", "frepj", False, "frepj"),
+    # Appended 2026-08-26 (v1.2), LAST, same reason. The four Tara Pacific deposits have no
+    # archive at all: their redefiner joins the per-object EcoTaxa manifests their importer
+    # fetches as sidecars before the first import.
+    ("tara_pacific_bongo", "tara_pacific_bongo", False, "tara_pacific"),
+    ("tara_pacific_decknet", "tara_pacific_decknet", False, "tara_pacific"),
+    ("tara_pacific_hsn", "tara_pacific_hsn", False, "tara_pacific"),
+    ("tara_pacific_manta", "tara_pacific_manta", False, "tara_pacific"),
 ]
 
 
@@ -218,6 +225,7 @@ def test_datasets_and_repo_id_pinned_in_config():
         "ecotaxa": gp.EcoTaxaRedefiner,
         "jedi": gp.JediRedefiner,
         "frepj": gp.FrepjRedefiner,
+        "tara_pacific": gp.TaraPacificRedefiner,
     }
     for key, klass in expected_classes.items():
         assert gp.REDEFINERS[key] is klass
@@ -261,9 +269,11 @@ def test_main_pins_override_blocks_and_redefiners(monkeypatch, tmp_path):
         "ecotaxa": gp.EcoTaxaRedefiner,
         "jedi": gp.JediRedefiner,
         "frepj": gp.FrepjRedefiner,
+        "tara_pacific": gp.TaraPacificRedefiner,
     }
 
-    # Exactly the EXPECTED_TABLE entries (15 published + frepj), in this order.
+    # Exactly the EXPECTED_TABLE entries (15 published + frepj + the four Tara Pacific
+    # deposits), in this order.
     assert list(captured_redefiners.keys()) == [t[0] for t in EXPECTED_TABLE]
     assert len(captured_overrides) == len(EXPECTED_TABLE)
 

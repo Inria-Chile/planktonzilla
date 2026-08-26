@@ -66,6 +66,7 @@ number missing from the table below is *resolved*, not withdrawn; look for it th
 | KI-24 | decision log | MEDIUM (rebuild) | `zoolake`/`jedioceans` joined; the licence mix widened |
 | KI-26 | open, source-side | none (17M) / republished (frepj) | FREPJ `Sampling date` is free text; 7.1% not a date — normalized, 1.9% null |
 | KI-27 | decision log | MEDIUM (rebuild) | `frepj` joined the registry (16th, last); sidecar inputs became an importer protocol |
+| KI-28 | decision log | MEDIUM (rebuild) | the four Tara Pacific deposits joined (17th–20th, last); the first sources with **no archive** |
 
 Three obligations belong to archived entries but are **still open**, and are restated here so
 archiving cannot bury them:
@@ -428,6 +429,64 @@ estimate (a non-blocking WARN at worst). `global_uvp5` has the same shape on `re
 
 ---
 
+## KI-28 — the four Tara Pacific deposits joined the registry (17th–20th, last); the first sources with **no archive**
+
+**Where:** `configs/generate_planktonzilla.yaml` `datasets`; `configs/dataset_import/tara_pacific_*.yaml`;
+`planktonzilla/dataset_import/{tara_pacific_layout,ecotaxa_client,tara_pacific_importer}.py`;
+`generate_planktonzilla.TaraPacificRedefiner`; the 600 `tara_pacific_*` rows of the taxonomy CSV.
+
+**Change (2026-08-26, answering issue #10).** The four SEANOE deposits of Mériguet et al. 2025
+(`essd-17-2761-2025`) are **appended, not inserted**, after `frepj` — registry order is the
+concatenation order of the output. All four are `cc-by-4.0`, so the licence mix's set of terms is
+unchanged. Together they add ~2.35 M objects, `tara_pacific_decknet` alone ~1.58 M.
+
+They are the first sources with **nothing to download**. Each deposit publishes an EcoTaxa **TSV
+export** — per-object metadata and morphological features, no vignettes (verified by opening every
+archive) — and names the public EcoTaxa projects that hold the images. EcoTaxa's archive export
+needs an account (`POST /api/object_set/export` → `403 Not authenticated`), so the importer walks
+the public read API: a per-object manifest, then one vignette per object from `/vault`. The
+manifests are declared through the KI-27 **sidecar protocol**, so the pipeline needed no new seam.
+
+Consequences, stated plainly:
+
+- `download_uris` is empty for all four and `_download_and_extract` is a no-op that says so. There
+  is no `.zip` to hand-download if EcoTaxa is unreachable; `dry_run=true` reports `sidecars:` and
+  `check_downloads` probes the seven project endpoints.
+- `redefiner: tara_pacific` reads the same manifests **offline**. Using `redefiner: ecotaxa` here
+  would have issued one `GET /api/object/{objid}` per image — 2.35 million requests to a public
+  service — to re-learn what the manifest already states.
+- Class folders are named from the committed `tara_pacific_classes.tsv` map keyed by the EcoTaxa
+  taxon id, **not** by the live display name: EcoTaxa renames taxa in place (the 2024 exports and
+  the live API already disagree on 12+ labels per source for the same taxa), and a renamed folder
+  would silently repoint every `Raw_Labels` join key. A rename is reported; a taxon new to EcoTaxa
+  is skipped, because it has no taxonomy row.
+- The vignette fetch is resumable and refuses to finish while more than
+  `ecotaxa_max_missing_images` (default 0) are missing.
+
+**Upstream defect, recorded not worked around.** The DeckNet deposit's `100% > 501 pixels` archive
+(`.../00915/102697/data/114288.zip`) serves its full advertised 281,669,134 bytes and is still
+unreadable: its end-of-central-directory offset overshoots the file by exactly 4,000,000 bytes
+(`unzip`: "missing 4000000 bytes in zipfile"), and the entries straddling the gap cannot be read.
+Confirmed on two independent downloads, 2026-08-26. Nothing here reads it.
+
+**Inherited data issue, propagated knowingly.** Three of the 600 taxonomy rows take a lineage that
+contradicts EcoTaxa's tree, because rules 1–2 of the curation engine reuse the lineage the master
+CSV already records for a `proposed_label` (the table's own one-label-one-lineage invariant).
+`Odontella sp.` is a repair — EcoTaxa hangs it under the *springtail* genus. `Ctenophora<Animalia`
+and `part<Ctenophora` are **not**: the CSV has mapped `ctenophora` to the DIATOM genus (aphia
+163921) since long before this milestone, across nine rows of six zooplankton-imager sources where
+the comb jelly is the only plausible reading. These two rows follow the table rather than mint a
+second `ctenophora` lineage; correcting the homonym is a separate change to all eleven rows, gated
+on a golden-output diff like every other data item here. All three are enumerated in
+[`TARA_PACIFIC_TAXONOMY_RECONCILIATION.md`](TARA_PACIFIC_TAXONOMY_RECONCILIATION.md) and asserted
+to be the *only* three by `tests/test_tara_pacific_taxonomy.py`.
+
+**Frozen-output risk: MEDIUM, rebuild-only.** Nothing published changes; a from-scratch build now
+emits twenty sources, the four appended last. The first 1,715 lines of the taxonomy CSV are still
+byte-frozen, and the fifteen archive-only sources still declare no sidecars.
+
+---
+
 *Recorded 2026-06-17 during the v1.0 dataset-generation cleanup (Phase 7, `KNOWN-01`).
 `HARDEN-01` / `HARDEN-02` are defined in `.planning/REQUIREMENTS.md`, which is **gitignored**
 and absent from a clone — see the caveat at the top of this file.
@@ -435,7 +494,8 @@ KI-16 through KI-24 recorded 2026-08-01 during the `pz_planktonzilla` consolidat
 KI-25, and the corrections dated 2026-08-04 throughout, from a full re-audit of every entry
 against the code as it stands — the same pass that archived the nine resolved entries to
 [`RESOLVED_ISSUES.md`](RESOLVED_ISSUES.md). KI-26 and KI-27 recorded 2026-08-25 during the v1.2
-(FREPJ) lifecycle assessment and the registry join that followed it.*
+(FREPJ) lifecycle assessment and the registry join that followed it. KI-28 recorded 2026-08-26
+with the Tara Pacific registry join (issue #10).*
 
 ---
 

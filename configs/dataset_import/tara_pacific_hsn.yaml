@@ -1,0 +1,57 @@
+defaults:
+  - default.yaml
+
+_target_: planktonzilla.dataset_import.tara_pacific_importer.TaraPacificHSNDatasetImporter
+hf_dataset_name: tara-pacific-hsn
+push_to_hub: false
+check_image_file_integrity: true
+
+human_readable_name: "Tara Pacific High-Speed Net / ZooScan surface meso-plankton"
+license: "cc-by-4.0"
+source_url: "https://doi.org/10.17882/102336"
+
+# EMPTY ON PURPOSE — this source has no archive to download; see tara_pacific_bongo.yaml
+# for the full reason (the SEANOE deposit publishes EcoTaxa TSV exports, not vignettes).
+download_uris: ""
+
+# The public EcoTaxa project the images come from.
+#   11292  Tara Pacific HSN 330 microns  (256 352 objects)
+ecotaxa_projects: [11292]
+ecotaxa_window_size: 10000
+ecotaxa_image_workers: 8
+ecotaxa_max_missing_images: 0
+
+description: |
+  Quantitative imaging dataset of ZooScan-imaged meso-plankton (> 200 µm) collected with a
+  High-Speed Net aboard the schooner Tara during the Tara Pacific Expedition (2016-2018).
+  Samples were collected at the surface, generally daily, across the Atlantic and Pacific
+  Oceans from 151 open-ocean stations and from 54 stations in the coastal waters of 32
+  Pacific islands. High-speed sampling is what makes this coverage possible: it does not
+  require slowing the vessel, so the tow can be repeated far more often than a
+  conventional net.
+
+  The deposit publishes 256 352 plankton individuals, plankton parts, non-living particles
+  and imaging artefacts, ranging from 300 µm to a few mm, individually imaged and measured
+  with the ZooScan, classified into 159 taxonomic and morphological groups. planktonzilla
+  imports the images from the open-access EcoTaxa project the deposit names
+  (https://ecotaxa.obs-vlfr.fr/prj/11292), which reported the same 256 352 objects on
+  2026-08-26 under 159 distinct EcoTaxa taxa.
+
+citation_apa: |
+  Mériguet, Z., Bourdin, G., Jalabert, L., Bun, O., Caray-Counil, L., Elineau, A.,
+  Gorsky, G., & Lombard, F. (2024). Global scale surface meso-plankton dataset collected
+  with High-Speed Net and imaged with ZooScan during the Tara Pacific Expedition. SEANOE.
+  https://doi.org/10.17882/102336
+
+citation_bibtex: |
+  @article{dataset:tara_pacific_hsn,
+    title   = {Global scale surface meso-plankton dataset collected with High-Speed Net
+  and imaged with ZooScan during the Tara Pacific Expedition},
+    author  = {M\'eriguet, Zo\'e and Bourdin, Guillaume and Jalabert, La\"etitia
+  and Bun, Olivier and Caray-Counil, Louis and Elineau, Amanda and Gorsky, Gaby
+  and Lombard, Fabien},
+    year    = {2024},
+    journal = {SEANOE},
+    doi     = {10.17882/102336},
+    url     = {https://doi.org/10.17882/102336}
+  }

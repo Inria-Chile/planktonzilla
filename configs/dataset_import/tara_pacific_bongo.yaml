@@ -1,0 +1,66 @@
+defaults:
+  - default.yaml
+
+_target_: planktonzilla.dataset_import.tara_pacific_importer.TaraPacificBongoDatasetImporter
+hf_dataset_name: tara-pacific-bongo
+push_to_hub: false
+check_image_file_integrity: true
+
+human_readable_name: "Tara Pacific Bongo net / FlowCam surface micro-plankton"
+license: "cc-by-4.0"
+source_url: "https://doi.org/10.17882/102694"
+
+# EMPTY ON PURPOSE — this source has no archive to download.
+#
+# The SEANOE deposit holds EcoTaxa TSV exports only: per-object metadata and morphological
+# features, one .tsv per sample, no vignettes (verified by opening every archive on
+# 2026-08-26). Its own abstract says where the images are: "All images and their taxonomic
+# annotations are available in the open-access EcoTaxa project at these links", naming the
+# two projects below. EcoTaxa's archive export needs an account, so the anonymous route is
+# the public read API: a per-object manifest, then one vignette per object from the vault.
+# The importer declares both as SIDECARS, so `pz_planktonzilla dry_run=true` reports them
+# and `check_downloads` probes them.
+download_uris: ""
+
+# The public EcoTaxa projects the images come from, in import order.
+#   11370  Tara Pacific Bongo 20 microns - Subset 30% <500 Pix   (147 030 objects)
+#   11369  Tara Pacific Bongo 20 microns - Subset 100% >501 Pix  (233 739 objects)
+ecotaxa_projects: [11370, 11369]
+# Objects per manifest request; vignette fetch concurrency; how many vignettes may stay
+# unfetched before the import refuses to finish (0 = none — the fetch resumes on a re-run).
+ecotaxa_window_size: 10000
+ecotaxa_image_workers: 8
+ecotaxa_max_missing_images: 0
+
+description: |
+  Quantitative imaging dataset of FlowCam-imaged micro-plankton (> 20 µm) collected with
+  Bongo nets by scuba divers using an underwater scooter during the Tara Pacific
+  Expedition (2016-2018). Samples were taken at the surface, near reefs and lagoons in the
+  Pacific (37 samples).
+
+  The deposit publishes 380 769 plankton individuals, plankton parts, non-living particles
+  and imaging artefacts, ranging from 20 µm to 200 µm, individually imaged and measured
+  with the FlowCam, classified into 163 taxonomic and morphological groups. planktonzilla
+  imports the images from the two open-access EcoTaxa projects the deposit names
+  (https://ecotaxa.obs-vlfr.fr/prj/11370 and https://ecotaxa.obs-vlfr.fr/prj/11369), which
+  reported the same 380 769 objects on 2026-08-26 under 137 distinct EcoTaxa taxa — fewer
+  than the 163 published groups because EcoTaxa has since merged and renamed taxa. Class
+  folders are named from the committed tara_pacific_classes.tsv map, so a later upstream
+  rename is reported rather than silently changing every label.
+
+citation_apa: |
+  Mériguet, Z., Kristan, N., Bourdin, G., Gorsky, G., Karp-Boss, L., & Lombard, F. (2024).
+  Global scale surface micro-plankton dataset collected with Bongo nets and imaged with
+  FlowCam during the Tara Pacific Expedition. SEANOE. https://doi.org/10.17882/102694
+
+citation_bibtex: |
+  @article{dataset:tara_pacific_bongo,
+    title   = {Global scale surface micro-plankton dataset collected with Bongo nets
+  and imaged with FlowCam during the Tara Pacific Expedition},
+    author  = {M\'eriguet, Zo\'e and Kristan, Nathaniel and Bourdin, Guillaume
+  and Gorsky, Gaby and Karp-Boss, Lee and Lombard, Fabien},
+    year    = {2024},
+    journal = {SEANOE},
+    doi     = {10.17882/102694},
+    url     = {https://doi.org/10.17882/102694}
+  }

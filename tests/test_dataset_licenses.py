@@ -46,6 +46,7 @@ import json
 import pytest
 import yaml
 
+from planktonzilla.dataset_import import tara_pacific_layout
 from planktonzilla.planktonzilla_dataset.constants import (
     DATASET_IMPORT_CONFIGS,
     DATASET_LICENSES,
@@ -81,7 +82,17 @@ _NON_DEED_URLS = {
 # — a scan of the frozen artifact — until the v1.2 push. Listed explicitly so the
 # samples.json test tolerates nothing else; once the v1.2 artifact is published and
 # samples.json regenerated, this set goes back to empty.
-_RECORDED_BUT_NOT_YET_PUBLISHED = {"frepj"}
+#
+# The four tara_pacific_* sources joined on 2026-08-26 for the same reason: taxonomy rows,
+# importer configs and registry entries are in the tree, the images are not in the frozen
+# artifact yet.
+_RECORDED_BUT_NOT_YET_PUBLISHED = {
+    "frepj",
+    "tara_pacific_bongo",
+    "tara_pacific_decknet",
+    "tara_pacific_hsn",
+    "tara_pacific_manta",
+}
 
 
 def _published_dataset_names():
@@ -211,12 +222,13 @@ def test_generate_config_datasets_are_all_covered():
     assert not configured - set(DATASET_LICENSES), (
         f"cfg.datasets source(s) with no recorded license: {sorted(configured - set(DATASET_LICENSES))}"
     )
-    # The registry carries all 15 published sources plus frepj (v1.2), so a from-scratch
-    # build reproduces every source of the published dataset and the one joining it. The
-    # table is still declared independently of cfg.datasets: it is the record of each
-    # source's TERMS, which must survive a source being temporarily removed from the build.
+    # The registry carries all 15 published sources plus the five joining in v1.2 (frepj
+    # and the four Tara Pacific deposits), so a from-scratch build reproduces every source
+    # of the published dataset and the ones joining it. The table is still declared
+    # independently of cfg.datasets: it is the record of each source's TERMS, which must
+    # survive a source being temporarily removed from the build.
     assert set(DATASET_LICENSES) - configured == set()
-    assert len(configured) == 16
+    assert len(configured) == 20
 
 
 def test_pending_source_license_agrees_with_its_layout_constants():
@@ -224,3 +236,16 @@ def test_pending_source_license_agrees_with_its_layout_constants():
     from planktonzilla.dataset_import import frepj_layout
 
     assert DATASET_LICENSES["frepj"] == {"license": frepj_layout.LICENSE, "license_url": frepj_layout.LICENSE_URL}
+
+
+@pytest.mark.parametrize("dataset_name", sorted(tara_pacific_layout.SOURCES))
+def test_tara_pacific_license_agrees_with_its_layout_constants(dataset_name):
+    """Each Tara Pacific slug is transcribed in three places; they must not drift apart.
+
+    The importer config is the source of truth (pinned by test_license_matches_importer_config
+    above); this closes the triangle against the layout module the importer itself reads.
+    """
+    assert DATASET_LICENSES[dataset_name] == {
+        "license": tara_pacific_layout.LICENSE,
+        "license_url": tara_pacific_layout.LICENSE_URL,
+    }

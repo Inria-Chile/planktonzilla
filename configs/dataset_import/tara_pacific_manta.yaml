@@ -1,0 +1,62 @@
+defaults:
+  - default.yaml
+
+_target_: planktonzilla.dataset_import.tara_pacific_importer.TaraPacificMantaDatasetImporter
+hf_dataset_name: tara-pacific-manta
+push_to_hub: false
+check_image_file_integrity: true
+
+human_readable_name: "Tara Pacific Manta net / ZooScan surface meso-plankton and microplastics"
+license: "cc-by-4.0"
+source_url: "https://doi.org/10.17882/102537"
+
+# EMPTY ON PURPOSE — this source has no archive to download; see tara_pacific_bongo.yaml
+# for the full reason (the SEANOE deposit publishes EcoTaxa TSV exports, not vignettes).
+download_uris: ""
+
+# The public EcoTaxa projects the images come from, in import order.
+#   1344  Tara Pacific Manta 333 microns plankton  (111 846 objects)
+#   1345  Tara Pacific Manta 333 microns plastics   (24 030 objects)
+ecotaxa_projects: [1344, 1345]
+ecotaxa_window_size: 10000
+ecotaxa_image_workers: 8
+ecotaxa_max_missing_images: 0
+
+description: |
+  Quantitative imaging dataset of ZooScan-imaged meso-plankton AND microplastics collected
+  with a Manta net (333 µm mesh) aboard the schooner Tara during the Tara Pacific
+  Expedition (2016-2018). Samples were collected at the surface across the Pacific from 32
+  open-ocean stations — 28 of them on the Great Pacific Garbage Patch — and from 44
+  stations in the coastal waters of Pacific islands.
+
+  The deposit publishes 137 497 plankton individuals, plankton parts, non-living particles,
+  microplastics and imaging artefacts, ranging from 200 µm to a few mm, individually imaged
+  and measured with the ZooScan, classified into 173 taxonomic and morphological groups.
+  planktonzilla imports the images from the two open-access EcoTaxa projects the deposit
+  names — plankton at https://ecotaxa.obs-vlfr.fr/prj/1344 and plastics at
+  https://ecotaxa.obs-vlfr.fr/prj/1345 — which reported 135 876 objects on 2026-08-26 under
+  172 distinct EcoTaxa taxa.
+
+  This is the only source in the registry whose label space includes anthropogenic
+  microplastic classes (fiber<plastic, film, fragment, pellet, polystyrene). They are
+  imported like any other class, and carry root_class=inert in the taxonomy so a consumer
+  can separate them from both the living organisms and the marine detritus.
+
+citation_apa: |
+  Mériguet, Z., Bourdin, G., Jalabert, L., Caray-Counil, L., Maury, J., Elineau, A.,
+  Pedrotti, M.-L., Gorsky, G., & Lombard, F. (2024). Global scale surface meso-plankton and
+  microplastics dataset collected with Manta Net and imaged with ZooScan during the Tara
+  Pacific Expedition. SEANOE. https://doi.org/10.17882/102537
+
+citation_bibtex: |
+  @article{dataset:tara_pacific_manta,
+    title   = {Global scale surface meso-plankton and microplastics dataset collected
+  with Manta Net and imaged with ZooScan during the Tara Pacific Expedition},
+    author  = {M\'eriguet, Zo\'e and Bourdin, Guillaume and Jalabert, La\"etitia
+  and Caray-Counil, Louis and Maury, Juliette and Elineau, Amanda
+  and Pedrotti, Maria-Luiza and Gorsky, Gaby and Lombard, Fabien},
+    year    = {2024},
+    journal = {SEANOE},
+    doi     = {10.17882/102537},
+    url     = {https://doi.org/10.17882/102537}
+  }

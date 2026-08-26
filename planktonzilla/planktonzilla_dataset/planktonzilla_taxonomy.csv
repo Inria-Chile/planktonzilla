@@ -1713,3 +1713,603 @@ frepj,"Lobosa,Arcellinida,Centropyxidae,Centropyxis,Centropyxis discoides",proto
 frepj,"Lobosa,Arcellinida,Centropyxidae,Centropyxis,Sp._unk",protozoa,amoebozoa,lobosa,arcellinida,centropyxidae,centropyxis,,centropyxis,True,True,living,full_body,Q72663,136759.0,318527.0,,
 frepj,"Oligophymenophorea,Peritrichida,Vorticellidae,Vorticella,Sp._unk",chromista,ciliophora,oligohymenophorea,peritrichida,vorticellidae,vorticella,,vorticella,True,True,living,full_body,Q82743,163573.0,60849.0,,
 frepj,"Ostracoda,Or._unk,Or._unk,Or._unk,Or._unk",animalia,arthropoda,ostracoda,,,,,ostracoda,True,True,living,full_body,,,,,
+tara_pacific_bongo,Rhizaria,chromista,,,,,,,chromista,True,True,living,full_body,Q862296,7.0,,,
+tara_pacific_bongo,Cyanobacteria<Proteobacteria,bacteria,cyanobacteria,,,,,,cyanobacteria,True,True,living,full_body,Q93315,146537.0,1117.0,1349790.0,697
+tara_pacific_bongo,Retaria,chromista,,,,,,,chromista,True,True,living,full_body,Q862296,7.0,,,
+tara_pacific_bongo,Ciliophora,chromista,ciliophora,,,,,,ciliophora,True,True,living,full_body,Q106345,11.0,5878.0,72834.0,657
+tara_pacific_bongo,Trichodesmium,bacteria,cyanobacteria,cyanophyceae,oscillatoriales,microcoleaceae,trichodesmium,,trichodesmium,True,True,living,full_body,Q7840756,177604.0,1205.0,176348.0,662
+tara_pacific_bongo,UCYNA like,bacteria,cyanobacteria,cyanophyceae,,,,,cyanophyceae,True,True,living,like,Q18575364,146542.0,3028117.0,391327.0,697
+tara_pacific_bongo,Mollusca,animalia,mollusca,,,,,,mollusca,True,True,living,full_body,Q25326,51.0,6447.0,23.0,
+tara_pacific_bongo,Foraminifera,chromista,foraminifera,,,,,,foraminifera,True,True,living,full_body,Q107027,1410.0,29178.0,246658.0,557;582;620
+tara_pacific_bongo,Acantharea,chromista,radiozoa,acantharia,,,,,acantharia,True,True,living,full_body,Q135584,586732.0,65574.0,714957.0,625;640
+tara_pacific_bongo,Spumellaria,chromista,radiozoa,polycystina,spumellaria,,,,spumellaria,True,True,living,full_body,Q3967296,345835.0,65583.0,714957.0,655
+tara_pacific_bongo,Nassellaria<Polycystina,chromista,radiozoa,polycystina,nassellaria,,,,nassellaria,True,True,living,full_body,Q3870511,235741.0,278980.0,714957.0,654
+tara_pacific_bongo,Peridiniales,chromista,myzozoa,dinophyceae,peridiniales,,,,peridiniales,True,True,living,full_body,,109394.0,,,
+tara_pacific_bongo,Dinophyceae X,chromista,myzozoa,dinophyceae,,,,,dinophyceae x,True,True,living,full_body,,,,,
+tara_pacific_bongo,Bacillariophyceae,chromista,heterokontophyta,bacillariophyceae,,,,,bacillariophyceae,True,True,living,full_body,Q2878349,148899.0,33849.0,74456.0,711
+tara_pacific_bongo,Rhizosolenids,chromista,heterokontophyta,bacillariophyceae,rhizosoleniales,rhizosoleniaceae,rhizosolenia,,rhizosolenia,True,True,living,full_body,Q20204296,149069.0,3004.0,87664.0,444;686
+tara_pacific_bongo,Dictyocha,chromista,ochrophyta,dictyochophyceae,dictyochales,dictyochaceae,dictyocha,,dictyocha,True,True,living,full_body,Q25367449,157258.0,35686.0,603668.0,492;594
+tara_pacific_bongo,Undellidae,chromista,ciliophora,oligotrichea,choreotrichida,undellidae,,,undellidae,True,True,living,full_body,Q25360907,172430.0,1176381.0,1022867.0,490
+tara_pacific_bongo,Tintinnina<Choreotrichida,chromista,ciliophora,oligotrichea,choreotrichida,,,,choreotrichida,True,True,living,full_body,Q23810342,341353.0,200605.0,1022867.0,657
+tara_pacific_bongo,Codonellidae,chromista,ciliophora,oligotrichea,choreotrichida,codonellidae,,,codonellidae,True,True,living,full_body,,150201.0,,,
+tara_pacific_bongo,Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,neoceratium,,neoceratium,True,True,living,full_body,Q18606071,494056.0,665866.0,317205.0,240
+tara_pacific_bongo,Copepoda<Multicrustacea,animalia,arthropoda,copepoda,,,,,copepoda,True,True,living,full_body,Q189973,1080.0,6830.0,979181.0,175;255;563;575
+tara_pacific_bongo,Synedra,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,synedra,,synedra,True,True,living,full_body,,149186.0,,,
+tara_pacific_bongo,Striatella,chromista,heterokontophyta,bacillariophyceae,striatellales,striatellaceae,striatella,,striatella,True,True,living,full_body,Q23070147,149176.0,2963561.0,604035.0,711
+tara_pacific_bongo,Pseudo-nitzschia,chromista,heterokontophyta,bacillariophyceae,bacillariales,bacillariaceae,pseudo-nitzschia,,pseudo-nitzschia,True,True,living,full_body,Q891709,149151.0,41953.0,87706.0,630
+tara_pacific_bongo,Licmophora,chromista,heterokontophyta,bacillariophyceae,licmophorales,licmophoraceae,licmophora,,licmophora,True,True,living,full_body,Q25366573,149342.0,210597.0,603472.0,587
+tara_pacific_bongo,Diatoma,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,diatoma,,diatoma,True,True,living,full_body,Q14552177,149013.0,2862.0,603667.0,711
+tara_pacific_bongo,Cylindrotheca,chromista,heterokontophyta,bacillariophyceae,bacillariales,bacillariaceae,cylindrotheca,,cylindrotheca,True,True,living,full_body,Q23821592,149003.0,2852.0,87577.0,711
+tara_pacific_bongo,Asterionella,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,asterionella,,asterionella,True,True,living,full_body,Q150125,148953.0,35129.0,181159.0,615;658
+tara_pacific_bongo,Bacteriastrum<Chaetocerotaceae,chromista,heterokontophyta,bacillariophyceae,chaetocerotanae,chaetocerotaceae,bacteriastrum,,bacteriastrum,True,True,living,full_body,Q4840004,149118.0,426670.0,87564.0,538
+tara_pacific_bongo,Planktoniella,chromista,heterokontophyta,bacillariophyceae,thalassiosirales,thalassiosiraceae,planktoniella,,planktoniella,True,True,living,full_body,,148979.0,,,
+tara_pacific_bongo,Hemiaulus,chromista,heterokontophyta,bacillariophyceae,hemiaulales,hemiaulaceae,hemiaulus,,hemiaulus,True,True,living,full_body,Q25366002,163248.0,426649.0,603754.0,522
+tara_pacific_bongo,Eucampia,chromista,heterokontophyta,bacillariophyceae,hemiaulales,hemiaulaceae,eucampia,,eucampia,True,True,living,full_body,Q25366290,149130.0,49251.0,87640.0,744
+tara_pacific_bongo,Ditylum,chromista,heterokontophyta,bacillariophyceae,lithodesmiales,lithodesmiaceae,ditylum,,ditylum,True,True,living,full_body,Q21078568,149022.0,49248.0,74454.0,542
+tara_pacific_bongo,Chaetoceros<Chaetocerotaceae,chromista,heterokontophyta,bacillariophyceae,chaetocerotanae,chaetocerotaceae,chaetoceros,,chaetoceros,True,True,living,full_body,Q1761179,148985.0,49237.0,87566.0,540;734;754;760
+tara_pacific_bongo,Biddulphia,chromista,heterokontophyta,bacillariophyceae,biddulphiales,biddulphiaceae,biddulphia,,biddulphia,True,True,living,full_body,Q25366246,148967.0,420276.0,603546.0,711
+tara_pacific_bongo,Rhizosolenia,chromista,heterokontophyta,bacillariophyceae,rhizosoleniales,rhizosoleniaceae,rhizosolenia,,rhizosolenia,True,True,living,full_body,Q20204296,149069.0,3004.0,87664.0,444;686
+tara_pacific_bongo,Guinardia,chromista,heterokontophyta,bacillariophyceae,rhizosoleniales,rhizosoleniaceae,guinardia,,guinardia,True,True,living,full_body,Q25366444,149111.0,216800.0,345399.0,624
+tara_pacific_bongo,Dactyliosolen,chromista,heterokontophyta,bacillariophyceae,rhizosoleniales,rhizosoleniaceae,dactyliosolen,,dactyliosolen,True,True,living,full_body,Q25366440,149309.0,1118494.0,292848.0,700
+tara_pacific_bongo,Lacrymaria,chromista,ciliophora,litostomatea,haptorida,lacrymariidae,lacrymaria,,lacrymaria,True,True,living,full_body,,179314.0,,,
+tara_pacific_bongo,Vorticella,chromista,ciliophora,oligohymenophorea,peritrichida,vorticellidae,vorticella,,vorticella,True,True,living,full_body,Q82743,163573.0,60849.0,,
+tara_pacific_bongo,Epiplocylis,chromista,ciliophora,oligotrichea,choreotrichida,epiplocylididae,epiplocylis,,epiplocylis,True,True,living,full_body,Q25362619,183562.0,1236002.0,1022867.0,484
+tara_pacific_bongo,Cyttarocylis,chromista,ciliophora,oligotrichea,choreotrichida,cyttarocylididae,cyttarocylis,,cyttarocylis,True,True,living,full_body,Q25362603,150205.0,1176358.0,1022867.0,657
+tara_pacific_bongo,Dictyocysta,chromista,ciliophora,oligotrichea,choreotrichida,dictyocystidae,dictyocysta,,dictyocysta,True,True,living,full_body,Q25362604,196834.0,513214.0,1022867.0,481
+tara_pacific_bongo,Metacylis,chromista,ciliophora,oligotrichea,choreotrichida,metacylididae,metacylis,,metacylis,True,True,living,full_body,Q25362550,172438.0,181650.0,1022867.0,657
+tara_pacific_bongo,Rhabdonella,chromista,ciliophora,oligotrichea,choreotrichida,rhabdonellidae,rhabdonella,,rhabdonella,True,True,living,full_body,Q25362643,183576.0,211027.0,1022867.0,432
+tara_pacific_bongo,Steenstrupiella,chromista,ciliophora,oligotrichea,choreotrichida,tintinnidae,steenstrupiella,,steenstrupiella,True,True,living,full_body,Q25362703,183545.0,513282.0,1022867.0,526
+tara_pacific_bongo,Eutintinnus,chromista,ciliophora,oligotrichea,choreotrichida,eutintinnidae,eutintinnus,,eutintinnus,True,True,living,full_body,Q25362684,183543.0,182089.0,1022867.0,485
+tara_pacific_bongo,Amphorides,chromista,ciliophora,oligotrichea,choreotrichida,tintinnidae,amphorides,,amphorides,True,True,living,full_body,Q25362658,183539.0,1049792.0,1022867.0,528
+tara_pacific_bongo,Neoceratium pentagonum,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,pentagonus,tripos pentagonus,True,True,living,full_body,Q68444515,841746.0,644179.0,317196.0,473
+tara_pacific_bongo,Neoceratium fusus<Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,fusus,tripos fusus,True,True,living,full_body,Q68443395,840626.0,2916.0,317196.0,472
+tara_pacific_bongo,Neoceratium furca<Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,furca,tripos furca,True,True,living,full_body,Q68443377,840627.0,119094.0,317196.0,459
+tara_pacific_bongo,Neoceratium candelabrum,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,candelabrum,tripos candelabrum,True,True,living,full_body,Q68442882,841193.0,644166.0,317196.0,458
+tara_pacific_bongo,Phalacroma,chromista,myzozoa,dinophyceae,dinophysales,oxyphysaceae,phalacroma,,phalacroma,True,True,living,full_body,Q23527054,109466.0,330137.0,317118.0,546
+tara_pacific_bongo,Ornithocercus,chromista,myzozoa,dinophyceae,dinophysales,dinophysaceae,ornithocercus,,ornithocercus,True,True,living,full_body,Q7103629,109464.0,566468.0,317119.0,488;749;751;753
+tara_pacific_bongo,Pyrophacus,chromista,myzozoa,dinophyceae,gonyaulacales,pyrophacaceae,pyrophacus,,pyrophacus,True,True,living,full_body,Q25364482,109555.0,261841.0,317168.0,742
+tara_pacific_bongo,Protoperidinium,chromista,myzozoa,dinophyceae,peridiniales,protoperidiniaceae,protoperidinium,,protoperidinium,True,True,living,full_body,Q25364982,109553.0,261839.0,317105.0,474
+tara_pacific_bongo,Pyrocystaceae,chromista,myzozoa,dinophyceae,gonyaulacales,pyrocystaceae,,,pyrocystaceae,True,True,living,full_body,Q16916347,109444.0,1573500.0,317059.0,240
+tara_pacific_bongo,Cyclopoida,animalia,arthropoda,copepoda,cyclopoida,,,,cyclopoida,True,True,living,full_body,Q899782,1101.0,84308.0,392.0,66
+tara_pacific_bongo,Calanoida,animalia,arthropoda,copepoda,calanoida,,,,calanoida,True,True,living,full_body,Q478553,1100.0,6833.0,386.0,114;320;564
+tara_pacific_bongo,Ornithocercus magnificus<Ornithocercus,chromista,myzozoa,dinophyceae,dinophysales,dinophysaceae,ornithocercus,magnificus,ornithocercus magnificus,True,True,living,full_body,Q68420199,109693.0,566470.0,317119.0,753
+tara_pacific_bongo,Podolampas,chromista,myzozoa,dinophyceae,peridiniales,podolampadaceae,podolampas,,podolampas,True,True,living,full_body,Q25364907,109550.0,699223.0,317029.0,421;491
+tara_pacific_bongo,Odontella sp.,chromista,heterokontophyta,bacillariophyceae,triceratiales,triceratiaceae,odontella,,odontella sp.,True,True,living,full_body,,,,,
+tara_pacific_bongo,Oncaeidae,animalia,arthropoda,copepoda,cyclopoida,oncaeidae,,,oncaeidae,True,True,living,full_body,Q3809055,128586.0,349673.0,142590.0,42;568
+tara_pacific_bongo,Corycaeidae,animalia,arthropoda,copepoda,cyclopoida,corycaeidae,,,corycaeidae,True,True,living,full_body,Q6569053,128569.0,749182.0,315366.0,47;565
+tara_pacific_bongo,duplicate,,,,,,,,error,False,False,artefact,,,,,,
+tara_pacific_bongo,detritus<not-living,,,,,,,,detritus,False,False,detritus,,,,,,207;666;717
+tara_pacific_bongo,larvae<Annelida,animalia,annelida,,,,,,annelida,True,True,living,larvae,Q25522,882.0,6340.0,2.0,558;632
+tara_pacific_bongo,artefact,,,,,,,,artefact,False,False,artefact,,,,,,208;688;714
+tara_pacific_bongo,centric,chromista,bacillariophyta,,,,,,bacillariophyta,True,True,living,full_body,,148898.0,,,
+tara_pacific_bongo,pennate<Bacillariophyta,chromista,bacillariophyta,,,,,,bacillariophyta,True,True,living,full_body,,148898.0,,,
+tara_pacific_bongo,other<Biota,,,,,,,,other,False,True,living,full_body,,,,,
+tara_pacific_bongo,t001,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_bongo,t002,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_bongo,t003,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_bongo,t004,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_bongo,t005,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_bongo,t006,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_bongo,t007,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_bongo,t008,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_bongo,feces,,,,,,,,feces,False,False,detritus,,,,,,
+tara_pacific_bongo,dark<detritus,,,,,,,,detritus,False,False,detritus,,,,,,207;666;717
+tara_pacific_bongo,light<detritus,,,,,,,,detritus,False,False,detritus,,,,,,207;666;717
+tara_pacific_bongo,bubble,,,,,,,,bubble,False,False,artefact,,,,,,205;667;715
+tara_pacific_bongo,badfocus<artefact,,,,,,,,bad focus,False,False,artefact,,,,,,
+tara_pacific_bongo,part<other,,,,,,,,other,False,False,detritus,part,,,,,
+tara_pacific_bongo,othertocheck,,,,,,,,other,False,False,artefact,,,,,,
+tara_pacific_bongo,fiber<detritus,,,,,,,,fiber,False,False,detritus,,,,,,204;576
+tara_pacific_bongo,egg<other,,,,,,,,egg,False,True,living,egg,,,,,213;226;552;750
+tara_pacific_bongo,multiple<other,,,,,,,,other,False,False,artefact,,,,,,
+tara_pacific_bongo,part<Crustacea,animalia,arthropoda,,,,,,arthropoda,False,False,detritus,part,Q1360,1065.0,6656.0,20.0,
+tara_pacific_bongo,nauplii<Crustacea,animalia,arthropoda,,,,,,arthropoda,True,True,living,full_body,Q1360,1065.0,6656.0,20.0,
+tara_pacific_bongo,t010,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_bongo,veliger<Mollusca,animalia,mollusca,,,,,,mollusca,True,True,living,full_body,Q25326,51.0,6447.0,23.0,
+tara_pacific_bongo,t011,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_bongo,t012,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_bongo,t013,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_bongo,t014,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_bongo,t015,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_bongo,t016,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_bongo,t017,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_bongo,chainthin,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,diatoma,,diatoma,True,True,living,full_body,Q14552177,149013.0,2862.0,603667.0,711
+tara_pacific_bongo,chainlarge,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,diatoma,,diatoma,True,True,living,full_body,Q14552177,149013.0,2862.0,603667.0,711
+tara_pacific_bongo,spines<Acantharia,chromista,radiozoa,acantharia,,,,,acantharia,False,False,detritus,part,Q135584,586732.0,65574.0,714957.0,625;640
+tara_pacific_bongo,Amphitetras,chromista,heterokontophyta,bacillariophyceae,triceratiales,triceratiaceae,amphitetras,,amphitetras,True,True,living,full_body,,578002.0,,,
+tara_pacific_bongo,Oxytoxum,chromista,myzozoa,dinophyceae,peridiniales,oxytoxaceae,oxytoxum,,oxytoxum,True,True,living,full_body,Q25364849,109528.0,2950224.0,317139.0,549
+tara_pacific_bongo,part<Copepoda,animalia,arthropoda,copepoda,,,,,copepoda,False,False,detritus,part,Q189973,1080.0,6830.0,979181.0,175;255;563;575
+tara_pacific_bongo,Coscinodiscophycidae,chromista,heterokontophyta,bacillariophyceae,,,,,bacillariophyceae,True,True,living,full_body,Q2878349,148899.0,33849.0,74456.0,711
+tara_pacific_bongo,Asterolamprales,chromista,heterokontophyta,bacillariophyceae,asterolamprales,,,,asterolamprales,True,True,living,full_body,Q2868420,162250.0,941245.0,393182.0,711
+tara_pacific_bongo,Hemidiscus cuneiformis,chromista,heterokontophyta,bacillariophyceae,coscinodiscales,hemidiscaceae,hemidiscus,cuneiformis,hemidiscus cuneiformis,True,True,living,full_body,,180367.0,,,
+tara_pacific_bongo,Cladopyxis quadrispina,chromista,myzozoa,dinophyceae,gonyaulacales,cladopyxidaceae,cladopyxis,quadrispina,cladopyxis quadrispina,True,True,living,full_body,,233346.0,,,
+tara_pacific_bongo,Ornithocercus steinii,chromista,myzozoa,dinophyceae,dinophysales,dinophysaceae,ornithocercus,steinii,ornithocercus steinii,True,True,living,full_body,Q68420324,109696.0,630347.0,317119.0,488;749;751;753
+tara_pacific_bongo,Rhizosolenia inter. Richelia,chromista,heterokontophyta,bacillariophyceae,rhizosoleniales,rhizosoleniaceae,rhizosolenia,,rhizosolenia,True,True,living,full_body,Q20204296,149069.0,3004.0,87664.0,444;686
+tara_pacific_bongo,Chaetoceros inter. Calothrix,chromista,heterokontophyta,bacillariophyceae,chaetocerotanae,chaetocerotaceae,chaetoceros,,chaetoceros inter. calothrix,True,True,living,full_body,,,,,
+tara_pacific_bongo,Poroecus,chromista,ciliophora,oligotrichea,choreotrichida,codonellidae,poroecus,,poroecus,True,True,living,full_body,Q25362578,415852.0,180938.0,2677449.0,657
+tara_pacific_bongo,multiple<Diatoma,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,diatoma,,diatoma,True,True,living,mix,Q14552177,149013.0,2862.0,603667.0,711
+tara_pacific_bongo,Cladopyxis,chromista,myzozoa,dinophyceae,gonyaulacales,cladopyxidaceae,cladopyxis,,cladopyxis,True,True,living,full_body,Q18606151,109509.0,1129411.0,317024.0,483
+tara_pacific_bongo,Richelia,bacteria,cyanobacteria,cyanophyceae,nostocales,rivulariaceae,richelia,,richelia,True,True,living,full_body,Q27438682,370179.0,98443.0,703249.0,697
+tara_pacific_bongo,Rhabdonellopsis,chromista,ciliophora,oligotrichea,choreotrichida,rhabdonellidae,rhabdonellopsis,,rhabdonellopsis,True,True,living,full_body,Q25362646,183550.0,211026.0,1022867.0,423
+tara_pacific_bongo,larvae<Echinodermata,animalia,echinodermata,,,,,,echinodermata,True,True,living,larvae,Q44631,1806.0,7586.0,4.0,261;638
+tara_pacific_bongo,Thalassionematales,chromista,heterokontophyta,bacillariophyceae,thalassionematales,,,,thalassionematales,True,True,living,full_body,Q23070138,149090.0,33849.0,187419.0,429
+tara_pacific_bongo,trochozoa,animalia,,,,,,,animalia,True,True,living,larvae,Q729,2.0,33208.0,,
+tara_pacific_bongo,crumple sphere,,,,,,,,shape,False,False,artefact,,,,,,
+tara_pacific_bongo,egg sac<egg,,,,,,,,egg,False,True,living,egg,,,,,213;226;552;750
+tara_pacific_bongo,larvae<Polychaeta,animalia,annelida,polychaeta,,,,,polychaeta,True,True,living,larvae,Q18952,883.0,6341.0,24489.0,558;632
+tara_pacific_bongo,rhizosolenia inter richelia tmp i,chromista,heterokontophyta,bacillariophyceae,rhizosoleniales,rhizosoleniaceae,rhizosolenia,,rhizosolenia,True,True,living,full_body,Q20204296,149069.0,3004.0,87664.0,444;686
+tara_pacific_bongo,rhizosolenia tmp i,chromista,heterokontophyta,bacillariophyceae,rhizosoleniales,rhizosoleniaceae,rhizosolenia,,rhizosolenia,True,True,living,full_body,Q20204296,149069.0,3004.0,87664.0,444;686
+tara_pacific_bongo,lightrods<rods,,,,,,,,plastic rod,False,False,inert,,,,,,
+tara_pacific_bongo,darkrods<rods,,,,,,,,plastic rod,False,False,inert,,,,,,
+tara_pacific_bongo,trochophore,animalia,annelida,,,,,,annelida,True,True,living,larvae,Q25522,882.0,6340.0,2.0,558;632
+tara_pacific_bongo,Chaetoceros inter ciliate,chromista,heterokontophyta,bacillariophyceae,chaetocerotanae,chaetocerotaceae,chaetoceros,,chaetoceros inter ciliate,True,True,living,full_body,,,,,
+tara_pacific_bongo,part<Ciliophora,chromista,ciliophora,,,,,,ciliophora,False,False,detritus,part,Q106345,11.0,5878.0,72834.0,657
+tara_pacific_bongo,spines<Rhizaria,chromista,,,,,,,chromista,False,False,detritus,part,Q862296,7.0,,,
+tara_pacific_bongo,larvae<Biota,,,,,,,,larvae,True,True,living,larvae,,,,,
+tara_pacific_bongo,aggregates,,,,,,,,other,False,False,artefact,,,,,,
+tara_pacific_bongo,part diatom,,,,,,,,part diatom,False,False,detritus,part,,,,,
+tara_pacific_bongo,Hemidiscus,chromista,heterokontophyta,bacillariophyceae,coscinodiscales,hemidiscaceae,hemidiscus,,hemidiscus,True,True,living,full_body,Q21213712,180366.0,1954218.0,87668.0,720
+tara_pacific_bongo,lightrods<othertocheck,,,,,,,,shape,False,False,artefact,,,,,,
+tara_pacific_decknet,Rhizaria,chromista,,,,,,,chromista,True,True,living,full_body,Q862296,7.0,,,
+tara_pacific_decknet,Cyanobacteria<Proteobacteria,bacteria,cyanobacteria,,,,,,cyanobacteria,True,True,living,full_body,Q93315,146537.0,1117.0,1349790.0,697
+tara_pacific_decknet,Retaria,chromista,,,,,,,chromista,True,True,living,full_body,Q862296,7.0,,,
+tara_pacific_decknet,Ciliophora,chromista,ciliophora,,,,,,ciliophora,True,True,living,full_body,Q106345,11.0,5878.0,72834.0,657
+tara_pacific_decknet,UCYNA like,bacteria,cyanobacteria,cyanophyceae,,,,,cyanophyceae,True,True,living,like,Q18575364,146542.0,3028117.0,391327.0,697
+tara_pacific_decknet,Rotifera,animalia,rotifera,,,,,,rotifera,True,True,living,full_body,Q180148,14260.0,10190.0,16.0,
+tara_pacific_decknet,Foraminifera,chromista,foraminifera,,,,,,foraminifera,True,True,living,full_body,Q107027,1410.0,29178.0,246658.0,557;582;620
+tara_pacific_decknet,Dictyochophyceae<Ochrophyta,chromista,ochrophyta,dictyochophyceae,,,,,dictyochophyceae,True,True,living,full_body,,146232.0,,,
+tara_pacific_decknet,Dinophyceae,chromista,myzozoa,dinophyceae,,,,,dinophyceae,True,True,living,full_body,Q2567254,19542.0,2864.0,317011.0,240
+tara_pacific_decknet,Pterosperma,plantae,chlorophyta,pyramimonadophyceae,pyramimonadales,pterospermataceae,pterosperma,,pterosperma,True,True,living,full_body,Q7256909,160595.0,38835.0,440877.0,736
+tara_pacific_decknet,Tunicata,animalia,chordata,,,,,,chordata,True,True,living,full_body,Q10915,1821.0,7711.0,18.0,
+tara_pacific_decknet,Spumellaria,chromista,radiozoa,polycystina,spumellaria,,,,spumellaria,True,True,living,full_body,Q3967296,345835.0,65583.0,714957.0,655
+tara_pacific_decknet,Nassellaria<Polycystina,chromista,radiozoa,polycystina,nassellaria,,,,nassellaria,True,True,living,full_body,Q3870511,235741.0,278980.0,714957.0,654
+tara_pacific_decknet,Gymnodiniales,chromista,myzozoa,dinophyceae,gymnodiniales,,,,gymnodiniales,True,True,living,full_body,Q5890243,109392.0,2953.0,317015.0,240
+tara_pacific_decknet,Gonyaulacales,chromista,myzozoa,dinophyceae,gonyaulacales,,,,gonyaulacales,True,True,living,full_body,Q5882696,109391.0,40984.0,317024.0,240
+tara_pacific_decknet,Bacillariophyceae,chromista,heterokontophyta,bacillariophyceae,,,,,bacillariophyceae,True,True,living,full_body,Q2878349,148899.0,33849.0,74456.0,711
+tara_pacific_decknet,Rhizosolenids,chromista,heterokontophyta,bacillariophyceae,rhizosoleniales,rhizosoleniaceae,rhizosolenia,,rhizosolenia,True,True,living,full_body,Q20204296,149069.0,3004.0,87664.0,444;686
+tara_pacific_decknet,Coscinodiscids,chromista,bacillariophyta,,,,,,coscinodiscids,True,True,living,full_body,,,,,
+tara_pacific_decknet,Zoothamniidae,chromista,ciliophora,oligohymenophorea,sessilida,zoothamniidae,,,zoothamniidae,True,True,living,full_body,Q19823037,235773.0,168255.0,2681195.0,657
+tara_pacific_decknet,Xystonellidae,chromista,ciliophora,oligotrichea,choreotrichida,xystonellidae,,,xystonellidae,True,True,living,full_body,Q25360910,172429.0,211023.0,1022867.0,657
+tara_pacific_decknet,Undellidae,chromista,ciliophora,oligotrichea,choreotrichida,undellidae,,,undellidae,True,True,living,full_body,Q25360907,172430.0,1176381.0,1022867.0,490
+tara_pacific_decknet,Tintinnina<Choreotrichida,chromista,ciliophora,oligotrichea,choreotrichida,,,,choreotrichida,True,True,living,full_body,Q23810342,341353.0,200605.0,1022867.0,657
+tara_pacific_decknet,Codonellidae,chromista,ciliophora,oligotrichea,choreotrichida,codonellidae,,,codonellidae,True,True,living,full_body,,150201.0,,,
+tara_pacific_decknet,Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,neoceratium,,neoceratium,True,True,living,full_body,Q18606071,494056.0,665866.0,317205.0,240
+tara_pacific_decknet,Copepoda<Multicrustacea,animalia,arthropoda,copepoda,,,,,copepoda,True,True,living,full_body,Q189973,1080.0,6830.0,979181.0,175;255;563;575
+tara_pacific_decknet,Nitzschia,chromista,heterokontophyta,bacillariophyceae,bacillariales,bacillariaceae,nitzschia,,nitzschia,True,True,living,full_body,Q1583107,149045.0,651811.0,87625.0,711
+tara_pacific_decknet,Fragilariopsis,chromista,heterokontophyta,bacillariophyceae,bacillariales,bacillariaceae,fragilariopsis,,fragilariopsis,True,True,living,full_body,Q25366030,149313.0,186035.0,87687.0,711
+tara_pacific_decknet,Asterionellopsis,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,asterionellopsis,,asterionellopsis,True,True,living,full_body,Q25366557,149138.0,33639.0,87560.0,711
+tara_pacific_decknet,Bacteriastrum<Chaetocerotaceae,chromista,heterokontophyta,bacillariophyceae,chaetocerotanae,chaetocerotaceae,bacteriastrum,,bacteriastrum,True,True,living,full_body,Q4840004,149118.0,426670.0,87564.0,538
+tara_pacific_decknet,Planktoniella,chromista,heterokontophyta,bacillariophyceae,thalassiosirales,thalassiosiraceae,planktoniella,,planktoniella,True,True,living,full_body,,148979.0,,,
+tara_pacific_decknet,Hemiaulus,chromista,heterokontophyta,bacillariophyceae,hemiaulales,hemiaulaceae,hemiaulus,,hemiaulus,True,True,living,full_body,Q25366002,163248.0,426649.0,603754.0,522
+tara_pacific_decknet,Helicotheca,chromista,heterokontophyta,bacillariophyceae,lithodesmiales,lithodesmiaceae,helicotheca,,helicotheca,True,True,living,full_body,,157438.0,,,
+tara_pacific_decknet,Eucampia,chromista,heterokontophyta,bacillariophyceae,hemiaulales,hemiaulaceae,eucampia,,eucampia,True,True,living,full_body,Q25366290,149130.0,49251.0,87640.0,744
+tara_pacific_decknet,Ditylum,chromista,heterokontophyta,bacillariophyceae,lithodesmiales,lithodesmiaceae,ditylum,,ditylum,True,True,living,full_body,Q21078568,149022.0,49248.0,74454.0,542
+tara_pacific_decknet,Chaetoceros<Chaetocerotaceae,chromista,heterokontophyta,bacillariophyceae,chaetocerotanae,chaetocerotaceae,chaetoceros,,chaetoceros,True,True,living,full_body,Q1761179,148985.0,49237.0,87566.0,540;734;754;760
+tara_pacific_decknet,Corethron,chromista,heterokontophyta,bacillariophyceae,corethrales,corethraceae,corethron,,corethron,True,True,living,full_body,Q25366255,149109.0,49242.0,87570.0,541
+tara_pacific_decknet,Guinardia,chromista,heterokontophyta,bacillariophyceae,rhizosoleniales,rhizosoleniaceae,guinardia,,guinardia,True,True,living,full_body,Q25366444,149111.0,216800.0,345399.0,624
+tara_pacific_decknet,Dactyliosolen,chromista,heterokontophyta,bacillariophyceae,rhizosoleniales,rhizosoleniaceae,dactyliosolen,,dactyliosolen,True,True,living,full_body,Q25366440,149309.0,1118494.0,292848.0,700
+tara_pacific_decknet,Lacrymaria,chromista,ciliophora,litostomatea,haptorida,lacrymariidae,lacrymaria,,lacrymaria,True,True,living,full_body,,179314.0,,,
+tara_pacific_decknet,Epiplocylis,chromista,ciliophora,oligotrichea,choreotrichida,epiplocylididae,epiplocylis,,epiplocylis,True,True,living,full_body,Q25362619,183562.0,1236002.0,1022867.0,484
+tara_pacific_decknet,Cyttarocylis,chromista,ciliophora,oligotrichea,choreotrichida,cyttarocylididae,cyttarocylis,,cyttarocylis,True,True,living,full_body,Q25362603,150205.0,1176358.0,1022867.0,657
+tara_pacific_decknet,Dictyocysta,chromista,ciliophora,oligotrichea,choreotrichida,dictyocystidae,dictyocysta,,dictyocysta,True,True,living,full_body,Q25362604,196834.0,513214.0,1022867.0,481
+tara_pacific_decknet,Codonaria,chromista,ciliophora,oligotrichea,choreotrichida,codonellidae,codonaria,,codonaria,True,True,living,full_body,Q25362575,150204.0,1176323.0,2677449.0,465
+tara_pacific_decknet,Metacylis,chromista,ciliophora,oligotrichea,choreotrichida,metacylididae,metacylis,,metacylis,True,True,living,full_body,Q25362550,172438.0,181650.0,1022867.0,657
+tara_pacific_decknet,Rhabdonella,chromista,ciliophora,oligotrichea,choreotrichida,rhabdonellidae,rhabdonella,,rhabdonella,True,True,living,full_body,Q25362643,183576.0,211027.0,1022867.0,432
+tara_pacific_decknet,Steenstrupiella,chromista,ciliophora,oligotrichea,choreotrichida,tintinnidae,steenstrupiella,,steenstrupiella,True,True,living,full_body,Q25362703,183545.0,513282.0,1022867.0,526
+tara_pacific_decknet,Salpingella<Tintinnidae,chromista,ciliophora,oligotrichea,choreotrichida,tintinnidae,salpingella,,salpingella,True,True,living,full_body,Q25362697,183566.0,513280.0,1022867.0,523
+tara_pacific_decknet,Eutintinnus,chromista,ciliophora,oligotrichea,choreotrichida,eutintinnidae,eutintinnus,,eutintinnus,True,True,living,full_body,Q25362684,183543.0,182089.0,1022867.0,485
+tara_pacific_decknet,Codonellopsis<Tintinnidiidae,chromista,ciliophora,oligotrichea,choreotrichida,codonellopsidae,codonellopsis,morchella,codonellopsis morchella,True,True,living,full_body,Q61999492,240441.0,1049798.0,1022867.0,433;469
+tara_pacific_decknet,Amphorides,chromista,ciliophora,oligotrichea,choreotrichida,tintinnidae,amphorides,,amphorides,True,True,living,full_body,Q25362658,183539.0,1049792.0,1022867.0,528
+tara_pacific_decknet,Dadayiella,chromista,ciliophora,oligotrichea,choreotrichida,tintinnidae,dadayiella,,dadayiella,True,True,living,full_body,Q25362682,183541.0,1292460.0,1022867.0,527
+tara_pacific_decknet,Neoceratium pentagonum,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,pentagonus,tripos pentagonus,True,True,living,full_body,Q68444515,841746.0,644179.0,317196.0,473
+tara_pacific_decknet,Tripos limulus<Tripos,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,limulus,tripos limulus,True,True,living,full_body,Q68443843,841258.0,644175.0,317196.0,729
+tara_pacific_decknet,Neoceratium fusus<Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,fusus,tripos fusus,True,True,living,full_body,Q68443395,840626.0,2916.0,317196.0,472
+tara_pacific_decknet,Neoceratium furca<Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,furca,tripos furca,True,True,living,full_body,Q68443377,840627.0,119094.0,317196.0,459
+tara_pacific_decknet,Neoceratium candelabrum,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,candelabrum,tripos candelabrum,True,True,living,full_body,Q68442882,841193.0,644166.0,317196.0,458
+tara_pacific_decknet,Amphisolenia,chromista,myzozoa,dinophyceae,dinophysales,amphisoleniaceae,amphisolenia,,amphisolenia,True,True,living,full_body,Q25364363,109459.0,584886.0,317118.0,745
+tara_pacific_decknet,Phalacroma,chromista,myzozoa,dinophyceae,dinophysales,oxyphysaceae,phalacroma,,phalacroma,True,True,living,full_body,Q23527054,109466.0,330137.0,317118.0,546
+tara_pacific_decknet,Ornithocercus,chromista,myzozoa,dinophyceae,dinophysales,dinophysaceae,ornithocercus,,ornithocercus,True,True,living,full_body,Q7103629,109464.0,566468.0,317119.0,488;749;751;753
+tara_pacific_decknet,Dinophysis,chromista,myzozoa,dinophyceae,dinophysales,dinophysaceae,dinophysis,,dinophysis,True,True,living,full_body,Q5278597,109462.0,47933.0,317124.0,480;544;545
+tara_pacific_decknet,Ceratocorys,chromista,myzozoa,dinophyceae,gonyaulacales,ceratocoryaceae,ceratocorys,,ceratocorys,True,True,living,full_body,Q18606265,109507.0,66799.0,317120.0,482
+tara_pacific_decknet,Pyrophacus,chromista,myzozoa,dinophyceae,gonyaulacales,pyrophacaceae,pyrophacus,,pyrophacus,True,True,living,full_body,Q25364482,109555.0,261841.0,317168.0,742
+tara_pacific_decknet,Protoperidinium,chromista,myzozoa,dinophyceae,peridiniales,protoperidiniaceae,protoperidinium,,protoperidinium,True,True,living,full_body,Q25364982,109553.0,261839.0,317105.0,474
+tara_pacific_decknet,Pyrocystaceae,chromista,myzozoa,dinophyceae,gonyaulacales,pyrocystaceae,,,pyrocystaceae,True,True,living,full_body,Q16916347,109444.0,1573500.0,317059.0,240
+tara_pacific_decknet,Amphibelone,chromista,radiozoa,acantharia,symphyacanthida,amphilithidae,amphibelone,,amphibelone,True,True,living,full_body,Q50807513,1701367.0,278120.0,714957.0,653
+tara_pacific_decknet,Chaetoceros peruvianus,chromista,heterokontophyta,bacillariophyceae,chaetocerotanae,chaetocerotaceae,chaetoceros,peruvianus,chaetoceros peruvianus,True,True,living,full_body,Q49618661,178185.0,426635.0,604144.0,754
+tara_pacific_decknet,Planktoniella sol,chromista,heterokontophyta,bacillariophyceae,thalassiosirales,thalassiosiraceae,planktoniella,sol,planktoniella sol,True,True,living,full_body,Q67889571,196815.0,216766.0,87611.0,694
+tara_pacific_decknet,Codonellopsis orthoceras,chromista,ciliophora,oligotrichea,choreotrichida,codonellopsidae,codonellopsis,orthoceras,codonellopsis orthoceras,True,True,living,full_body,Q62000496,417162.0,1176356.0,1022867.0,469
+tara_pacific_decknet,Ornithocercus quadratus<Ornithocercus,chromista,myzozoa,dinophyceae,dinophysales,dinophysaceae,ornithocercus,quadratus,ornithocercus quadratus,True,True,living,full_body,Q68420226,109694.0,566471.0,317119.0,751
+tara_pacific_decknet,Ornithocercus magnificus<Ornithocercus,chromista,myzozoa,dinophyceae,dinophysales,dinophysaceae,ornithocercus,magnificus,ornithocercus magnificus,True,True,living,full_body,Q68420199,109693.0,566470.0,317119.0,753
+tara_pacific_decknet,Ornithocercus heteroporus,chromista,myzozoa,dinophyceae,dinophysales,dinophysaceae,ornithocercus,heteroporus,ornithocercus heteroporus,True,True,living,full_body,,109692.0,,,
+tara_pacific_decknet,Podolampas,chromista,myzozoa,dinophyceae,peridiniales,podolampadaceae,podolampas,,podolampas,True,True,living,full_body,Q25364907,109550.0,699223.0,317029.0,421;491
+tara_pacific_decknet,duplicate,,,,,,,,error,False,False,artefact,,,,,,
+tara_pacific_decknet,detritus<not-living,,,,,,,,detritus,False,False,detritus,,,,,,207;666;717
+tara_pacific_decknet,larvae<Annelida,animalia,annelida,,,,,,annelida,True,True,living,larvae,Q25522,882.0,6340.0,2.0,558;632
+tara_pacific_decknet,tail<Appendicularia,animalia,chordata,appendicularia,,,,,appendicularia,False,False,detritus,part_tail,Q28960,146421.0,30302.0,96365.0,116;368;571
+tara_pacific_decknet,artefact,,,,,,,,artefact,False,False,artefact,,,,,,208;688;714
+tara_pacific_decknet,pennate<Bacillariophyta,chromista,bacillariophyta,,,,,,bacillariophyta,True,True,living,full_body,,148898.0,,,
+tara_pacific_decknet,t001,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_decknet,t002,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_decknet,t003,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_decknet,t004,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_decknet,dark<detritus,,,,,,,,detritus,False,False,detritus,,,,,,207;666;717
+tara_pacific_decknet,light<detritus,,,,,,,,detritus,False,False,detritus,,,,,,207;666;717
+tara_pacific_decknet,bubble,,,,,,,,bubble,False,False,artefact,,,,,,205;667;715
+tara_pacific_decknet,badfocus<artefact,,,,,,,,bad focus,False,False,artefact,,,,,,
+tara_pacific_decknet,othertocheck,,,,,,,,other,False,False,artefact,,,,,,
+tara_pacific_decknet,fiber<detritus,,,,,,,,fiber,False,False,detritus,,,,,,204;576
+tara_pacific_decknet,egg<other,,,,,,,,egg,False,True,living,egg,,,,,213;226;552;750
+tara_pacific_decknet,multiple<other,,,,,,,,other,False,False,artefact,,,,,,
+tara_pacific_decknet,pollen,,,,,,,,pollen,False,True,living,full_body,,,,,
+tara_pacific_decknet,cyst<unicellular,,,,,,,,cyst,False,True,living,full_body,,,,,
+tara_pacific_decknet,part<Crustacea,animalia,arthropoda,,,,,,arthropoda,False,False,detritus,part,Q1360,1065.0,6656.0,20.0,
+tara_pacific_decknet,nauplii<Crustacea,animalia,arthropoda,,,,,,arthropoda,True,True,living,full_body,Q1360,1065.0,6656.0,20.0,
+tara_pacific_decknet,Appendicularia<Tunicata,animalia,chordata,appendicularia,,,,,appendicularia,True,True,living,full_body,Q28960,146421.0,30302.0,96365.0,116;368;571
+tara_pacific_decknet,veliger<Mollusca,animalia,mollusca,,,,,,mollusca,True,True,living,full_body,Q25326,51.0,6447.0,23.0,
+tara_pacific_decknet,Pseudo-Nitzschia chain,chromista,heterokontophyta,bacillariophyceae,bacillariales,bacillariaceae,pseudo-nitzschia,,pseudo-nitzschia,True,True,living,full_body,Q891709,149151.0,41953.0,87706.0,630
+tara_pacific_decknet,dark<sphere,,,,,,,,shape,False,False,artefact,,,,,,
+tara_pacific_decknet,chainthin,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,diatoma,,diatoma,True,True,living,full_body,Q14552177,149013.0,2862.0,603667.0,711
+tara_pacific_decknet,chainlarge,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,diatoma,,diatoma,True,True,living,full_body,Q14552177,149013.0,2862.0,603667.0,711
+tara_pacific_decknet,spines<Acantharia,chromista,radiozoa,acantharia,,,,,acantharia,False,False,detritus,part,Q135584,586732.0,65574.0,714957.0,625;640
+tara_pacific_decknet,Oxytoxum,chromista,myzozoa,dinophyceae,peridiniales,oxytoxaceae,oxytoxum,,oxytoxum,True,True,living,full_body,Q25364849,109528.0,2950224.0,317139.0,549
+tara_pacific_decknet,Asterolamprales,chromista,heterokontophyta,bacillariophyceae,asterolamprales,,,,asterolamprales,True,True,living,full_body,Q2868420,162250.0,941245.0,393182.0,711
+tara_pacific_decknet,Chaetoceros protuberans,chromista,heterokontophyta,bacillariophyceae,chaetocerotanae,chaetocerotaceae,chaetoceros,protuberans,chaetoceros protuberans,True,True,living,full_body,,163055.0,,,
+tara_pacific_decknet,Climacodium,chromista,heterokontophyta,bacillariophyceae,hemiaulales,hemiaulaceae,climacodium,,climacodium,True,True,living,full_body,Q25366289,196803.0,2022333.0,1350166.0,732
+tara_pacific_decknet,Hemidiscus cuneiformis,chromista,heterokontophyta,bacillariophyceae,coscinodiscales,hemidiscaceae,hemidiscus,cuneiformis,hemidiscus cuneiformis,True,True,living,full_body,,180367.0,,,
+tara_pacific_decknet,Cladopyxis quadrispina,chromista,myzozoa,dinophyceae,gonyaulacales,cladopyxidaceae,cladopyxis,quadrispina,cladopyxis quadrispina,True,True,living,full_body,,233346.0,,,
+tara_pacific_decknet,Ornithocercus steinii,chromista,myzozoa,dinophyceae,dinophysales,dinophysaceae,ornithocercus,steinii,ornithocercus steinii,True,True,living,full_body,Q68420324,109696.0,630347.0,317119.0,488;749;751;753
+tara_pacific_decknet,Rhizosolenia inter. Richelia,chromista,heterokontophyta,bacillariophyceae,rhizosoleniales,rhizosoleniaceae,rhizosolenia,,rhizosolenia,True,True,living,full_body,Q20204296,149069.0,3004.0,87664.0,444;686
+tara_pacific_decknet,Climacodium inter. Crocosphaera,chromista,heterokontophyta,bacillariophyceae,hemiaulales,hemiaulaceae,climacodium,crocosphaera,climacodium crocosphaera,True,True,living,full_body,Q25366289,196803.0,2022333.0,1350166.0,732
+tara_pacific_decknet,Poroecus,chromista,ciliophora,oligotrichea,choreotrichida,codonellidae,poroecus,,poroecus,True,True,living,full_body,Q25362578,415852.0,180938.0,2677449.0,657
+tara_pacific_decknet,multiple<Diatoma,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,diatoma,,diatoma,True,True,living,mix,Q14552177,149013.0,2862.0,603667.0,711
+tara_pacific_decknet,Cladopyxis,chromista,myzozoa,dinophyceae,gonyaulacales,cladopyxidaceae,cladopyxis,,cladopyxis,True,True,living,full_body,Q18606151,109509.0,1129411.0,317024.0,483
+tara_pacific_decknet,Richelia,bacteria,cyanobacteria,cyanophyceae,nostocales,rivulariaceae,richelia,,richelia,True,True,living,full_body,Q27438682,370179.0,98443.0,703249.0,697
+tara_pacific_decknet,Rhabdonellopsis,chromista,ciliophora,oligotrichea,choreotrichida,rhabdonellidae,rhabdonellopsis,,rhabdonellopsis,True,True,living,full_body,Q25362646,183550.0,211026.0,1022867.0,423
+tara_pacific_decknet,Thalassionematales,chromista,heterokontophyta,bacillariophyceae,thalassionematales,,,,thalassionematales,True,True,living,full_body,Q23070138,149090.0,33849.0,187419.0,429
+tara_pacific_decknet,trochozoa,animalia,,,,,,,animalia,True,True,living,larvae,Q729,2.0,33208.0,,
+tara_pacific_decknet,crumple sphere,,,,,,,,shape,False,False,artefact,,,,,,
+tara_pacific_decknet,egg sac<egg,,,,,,,,egg,False,True,living,egg,,,,,213;226;552;750
+tara_pacific_decknet,cyano a,bacteria,cyanobacteria,,,,,,cyanobacteria,True,True,living,full_body,Q93315,146537.0,1117.0,1349790.0,697
+tara_pacific_decknet,cyano b,bacteria,cyanobacteria,,,,,,cyanobacteria,True,True,living,full_body,Q93315,146537.0,1117.0,1349790.0,697
+tara_pacific_decknet,Neoceratium geniculatum,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,geniculatus,tripos geniculatus,True,True,living,full_body,Q18606362,841242.0,3681919.0,317196.0,239;457;458;459;472;473;627;629;719;729;737;738
+tara_pacific_decknet,Acantharia,chromista,radiozoa,acantharia,,,,,acantharia,True,True,living,full_body,Q135584,586732.0,65574.0,714957.0,625;640
+tara_pacific_decknet,Amplectella,chromista,ciliophora,oligotrichea,choreotrichida,undellidae,amplectella,,amplectella,True,True,living,full_body,,425636.0,,,
+tara_pacific_decknet,light<sphere,,,,,,,,shape,False,False,artefact,,,,,,
+tara_pacific_decknet,part<Ciliophora,chromista,ciliophora,,,,,,ciliophora,False,False,detritus,part,Q106345,11.0,5878.0,72834.0,657
+tara_pacific_decknet,attached,bacteria,,,,,,,bacteria,True,True,living,full_body,,6.0,,,
+tara_pacific_decknet,polar view,chromista,myzozoa,dinophyceae,,,,,dinophyceae,True,True,living,full_body,Q2567254,19542.0,2864.0,317011.0,240
+tara_pacific_decknet,lightrods<othertocheck,,,,,,,,shape,False,False,artefact,,,,,,
+tara_pacific_decknet,darkrods<othertocheck,,,,,,,,shape,False,False,artefact,,,,,,
+tara_pacific_decknet,othersphere,,,,,,,,shape,False,False,artefact,,,,,,
+tara_pacific_decknet,Bacillariaceae,chromista,heterokontophyta,bacillariophyceae,bacillariales,bacillariaceae,,,bacillariaceae,True,True,living,full_body,Q4838943,149002.0,33852.0,87576.0,711
+tara_pacific_hsn,Harosa,chromista,,,,,,,chromista,True,True,living,full_body,Q862296,7.0,,,
+tara_pacific_hsn,Cyanobacteria<Negibacteria,bacteria,cyanobacteria,,,,,,cyanobacteria,True,True,living,full_body,Q93315,146537.0,1117.0,1349790.0,697
+tara_pacific_hsn,Mollusca,animalia,mollusca,,,,,,mollusca,True,True,living,full_body,Q25326,51.0,6447.0,23.0,
+tara_pacific_hsn,Echinodermata,animalia,echinodermata,,,,,,echinodermata,True,True,living,full_body,Q44631,1806.0,7586.0,4.0,261;638
+tara_pacific_hsn,Chaetognatha<Animalia,animalia,chaetognatha,,,,,,chaetognatha,True,True,living,full_body,Q192416,2081.0,10229.0,13.0,115
+tara_pacific_hsn,Bryozoa,animalia,bryozoa,,,,,,bryozoa,True,True,living,full_body,Q148134,146142.0,10205.0,7.0,
+tara_pacific_hsn,Annelida,animalia,annelida,,,,,,annelida,True,True,living,full_body,Q25522,882.0,6340.0,2.0,558;632
+tara_pacific_hsn,Foraminifera,chromista,foraminifera,,,,,,foraminifera,True,True,living,full_body,Q107027,1410.0,29178.0,246658.0,557;582;620
+tara_pacific_hsn,Crustacea,animalia,arthropoda,,,,,,arthropoda,True,True,living,full_body,Q1360,1065.0,6656.0,20.0,
+tara_pacific_hsn,Scyphozoa,animalia,cnidaria,scyphozoa,,,,,scyphozoa,True,True,living,full_body,Q272388,135220.0,6142.0,25222.0,308;641
+tara_pacific_hsn,Hydrozoa,animalia,cnidaria,hydrozoa,,,,,hydrozoa,True,True,living,full_body,Q181989,1337.0,6074.0,26.0,628;652
+tara_pacific_hsn,Ophiuroidea,animalia,echinodermata,ophiuroidea,,,,,ophiuroidea,True,True,living,full_body,Q59256,123084.0,7618.0,32.0,267
+tara_pacific_hsn,Cephalopoda,animalia,mollusca,cephalopoda,,,,,cephalopoda,True,True,living,full_body,Q128257,11707.0,6605.0,24.0,110;590
+tara_pacific_hsn,Bivalvia<Mollusca,animalia,mollusca,bivalvia,,,,,bivalvia,True,True,living,full_body,Q25368,105.0,6544.0,70.0,112
+tara_pacific_hsn,Spumellaria,chromista,radiozoa,polycystina,spumellaria,,,,spumellaria,True,True,living,full_body,Q3967296,345835.0,65583.0,714957.0,655
+tara_pacific_hsn,Collodaria,chromista,radiozoa,polycystina,nassellaria,,,,nassellaria,True,True,living,full_body,Q3870511,235741.0,278980.0,714957.0,654
+tara_pacific_hsn,Insecta,animalia,arthropoda,hexapoda,,,,,hexapoda,False,True,living,full_body,Q105146,1278.0,6960.0,20.0,
+tara_pacific_hsn,Nudibranchia,animalia,mollusca,gastropoda,nudibranchia,,,,nudibranchia,True,True,living,full_body,Q733595,1762.0,70849.0,84976.0,111
+tara_pacific_hsn,Eumalacostraca,animalia,arthropoda,malacostraca,,,,,malacostraca,True,True,living,full_body,Q182978,1071.0,6681.0,69.0,
+tara_pacific_hsn,Oikopleuridae,animalia,chordata,appendicularia,copelata,oikopleuridae,,,oikopleuridae,True,True,living,full_body,Q10571698,103356.0,41302.0,96367.0,121;741
+tara_pacific_hsn,Salpida,animalia,chordata,thaliacea,salpida,,,,salpida,True,True,living,full_body,Q2740581,137214.0,30307.0,174763.0,118;603
+tara_pacific_hsn,Doliolida,animalia,chordata,thaliacea,doliolida,,,,doliolida,True,True,living,full_body,Q1138058,137212.0,76838.0,27267.0,144
+tara_pacific_hsn,Siphonophorae,animalia,cnidaria,hydrozoa,siphonophorae,,,,siphonophorae,True,True,living,full_body,Q1134438,1371.0,42759.0,263623.0,296;598
+tara_pacific_hsn,Gymnosomata,animalia,mollusca,gastropoda,pteropoda,,,,pteropoda,True,True,living,full_body,Q1031983,325345.0,977783.0,854079.0,268
+tara_pacific_hsn,Cavoliniidae,animalia,mollusca,gastropoda,pteropoda,cavoliniidae,,,cavoliniidae,True,True,living,full_body,Q3203064,23000.0,216329.0,193217.0,614
+tara_pacific_hsn,Limacinidae,animalia,mollusca,gastropoda,pteropoda,limacinidae,,,limacinidae,True,True,living,full_body,Q6548854,13704.0,220645.0,1836.0,123;617
+tara_pacific_hsn,Creseidae,animalia,mollusca,gastropoda,pteropoda,cliidae,clio,pyramidata,clio pyramidata,True,True,living,full_body,Q3202847,139033.0,356475.0,202265.0,138
+tara_pacific_hsn,Ostracoda,animalia,arthropoda,ostracoda,,,,,ostracoda,True,True,living,full_body,Q276412,1078.0,6670.0,80.0,165;383
+tara_pacific_hsn,Pyrocystaceae,chromista,myzozoa,dinophyceae,gonyaulacales,pyrocystaceae,,,pyrocystaceae,True,True,living,full_body,Q16916347,109444.0,1573500.0,317059.0,240
+tara_pacific_hsn,Euphausiacea,animalia,arthropoda,malacostraca,euphausiacea,,,,euphausiacea,True,True,living,full_body,Q29498,1128.0,6816.0,361.0,199;605
+tara_pacific_hsn,Isopoda,animalia,arthropoda,malacostraca,isopoda,cirolanidae,eurydice,,eurydice,True,True,living,full_body,Q3060902,118401.0,96839.0,4852.0,649
+tara_pacific_hsn,Amphipoda,animalia,arthropoda,malacostraca,amphipoda,,,,amphipoda,True,True,living,full_body,Q193418,1135.0,6821.0,326.0,222;596
+tara_pacific_hsn,Siphonostomatoida,animalia,arthropoda,copepoda,siphonostomatoida,,,,siphonostomatoida,True,True,living,full_body,,1104.0,,,
+tara_pacific_hsn,Monstrilloida,animalia,arthropoda,copepoda,monstrilloida,,,,monstrilloida,True,True,living,full_body,Q3480154,1106.0,84311.0,349765.0,64
+tara_pacific_hsn,Harpacticoida,animalia,arthropoda,copepoda,harpacticoida,tachidiidae,euterpina,,euterpina,True,True,living,full_body,Q18091848,115348.0,163465.0,326833.0,22;756
+tara_pacific_hsn,Calanoida,animalia,arthropoda,copepoda,calanoida,,,,calanoida,True,True,living,full_body,Q478553,1100.0,6833.0,386.0,114;320;564
+tara_pacific_hsn,Cirripedia,animalia,arthropoda,thecostraca,,,,,cirripedia,True,True,living,full_body,,1082.0,,,
+tara_pacific_hsn,Physonectae,animalia,cnidaria,hydrozoa,siphonophorae,,,,siphonophorae,True,True,living,full_body,Q1134438,1371.0,42759.0,263623.0,296;598
+tara_pacific_hsn,Orbulina,chromista,foraminifera,globothalamea,rotaliida,globigerinidae,orbulina,,orbulina,True,True,living,full_body,,112203.0,,,
+tara_pacific_hsn,Diacria,animalia,mollusca,gastropoda,pteropoda,cavoliniidae,diacria,,diacria,True,True,living,full_body,,137755.0,,,
+tara_pacific_hsn,Actinopterygii,animalia,chordata,,,,,,chordata,True,True,living,full_body,Q10915,1821.0,7711.0,18.0,
+tara_pacific_hsn,Temoridae,animalia,arthropoda,copepoda,calanoida,temoridae,,,temoridae,True,True,living,full_body,Q3808990,104106.0,88013.0,1755.0,53;759
+tara_pacific_hsn,Rhincalanidae,animalia,arthropoda,copepoda,calanoida,rhincalanidae,,,rhincalanidae,True,True,living,full_body,Q18488599,345271.0,6833.0,315358.0,44
+tara_pacific_hsn,Pontellidae,animalia,arthropoda,copepoda,calanoida,pontellidae,,,pontellidae,True,True,living,full_body,Q3808886,104097.0,163235.0,1758.0,57
+tara_pacific_hsn,Metridinidae,animalia,arthropoda,copepoda,calanoida,metridinidae,pleuromamma,abdominalis,pleuromamma abdominalis,True,True,living,full_body,Q6554994,104637.0,503033.0,152211.0,369
+tara_pacific_hsn,Heterorhabdidae,animalia,arthropoda,copepoda,calanoida,heterorhabdidae,,,heterorhabdidae,True,True,living,full_body,Q6554828,104087.0,201610.0,1761.0,52
+tara_pacific_hsn,Euchaetidae,animalia,arthropoda,copepoda,calanoida,euchaetidae,,,euchaetidae,True,True,living,full_body,Q6552157,104086.0,117959.0,1763.0,51
+tara_pacific_hsn,Eucalanidae,animalia,arthropoda,copepoda,calanoida,eucalanidae,,,eucalanidae,True,True,living,full_body,Q6552116,104085.0,121137.0,1762.0,43
+tara_pacific_hsn,Centropagidae,animalia,arthropoda,copepoda,calanoida,centropagidae,,,centropagidae,True,True,living,full_body,Q3808940,104081.0,136181.0,1713.0,46;761
+tara_pacific_hsn,Candaciidae,animalia,arthropoda,copepoda,calanoida,candaciidae,,,candaciidae,True,True,living,full_body,Q18196358,104080.0,207962.0,1757.0,45
+tara_pacific_hsn,Calanidae,animalia,arthropoda,copepoda,calanoida,calanidae,,,calanidae,True,True,living,full_body,Q3809091,104079.0,6835.0,1722.0,50
+tara_pacific_hsn,Acartiidae,animalia,arthropoda,copepoda,calanoida,acartiidae,,,acartiidae,True,True,living,full_body,Q3809261,104074.0,121147.0,1731.0,49;758
+tara_pacific_hsn,Oithonidae,animalia,arthropoda,copepoda,cyclopoida,oithonidae,,,oithonidae,True,True,living,full_body,Q6556457,106422.0,136189.0,142596.0,21;566
+tara_pacific_hsn,Velella,animalia,cnidaria,hydrozoa,anthoathecata,porpitidae,velella,,velella,True,True,living,full_body,,117200.0,,,
+tara_pacific_hsn,Porpita,animalia,cnidaria,hydrozoa,anthoathecata,porpitidae,porpita,,porpita,True,True,living,full_body,,117199.0,,,
+tara_pacific_hsn,Diphyidae,animalia,cnidaria,hydrozoa,siphonophorae,diphyidae,,,diphyidae,True,True,living,full_body,Q4008468,135338.0,168754.0,24305.0,342
+tara_pacific_hsn,Cavolinia inflexa,animalia,mollusca,gastropoda,pteropoda,cavoliniidae,cavolinia,inflexa,cavolinia inflexa,True,True,living,full_body,Q3806263,139029.0,1323122.0,273428.0,126;621
+tara_pacific_hsn,Creseis virgula,animalia,mollusca,gastropoda,pteropoda,creseidae,creseis,virgula,creseis virgula,True,True,living,full_body,,139035.0,,,
+tara_pacific_hsn,Creseis acicula,animalia,mollusca,gastropoda,pteropoda,creseidae,creseis,acicula,creseis acicula,True,True,living,full_body,Q3804098,139034.0,356499.0,273416.0,174;618
+tara_pacific_hsn,Hyperiidea,animalia,arthropoda,malacostraca,amphipoda,,,,amphipoda,True,True,living,full_body,Q193418,1135.0,6821.0,326.0,222;596
+tara_pacific_hsn,Gammaridea,animalia,arthropoda,malacostraca,amphipoda,,,,gammaridea,True,True,living,full_body,,,,,
+tara_pacific_hsn,Sapphirinidae,animalia,arthropoda,copepoda,cyclopoida,sapphirinidae,,,sapphirinidae,True,True,living,full_body,Q3473199,128595.0,545089.0,50856.0,59
+tara_pacific_hsn,Oncaeidae,animalia,arthropoda,copepoda,cyclopoida,oncaeidae,,,oncaeidae,True,True,living,full_body,Q3809055,128586.0,349673.0,142590.0,42;568
+tara_pacific_hsn,Corycaeidae,animalia,arthropoda,copepoda,cyclopoida,corycaeidae,,,corycaeidae,True,True,living,full_body,Q6569053,128569.0,749182.0,315366.0,47;565
+tara_pacific_hsn,Brachyura,animalia,arthropoda,malacostraca,decapoda,,,,brachyura,True,True,living,full_body,,106673.0,,,
+tara_pacific_hsn,Podon,animalia,arthropoda,branchiopoda,onychopoda,podonidae,podon,,podon,True,True,living,full_body,Q6551088,106269.0,141399.0,4557.0,351;363
+tara_pacific_hsn,Evadne,animalia,arthropoda,branchiopoda,onychopoda,podonidae,evadne,,evadne,True,True,living,full_body,Q4575907,106267.0,141402.0,4559.0,345
+tara_pacific_hsn,Copilia,animalia,arthropoda,copepoda,cyclopoida,sapphirinidae,copilia,,copilia,True,True,living,full_body,Q3808936,128721.0,545085.0,50873.0,410
+tara_pacific_hsn,Spirorbis,animalia,annelida,polychaeta,sabellida,serpulidae,spirorbis,,spirorbis,True,True,living,full_body,,129642.0,,,
+tara_pacific_hsn,Phronimidae,animalia,arthropoda,malacostraca,amphipoda,phronimidae,,,phronimidae,True,True,living,full_body,,101420.0,,,
+tara_pacific_hsn,Calocalanus pavo,animalia,arthropoda,copepoda,calanoida,paracalanidae,calocalanus,pavo,calocalanus pavo,True,True,living,full_body,Q3808842,104669.0,749177.0,302293.0,135
+tara_pacific_hsn,Pontellina plumata,animalia,arthropoda,copepoda,calanoida,pontellidae,pontellina,plumata,pontellina plumata,True,True,living,full_body,,104743.0,,,
+tara_pacific_hsn,Abylopsis tetragona,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,abylopsis,tetragona,abylopsis tetragona,True,True,living,full_body,Q1931947,135403.0,316209.0,461338.0,321
+tara_pacific_hsn,Laomediidae,animalia,arthropoda,malacostraca,decapoda,laomediidae,,,laomediidae,True,True,living,full_body,,106802.0,,,
+tara_pacific_hsn,Caprellidae,animalia,arthropoda,malacostraca,amphipoda,caprellidae,,,caprellidae,True,True,living,full_body,,101361.0,,,
+tara_pacific_hsn,detritus<not-living,,,,,,,,detritus,False,False,detritus,,,,,,207;666;717
+tara_pacific_hsn,larvae<Annelida,animalia,annelida,,,,,,annelida,True,True,living,larvae,Q25522,882.0,6340.0,2.0,558;632
+tara_pacific_hsn,part<Annelida,animalia,annelida,,,,,,annelida,False,False,detritus,part,Q25522,882.0,6340.0,2.0,558;632
+tara_pacific_hsn,cyphonautes,animalia,bryozoa,,,,,,bryozoa,True,True,living,full_body,Q148134,146142.0,10205.0,7.0,
+tara_pacific_hsn,tail<Chaetognatha,animalia,chaetognatha,,,,,,chaetognatha,False,False,detritus,part_tail,Q192416,2081.0,10229.0,13.0,115
+tara_pacific_hsn,part<Cnidaria,animalia,cnidaria,,,,,,cnidaria,False,False,detritus,part,Q25441,1267.0,6073.0,3.0,
+tara_pacific_hsn,nectophore<Abylopsis tetragona,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,abylopsis,tetragona,abylopsis tetragona,True,True,living,full_body,Q1931947,135403.0,316209.0,461338.0,321
+tara_pacific_hsn,eudoxid<Abylopsis tetragona,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,abylopsis,tetragona,abylopsis tetragona,True,True,living,full_body,Q1931947,135403.0,316209.0,461338.0,321
+tara_pacific_hsn,nectophore<Diphyidae,animalia,cnidaria,hydrozoa,siphonophorae,diphyidae,,,diphyidae,True,True,living,full_body,Q4008468,135338.0,168754.0,24305.0,342
+tara_pacific_hsn,eudoxid<Diphyidae,animalia,cnidaria,hydrozoa,siphonophorae,diphyidae,,,diphyidae,True,True,living,full_body,Q4008468,135338.0,168754.0,24305.0,342
+tara_pacific_hsn,nectophore<Hippopodiidae,animalia,cnidaria,hydrozoa,siphonophorae,hippopodiidae,,,hippopodiidae,True,True,living,full_body,Q4001548,135339.0,168743.0,455827.0,327
+tara_pacific_hsn,nectophore<Physonectae,animalia,cnidaria,hydrozoa,siphonophorae,,,,siphonophorae,True,True,living,full_body,Q1134438,1371.0,42759.0,263623.0,296;598
+tara_pacific_hsn,metanauplii<Crustacea,animalia,arthropoda,,,,,,arthropoda,True,True,living,full_body,Q1360,1065.0,6656.0,20.0,
+tara_pacific_hsn,phyllosoma,animalia,arthropoda,malacostraca,decapoda,,,,achelata,True,True,living,full_body,,383017.0,,,
+tara_pacific_hsn,megalopa<Brachyura,animalia,arthropoda,malacostraca,decapoda,,,,brachyura,True,True,living,full_body,,106673.0,,,
+tara_pacific_hsn,calyptopsis,animalia,arthropoda,malacostraca,euphausiacea,,,,euphausiacea,True,True,living,full_body,Q29498,1128.0,6816.0,361.0,199;605
+tara_pacific_hsn,protozoea<Sergestidae,animalia,arthropoda,malacostraca,decapoda,sergestidae,,,sergestidae,True,True,living,full_body,Q4481085,106731.0,111522.0,69922.0,645
+tara_pacific_hsn,larvae<Squillidae,animalia,arthropoda,malacostraca,stomatopoda,squillidae,,,squillidae,True,True,living,larvae,,136093.0,,,
+tara_pacific_hsn,nauplii<Cirripedia,animalia,arthropoda,thecostraca,,,,,cirripedia,True,True,living,full_body,,1082.0,,,
+tara_pacific_hsn,cypris<Cirripedia,animalia,arthropoda,thecostraca,,,,,cirripedia,True,True,living,full_body,,1082.0,,,
+tara_pacific_hsn,pluteus<Ophiuroidea,animalia,echinodermata,ophiuroidea,,,,,ophiuroidea,True,True,living,full_body,Q59256,123084.0,7618.0,32.0,267
+tara_pacific_hsn,pluteus<Echinoidea,animalia,echinodermata,echinoidea,,,,,echinoidea,True,True,living,full_body,Q83483,123082.0,7625.0,29.0,260
+tara_pacific_hsn,part<Mollusca,animalia,mollusca,,,,,,mollusca,False,False,detritus,part,Q25326,51.0,6447.0,23.0,
+tara_pacific_hsn,tail<Appendicularia,animalia,chordata,appendicularia,,,,,appendicularia,False,False,detritus,part_tail,Q28960,146421.0,30302.0,96365.0,116;368;571
+tara_pacific_hsn,juvenile<Salpida,animalia,chordata,thaliacea,salpida,,,,salpida,True,True,living,full_body,Q2740581,137214.0,30307.0,174763.0,118;603
+tara_pacific_hsn,wing,animalia,arthropoda,hexapoda,,,,,hexapoda,False,False,detritus,part,Q105146,1278.0,6960.0,20.0,
+tara_pacific_hsn,artefact,,,,,,,,artefact,False,False,artefact,,,,,,208;688;714
+tara_pacific_hsn,t002,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_hsn,t003,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_hsn,t004,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_hsn,larvae<Porpitidae,animalia,cnidaria,hydrozoa,anthoathecata,porpitidae,,,porpitidae,True,True,living,larvae,,20790.0,,,
+tara_pacific_hsn,multiple<Copepoda,animalia,arthropoda,copepoda,,,,,copepoda,True,True,living,mix,Q189973,1080.0,6830.0,979181.0,175;255;563;575
+tara_pacific_hsn,dark<detritus,,,,,,,,detritus,False,False,detritus,,,,,,207;666;717
+tara_pacific_hsn,bubble,,,,,,,,bubble,False,False,artefact,,,,,,205;667;715
+tara_pacific_hsn,badfocus<artefact,,,,,,,,bad focus,False,False,artefact,,,,,,
+tara_pacific_hsn,seaweed,,,,,,,,seaweed,False,True,living,full_body,,,,,215
+tara_pacific_hsn,othertocheck,,,,,,,,other,False,False,artefact,,,,,,
+tara_pacific_hsn,gelatinous,,,,,,,,other,False,False,artefact,,,,,,
+tara_pacific_hsn,fiber<detritus,,,,,,,,fiber,False,False,detritus,,,,,,204;576
+tara_pacific_hsn,egg<other,,,,,,,,egg,False,True,living,egg,,,,,213;226;552;750
+tara_pacific_hsn,multiple<other,,,,,,,,other,False,False,artefact,,,,,,
+tara_pacific_hsn,part<Crustacea,animalia,arthropoda,,,,,,arthropoda,False,False,detritus,part,Q1360,1065.0,6656.0,20.0,
+tara_pacific_hsn,nauplii<Crustacea,animalia,arthropoda,,,,,,arthropoda,True,True,living,full_body,Q1360,1065.0,6656.0,20.0,
+tara_pacific_hsn,egg<Actinopterygii,animalia,chordata,,,,,,chordata,True,True,living,egg,Q10915,1821.0,7711.0,18.0,
+tara_pacific_hsn,scale,animalia,chordata,,,,,,chordata,False,False,detritus,part_skin,Q10915,1821.0,7711.0,18.0,
+tara_pacific_hsn,Appendicularia<Tunicata,animalia,chordata,appendicularia,,,,,appendicularia,True,True,living,full_body,Q28960,146421.0,30302.0,96365.0,116;368;571
+tara_pacific_hsn,gonophore<Abylidae,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,,,abylidae,True,True,living,full_body,Q3386609,135336.0,316207.0,109624.0,328
+tara_pacific_hsn,veliger<Mollusca,animalia,mollusca,,,,,,mollusca,True,True,living,full_body,Q25326,51.0,6447.0,23.0,
+tara_pacific_hsn,gonophore<Diphyidae,animalia,cnidaria,hydrozoa,siphonophorae,diphyidae,,,diphyidae,True,True,living,full_body,Q4008468,135338.0,168754.0,24305.0,342
+tara_pacific_hsn,part<Ctenophora,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,ctenophora,,ctenophora,False,False,detritus,part,Q25661394,163921.0,1003038.0,249225.0,456;559
+tara_pacific_hsn,dark<sphere,,,,,,,,shape,False,False,artefact,,,,,,
+tara_pacific_hsn,gonophore<Abylopsis tetragona,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,abylopsis,tetragona,abylopsis tetragona,True,True,living,full_body,Q1931947,135403.0,316209.0,461338.0,321
+tara_pacific_hsn,part<Siphonophorae,animalia,cnidaria,hydrozoa,siphonophorae,,,,siphonophorae,False,False,detritus,part,Q1134438,1371.0,42759.0,263623.0,296;598
+tara_pacific_hsn,cirrus,animalia,arthropoda,thecostraca,,,,,thecostraca,True,True,living,full_body,Q150628,22388.0,116172.0,981579.0,
+tara_pacific_hsn,badfocus<Copepoda,animalia,arthropoda,copepoda,,,,,copepoda,True,True,living,full_body,Q189973,1080.0,6830.0,979181.0,175;255;563;575
+tara_pacific_hsn,head<Chaetognatha,animalia,chaetognatha,,,,,,chaetognatha,False,False,detritus,part_head,Q192416,2081.0,10229.0,13.0,115
+tara_pacific_hsn,part<Copepoda,animalia,arthropoda,copepoda,,,,,copepoda,False,False,detritus,part,Q189973,1080.0,6830.0,979181.0,175;255;563;575
+tara_pacific_hsn,nectophore<Bassia bassensis,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,bassia,bassensis,bassia bassensis,True,True,living,full_body,Q2282611,135404.0,645412.0,455875.0,344
+tara_pacific_hsn,trunk<Appendicularia,animalia,chordata,appendicularia,,,,,appendicularia,False,False,detritus,part_trunk,Q28960,146421.0,30302.0,96365.0,116;368;571
+tara_pacific_hsn,Pterotrachea,animalia,mollusca,gastropoda,littorinimorpha,pterotracheidae,pterotrachea,,pterotrachea,True,True,living,full_body,,138009.0,,,
+tara_pacific_hsn,Halobates,animalia,arthropoda,hexapoda,hemiptera,gerridae,halobates,,halobates,True,True,living,full_body,,204105.0,,,
+tara_pacific_hsn,Atlanta,animalia,mollusca,gastropoda,littorinimorpha,atlantidae,,,atlantidae,True,True,living,full_body,Q756491,22990.0,649145.0,85053.0,156
+tara_pacific_hsn,bract<Diphyidae,animalia,cnidaria,hydrozoa,siphonophorae,diphyidae,,,diphyidae,True,True,living,full_body,Q4008468,135338.0,168754.0,24305.0,342
+tara_pacific_hsn,bract<Abylopsis tetragona,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,abylopsis,tetragona,abylopsis tetragona,True,True,living,full_body,Q1931947,135403.0,316209.0,461338.0,321
+tara_pacific_hsn,bract<Abylidae,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,,,abylidae,True,True,living,full_body,Q3386609,135336.0,316207.0,109624.0,328
+tara_pacific_hsn,part<Thaliacea,animalia,chordata,thaliacea,,,,,thaliacea,False,False,detritus,part,Q610887,22626.0,30304.0,27266.0,113;607
+tara_pacific_hsn,nucleus<Salpidae,animalia,chordata,thaliacea,salpida,salpidae,,,salpidae,True,True,living,full_body,Q1068611,137217.0,34759.0,174764.0,118;603
+tara_pacific_hsn,larvae<Porcellanidae,animalia,arthropoda,malacostraca,decapoda,porcellanidae,,,porcellanidae,True,True,living,larvae,Q1435521,106734.0,84660.0,1509.0,645
+tara_pacific_hsn,zoea<Brachyura<Pleocyemata<Decapoda,animalia,arthropoda,malacostraca,decapoda,,,,brachyura,True,True,living,full_body,,106673.0,,,
+tara_pacific_hsn,nectophore<Abylidae,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,,,abylidae,True,True,living,full_body,Q3386609,135336.0,316207.0,109624.0,328
+tara_pacific_hsn,multiple<Pyrocystaceae,chromista,myzozoa,dinophyceae,gonyaulacales,pyrocystaceae,,,pyrocystaceae,True,True,living,mix,Q16916347,109444.0,1573500.0,317059.0,240
+tara_pacific_hsn,polype<Leptothecata,animalia,cnidaria,hydrozoa,leptothecata,,,,leptothecata,True,True,living,full_body,Q5122184,13552.0,500008.0,264641.0,644
+tara_pacific_hsn,polype<Anthozoa,animalia,cnidaria,,,,,,anthozoa,True,True,living,full_body,,1292.0,,,
+tara_pacific_hsn,egg sac<egg,,,,,,,,egg,False,True,living,egg,,,,,213;226;552;750
+tara_pacific_hsn,bract<Bassia bassensis,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,bassia,bassensis,bassia bassensis,True,True,living,full_body,Q2282611,135404.0,645412.0,455875.0,344
+tara_pacific_hsn,empty<Ostracoda,animalia,arthropoda,ostracoda,,,,,ostracoda,True,True,living,full_body,Q276412,1078.0,6670.0,80.0,165;383
+tara_pacific_hsn,Lubbockia,animalia,arthropoda,copepoda,cyclopoida,lubbockiidae,lubbockia,,lubbockia,True,True,living,full_body,,128672.0,,,
+tara_pacific_hsn,Globorotalidae,chromista,foraminifera,,,,,,globorotalidae,True,True,living,full_body,,,,,
+tara_pacific_hsn,part<Actinopterygii,animalia,chordata,,,,,,chordata,False,False,detritus,part,Q10915,1821.0,7711.0,18.0,
+tara_pacific_hsn,Acantharia,chromista,radiozoa,acantharia,,,,,acantharia,True,True,living,full_body,Q135584,586732.0,65574.0,714957.0,625;640
+tara_pacific_hsn,borax,,,,,,,,detritus,False,False,detritus,,,,,,207;666;717
+tara_pacific_hsn,damaged<Copepoda,animalia,arthropoda,copepoda,,,,,copepoda,True,True,living,full_body,Q189973,1080.0,6830.0,979181.0,175;255;563;575
+tara_pacific_hsn,echinopluteus,animalia,echinodermata,echinoidea,,,,,echinoidea,True,True,living,full_body,Q83483,123082.0,7625.0,29.0,260
+tara_pacific_hsn,ophiopluteus,animalia,echinodermata,ophiuroidea,,,,,ophiuroidea,True,True,living,full_body,Q59256,123084.0,7618.0,32.0,267
+tara_pacific_manta,Harosa,chromista,,,,,,,chromista,True,True,living,full_body,Q862296,7.0,,,
+tara_pacific_manta,Mollusca,animalia,mollusca,,,,,,mollusca,True,True,living,full_body,Q25326,51.0,6447.0,23.0,
+tara_pacific_manta,Ctenophora<Animalia,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,ctenophora,,ctenophora,True,True,living,full_body,Q25661394,163921.0,1003038.0,249225.0,456;559
+tara_pacific_manta,Cnidaria<Animalia,animalia,cnidaria,,,,,,cnidaria,True,True,living,full_body,Q25441,1267.0,6073.0,3.0,
+tara_pacific_manta,Chaetognatha<Animalia,animalia,chaetognatha,,,,,,chaetognatha,True,True,living,full_body,Q192416,2081.0,10229.0,13.0,115
+tara_pacific_manta,Bryozoa,animalia,bryozoa,,,,,,bryozoa,True,True,living,full_body,Q148134,146142.0,10205.0,7.0,
+tara_pacific_manta,Annelida,animalia,annelida,,,,,,annelida,True,True,living,full_body,Q25522,882.0,6340.0,2.0,558;632
+tara_pacific_manta,Foraminifera,chromista,foraminifera,,,,,,foraminifera,True,True,living,full_body,Q107027,1410.0,29178.0,246658.0,557;582;620
+tara_pacific_manta,Hydrozoa,animalia,cnidaria,hydrozoa,,,,,hydrozoa,True,True,living,full_body,Q181989,1337.0,6074.0,26.0,628;652
+tara_pacific_manta,Cephalopoda,animalia,mollusca,cephalopoda,,,,,cephalopoda,True,True,living,full_body,Q128257,11707.0,6605.0,24.0,110;590
+tara_pacific_manta,Bivalvia<Mollusca,animalia,mollusca,bivalvia,,,,,bivalvia,True,True,living,full_body,Q25368,105.0,6544.0,70.0,112
+tara_pacific_manta,Spumellaria,chromista,radiozoa,polycystina,spumellaria,,,,spumellaria,True,True,living,full_body,Q3967296,345835.0,65583.0,714957.0,655
+tara_pacific_manta,Insecta,animalia,arthropoda,hexapoda,,,,,hexapoda,False,True,living,full_body,Q105146,1278.0,6960.0,20.0,
+tara_pacific_manta,Nudibranchia,animalia,mollusca,gastropoda,nudibranchia,,,,nudibranchia,True,True,living,full_body,Q733595,1762.0,70849.0,84976.0,111
+tara_pacific_manta,Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,neoceratium,,neoceratium,True,True,living,full_body,Q18606071,494056.0,665866.0,317205.0,240
+tara_pacific_manta,Tomopteridae,animalia,annelida,polychaeta,phyllodocida,tomopteridae,,,tomopteridae,True,True,living,full_body,Q3897245,958.0,397572.0,125419.0,201;364
+tara_pacific_manta,Alciopini,animalia,annelida,polychaeta,phyllodocida,phyllodocidae,,,alciopini,True,True,living,full_body,,932.0,,,
+tara_pacific_manta,Eumalacostraca,animalia,arthropoda,malacostraca,,,,,malacostraca,True,True,living,full_body,Q182978,1071.0,6681.0,69.0,
+tara_pacific_manta,Copepoda<Multicrustacea,animalia,arthropoda,copepoda,,,,,copepoda,True,True,living,full_body,Q189973,1080.0,6830.0,979181.0,175;255;563;575
+tara_pacific_manta,Fritillariidae,animalia,chordata,appendicularia,copelata,fritillariidae,,,fritillariidae,True,True,living,full_body,Q10438451,103354.0,2507558.0,532124.0,125;740
+tara_pacific_manta,Oikopleuridae,animalia,chordata,appendicularia,copelata,oikopleuridae,,,oikopleuridae,True,True,living,full_body,Q10571698,103356.0,41302.0,96367.0,121;741
+tara_pacific_manta,Salpida,animalia,chordata,thaliacea,salpida,,,,salpida,True,True,living,full_body,Q2740581,137214.0,30307.0,174763.0,118;603
+tara_pacific_manta,Pyrosomatida,animalia,chordata,thaliacea,pyrosomatida,,,,pyrosomatida,True,True,living,full_body,Q11847380,137213.0,76842.0,532901.0,152;601
+tara_pacific_manta,Doliolida,animalia,chordata,thaliacea,doliolida,,,,doliolida,True,True,living,full_body,Q1138058,137212.0,76838.0,27267.0,144
+tara_pacific_manta,Gymnosomata,animalia,mollusca,gastropoda,pteropoda,,,,pteropoda,True,True,living,full_body,Q1031983,325345.0,977783.0,854079.0,268
+tara_pacific_manta,Cavoliniidae,animalia,mollusca,gastropoda,pteropoda,cavoliniidae,,,cavoliniidae,True,True,living,full_body,Q3203064,23000.0,216329.0,193217.0,614
+tara_pacific_manta,Limacinidae,animalia,mollusca,gastropoda,pteropoda,limacinidae,,,limacinidae,True,True,living,full_body,Q6548854,13704.0,220645.0,1836.0,123;617
+tara_pacific_manta,Creseidae,animalia,mollusca,gastropoda,pteropoda,cliidae,clio,pyramidata,clio pyramidata,True,True,living,full_body,Q3202847,139033.0,356475.0,202265.0,138
+tara_pacific_manta,Diatoma,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,diatoma,,diatoma,True,True,living,full_body,Q14552177,149013.0,2862.0,603667.0,711
+tara_pacific_manta,Ostracoda,animalia,arthropoda,ostracoda,,,,,ostracoda,True,True,living,full_body,Q276412,1078.0,6670.0,80.0,165;383
+tara_pacific_manta,Pyrocystaceae,chromista,myzozoa,dinophyceae,gonyaulacales,pyrocystaceae,,,pyrocystaceae,True,True,living,full_body,Q16916347,109444.0,1573500.0,317059.0,240
+tara_pacific_manta,Amphipoda,animalia,arthropoda,malacostraca,amphipoda,,,,amphipoda,True,True,living,full_body,Q193418,1135.0,6821.0,326.0,222;596
+tara_pacific_manta,Harpacticoida,animalia,arthropoda,copepoda,harpacticoida,tachidiidae,euterpina,,euterpina,True,True,living,full_body,Q18091848,115348.0,163465.0,326833.0,22;756
+tara_pacific_manta,Calanoida,animalia,arthropoda,copepoda,calanoida,,,,calanoida,True,True,living,full_body,Q478553,1100.0,6833.0,386.0,114;320;564
+tara_pacific_manta,Gerridae,animalia,arthropoda,hexapoda,hemiptera,gerridae,,,gerridae,True,True,living,full_body,,160268.0,,,
+tara_pacific_manta,Branchiostoma lanceolatum,animalia,chordata,leptocardii,amphioxiformes,branchiostomatidae,branchiostoma,lanceolatum,branchiostoma lanceolatum,True,True,living,full_body,,104906.0,,,
+tara_pacific_manta,Orbulina,chromista,foraminifera,globothalamea,rotaliida,globigerinidae,orbulina,,orbulina,True,True,living,full_body,,112203.0,,,
+tara_pacific_manta,Diacavolinia,animalia,mollusca,gastropoda,pteropoda,cavoliniidae,diacavolinia,,diacavolinia,True,True,living,full_body,,137754.0,,,
+tara_pacific_manta,Actinopterygii,animalia,chordata,,,,,,chordata,True,True,living,full_body,Q10915,1821.0,7711.0,18.0,
+tara_pacific_manta,Terebellidae,animalia,annelida,polychaeta,terebellida,terebellidae,,,terebellidae,True,True,living,full_body,,982.0,,,
+tara_pacific_manta,Temoridae,animalia,arthropoda,copepoda,calanoida,temoridae,,,temoridae,True,True,living,full_body,Q3808990,104106.0,88013.0,1755.0,53;759
+tara_pacific_manta,Pontellidae,animalia,arthropoda,copepoda,calanoida,pontellidae,,,pontellidae,True,True,living,full_body,Q3808886,104097.0,163235.0,1758.0,57
+tara_pacific_manta,Metridinidae,animalia,arthropoda,copepoda,calanoida,metridinidae,pleuromamma,abdominalis,pleuromamma abdominalis,True,True,living,full_body,Q6554994,104637.0,503033.0,152211.0,369
+tara_pacific_manta,Euchaetidae,animalia,arthropoda,copepoda,calanoida,euchaetidae,,,euchaetidae,True,True,living,full_body,Q6552157,104086.0,117959.0,1763.0,51
+tara_pacific_manta,Eucalanidae,animalia,arthropoda,copepoda,calanoida,eucalanidae,,,eucalanidae,True,True,living,full_body,Q6552116,104085.0,121137.0,1762.0,43
+tara_pacific_manta,Centropagidae,animalia,arthropoda,copepoda,calanoida,centropagidae,,,centropagidae,True,True,living,full_body,Q3808940,104081.0,136181.0,1713.0,46;761
+tara_pacific_manta,Candaciidae,animalia,arthropoda,copepoda,calanoida,candaciidae,,,candaciidae,True,True,living,full_body,Q18196358,104080.0,207962.0,1757.0,45
+tara_pacific_manta,Calanidae,animalia,arthropoda,copepoda,calanoida,calanidae,,,calanidae,True,True,living,full_body,Q3809091,104079.0,6835.0,1722.0,50
+tara_pacific_manta,Acartiidae,animalia,arthropoda,copepoda,calanoida,acartiidae,,,acartiidae,True,True,living,full_body,Q3809261,104074.0,121147.0,1731.0,49;758
+tara_pacific_manta,Oithonidae,animalia,arthropoda,copepoda,cyclopoida,oithonidae,,,oithonidae,True,True,living,full_body,Q6556457,106422.0,136189.0,142596.0,21;566
+tara_pacific_manta,Velella,animalia,cnidaria,hydrozoa,anthoathecata,porpitidae,velella,,velella,True,True,living,full_body,,117200.0,,,
+tara_pacific_manta,Aglaura,animalia,cnidaria,hydrozoa,trachymedusae,rhopalonematidae,aglaura,hemistoma,aglaura hemistoma,True,True,living,full_body,Q2752599,117851.0,497490.0,656361.0,163
+tara_pacific_manta,Creseis virgula,animalia,mollusca,gastropoda,pteropoda,creseidae,creseis,virgula,creseis virgula,True,True,living,full_body,,139035.0,,,
+tara_pacific_manta,Creseis acicula,animalia,mollusca,gastropoda,pteropoda,creseidae,creseis,acicula,creseis acicula,True,True,living,full_body,Q3804098,139034.0,356499.0,273416.0,174;618
+tara_pacific_manta,Diacria trispinosa,animalia,mollusca,gastropoda,pteropoda,cavoliniidae,diacria,trispinosa,diacria trispinosa,True,True,living,full_body,,139045.0,,,
+tara_pacific_manta,Hyperiidea,animalia,arthropoda,malacostraca,amphipoda,,,,amphipoda,True,True,living,full_body,Q193418,1135.0,6821.0,326.0,222;596
+tara_pacific_manta,Gammaridea,animalia,arthropoda,malacostraca,amphipoda,,,,gammaridea,True,True,living,full_body,,,,,
+tara_pacific_manta,Sapphirinidae,animalia,arthropoda,copepoda,cyclopoida,sapphirinidae,,,sapphirinidae,True,True,living,full_body,Q3473199,128595.0,545089.0,50856.0,59
+tara_pacific_manta,Oncaeidae,animalia,arthropoda,copepoda,cyclopoida,oncaeidae,,,oncaeidae,True,True,living,full_body,Q3809055,128586.0,349673.0,142590.0,42;568
+tara_pacific_manta,Corycaeidae,animalia,arthropoda,copepoda,cyclopoida,corycaeidae,,,corycaeidae,True,True,living,full_body,Q6569053,128569.0,749182.0,315366.0,47;565
+tara_pacific_manta,Haloptilus,animalia,arthropoda,copepoda,calanoida,augaptilidae,haloptilus,,haloptilus,True,True,living,full_body,Q6552416,104140.0,201674.0,264636.0,56
+tara_pacific_manta,Porpita porpita,animalia,cnidaria,hydrozoa,anthoathecata,porpitidae,porpita,porpita,porpita porpita,True,True,living,full_body,,117831.0,,,
+tara_pacific_manta,Chelophyes,animalia,cnidaria,hydrozoa,siphonophorae,diphyidae,chelophyes,,chelophyes,True,True,living,full_body,,135360.0,,,
+tara_pacific_manta,Physalia,animalia,cnidaria,hydrozoa,siphonophorae,physaliidae,physalia,,physalia,True,True,living,full_body,,135382.0,,,
+tara_pacific_manta,Rhopalonema velatum,animalia,cnidaria,hydrozoa,trachymedusae,rhopalonematidae,rhopalonema,velatum,rhopalonema velatum,True,True,living,full_body,Q1813829,117865.0,497494.0,656308.0,304
+tara_pacific_manta,Brachyura,animalia,arthropoda,malacostraca,decapoda,,,,brachyura,True,True,living,full_body,,106673.0,,,
+tara_pacific_manta,Evadne,animalia,arthropoda,branchiopoda,onychopoda,podonidae,evadne,,evadne,True,True,living,full_body,Q4575907,106267.0,141402.0,4559.0,345
+tara_pacific_manta,Copilia,animalia,arthropoda,copepoda,cyclopoida,sapphirinidae,copilia,,copilia,True,True,living,full_body,Q3808936,128721.0,545085.0,50873.0,410
+tara_pacific_manta,Spirorbis,animalia,annelida,polychaeta,sabellida,serpulidae,spirorbis,,spirorbis,True,True,living,full_body,,129642.0,,,
+tara_pacific_manta,Oxycephalidae,animalia,arthropoda,malacostraca,amphipoda,oxycephalidae,,,oxycephalidae,True,True,living,full_body,,196118.0,,,
+tara_pacific_manta,Calocalanus pavo,animalia,arthropoda,copepoda,calanoida,paracalanidae,calocalanus,pavo,calocalanus pavo,True,True,living,full_body,Q3808842,104669.0,749177.0,302293.0,135
+tara_pacific_manta,Pontellina plumata,animalia,arthropoda,copepoda,calanoida,pontellidae,pontellina,plumata,pontellina plumata,True,True,living,full_body,,104743.0,,,
+tara_pacific_manta,Phronima,animalia,arthropoda,malacostraca,amphipoda,phronimidae,phronima,,phronima,True,True,living,full_body,,101804.0,,,
+tara_pacific_manta,detritus<not-living,,,,,,,,detritus,False,False,detritus,,,,,,207;666;717
+tara_pacific_manta,larvae<Annelida,animalia,annelida,,,,,,annelida,True,True,living,larvae,Q25522,882.0,6340.0,2.0,558;632
+tara_pacific_manta,part<Annelida,animalia,annelida,,,,,,annelida,False,False,detritus,part,Q25522,882.0,6340.0,2.0,558;632
+tara_pacific_manta,cyphonautes,animalia,bryozoa,,,,,,bryozoa,True,True,living,full_body,Q148134,146142.0,10205.0,7.0,
+tara_pacific_manta,tail<Chaetognatha,animalia,chaetognatha,,,,,,chaetognatha,False,False,detritus,part_tail,Q192416,2081.0,10229.0,13.0,115
+tara_pacific_manta,part<Cnidaria,animalia,cnidaria,,,,,,cnidaria,False,False,detritus,part,Q25441,1267.0,6073.0,3.0,
+tara_pacific_manta,nectophore<Abylopsis tetragona,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,abylopsis,tetragona,abylopsis tetragona,True,True,living,full_body,Q1931947,135403.0,316209.0,461338.0,321
+tara_pacific_manta,eudoxid<Abylopsis tetragona,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,abylopsis,tetragona,abylopsis tetragona,True,True,living,full_body,Q1931947,135403.0,316209.0,461338.0,321
+tara_pacific_manta,nectophore<Diphyidae,animalia,cnidaria,hydrozoa,siphonophorae,diphyidae,,,diphyidae,True,True,living,full_body,Q4008468,135338.0,168754.0,24305.0,342
+tara_pacific_manta,eudoxid<Diphyidae,animalia,cnidaria,hydrozoa,siphonophorae,diphyidae,,,diphyidae,True,True,living,full_body,Q4008468,135338.0,168754.0,24305.0,342
+tara_pacific_manta,nectophore<Hippopodiidae,animalia,cnidaria,hydrozoa,siphonophorae,hippopodiidae,,,hippopodiidae,True,True,living,full_body,Q4001548,135339.0,168743.0,455827.0,327
+tara_pacific_manta,nectophore<Physonectae,animalia,cnidaria,hydrozoa,siphonophorae,,,,siphonophorae,True,True,living,full_body,Q1134438,1371.0,42759.0,263623.0,296;598
+tara_pacific_manta,metanauplii<Crustacea,animalia,arthropoda,,,,,,arthropoda,True,True,living,full_body,Q1360,1065.0,6656.0,20.0,
+tara_pacific_manta,protozoea<Penaeidae,animalia,arthropoda,malacostraca,decapoda,penaeidae,,,penaeidae,True,True,living,full_body,Q683918,106727.0,6685.0,1532.0,645
+tara_pacific_manta,zoea<Galatheidae,animalia,arthropoda,malacostraca,decapoda,galatheidae,,,galatheidae,True,True,living,full_body,Q1731771,106733.0,136690.0,1502.0,645
+tara_pacific_manta,megalopa<Brachyura,animalia,arthropoda,malacostraca,decapoda,,,,brachyura,True,True,living,full_body,,106673.0,,,
+tara_pacific_manta,like<Laomediidae,animalia,arthropoda,malacostraca,decapoda,laomediidae,,,laomediidae,True,True,living,like,,106802.0,,,
+tara_pacific_manta,calyptopsis,animalia,arthropoda,malacostraca,euphausiacea,,,,euphausiacea,True,True,living,full_body,Q29498,1128.0,6816.0,361.0,199;605
+tara_pacific_manta,protozoea<Sergestidae,animalia,arthropoda,malacostraca,decapoda,sergestidae,,,sergestidae,True,True,living,full_body,Q4481085,106731.0,111522.0,69922.0,645
+tara_pacific_manta,protozoea<Mysida,animalia,arthropoda,malacostraca,mysida,,,,mysida,True,True,living,full_body,Q13411080,149668.0,75399.0,79190.0,
+tara_pacific_manta,larvae<Squillidae,animalia,arthropoda,malacostraca,stomatopoda,squillidae,,,squillidae,True,True,living,larvae,,136093.0,,,
+tara_pacific_manta,nauplii<Cirripedia,animalia,arthropoda,thecostraca,,,,,cirripedia,True,True,living,full_body,,1082.0,,,
+tara_pacific_manta,cypris<Cirripedia,animalia,arthropoda,thecostraca,,,,,cirripedia,True,True,living,full_body,,1082.0,,,
+tara_pacific_manta,pluteus<Ophiuroidea,animalia,echinodermata,ophiuroidea,,,,,ophiuroidea,True,True,living,full_body,Q59256,123084.0,7618.0,32.0,267
+tara_pacific_manta,pluteus<Echinoidea,animalia,echinodermata,echinoidea,,,,,echinoidea,True,True,living,full_body,Q83483,123082.0,7625.0,29.0,260
+tara_pacific_manta,part<Mollusca,animalia,mollusca,,,,,,mollusca,False,False,detritus,part,Q25326,51.0,6447.0,23.0,
+tara_pacific_manta,tail<Appendicularia,animalia,chordata,appendicularia,,,,,appendicularia,False,False,detritus,part_tail,Q28960,146421.0,30302.0,96365.0,116;368;571
+tara_pacific_manta,juvenile<Salpida,animalia,chordata,thaliacea,salpida,,,,salpida,True,True,living,full_body,Q2740581,137214.0,30307.0,174763.0,118;603
+tara_pacific_manta,chain<Salpida,animalia,chordata,thaliacea,salpida,,,,salpida,True,True,living,full_body,Q2740581,137214.0,30307.0,174763.0,118;603
+tara_pacific_manta,wing,animalia,arthropoda,hexapoda,,,,,hexapoda,False,False,detritus,part,Q105146,1278.0,6960.0,20.0,
+tara_pacific_manta,artefact,,,,,,,,artefact,False,False,artefact,,,,,,208;688;714
+tara_pacific_manta,other<Biota,,,,,,,,other,False,True,living,full_body,,,,,
+tara_pacific_manta,t002,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_manta,t003,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_manta,t004,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_manta,t005,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_manta,t007,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_manta,t008,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_manta,larvae<Porpitidae,animalia,cnidaria,hydrozoa,anthoathecata,porpitidae,,,porpitidae,True,True,living,larvae,,20790.0,,,
+tara_pacific_manta,multiple<Copepoda,animalia,arthropoda,copepoda,,,,,copepoda,True,True,living,mix,Q189973,1080.0,6830.0,979181.0,175;255;563;575
+tara_pacific_manta,dark<detritus,,,,,,,,detritus,False,False,detritus,,,,,,207;666;717
+tara_pacific_manta,fiber<plastic,,,,,,,,plastic fiber,False,False,inert,,,,,,
+tara_pacific_manta,other<plastic,,,,,,,,plastic,False,False,inert,,,,,,
+tara_pacific_manta,bubble,,,,,,,,bubble,False,False,artefact,,,,,,205;667;715
+tara_pacific_manta,badfocus<artefact,,,,,,,,bad focus,False,False,artefact,,,,,,
+tara_pacific_manta,seaweed,,,,,,,,seaweed,False,True,living,full_body,,,,,215
+tara_pacific_manta,part<other,,,,,,,,other,False,False,detritus,part,,,,,
+tara_pacific_manta,othertocheck,,,,,,,,other,False,False,artefact,,,,,,
+tara_pacific_manta,filament<plastic,,,,,,,,plastic filament,False,False,inert,,,,,,
+tara_pacific_manta,film,,,,,,,,plastic film,False,False,inert,,,,,,
+tara_pacific_manta,fragment,,,,,,,,plastic fragment,False,False,inert,,,,,,
+tara_pacific_manta,pellet,,,,,,,,plastic pellet,False,False,inert,,,,,,
+tara_pacific_manta,multiple<plastic,,,,,,,,plastic,False,False,inert,,,,,,
+tara_pacific_manta,fiber<detritus,,,,,,,,fiber,False,False,detritus,,,,,,204;576
+tara_pacific_manta,egg<other,,,,,,,,egg,False,True,living,egg,,,,,213;226;552;750
+tara_pacific_manta,multiple<other,,,,,,,,other,False,False,artefact,,,,,,
+tara_pacific_manta,larvae<Crustacea,animalia,arthropoda,,,,,,arthropoda,True,True,living,larvae,Q1360,1065.0,6656.0,20.0,
+tara_pacific_manta,part<Crustacea,animalia,arthropoda,,,,,,arthropoda,False,False,detritus,part,Q1360,1065.0,6656.0,20.0,
+tara_pacific_manta,nauplii<Crustacea,animalia,arthropoda,,,,,,arthropoda,True,True,living,full_body,Q1360,1065.0,6656.0,20.0,
+tara_pacific_manta,egg<Actinopterygii,animalia,chordata,,,,,,chordata,True,True,living,egg,Q10915,1821.0,7711.0,18.0,
+tara_pacific_manta,scale,animalia,chordata,,,,,,chordata,False,False,detritus,part_skin,Q10915,1821.0,7711.0,18.0,
+tara_pacific_manta,t010,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_manta,t012,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_manta,t013,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_manta,t014,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_manta,t015,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_manta,t016,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_manta,t017,,,,,,,,unknown,False,False,artefact,,,,,,
+tara_pacific_manta,gonophore<Diphyidae,animalia,cnidaria,hydrozoa,siphonophorae,diphyidae,,,diphyidae,True,True,living,full_body,Q4008468,135338.0,168754.0,24305.0,342
+tara_pacific_manta,part<Ctenophora,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,ctenophora,,ctenophora,False,False,detritus,part,Q25661394,163921.0,1003038.0,249225.0,456;559
+tara_pacific_manta,ephyra<Scyphozoa,animalia,cnidaria,scyphozoa,,,,,scyphozoa,True,True,living,full_body,Q272388,135220.0,6142.0,25222.0,308;641
+tara_pacific_manta,egg<Mollusca,animalia,mollusca,,,,,,mollusca,True,True,living,egg,Q25326,51.0,6447.0,23.0,
+tara_pacific_manta,gonophore<Abylopsis tetragona,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,abylopsis,tetragona,abylopsis tetragona,True,True,living,full_body,Q1931947,135403.0,316209.0,461338.0,321
+tara_pacific_manta,part<Siphonophorae,animalia,cnidaria,hydrozoa,siphonophorae,,,,siphonophorae,False,False,detritus,part,Q1134438,1371.0,42759.0,263623.0,296;598
+tara_pacific_manta,cirrus,animalia,arthropoda,thecostraca,,,,,thecostraca,True,True,living,full_body,Q150628,22388.0,116172.0,981579.0,
+tara_pacific_manta,badfocus<Copepoda,animalia,arthropoda,copepoda,,,,,copepoda,True,True,living,full_body,Q189973,1080.0,6830.0,979181.0,175;255;563;575
+tara_pacific_manta,head<Chaetognatha,animalia,chaetognatha,,,,,,chaetognatha,False,False,detritus,part_head,Q192416,2081.0,10229.0,13.0,115
+tara_pacific_manta,part<Copepoda,animalia,arthropoda,copepoda,,,,,copepoda,False,False,detritus,part,Q189973,1080.0,6830.0,979181.0,175;255;563;575
+tara_pacific_manta,polystyrene,,,,,,,,polystyrene,False,False,inert,,,,,,
+tara_pacific_manta,gonophore<Bassia bassensis,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,bassia,bassensis,bassia bassensis,True,True,living,full_body,Q2282611,135404.0,645412.0,455875.0,344
+tara_pacific_manta,nectophore<Bassia bassensis,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,bassia,bassensis,bassia bassensis,True,True,living,full_body,Q2282611,135404.0,645412.0,455875.0,344
+tara_pacific_manta,trunk<Appendicularia,animalia,chordata,appendicularia,,,,,appendicularia,False,False,detritus,part_trunk,Q28960,146421.0,30302.0,96365.0,116;368;571
+tara_pacific_manta,Pterotrachea,animalia,mollusca,gastropoda,littorinimorpha,pterotracheidae,pterotrachea,,pterotrachea,True,True,living,full_body,,138009.0,,,
+tara_pacific_manta,Atlanta,animalia,mollusca,gastropoda,littorinimorpha,atlantidae,,,atlantidae,True,True,living,full_body,Q756491,22990.0,649145.0,85053.0,156
+tara_pacific_manta,bract<Diphyidae,animalia,cnidaria,hydrozoa,siphonophorae,diphyidae,,,diphyidae,True,True,living,full_body,Q4008468,135338.0,168754.0,24305.0,342
+tara_pacific_manta,bract<Abylopsis tetragona,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,abylopsis,tetragona,abylopsis tetragona,True,True,living,full_body,Q1931947,135403.0,316209.0,461338.0,321
+tara_pacific_manta,part<Thaliacea,animalia,chordata,thaliacea,,,,,thaliacea,False,False,detritus,part,Q610887,22626.0,30304.0,27266.0,113;607
+tara_pacific_manta,nucleus<Salpidae,animalia,chordata,thaliacea,salpida,salpidae,,,salpidae,True,True,living,full_body,Q1068611,137217.0,34759.0,174764.0,118;603
+tara_pacific_manta,larvae<Porcellanidae,animalia,arthropoda,malacostraca,decapoda,porcellanidae,,,porcellanidae,True,True,living,larvae,Q1435521,106734.0,84660.0,1509.0,645
+tara_pacific_manta,zoea<Brachyura<Pleocyemata<Decapoda,animalia,arthropoda,malacostraca,decapoda,,,,brachyura,True,True,living,full_body,,106673.0,,,
+tara_pacific_manta,polype<Leptothecata,animalia,cnidaria,hydrozoa,leptothecata,,,,leptothecata,True,True,living,full_body,Q5122184,13552.0,500008.0,264641.0,644
+tara_pacific_manta,polype<Anthozoa,animalia,cnidaria,,,,,,anthozoa,True,True,living,full_body,,1292.0,,,
+tara_pacific_manta,Miraciidae,animalia,arthropoda,copepoda,harpacticoida,miraciidae,,,miraciidae,True,True,living,full_body,,115163.0,,,
+tara_pacific_manta,bract<Bassia bassensis,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,bassia,bassensis,bassia bassensis,True,True,living,full_body,Q2282611,135404.0,645412.0,455875.0,344
+tara_pacific_manta,nectophore<Eudoxoides spiralis,animalia,cnidaria,hydrozoa,siphonophorae,diphyidae,eudoxoides,spiralis,eudoxoides spiralis,True,True,living,full_body,,135424.0,,,
+tara_pacific_manta,eudoxid<Eudoxoides spiralis,animalia,cnidaria,hydrozoa,siphonophorae,diphyidae,eudoxoides,spiralis,eudoxoides spiralis,True,True,living,full_body,,135424.0,,,
+tara_pacific_manta,gonophore<Eudoxoides spiralis,animalia,cnidaria,hydrozoa,siphonophorae,diphyidae,eudoxoides,spiralis,eudoxoides spiralis,True,True,living,full_body,,135424.0,,,
+tara_pacific_manta,Lubbockia,animalia,arthropoda,copepoda,cyclopoida,lubbockiidae,lubbockia,,lubbockia,True,True,living,full_body,,128672.0,,,
+tara_pacific_manta,damaged<Copepoda,animalia,arthropoda,copepoda,,,,,copepoda,True,True,living,full_body,Q189973,1080.0,6830.0,979181.0,175;255;563;575

@@ -885,6 +885,22 @@ class DatasetImporter:
     fairdata_poll_attempts: int = 60
     fairdata_poll_interval: int = 10
 
+    # The four Tara Pacific sources have no archive at all: their SEANOE deposits publish
+    # EcoTaxa TSV exports (metadata, no vignettes) and point at public EcoTaxa projects for
+    # the images. These four fields configure that walk, and live here — on the base
+    # dataclass — for the same reason the fairdata_* block does: only fields declared on
+    # the dataclass reach an importer through `hydra.utils.instantiate`, and the concrete
+    # subclasses are not themselves dataclasses.
+    #
+    # ecotaxa_projects: null -> tara_pacific_layout.SOURCES[SOURCE_NAME]["projects"].
+    ecotaxa_projects: list[int] = None
+    ecotaxa_window_size: int = 10_000
+    ecotaxa_image_workers: int = 8
+    # How many vignettes may stay unfetched after their retries before the import refuses
+    # to finish. 0 = none: an incomplete import is a failure, not a smaller dataset. The
+    # fetch is resumable, so the remedy for a transient outage is to re-run.
+    ecotaxa_max_missing_images: int = 0
+
     cleanup_after_processing: Optional[bool] = False
 
     description: str = ""

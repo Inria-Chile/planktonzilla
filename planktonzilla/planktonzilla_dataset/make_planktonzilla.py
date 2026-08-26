@@ -818,10 +818,13 @@ def report_source_state(importers, cfg) -> tuple:
                 wanted = f"{len(missing)} archive(s) must be downloaded by hand: {missing}"
                 checks.append(Check(f"manual:{name}", False, wanted))
 
-        # Inputs a source needs on EVERY run, imagefolder or not (FREPJ's md5-pinned geodata
-        # tables). Absent ones are not a failure — the run fetches them before its first
-        # import — but they make the source a fetcher, so `check_downloads=needed` probes
-        # it. A bundled one that is gone cannot be repaired by any run, so it blocks.
+        # Inputs a source needs on EVERY run, imagefolder or not: FREPJ's md5-pinned geodata
+        # tables, and the Tara Pacific sources' per-object EcoTaxa manifests. Absent ones are
+        # not a failure — the run fetches them before its first import — but they make the
+        # source a fetcher, so `check_downloads=needed` probes it. A bundled one that is gone
+        # cannot be repaired by any run, so it blocks. The wording below stays neutral about
+        # HOW a source verifies its own sidecars (an md5 pin for frepj, a promised row count
+        # for a Tara Pacific manifest), because this function knows no source by name.
         targets = importer.sidecar_targets()
         if targets:
             gone = [location for kind, location in targets if kind == "bundled" and not Path(location).exists()]
@@ -840,21 +843,21 @@ def report_source_state(importers, cfg) -> tuple:
                 logger.info(f"   sidecars: {len(absent)} absent/unverified -> would be fetched: {listed}")
                 fetched_into = absent[0].parent
                 detail = (
-                    f"{len(absent)} sidecar file(s) absent or failing their md5 pin ({listed}) -> would be fetched "
-                    f"md5-verified into {fetched_into} before the first import"
+                    f"{len(absent)} sidecar file(s) absent or failing verification ({listed}) -> would be fetched "
+                    f"into {fetched_into} before the first import"
                 )
                 checks.append(Check(f"sidecars:{name}", True, detail))
                 for path in absent:
                     if path.exists():
                         drifted = (
-                            f"{path.name} is on disk but fails its md5 pin — would be re-fetched before the first "
+                            f"{path.name} is on disk but fails verification — would be re-fetched before the first "
                             "import (an upstream re-upload, or a truncated copy)"
                         )
                         checks.append(Check(f"sidecars:{name}", False, drifted, blocking=False))
             elif not gone:
                 fetched = sum(1 for kind, _ in targets if kind == "url")
                 bundled = sum(1 for kind, _ in targets if kind == "bundled")
-                detail = f"{fetched} sidecar file(s) on disk with their md5 pin, {bundled} bundled"
+                detail = f"{fetched} fetched sidecar target(s) satisfied, {bundled} bundled"
                 checks.append(Check(f"sidecars:{name}", True, detail))
 
     return checks, fetch_names

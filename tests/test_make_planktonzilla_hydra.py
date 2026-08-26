@@ -1219,7 +1219,7 @@ def test_verified_sidecars_leave_a_built_source_unprobed(tmp_path):
 
     assert fetch_names == []
     (sidecar_check,) = [c for c in checks if c.name == "sidecars:src"]
-    assert sidecar_check.ok and "on disk with their md5 pin" in sidecar_check.detail
+    assert sidecar_check.ok and "fetched sidecar target(s) satisfied" in sidecar_check.detail
 
     download_checks, _ = mk.check_source_downloads([(_SRC, stub)], fetch_names, scope="needed", timeout=1, audit=True)
     assert stub.probes == []
@@ -1237,7 +1237,7 @@ def test_a_drifted_sidecar_is_a_warning_not_a_failure(tmp_path):
 
     assert fetch_names == ["src"]
     warnings = [c for c in checks if c.name == "sidecars:src" and not c.ok]
-    assert len(warnings) == 1 and not warnings[0].blocking and "fails its md5 pin" in warnings[0].detail
+    assert len(warnings) == 1 and not warnings[0].blocking and "fails verification" in warnings[0].detail
 
 
 def test_a_missing_bundled_sidecar_blocks_a_dry_run(monkeypatch, tmp_path):
