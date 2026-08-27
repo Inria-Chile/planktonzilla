@@ -35,8 +35,10 @@ FIXTURES = Path(__file__).parent / "fixtures" / "frepj"
 CLASS_DIRS_TSV = FIXTURES / "frepj_class_dirs.tsv"
 BASELINE_SHA256 = FIXTURES / "pre_frepj_taxonomy.sha256"
 
-# The pristine CSV (header + 1485 rows) is exactly 1486 lines; frepj rows are
-# strictly appended after it, so the first 1486 lines stay byte-frozen forever.
+# The base CSV (header + 1485 rows) is exactly 1486 lines; frepj rows are strictly
+# appended after it. The first 1486 lines are byte-pinned against the committed baseline
+# hash — re-baselined 2026-08-27 when the maintainer-directed repair pass edited 70 base
+# rows in place (see RESOLVED_ISSUES.md); row count and join keys did not change.
 PRISTINE_LINE_COUNT = 1486
 
 DATASET = "frepj"
@@ -167,7 +169,11 @@ def test_shared_higher_taxa_single_spelling():
 
 
 def test_existing_rows_byte_frozen():
-    """Append-only: the original 1486 lines hash to the committed baseline."""
+    """Append-only: the first 1486 lines hash to the committed baseline.
+
+    The baseline moves ONLY with a deliberate, ledgered repair of the base rows (as on
+    2026-08-27) — never as a side effect of appending a source.
+    """
     expected = BASELINE_SHA256.read_text().strip()
 
     raw = constants.DEFAULT_TAXONOMY_CSV_FILENAME.read_bytes()

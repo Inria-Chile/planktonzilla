@@ -344,16 +344,10 @@ HOMONYM_NOTES = {
         "micro-plankton sample cannot contain a springtail. Taking the existing `odontella` row "
         "(Chromista > Heterokontophyta > Bacillariophyceae) is the correct reading AND the consistent one."
     ),
-    "Ctenophora<Animalia": (
-        "INHERITED ISSUE, not introduced here. EcoTaxa says Animalia > Ctenophora (the comb jellies), but "
-        "the master CSV has mapped `ctenophora` to the DIATOM genus Ctenophora (aphia 163921) since long "
-        "before this milestone — nine rows across zooscan, uvp6net, zoocamnet, isiisnet, global_uvp5 and "
-        "planktoscope, all of them zooplankton imagers where the comb jelly is the only plausible reading. "
-        "These rows follow the table rather than contradict it: a second `ctenophora` lineage would break "
-        "the one-label-one-lineage invariant across all of them. Correcting the homonym is a separate "
-        "change to those nine rows, gated on a golden-output diff like every other KNOWN_ISSUES data item."
-    ),
-    "part<Ctenophora": "Same inherited `ctenophora` homonym as `Ctenophora<Animalia` above.",
+    # `Ctenophora<Animalia` and `part<Ctenophora` were listed here through 2026-08-26 as
+    # inheriting the master CSV's diatom-genus reading of `ctenophora`. The KI-35 repair
+    # (2026-08-27) re-mapped all `ctenophora` rows to the comb-jelly phylum EcoTaxa
+    # already asserts, so those two class dirs no longer depart from EcoTaxa's tree.
 }
 
 # A rank the frozen EcoTaxa lineage leaves blank while asserting DEEPER ones, filled by
@@ -374,6 +368,14 @@ HOMONYM_NOTES = {
 #     orders `centrales`/`pennales` the same way).
 RANK_GAP_FILLS = {
     "branchiostoma lanceolatum": {"Order": "amphioxiformes"},
+    # KI-34 rank fills (2026-08-27, both verified against WoRMS/NCBI): Anthozoa IS a
+    # class-rank taxon (NCBI 6101; WoRMS now ranks it subphylum, but this table's Class
+    # column is the pragmatic slot — hexacorallia stays a parallel finer Class under
+    # cnidaria); Globorotaliidae (WoRMS 111930, table spelling `globorotalidae` from the
+    # EcoTaxa node) is a planktonic foram family under Globothalamea/Rotaliida, the same
+    # vocabulary the globigerinidae row already uses.
+    "anthozoa": {"Class": "anthozoa"},
+    "globorotalidae": {"Class": "globothalamea", "Order": "rotaliida", "Family": "globorotalidae"},
 }
 
 # A class dir whose verbatim donor is AMBIGUOUS: the master CSV maps that exact
@@ -383,17 +385,18 @@ RANK_GAP_FILLS = {
 # is listed here with the `proposed_label` the first-in-file donor carries, and
 # `_assert_divergent_donors_acknowledged` fails the build on any unlisted one (or on a
 # reorder that flips a pick) — the same cannot-slip-in-unremarked contract as
-# HOMONYM_NOTES. Acknowledging a pick is not endorsing it: `Creseidae` and
-# `Harpacticoida` land on the SUSPECT side of their divergence (zooscan's rows — KI-32),
-# and re-picking either is a data change gated like every other KNOWN_ISSUES item.
+# HOMONYM_NOTES. Acknowledging a pick is not endorsing it: `Harpacticoida` lands on the
+# over-specific side of its divergence (zooscan's genus row), one of the 13 deliberate
+# per-dataset readings the ledger pins; re-picking it is a data change to be ledgered
+# like the 2026-08-27 repairs were.
+# Down from eight entries on 2026-08-27: the KI-29/KI-32/KI-33 repairs unified the
+# master rows for `Acantharia`, `Creseidae` and `Neoceratium`, so those donors are no
+# longer ambiguous.
 DIVERGENT_DONORS = {
-    "Acantharia": "acantharia",  # planktoscope's class-level row, not flowcamnet's `amphibelone`
     "Annelida": "annelida",  # global_uvp5's phylum-level row, not uvp6net's `poeobius`
-    "Creseidae": "clio pyramidata",  # zooscan's cross-family species, not global_uvp5's `creseidae`
     "Dinophyceae": "dinophyceae",  # global_uvp5's class-level row, not flowcamnet's `gonyaulacales`
     "Foraminifera": "foraminifera",  # flowcamnet's phylum-level row, not zooscan's `globigerinidae`
     "Harpacticoida": "euterpina",  # zooscan's genus, not global_uvp5's order-level `harpacticoida`
-    "Neoceratium": "neoceratium",  # flowcamnet's genus row, not zooscan's synonym `tripos` (KI-33)
     "Ornithocercus": "ornithocercus",  # planktoscope's genus row, not flowcamnet's `ornithocercus magnificus`
 }
 
@@ -851,9 +854,9 @@ _B2_INTRO = (
 )
 
 _B3_INTRO = (
-    "All three take the lineage the master CSV already records for their `proposed_label`, because "
-    "the table's invariant is one lineage per label. Two of them repair an upstream misplacement; "
-    "one inherits an issue the table already had. A test asserts these are the only three."
+    "Each takes the lineage the master CSV already records for its `proposed_label`, because "
+    "the table's invariant is one lineage per label — here that repairs an upstream "
+    "misplacement. A test asserts these are the only departures."
 )
 
 _B5_NOTE = (

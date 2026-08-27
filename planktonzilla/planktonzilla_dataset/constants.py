@@ -52,6 +52,27 @@ QUALIFIERS = (
     "part_trunk",
 )
 
+# Labels FINER than the seven-rank ladder can express — an infraclass, suborder,
+# infraorder or tribe, or an upstream EcoTaxa morphotype / open-nomenclature /
+# epibiont-association node kept as its own class. Each maps to the (rank, value) of the
+# deepest rank column its rows DO fill: the label's parent in the published label graph.
+# ``tests/test_taxonomy_validation.py`` enforces that every other ranked row's
+# ``proposed_label`` equals its lowest filled rank (or the Genus+Species binomial), and
+# that each entry here matches its rows exactly — so a new sub-rank label cannot enter
+# the CSV without being registered and given a parent.
+SUB_RANK_LABELS = {
+    "achelata": ("Order", "decapoda"),  # infraorder (raw label: phyllosoma)
+    "alciopini": ("Family", "phyllodocidae"),  # tribe
+    "brachyura": ("Order", "decapoda"),  # infraorder
+    "chaetoceros inter ciliate": ("Genus", "chaetoceros"),  # epibiont-association node
+    "chaetoceros inter. calothrix": ("Genus", "chaetoceros"),  # epibiont-association node
+    "cirripedia": ("Class", "thecostraca"),  # infraclass
+    "coscinodiscids": ("Phylum", "bacillariophyta"),  # informal diatom group
+    "dinophyceae x": ("Class", "dinophyceae"),  # EcoTaxa morphotype node
+    "gammaridea": ("Order", "amphipoda"),  # suborder
+    "odontella sp.": ("Genus", "odontella"),  # open-nomenclature node
+}
+
 # External-database ID columns, grouped by how the CSV stores them.
 ID_STR_COLS = ("wikidata_ID", "ecotaxa_ID")  # already text in the CSV
 ID_NUM_COLS = ("aphia_ID", "NCBI_ID", "BOLD_ID")  # numeric in the CSV -> text without decimals

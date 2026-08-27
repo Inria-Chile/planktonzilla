@@ -1,27 +1,32 @@
 """
 (c) Inria
 
-Pinning tests for `planktonzilla_taxonomy.csv` — they assert the CURRENT (frozen) state of
-the known data inconsistencies documented as KI-8..KI-13 in
-`planktonzilla/planktonzilla_dataset/utils/KNOWN_ISSUES.md`.
+Pinning tests for `planktonzilla_taxonomy.csv` — the data-issue ledger's test file.
 
-KI-11 is the exception: it was RESOLVED (the `QUALIFIERS` vocabulary was widened, with no CSV
-change), so its write-up now lives in the sibling `RESOLVED_ISSUES.md`. Its test stays here
-because what it guards is unchanged — that every `qualifier` in the CSV is a recognized value.
+Two kinds of test live here:
 
-These tests PIN behavior; they do NOT fix it. The taxonomy table and the datasets/models
-derived from it are published and frozen on HuggingFace Hub, so under the milestone's
-zero-behavioral-drift rule these inconsistencies are documented and pinned rather than
-corrected. If one of these assertions starts failing, the CSV has changed — update the test
-ONLY together with a golden-output diff against the frozen HuggingFace reference, never
-silently. The findings were established by a two-method audit (deterministic checks + a
-27-agent adversarially-verified multi-lens audit) on 2026-07-13; each was independently
-re-verified.
+- **Open-issue pins** (KI-12, KI-13): the defect is documented in
+  `planktonzilla/planktonzilla_dataset/utils/KNOWN_ISSUES.md` and deliberately not fixed;
+  the test asserts the CURRENT state so any drift is loud. Fix one only together with its
+  ledger entry.
+- **Resolved-state guards** (KI-8..KI-10, KI-29..KI-35): the defect was repaired by the
+  maintainer-directed 2026-08-27 fix pass (see RESOLVED_ISSUES.md for each entry and the
+  full cell-level edit manifest). The guards pin the REPAIRED values, so a regression —
+  or an importer re-introducing an old mapping — turns the suite red. The generic
+  invariants behind those repairs (one lineage per label, single-parent rank tree, flag
+  coherence, label = lowest rank, ...) are enforced in `tests/test_taxonomy_validation.py`;
+  the guards here cover only what a generic rule cannot see: WHICH reading each repaired
+  row was given.
 
-KI-29..KI-35 below were added by the 2026-08-26 full-table audit — the first re-run of the
-deterministic battery since the 229 frepj rows (Plan 18) and the 600 Tara Pacific rows
-(issue #10) were appended. Same contract: they PIN the current state of the grown table,
-they do not fix it.
+KI-11 (RESOLVED 2026-07-13) keeps its test here per its original note: what it guards —
+that every CSV qualifier is a recognized vocabulary value — is unchanged.
+
+History: KI-8..KI-13 were found by the 2026-07-13 two-method audit of the 1,485-row
+table; KI-29..KI-35 by the 2026-08-26 full-table audit after the frepj and Tara Pacific
+appends. Until 2026-08-27 this file pinned the BROKEN state of all of them under the
+zero-behavioral-drift rule; the repair pass inverted those pins into the guards below.
+The published HuggingFace artifacts are unchanged by the repair — the fixed table takes
+effect at the next dataset build.
 
 Network-free: reads only the committed CSV.
 """
@@ -46,8 +51,6 @@ from planktonzilla.planktonzilla_dataset.constants import QUALIFIERS
 _CSV_PATH = root / "planktonzilla" / "planktonzilla_dataset" / "planktonzilla_taxonomy.csv"
 
 RANKS = ("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
-# Columns that are normalized to lowercase (Raw_Labels intentionally keeps source casing).
-NORMALIZED_COLUMNS = (*RANKS, "proposed_label", "root_class", "qualifier")
 ID_COLUMNS = ("wikidata_ID", "aphia_ID", "NCBI_ID", "ecotaxa_ID", "BOLD_ID")
 
 
@@ -58,55 +61,28 @@ def rows():
 
 
 def _one(rows, dataset, raw_label):
-    """The unique row keyed ``(Dataset, Raw_Labels)`` — uniqueness itself is a pinned invariant."""
+    """The unique row keyed ``(Dataset, Raw_Labels)`` — uniqueness itself is enforced."""
     matches = [r for r in rows if r["Dataset"] == dataset and r["Raw_Labels"] == raw_label]
     assert len(matches) == 1, (dataset, raw_label, len(matches))
     return matches[0]
 
 
 def test_frozen_table_anchor(rows):
-    """Sanity anchor: 1,485 frozen rows + the v1.2 appends, expected schema.
+    """Sanity anchor: 1,485 base rows + 229 frepj + 600 Tara Pacific, expected schema.
 
-    The 1,485-row base is still byte-frozen — tests/test_frepj_taxonomy_coverage.py pins
-    its sha256 — so the KI-8..KI-13 findings below are unchanged; the 229 frepj rows and
-    then the 600 Tara Pacific rows were APPENDED after it and are covered by their own
-    tests (tests/test_frepj_taxonomy_coverage.py, tests/test_tara_pacific_taxonomy.py).
+    The base is no longer byte-frozen: the 2026-08-27 repair pass edited 70 rows in
+    place (tests/fixtures/frepj/pre_frepj_taxonomy.sha256 was re-baselined with it).
+    Row COUNT and the (Dataset, Raw_Labels) key set are unchanged — no importer's
+    coverage moved.
     """
     assert len(rows) == 1485 + 229 + 600
-    assert {*NORMALIZED_COLUMNS, *ID_COLUMNS, "Dataset", "Raw_Labels", "plankton", "living"} <= set(rows[0])
+    expected = {*RANKS, "proposed_label", "root_class", "qualifier", *ID_COLUMNS, "Dataset", "Raw_Labels", "plankton", "living"}
+    assert expected <= set(rows[0])
 
 
-# --- KI-8: rank-column contamination — a taxon in a rank slot its suffix contradicts ---
-def test_ki8_rank_column_contamination(rows):
-    def appears_in(name, col):
-        return any(r[col].strip().lower() == name for r in rows)
-
-    # `-phyceae` CLASS names mis-slotted (bacillariophyceae also duplicated into Family).
-    assert appears_in("bacillariophyceae", "Order")  # row 945 (neomoelleria cornuta)
-    assert appears_in("bacillariophyceae", "Family")  # row 945
-    assert appears_in("dinophyceae", "Order")  # row 153 (azadinium caudatum)
-    # `-ales` ORDER name used as Family.
-    assert appears_in("florenciellales", "Family")  # row 1126 (pseudochattonella farcimen)
-    # PHYLUM name used as Class (should be `cryptophyceae`).
-    assert appears_in("cryptophyta", "Class")  # row 817 (katablepharis remigera)
-
-
-# --- KI-9: casing — 'Eukaryota' is the ONLY uppercase value in a normalized column ---
-def test_ki9_single_uppercase_normalized_value(rows):
-    offenders = [(col, r[col]) for r in rows for col in NORMALIZED_COLUMNS if r[col] and r[col] != r[col].lower()]
-    # Sole violator across all 1,485 rows: proposed_label='Eukaryota' (row 671); want 'eukaryota'.
-    assert offenders == [("proposed_label", "Eukaryota")]
-
-
-# --- KI-10: contradictory `plankton` flag for identical fish-egg taxa ---
-@pytest.mark.parametrize("label", ["clupeiformes", "engraulidae"])
-def test_ki10_plankton_flag_contradiction(rows, label):
-    # rows 389/390 and 645/646: identical proposed_label/qualifier/living/root_class/IDs,
-    # yet plankton takes both True and False for the same fish-egg taxon.
-    flags = {
-        r["plankton"].strip() for r in rows if r["proposed_label"].strip().lower() == label and r["qualifier"].strip() == "egg"
-    }
-    assert flags == {"True", "False"}
+# ======================================================================================
+# Open-issue pins
+# ======================================================================================
 
 
 # --- KI-11 (RESOLVED 2026-07-13): every CSV qualifier is a recognized vocabulary value ---
@@ -120,9 +96,11 @@ def test_ki11_qualifier_vocabulary_complete(rows):
     assert not unrecognized, f"CSV qualifier value(s) absent from constants.QUALIFIERS: {sorted(unrecognized)}"
 
 
-# --- KI-12: integer IDs serialized as floats ('X.0'); wikidata clean 'Qxxxx' ---
+# --- KI-12 (open): integer IDs serialized as floats ('X.0'); wikidata clean 'Qxxxx' ---
 def test_ki12_float_serialized_ids(rows):
-    float_int = re.compile(r"^\d+\.0+$")
+    # Canonicalizing to bare integers is deferred: it rewrites ~3,700 cells and shifts
+    # dtype inference in both committed readers — gate on the reader-equivalence suite.
+    float_int = re.compile(r"^\d+\.0$")
     for col in ("aphia_ID", "NCBI_ID", "BOLD_ID"):
         vals = [r[col].strip() for r in rows if r[col].strip()]
         assert vals, f"{col} unexpectedly empty"
@@ -131,160 +109,139 @@ def test_ki12_float_serialized_ids(rows):
     assert all(re.match(r"^Q\d+$", v) for v in wikidata)
 
 
-# --- KI-13: one external ID stamped on >1 distinct taxon ---
+# --- KI-13 (open): one external ID stamped on >1 distinct taxon ---
 def test_ki13_ncbi_id_reused_across_distinct_taxa(rows):
     labels = {r["proposed_label"].strip().lower() for r in rows if r["NCBI_ID"].strip() == "418941.0"}
     assert {"discosphaera tubifera", "rhabdosphaera clavigera"} <= labels
 
 
-# --- Verified NON-issue (guardrail): the FORWARD ID mapping is clean ---
-def test_forward_id_mapping_is_clean(rows):
-    """No proposed_label carries two distinct values of any single ID column (0 conflicts)."""
-    for col in ID_COLUMNS:
-        by_label = defaultdict(set)
-        for r in rows:
-            label, value = r["proposed_label"].strip().lower(), r[col].strip()
-            if label and value:
-                by_label[label].add(value)
-        conflicting = {k: sorted(v) for k, v in by_label.items() if len(v) > 1}
-        assert not conflicting, f"{col} unexpectedly maps a taxon to >1 id: {conflicting}"
-
-
 # ======================================================================================
-# KI-29..KI-35 — the 2026-08-26 full-table audit (base + frepj + Tara Pacific).
+# Resolved-state guards — the 2026-08-27 repair pass (RESOLVED_ISSUES.md has each entry)
 # ======================================================================================
 
-# The four Tara Pacific sources; KI-34 needs them and this file deliberately avoids
-# importing the tara builder (these tests must stay a pure read of the committed CSV).
-_TARA_DATASETS = ("tara_pacific_bongo", "tara_pacific_decknet", "tara_pacific_hsn", "tara_pacific_manta")
+
+# --- KI-8 resolved: the four contaminated rank slots carry their verified values ---
+def test_ki8_resolved_rank_slots(rows):
+    # Azadinium: NCBI/GBIF/Wikidata unanimously place Amphidomataceae in Gonyaulacales
+    # (WoRMS abstains: "Dinophyceae incertae sedis" — the origin of the old value).
+    assert _one(rows, "medplanktonset", "Azadinium_caudatum")["Order"] == "gonyaulacales"
+    row = _one(rows, "planktoscope", "Eucampia cornuta")
+    assert (row["Order"], row["Family"]) == ("hemiaulales", "hemiaulaceae")
+    # No validly published family exists for Pseudochattonella; the WoRMS-verbatim
+    # placeholder keeps the rank ladder gap-free without fabricating a name.
+    assert _one(rows, "whoi", "Pseudochattonella_farcimen")["Family"] == "florenciellales incertae sedis"
+    row = _one(rows, "syke_ifcb_2022", "Katablepharis_remigera")
+    assert (row["Class"], row["Order"]) == ("cryptophyceae", "katablepharidales")
 
 
-# --- KI-29: zoocamnet `Cladocera` is mapped to an extinct fossil bivalve genus ---
-def test_ki29_cladocera_mapped_to_fossil_bivalve(rows):
-    # row 378: the water-flea label carries the Cladoceramus (Inoceramidae) lineage,
-    # flagged as living plankton, with CLASS Bivalvia's aphia/NCBI ids stamped on it.
-    row = _one(rows, "zoocamnet", "Cladocera")
-    assert (row["Phylum"], row["Class"], row["Genus"]) == ("mollusca", "bivalvia", "cladoceramus")
-    assert (row["plankton"], row["living"]) == ("True", "True")
-    # The ids are the class's, not the genus's — byte-identical to the `bivalvia` label rows.
-    bivalvia = next(r for r in rows if r["proposed_label"] == "bivalvia")
-    assert (row["aphia_ID"], row["NCBI_ID"]) == (bivalvia["aphia_ID"], bivalvia["NCBI_ID"]) == ("105.0", "6544.0")
-    # The same raw string reads as the crustacean superorder everywhere else.
-    assert _one(rows, "global_uvp5", "Cladocera")["proposed_label"] == "branchiopoda"
+# --- KI-10 + KI-30 resolved: the repaired plankton flags point the ichthyoplankton way ---
+def test_ki10_ki30_resolved_plankton_directions(rows):
+    def flags(label, qualifier):
+        return {r["plankton"] for r in rows if r["proposed_label"] == label and r["qualifier"] == qualifier}
+
+    # Fish eggs and fish larvae ARE plankton; adult-fish rows keep the table's
+    # long-standing True; insects are not plankton.
+    assert flags("clupeiformes", "egg") == {"True"}
+    assert flags("engraulidae", "egg") == {"True"}
+    assert flags("chordata", "full_body") == {"True"}
+    assert flags("chordata", "larvae") == {"True"}
+    assert flags("teleostei", "larvae") == {"True"}
+    assert flags("leptocephalus", "larvae") == {"True"}
+    assert flags("myctophidae", "larvae") == {"True"}
+    assert flags("hexapoda", "full_body") == {"False"}
 
 
-# --- KI-30: the complete same-key `plankton` contradiction set (KI-10 + chordata/hexapoda) ---
-def test_ki30_plankton_contradiction_set_is_complete(rows):
-    """Exactly four (label, qualifier) keys carry both flag values — a fifth means the CSV moved."""
-    flags = defaultdict(set)
-    for r in rows:
-        flags[(r["proposed_label"].strip().lower(), r["qualifier"].strip())].add(r["plankton"].strip())
-    contradictory = {key for key, values in flags.items() if len(values) > 1}
-    assert contradictory == {
-        ("chordata", "full_body"),  # rows 318-328: True for six sources, False for jedioceans + zoolake
-        ("clupeiformes", "egg"),  # KI-10
-        ("engraulidae", "egg"),  # KI-10
-        ("hexapoda", "full_body"),  # rows 785/786: global_uvp5 Chaeteessa True vs zooscan Insecta False
-    }
+# --- KI-29 resolved: `Cladocera` reads as the crustacean superorder everywhere ---
+def test_ki29_resolved_cladocera_is_branchiopoda(rows):
+    for dataset in ("zoocamnet", "global_uvp5"):
+        row = _one(rows, dataset, "Cladocera")
+        assert row["proposed_label"] == "branchiopoda"
+        assert (row["Phylum"], row["Class"]) == ("arthropoda", "branchiopoda")
+    assert not any(r["Genus"] == "cladoceramus" for r in rows)
 
 
-# --- KI-31: the rank columns are a tree except at exactly four two-parent nodes ---
-def test_ki31_two_parent_nodes_are_exactly_the_known_four(rows):
-    conflicts = {}
-    for child_index in range(1, len(RANKS) - 1):  # Phylum..Genus; species epithets repeat legitimately
-        child, parent = RANKS[child_index], RANKS[child_index - 1]
-        parents = defaultdict(set)
-        for r in rows:
-            value = r[child].strip().lower()
-            if value:
-                parents[value].add(r[parent].strip().lower())
-        for value, seen in parents.items():
-            if len(seen) > 1:
-                conflicts[(child, value)] = seen
-    assert conflicts == {
-        ("Order", "arcellinida"): {"tubulinea", "lobosa"},  # base Arcella vs frepj Centropyxis
-        ("Family", "bosminidae"): {"anomopoda", "diplostraca"},  # frepj Bosminopsis (row 1491)
-        ("Family", "daphniidae"): {"anomopoda", "diplostraca"},  # frepj Scapholeberis (row 1527)
-        ("Family", "sididae"): {"ctenopoda", "diplostraca"},  # frepj Sida (row 1543)
-    }
+# --- KI-31 resolved: the frepj block joined the table's cladoceran/arcellinid vocabulary ---
+def test_ki31_resolved_rank_vocabulary(rows):
+    # (The single-parent tree property itself is enforced generically in
+    # test_taxonomy_validation.py; this guards WHICH vocabulary won.)
+    assert not any(r["Order"] == "diplostraca" for r in rows)
+    assert not any(r["Family"] == "daphniida" for r in rows)
+    assert not any(r["Class"] == "lobosa" for r in rows)
+    assert {r["Order"] for r in rows if r["Family"] == "bosminidae"} == {"anomopoda"}
+    assert {r["Order"] for r in rows if r["Family"] == "sididae"} == {"ctenopoda"}
+    assert {r["Class"] for r in rows if r["Order"] == "arcellinida"} == {"tubulinea"}
 
 
-# --- KI-32: divergent cross-dataset mappings — the four suspect ones, pinned with their contrasts ---
+# --- KI-32 resolved (partly): the four misaligned mappings; the judgment tier stays pinned ---
 @pytest.mark.parametrize(
     ("dataset", "raw_label", "label"),
     [
-        ("zooscan", "other_living", "monstrilloida"),  # catch-all bucket -> one copepod order (row 908)
-        ("global_uvp5", "unknown", "thecofilosea"),  # generic unknown -> a concrete cercozoan class (row 1339)
-        ("flowcamnet", "Acantharia", "amphibelone"),  # class-level label -> one genus (row 37)
-        ("zooscan", "Creseidae", "clio pyramidata"),  # family label -> a species of ANOTHER family (row 387)
+        ("zooscan", "other_living", "other"),  # was monstrilloida (row's ecotaxa crosswalk was misaligned)
+        ("global_uvp5", "unknown", "unknown"),  # was thecofilosea
+        ("flowcamnet", "Acantharia", "acantharia"),  # was amphibelone (a copy from the neighboring row)
+        ("zooscan", "Creseidae", "creseidae"),  # was clio pyramidata — a species of ANOTHER family
     ],
 )
-def test_ki32_suspect_divergent_mappings(rows, dataset, raw_label, label):
+def test_ki32_resolved_suspect_mappings(rows, dataset, raw_label, label):
     assert _one(rows, dataset, raw_label)["proposed_label"] == label
 
 
-def test_ki32_sibling_datasets_read_those_labels_generically(rows):
-    others = {r["proposed_label"] for r in rows if r["Raw_Labels"] == "other_living" and r["Dataset"] != "zooscan"}
-    assert others == {"other"}
-    assert _one(rows, "zoolake", "unknown")["proposed_label"] == "unknown"
-    assert _one(rows, "planktoscope", "Acantharia")["proposed_label"] == "acantharia"
-    assert _one(rows, "global_uvp5", "Creseidae")["proposed_label"] == "creseidae"
-    # zooscan's `Creseidae` row itself records a family that contradicts the label's own name.
-    assert _one(rows, "zooscan", "Creseidae")["Family"] == "cliidae"
+def test_ki32_remaining_divergences_are_exactly_the_acknowledged_ones(rows):
+    """The deliberate per-dataset granularity divergences that REMAIN after the repair.
 
-
-# --- KI-33: synonym splits — one taxon shipped as two label classes ---
-def test_ki33_neoceratium_tripos_split(rows):
-    assert {r["proposed_label"] for r in rows if r["Raw_Labels"] == "Neoceratium"} == {"neoceratium", "tripos"}
-    # Sharpest inside one dataset: planktoscope's two species-mix classes land apart.
-    assert _one(rows, "planktoscope", "neoceratium gibberum concilians mix")["proposed_label"] == "neoceratium"
-    assert _one(rows, "planktoscope", "neoceratium falcatum inflatum mix")["proposed_label"] == "tripos"
-
-
-def test_ki33_heterocapsa_kryptoperidinium_split(rows):
-    split = {r["proposed_label"]: r["NCBI_ID"] for r in rows if r["Raw_Labels"] == "Heterocapsa_triquetra"}
-    # One species (one NCBI taxid), two label classes depending on the source dataset.
-    assert split == {"heterocapsa triquetra": "66468.0", "kryptoperidinium triquetrum": "66468.0"}
-
-
-# --- KI-34: proposed_label == lowest filled rank everywhere EXCEPT 23 Tara rows ---
-def test_ki34_tara_breaks_label_equals_lowest_rank_in_exactly_23_rows(rows):
-    violations = []
+    Same raw label, different reading, on purpose (UVP 'Annelida' imagery really is
+    dominated by Poeobius, and so on). Pinned in both directions so neither a silent new
+    divergence nor a silent re-reading can slip in. `build_tara_pacific_taxonomy`'s
+    DIVERGENT_DONORS acknowledges the subset of these its verbatim rule can hit.
+    """
+    by_raw = defaultdict(set)
     for r in rows:
-        filled = [(rank, r[rank].strip().lower()) for rank in RANKS if r[rank].strip()]
-        if not filled:
-            continue  # bucket rows (artefact, detritus, other, ...) carry no ranks at all
-        rank, value = filled[-1]
-        expected = f"{r['Genus'].strip().lower()} {r['Species'].strip().lower()}" if rank == "Species" else value
-        if r["proposed_label"].strip().lower() != expected:
-            violations.append(r)
-    assert [r["Raw_Labels"] for r in violations if r["Dataset"] not in _TARA_DATASETS] == []
-    assert len(violations) == 23
-    assert {r["proposed_label"] for r in violations} == {
-        "achelata",
-        "alciopini",
-        "anthozoa",
-        "brachyura",
-        "chaetoceros inter ciliate",
-        "chaetoceros inter. calothrix",
-        "cirripedia",
-        "coscinodiscids",
-        "dinophyceae x",
-        "gammaridea",
-        "globorotalidae",
-        "odontella sp.",
+        by_raw[r["Raw_Labels"].strip().lower()].add(r["proposed_label"])
+    divergent = {raw: sorted(labels) for raw, labels in by_raw.items() if len(labels) > 1}
+    assert divergent == {
+        "actinula": ["hydrozoa", "solmundella bitentaculata"],
+        "annelida": ["annelida", "poeobius"],
+        "darkrods": ["other", "shape"],
+        "dinophyceae": ["dinophyceae", "gonyaulacales"],
+        "fiber_detritus": ["detritus", "fiber"],
+        "filament": ["cyanophyceae", "filament"],
+        "foraminifera": ["foraminifera", "globigerinidae"],
+        "harpacticoida": ["euterpina", "harpacticoida"],
+        "nauplii": ["arthropoda", "copepoda"],
+        "ornithocercus": ["ornithocercus", "ornithocercus magnificus"],
+        "penilia": ["penilia", "penilia avirostris"],
+        "thecosomata": ["cavolinia inflexa", "thecosomata"],
+        "trachymedusae": ["botrynema", "trachymedusae"],
     }
 
 
-# --- KI-35: comb-jelly raw labels carried on the diatom genus lineage ---
-def test_ki35_comb_jelly_raw_labels_carry_the_diatom_lineage(rows):
-    tell_tale = [r for r in rows if r["Raw_Labels"] in ("Ctenophora<Animalia", "comb_Ctenophora", "tentacle<Ctenophora")]
-    assert len(tell_tale) == 3
-    for r in tell_tale:
-        # The raw label names the animal (or its comb plates / tentacles); the row says diatom.
-        assert (r["Kingdom"], r["Genus"], r["aphia_ID"]) == ("chromista", "ctenophora", "163921.0")
-    # While the comb jellies' own subtaxa sit under Phylum ctenophora in animalia...
-    beroe = next(r for r in rows if r["proposed_label"] == "beroe")
-    assert (beroe["Kingdom"], beroe["Phylum"]) == ("animalia", "ctenophora")
-    # ...and the diatom-lineage rows still carry the comb-jelly ecotaxa crosswalk pair.
-    assert {r["ecotaxa_ID"] for r in tell_tale} == {"456;559"} == {beroe["ecotaxa_ID"]}
+# --- KI-33 resolved: one taxon, one label class ---
+def test_ki33_resolved_synonym_merges(rows):
+    labels = {r["proposed_label"] for r in rows}
+    assert "neoceratium" not in labels and "heterocapsa triquetra" not in labels
+    assert {r["proposed_label"] for r in rows if r["Raw_Labels"] == "Neoceratium"} == {"tripos"}
+    assert {r["proposed_label"] for r in rows if r["Raw_Labels"] == "Heterocapsa_triquetra"} == {"kryptoperidinium triquetrum"}
+    # The freshwater genus is untouched by the marine merge.
+    assert any(r["proposed_label"] == "ceratium" for r in rows)
+
+
+# --- KI-34 resolved: the two expressible labels got their rank fills ---
+def test_ki34_resolved_rank_fills(rows):
+    # (The label-vs-lowest-rank rule and the SUB_RANK_LABELS registry are enforced in
+    # test_taxonomy_validation.py; these are the two rows repaired by filling instead.)
+    row = _one(rows, "tara_pacific_hsn", "Globorotalidae")
+    assert (row["Class"], row["Order"], row["Family"]) == ("globothalamea", "rotaliida", "globorotalidae")
+    for dataset in ("tara_pacific_hsn", "tara_pacific_manta"):
+        assert _one(rows, dataset, "polype<Anthozoa")["Class"] == "anthozoa"
+
+
+# --- KI-35 resolved: `ctenophora` is the comb-jelly phylum, verified IDs attached ---
+def test_ki35_resolved_ctenophora_is_the_comb_jelly(rows):
+    cteno = [r for r in rows if r["proposed_label"] == "ctenophora"]
+    assert len(cteno) == 12
+    for r in cteno:
+        assert (r["Kingdom"], r["Phylum"], r["Genus"]) == ("animalia", "ctenophora", "")
+        assert (r["wikidata_ID"], r["aphia_ID"], r["NCBI_ID"]) == ("Q102778", "1248.0", "10197.0")
+        assert r["ecotaxa_ID"] == "456;559"
+    # The diatom genus reading is gone table-wide.
+    assert not any(r["Genus"] == "ctenophora" for r in rows)

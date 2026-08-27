@@ -36,7 +36,7 @@ whoi,Akashiwo,chromista,myzozoa,dinophyceae,gymnodiniales,gymnodiniaceae,akashiw
 medplanktonset,Akashiwo_sanguinea,chromista,myzozoa,dinophyceae,gymnodiniales,gymnodiniaceae,akashiwo,sanguinea,akashiwo sanguinea,True,True,living,full_body,Q416309,232546.0,143672.0,317058.0,240
 medplanktonset,Alexandrium_spp,chromista,myzozoa,dinophyceae,gonyaulacales,pyrocystaceae,alexandrium,,alexandrium,True,True,living,full_body,Q4721024,109470.0,2924.0,317026.0,240
 whoi,amoeba,protozoa,amoebozoa,tubulinea,euamoebida,amoebidae,amoeba,,amoeba,True,True,living,full_body,Q46729,120533.0,5774.0,494587.0,
-flowcamnet,Acantharia,chromista,radiozoa,acantharia,symphyacanthida,amphilithidae,amphibelone,,amphibelone,True,True,living,full_body,Q50807513,1701367.0,278120.0,714957.0,653
+flowcamnet,Acantharia,chromista,radiozoa,acantharia,,,,,acantharia,True,True,living,full_body,Q135584,586732.0,65574.0,714957.0,625;640
 planktoscope,Amphibelone,chromista,radiozoa,acantharia,symphyacanthida,amphilithidae,amphibelone,,amphibelone,True,True,living,full_body,Q50807513,1701367.0,278120.0,714957.0,653
 medplanktonset,Amphidinium_spp,chromista,myzozoa,dinophyceae,amphidiniales,amphidiniaceae,amphidinium,,amphidinium,True,True,living,full_body,Q4748248,109473.0,2960.0,317075.0,240
 whoi,Amphidinium_sp,chromista,myzozoa,dinophyceae,amphidiniales,amphidiniaceae,amphidinium,,amphidinium,True,True,living,full_body,Q4748248,109473.0,2960.0,317075.0,240
@@ -152,7 +152,7 @@ global_uvp5,colonial<Aulosphaeridae,chromista,cercozoa,thecofilosea,phaeosphaeri
 uvp6net,Aulatractus,chromista,cercozoa,thecofilosea,phaeosphaerida,aulosphaeridae,,,aulosphaeridae,True,True,living,full_body,Q18654687,367360.0,238780.0,886873.0,595
 uvp6net,Aulosphaeridae,chromista,cercozoa,thecofilosea,phaeosphaerida,aulosphaeridae,,,aulosphaeridae,True,True,living,full_body,Q18654687,367360.0,238780.0,886873.0,595
 global_uvp5,like<colonial,chromista,cercozoa,thecofilosea,phaeosphaerida,aulosphaeridae,,,aulosphaeridae,True,True,living,like,Q18654687,367360.0,238780.0,886873.0,595
-medplanktonset,Azadinium_caudatum,chromista,myzozoa,dinophyceae,dinophyceae,amphidomataceae,azadinium,caudatum,azadinium caudatum,True,True,living,full_body,Q68403873,837075.0,1129410.0,706282.0,240
+medplanktonset,Azadinium_caudatum,chromista,myzozoa,dinophyceae,gonyaulacales,amphidomataceae,azadinium,caudatum,azadinium caudatum,True,True,living,full_body,Q68403873,837075.0,1129410.0,706282.0,240
 planktoscope,Bacillaria,chromista,heterokontophyta,bacillariophyceae,bacillariales,bacillariaceae,bacillaria,,bacillaria,True,True,living,full_body,Q798285,149148.0,3002.0,180373.0,659
 whoi,Bacillaria,chromista,heterokontophyta,bacillariophyceae,bacillariales,bacillariaceae,bacillaria,,bacillaria,True,True,living,full_body,Q798285,149148.0,3002.0,180373.0,659
 planktoscope,cylindrotheca_nitzschia,chromista,heterokontophyta,bacillariophyceae,bacillariales,bacillariaceae,,,bacillariaceae,True,True,living,full_body,Q4838943,149002.0,33852.0,87576.0,711
@@ -321,14 +321,14 @@ global_uvp5,Actinopterygii,animalia,chordata,,,,,,chordata,True,True,living,full
 global_uvp5,Gnathostomata,animalia,chordata,,,,,,chordata,True,True,living,full_body,Q10915,1821.0,7711.0,18.0,
 global_uvp5,Tunicata,animalia,chordata,,,,,,chordata,True,True,living,full_body,Q10915,1821.0,7711.0,18.0,
 isiisnet,Actinopterygii,animalia,chordata,,,,,,chordata,True,True,living,full_body,Q10915,1821.0,7711.0,18.0,
-jedioceans,LClass_32.1Adult_Fish,animalia,chordata,,,,,,chordata,False,True,living,full_body,Q10915,1821.0,7711.0,18.0,
-jedioceans,LClass_fish_lavae,animalia,chordata,,,,,,chordata,False,True,living,full_body,Q10915,1821.0,7711.0,18.0,
+jedioceans,LClass_32.1Adult_Fish,animalia,chordata,,,,,,chordata,True,True,living,full_body,Q10915,1821.0,7711.0,18.0,
+jedioceans,LClass_fish_lavae,animalia,chordata,,,,,,chordata,True,True,living,full_body,Q10915,1821.0,7711.0,18.0,
 planktonset1.0,chordate_type1,animalia,chordata,,,,,,chordata,True,True,living,full_body,Q10915,1821.0,7711.0,18.0,
 uvp6net,Actinopterygii,animalia,chordata,,,,,,chordata,True,True,living,full_body,Q10915,1821.0,7711.0,18.0,
 zoocamnet,Actinopterygii,animalia,chordata,,,,,,chordata,True,True,living,full_body,Q10915,1821.0,7711.0,18.0,
-zoolake,fish,animalia,chordata,,,,,,chordata,False,True,living,full_body,Q10915,1821.0,7711.0,18.0,
+zoolake,fish,animalia,chordata,,,,,,chordata,True,True,living,full_body,Q10915,1821.0,7711.0,18.0,
 zooscan,Actinopterygii,animalia,chordata,,,,,,chordata,True,True,living,full_body,Q10915,1821.0,7711.0,18.0,
-jedioceans,LClass_Fish_larvae,animalia,chordata,,,,,,chordata,False,True,living,larvae,Q10915,1821.0,7711.0,18.0,
+jedioceans,LClass_Fish_larvae,animalia,chordata,,,,,,chordata,True,True,living,larvae,Q10915,1821.0,7711.0,18.0,
 planktonset1.0,tunicate_partial,animalia,chordata,,,,,,chordata,False,False,detritus,part,Q10915,1821.0,7711.0,18.0,
 flowcamnet,Tintinnina,chromista,ciliophora,oligotrichea,choreotrichida,,,,choreotrichida,True,True,living,full_body,Q23810342,341353.0,200605.0,1022867.0,657
 jedioceans,LClass_Tintinnida,chromista,ciliophora,oligotrichea,choreotrichida,,,,choreotrichida,True,True,living,full_body,Q23810342,341353.0,200605.0,1022867.0,657
@@ -377,7 +377,7 @@ syke_ifcb_2022,Ciliata,chromista,ciliophora,,,,,,ciliophora,True,True,living,ful
 whoi,Ciliate_mix,chromista,ciliophora,,,,,,ciliophora,True,True,living,mix,Q106345,11.0,5878.0,72834.0,657
 flowcamnet,part_Ciliophora,chromista,ciliophora,,,,,,ciliophora,False,False,detritus,part,Q106345,11.0,5878.0,72834.0,657
 global_uvp5,Circoporidae,chromista,cercozoa,thecofilosea,phaeocalpida,circoporidae,,,circoporidae,True,True,living,full_body,Q21214282,367365.0,3077321.0,886874.0,678
-zoocamnet,Cladocera,animalia,mollusca,bivalvia,pteriida,inoceramidae,cladoceramus,,cladoceramus,True,True,living,full_body,Q105063205,105.0,6544.0,144.0,112
+zoocamnet,Cladocera,animalia,arthropoda,branchiopoda,,,,,branchiopoda,True,True,living,full_body,Q188360,1069.0,6658.0,68.0,
 flowcamnet,Cladopyxis,chromista,myzozoa,dinophyceae,gonyaulacales,cladopyxidaceae,cladopyxis,,cladopyxis,True,True,living,full_body,Q18606151,109509.0,1129411.0,317024.0,483
 planktoscope,Cladopyxis,chromista,myzozoa,dinophyceae,gonyaulacales,cladopyxidaceae,cladopyxis,,cladopyxis,True,True,living,full_body,Q18606151,109509.0,1129411.0,317024.0,483
 medplanktonset,Cladopyxis_cf._brachiolata,chromista,myzozoa,dinophyceae,gonyaulacales,cladopyxidaceae,cladopyxis,brachiolata,cladopyxis brachiolata,True,True,living,full_body,Q2805504,109989.0,1129411.0,317024.0,483
@@ -386,10 +386,10 @@ flowcamnet,Climacodium,chromista,heterokontophyta,bacillariophyceae,hemiaulales,
 planktoscope,Climacodium,chromista,heterokontophyta,bacillariophyceae,hemiaulales,hemiaulaceae,climacodium,,climacodium,True,True,living,full_body,Q25366289,196803.0,2022333.0,1350166.0,732
 flowcamnet,Climacodium inter. Crocosphaera,chromista,heterokontophyta,bacillariophyceae,hemiaulales,hemiaulaceae,climacodium,crocosphaera,climacodium crocosphaera,True,True,living,full_body,Q25366289,196803.0,2022333.0,1350166.0,732
 planktoscope,Climacosphenia,chromista,heterokontophyta,bacillariophyceae,climacospheniales,climacospheniaceae,climacosphenia,,climacosphenia,True,True,living,full_body,Q25366520,248081.0,449129.0,603638.0,711
-zooscan,Creseidae,animalia,mollusca,gastropoda,pteropoda,cliidae,clio,pyramidata,clio pyramidata,True,True,living,full_body,Q3202847,139033.0,356475.0,202265.0,138
+zooscan,Creseidae,animalia,mollusca,gastropoda,pteropoda,creseidae,,,creseidae,True,True,living,full_body,Q18713366,411905.0,356495.0,531899.0,608
 global_uvp5,egg unkn temp<Sardina temp,animalia,chordata,teleostei,clupeiformes,clupeidae,,,clupeidae,True,True,living,egg,Q27141,125464.0,55118.0,1252.0,
 zoocamnet,egg_Engraudilae,animalia,chordata,teleostei,clupeiformes,,,,clupeiformes,True,True,living,egg,Q193389,10297.0,32446.0,253.0,
-zoocamnet,egg_Sardina,animalia,chordata,teleostei,clupeiformes,,,,clupeiformes,False,True,living,egg,Q193389,10297.0,32446.0,253.0,
+zoocamnet,egg_Sardina,animalia,chordata,teleostei,clupeiformes,,,,clupeiformes,True,True,living,egg,Q193389,10297.0,32446.0,253.0,
 global_uvp5,Cnidaria<Hydrozoa,animalia,cnidaria,,,,,,cnidaria,True,True,living,full_body,Q25441,1267.0,6073.0,3.0,
 global_uvp5,Cnidaria<Metazoa,animalia,cnidaria,,,,,,cnidaria,True,True,living,full_body,Q25441,1267.0,6073.0,3.0,
 isiisnet,Cnidaria,animalia,cnidaria,,,,,,cnidaria,True,True,living,full_body,Q25441,1267.0,6073.0,3.0,
@@ -472,15 +472,15 @@ medplanktonset,Cryptophyceae,chromista,cryptophyta,cryptophyceae,,,,,cryptophyce
 planktoscope,cristal,,,,,,,,crystal,False,False,inert,,,,,,
 uvp6net,crystal,,,,,,,,crystal,False,False,inert,,,,,,
 global_uvp5,Ctenocalanus,animalia,arthropoda,copepoda,calanoida,clausocalanidae,ctenocalanus,,ctenocalanus,True,True,living,full_body,Q6551348,104162.0,149010.0,5751.0,114;320;564
-global_uvp5,Ctenophora,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,ctenophora,,ctenophora,True,True,living,full_body,Q25661394,163921.0,1003038.0,249225.0,456;559
-global_uvp5,Ctenophora XX,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,ctenophora,,ctenophora,True,True,living,full_body,Q25661394,163921.0,1003038.0,249225.0,456;559
-isiisnet,Ctenophora,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,ctenophora,,ctenophora,True,True,living,full_body,Q25661394,163921.0,1003038.0,249225.0,456;559
-uvp6net,Ctenophora,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,ctenophora,,ctenophora,True,True,living,full_body,Q25661394,163921.0,1003038.0,249225.0,456;559
-zoocamnet,comb_Ctenophora,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,ctenophora,,ctenophora,True,True,living,full_body,Q25661394,163921.0,1003038.0,249225.0,456;559
-zoocamnet,Ctenophora,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,ctenophora,,ctenophora,True,True,living,full_body,Q25661394,163921.0,1003038.0,249225.0,456;559
-zooscan,Ctenophora,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,ctenophora,,ctenophora,True,True,living,full_body,Q25661394,163921.0,1003038.0,249225.0,456;559
-planktoscope,part_Ctenophora,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,ctenophora,,ctenophora,False,False,detritus,part,Q25661394,163921.0,1003038.0,249225.0,456;559
-global_uvp5,tentacle<Ctenophora,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,ctenophora,,ctenophora,False,False,detritus,part_tentacle,Q25661394,163921.0,1003038.0,249225.0,456;559
+global_uvp5,Ctenophora,animalia,ctenophora,,,,,,ctenophora,True,True,living,full_body,Q102778,1248.0,10197.0,,456;559
+global_uvp5,Ctenophora XX,animalia,ctenophora,,,,,,ctenophora,True,True,living,full_body,Q102778,1248.0,10197.0,,456;559
+isiisnet,Ctenophora,animalia,ctenophora,,,,,,ctenophora,True,True,living,full_body,Q102778,1248.0,10197.0,,456;559
+uvp6net,Ctenophora,animalia,ctenophora,,,,,,ctenophora,True,True,living,full_body,Q102778,1248.0,10197.0,,456;559
+zoocamnet,comb_Ctenophora,animalia,ctenophora,,,,,,ctenophora,True,True,living,full_body,Q102778,1248.0,10197.0,,456;559
+zoocamnet,Ctenophora,animalia,ctenophora,,,,,,ctenophora,True,True,living,full_body,Q102778,1248.0,10197.0,,456;559
+zooscan,Ctenophora,animalia,ctenophora,,,,,,ctenophora,True,True,living,full_body,Q102778,1248.0,10197.0,,456;559
+planktoscope,part_Ctenophora,animalia,ctenophora,,,,,,ctenophora,False,False,detritus,part,Q102778,1248.0,10197.0,,456;559
+global_uvp5,tentacle<Ctenophora,animalia,ctenophora,,,,,,ctenophora,False,False,detritus,part_tentacle,Q102778,1248.0,10197.0,,456;559
 global_uvp5,Cubozoa,animalia,cnidaria,cubozoa,,,,,cubozoa,True,True,living,full_body,Q273179,135219.0,6137.0,304228.0,
 zooscan,Cumacea,animalia,arthropoda,malacostraca,cumacea,,,,cumacea,True,True,living,full_body,Q72554,1137.0,27412.0,348.0,278
 flowcamnet,cyano a,bacteria,cyanobacteria,,,,,,cyanobacteria,True,True,living,full_body,Q93315,146537.0,1117.0,1349790.0,697
@@ -645,7 +645,7 @@ zoocamnet,egg_other,,,,,,,,egg,False,True,living,egg,,,,,213;226;552;750
 zooscan,other_egg,,,,,,,,egg,False,True,living,egg,,,,,213;226;552;750
 global_uvp5,elongated stick,,,,,,,,elongated stick,False,False,detritus,,,,,,
 global_uvp5,egg unkn temp<Engraulidae temp,animalia,chordata,teleostei,clupeiformes,engraulidae,,,engraulidae,True,True,living,egg,Q192662,125465.0,43062.0,1264.0,
-global_uvp5,egg 1 temp,animalia,chordata,teleostei,clupeiformes,engraulidae,,,engraulidae,False,True,living,egg,Q192662,125465.0,43062.0,1264.0,
+global_uvp5,egg 1 temp,animalia,chordata,teleostei,clupeiformes,engraulidae,,,engraulidae,True,True,living,egg,Q192662,125465.0,43062.0,1264.0,
 global_uvp5,Enteropneusta,animalia,hemichordata,enteropneusta,,,,,enteropneusta,True,True,living,full_body,Q589697,1820.0,10220.0,89.0,
 global_uvp5,tornaria larvae,animalia,hemichordata,enteropneusta,,,,,enteropneusta,True,True,living,larvae,Q589697,1820.0,10220.0,89.0,
 jedioceans,LClass_enteropneusta_larvae,animalia,hemichordata,enteropneusta,,,,,enteropneusta,True,True,living,larvae,Q589697,1820.0,10220.0,89.0,
@@ -670,7 +670,7 @@ zoolake,eudiaptomus,animalia,arthropoda,copepoda,calanoida,diaptomidae,eudiaptom
 whoi,Euglena,protozoa,euglenozoa,euglenophyceae,euglenales,euglenaceae,euglena,,euglena,True,True,living,full_body,Q236001,8012.0,3038.0,544177.0,
 medplanktonset,Euglenophyceae,protozoa,euglenozoa,euglenophyceae,,,,,euglenophyceae,True,True,living,full_body,Q2356588,19539.0,2704141.0,544174.0,
 syke_ifcb_2022,Euglenophyceae,protozoa,euglenozoa,euglenophyceae,,,,,euglenophyceae,True,True,living,full_body,Q2356588,19539.0,2704141.0,544174.0,
-global_uvp5,Eukaryota,,,,,,,,Eukaryota,True,True,living,full_body,,,,,
+global_uvp5,Eukaryota,,,,,,,,eukaryota,True,True,living,full_body,,,,,
 global_uvp5,Eukrohnia,animalia,chaetognatha,sagittoidea,phragmophora,eukrohniidae,eukrohnia,,eukrohnia,True,True,living,full_body,Q2071353,105399.0,52636.0,216102.0,115
 global_uvp5,Euphausiacea,animalia,arthropoda,malacostraca,euphausiacea,,,,euphausiacea,True,True,living,full_body,Q29498,1128.0,6816.0,361.0,199;605
 planktonset1.0,euphausiids,animalia,arthropoda,malacostraca,euphausiacea,,,,euphausiacea,True,True,living,full_body,Q29498,1128.0,6816.0,361.0,199;605
@@ -782,9 +782,9 @@ whoi,Hemiaulus,chromista,heterokontophyta,bacillariophyceae,hemiaulales,hemiaula
 planktoscope,Hemidiscus,chromista,heterokontophyta,bacillariophyceae,coscinodiscales,hemidiscaceae,hemidiscus,,hemidiscus,True,True,living,full_body,Q21213712,180366.0,1954218.0,87668.0,720
 medplanktonset,Heterocapsa_niei-like,chromista,myzozoa,dinophyceae,peridiniales,heterocapsaceae,heterocapsa,,heterocapsa,True,True,living,like,Q19751739,109540.0,2918.0,317106.0,240
 syke_ifcb_2022,Heterocapsa_rotundata,chromista,myzozoa,dinophyceae,peridiniales,heterocapsaceae,heterocapsa,rotundata,heterocapsa rotundata,True,True,living,full_body,Q68465167,110152.0,89963.0,317216.0,240
-syke_ifcb_2022,Heterocapsa_triquetra,chromista,myzozoa,dinophyceae,peridiniales,heterocapsaceae,heterocapsa,triquetra,heterocapsa triquetra,True,True,living,full_body,Q110558775,110153.0,66468.0,317225.0,240
+syke_ifcb_2022,Heterocapsa_triquetra,chromista,myzozoa,dinophyceae,peridiniales,peridiniaceae,kryptoperidinium,triquetrum,kryptoperidinium triquetrum,True,True,living,full_body,Q68466630,1346683.0,66468.0,317090.0,240
 zooscan,Heterorhabdidae,animalia,arthropoda,copepoda,calanoida,heterorhabdidae,,,heterorhabdidae,True,True,living,full_body,Q6554828,104087.0,201610.0,1761.0,52
-global_uvp5,Chaeteessa,animalia,arthropoda,hexapoda,,,,,hexapoda,True,True,living,full_body,Q105146,1278.0,6960.0,20.0,
+global_uvp5,Chaeteessa,animalia,arthropoda,hexapoda,,,,,hexapoda,False,True,living,full_body,Q105146,1278.0,6960.0,20.0,
 zooscan,Insecta,animalia,arthropoda,hexapoda,,,,,hexapoda,False,True,living,full_body,Q105146,1278.0,6960.0,20.0,
 zooscan,nectophore_Hippopodiidae,animalia,cnidaria,hydrozoa,siphonophorae,hippopodiidae,,,hippopodiidae,True,True,living,full_body,Q4001548,135339.0,168743.0,455827.0,327
 planktonset1.0,echinoderm_seacucumber_auricularia_larva,animalia,echinodermata,holothuroidea,,,,,holothuroidea,True,True,living,larvae,Q127470,123083.0,7705.0,31.0,291
@@ -816,7 +816,7 @@ medplanktonset,Kapelodinium_vestifici,chromista,myzozoa,dinophyceae,torodiniales
 medplanktonset,Karenia_spp,chromista,myzozoa,dinophyceae,gymnodiniales,kareniaceae,karenia,,karenia,True,True,living,full_body,Q6370165,231788.0,1052865.0,317067.0,240
 whoi,Karenia,chromista,myzozoa,dinophyceae,gymnodiniales,kareniaceae,karenia,,karenia,True,True,living,full_body,Q6370165,231788.0,1052865.0,317067.0,240
 medplanktonset,Karenia_papilionacea,chromista,myzozoa,dinophyceae,gymnodiniales,kareniaceae,karenia,papilionacea,karenia papilionacea,True,True,living,full_body,Q20164392,246593.0,262427.0,317212.0,240
-syke_ifcb_2022,Katablepharis_remigera,chromista,cryptophyta,cryptophyta,kathablepharidacea,katablepharidaceae,katablepharis,remigera,katablepharis remigera,True,True,living,full_body,Q23056005,627117.0,324623.0,99173.0,
+syke_ifcb_2022,Katablepharis_remigera,chromista,cryptophyta,cryptophyceae,katablepharidales,katablepharidaceae,katablepharis,remigera,katablepharis remigera,True,True,living,full_body,Q23056005,627117.0,324623.0,99173.0,
 flowcamnet,Katagnymene spiralis,bacteria,cyanobacteria,cyanophyceae,gomontiellales,gomontiellaceae,katagnymene,spiralis,katagnymene spiralis,True,True,living,full_body,Q67358498,618883.0,164816.0,391327.0,697
 zoolake,kellicottia,animalia,rotifera,eurotatoria,ploima,brachionidae,kellicottia,,kellicottia,True,True,living,full_body,Q1738282,134940.0,1213226.0,284195.0,
 zoolake,keratella_cochlearis,animalia,rotifera,eurotatoria,ploima,brachionidae,keratella,cochlearis,keratella cochlearis,True,True,living,full_body,Q150192,134990.0,204738.0,31550.0,
@@ -828,7 +828,7 @@ whoi,Lauderia,chromista,heterokontophyta,bacillariophyceae,thalassiosirales,laud
 medplanktonset,Lauderia_annulata,chromista,heterokontophyta,bacillariophyceae,thalassiosirales,lauderiaceae,lauderia,annulata,lauderia annulata,True,True,living,full_body,Q67889063,149135.0,382366.0,604296.0,699
 whoi,Leegaardiella_ovalis,chromista,ciliophora,oligotrichea,choreotrichida,leegaardiellidae,leegaardiella,ovalis,leegaardiella ovalis,True,True,living,full_body,Q61997558,101206.0,1925000.0,1022867.0,657
 planktoscope,Leprotintinnus,chromista,ciliophora,oligotrichea,choreotrichida,tintinnidiidae,leprotintinnus,,leprotintinnus,True,True,living,full_body,Q25362707,232074.0,1050069.0,1022867.0,730
-planktonset1.0,fish_larvae_leptocephali,animalia,chordata,teleostei,anguilliformes,nettastomatidae,leptocephalus,,leptocephalus,False,True,living,larvae,Q6527979,843623.0,556253.0,202082.0,
+planktonset1.0,fish_larvae_leptocephali,animalia,chordata,teleostei,anguilliformes,nettastomatidae,leptocephalus,,leptocephalus,True,True,living,larvae,Q6527979,843623.0,556253.0,202082.0,
 medplanktonset,Leptocylindrus_spp,chromista,heterokontophyta,bacillariophyceae,leptocylindrales,leptocylindraceae,leptocylindrus,,leptocylindrus,True,True,living,full_body,Q25366303,149038.0,163515.0,344873.0,586
 planktoscope,Leptocylindrus,chromista,heterokontophyta,bacillariophyceae,leptocylindrales,leptocylindraceae,leptocylindrus,,leptocylindrus,True,True,living,full_body,Q25366303,149038.0,163515.0,344873.0,586
 whoi,Leptocylindrus,chromista,heterokontophyta,bacillariophyceae,leptocylindrales,leptocylindraceae,leptocylindrus,,leptocylindrus,True,True,living,full_body,Q25366303,149038.0,163515.0,344873.0,586
@@ -907,11 +907,11 @@ zooscan,part_Mollusca,animalia,mollusca,,,,,,mollusca,False,False,detritus,part,
 global_uvp5,molt,,,,,,,,molt,False,False,detritus,,,,,,
 planktoscope,molt,,,,,,,,molt,False,False,detritus,,,,,,
 syke_ifcb_2022,Monoraphidium_contortum,plantae,chlorophyta,chlorophyceae,sphaeropleales,selenastraceae,monoraphidium,contortum,monoraphidium contortum,True,True,living,full_body,Q69674374,160591.0,307511.0,762197.0,
-zooscan,other_living,animalia,arthropoda,copepoda,monstrilloida,,,,monstrilloida,True,True,living,full_body,Q3480154,1106.0,84311.0,349765.0,64
+zooscan,other_living,,,,,,,,other,False,True,living,full_body,,,,,
 planktoscope,moving,,,,,,,,moving,False,False,artefact,,,,,,
 global_uvp5,Munnopsinae,animalia,arthropoda,malacostraca,isopoda,munnopsidae,,,munnopsidae,True,True,living,full_body,Q4354697,118264.0,192514.0,88696.0,649
 global_uvp5,Munnopsis,animalia,arthropoda,malacostraca,isopoda,munnopsidae,munnopsis,,munnopsis,True,True,living,full_body,Q4350194,118377.0,203885.0,88697.0,649
-planktonset1.0,fish_larvae_myctophids,animalia,chordata,teleostei,myctophiformes,myctophidae,,,myctophidae,False,True,living,larvae,Q1975704,125498.0,68515.0,1368.0,
+planktonset1.0,fish_larvae_myctophids,animalia,chordata,teleostei,myctophiformes,myctophidae,,,myctophidae,True,True,living,larvae,Q1975704,125498.0,68515.0,1368.0,
 zooscan,Mysida,animalia,arthropoda,malacostraca,mysida,,,,mysida,True,True,living,full_body,Q13411080,149668.0,75399.0,79190.0,
 zooscan,protozoea_Eumalacostraca,animalia,arthropoda,malacostraca,mysida,,,,mysida,True,True,living,full_body,Q13411080,149668.0,75399.0,79190.0,
 zooscan,larvae_Mysida,animalia,arthropoda,malacostraca,mysida,,,,mysida,True,True,living,larvae,Q13411080,149668.0,75399.0,79190.0,
@@ -939,12 +939,12 @@ planktoscope,Naviculales,chromista,heterokontophyta,bacillariophyceae,naviculale
 planktoscope,Nematoda,animalia,nematoda,,,,,,nematoda,True,True,living,full_body,Q5185,799.0,6231.0,19.0,
 medplanktonset,Neobrightwellia_alternans,chromista,heterokontophyta,bacillariophyceae,biddulphiales,biddulphiaceae,neobrightwellia,alternans,neobrightwellia alternans,True,True,living,full_body,Q16831734,148966.0,1003021.0,180383.0,711
 planktoscope,Neocalyptrella,chromista,heterokontophyta,bacillariophyceae,rhizosoleniales,rhizosoleniaceae,neocalyptrella,,neocalyptrella,True,True,living,full_body,Q25366448,345490.0,2731301.0,87622.0,444
-flowcamnet,Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,neoceratium,,neoceratium,True,True,living,full_body,Q18606071,494056.0,665866.0,317205.0,240
-planktoscope,Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,neoceratium,,neoceratium,True,True,living,full_body,Q18606071,494056.0,665866.0,317205.0,240
-zoocamnet,Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,neoceratium,,neoceratium,True,True,living,full_body,Q18606071,494056.0,665866.0,317205.0,240
-planktoscope,neoceratium gibberum concilians mix,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,neoceratium,,neoceratium,True,True,living,mix,Q18606071,494056.0,665866.0,317205.0,240
-planktoscope,part_Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,neoceratium,,neoceratium,False,False,detritus,part,Q18606071,494056.0,665866.0,317205.0,240
-planktoscope,Eucampia cornuta,chromista,heterokontophyta,bacillariophyceae,bacillariophyceae,bacillariophyceae,neomoelleria,cornuta,neomoelleria cornuta,True,True,living,full_body,Q2878349,1324082.0,33849.0,74456.0,711
+flowcamnet,Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,,tripos,True,True,living,full_body,Q18606362,494057.0,2126447.0,317196.0,239;457;458;459;472;473;627;629;719;729;737;738
+planktoscope,Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,,tripos,True,True,living,full_body,Q18606362,494057.0,2126447.0,317196.0,239;457;458;459;472;473;627;629;719;729;737;738
+zoocamnet,Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,,tripos,True,True,living,full_body,Q18606362,494057.0,2126447.0,317196.0,239;457;458;459;472;473;627;629;719;729;737;738
+planktoscope,neoceratium gibberum concilians mix,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,,tripos,True,True,living,mix,Q18606362,494057.0,2126447.0,317196.0,239;457;458;459;472;473;627;629;719;729;737;738
+planktoscope,part_Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,,tripos,False,False,detritus,part,Q18606362,494057.0,2126447.0,317196.0,239;457;458;459;472;473;627;629;719;729;737;738
+planktoscope,Eucampia cornuta,chromista,heterokontophyta,bacillariophyceae,hemiaulales,hemiaulaceae,neomoelleria,cornuta,neomoelleria cornuta,True,True,living,full_body,Q2878349,1324082.0,33849.0,74456.0,711
 flowcamnet,Nitzschia,chromista,heterokontophyta,bacillariophyceae,bacillariales,bacillariaceae,nitzschia,,nitzschia,True,True,living,full_body,Q1583107,149045.0,651811.0,87625.0,711
 syke_ifcb_2022,Nitzschia_paleacea,chromista,heterokontophyta,bacillariophyceae,bacillariales,bacillariaceae,nitzschia,paleacea,nitzschia paleacea,True,True,living,full_body,Q49600010,609727.0,303396.0,785727.0,711
 jedioceans,LClass_Noctiluca_eggs,chromista,myzozoa,dinophyceae,noctilucales,noctilucaceae,noctiluca,,noctiluca,True,True,living,egg,Q3342595,109500.0,2965.0,317178.0,248
@@ -1125,7 +1125,7 @@ medplanktonset,Protoperidinium_diabolus,chromista,myzozoa,dinophyceae,peridinial
 medplanktonset,Protoperidinium_cf._divergens,chromista,myzozoa,dinophyceae,peridiniales,protoperidiniaceae,protoperidinium,divergens,protoperidinium divergens,True,True,living,full_body,Q49633159,110219.0,281611.0,317105.0,474
 medplanktonset,Pseliodinium_fusus,chromista,myzozoa,dinophyceae,peridiniales,ceratoperidiniaceae,pseliodinium,fusus,pseliodinium fusus,True,True,living,full_body,Q68452360,1474876.0,2893593.0,317029.0,240
 global_uvp5,Pseudocalanus,animalia,arthropoda,copepoda,calanoida,clausocalanidae,pseudocalanus,,pseudocalanus,True,True,living,full_body,Q6552299,104165.0,119371.0,5322.0,114;320;564
-whoi,Pseudochattonella_farcimen,chromista,ochrophyta,dictyochophyceae,florenciellales,florenciellales,pseudochattonella,farcimen,pseudochattonella farcimen,True,True,living,full_body,Q127376560,531467.0,465777.0,603954.0,
+whoi,Pseudochattonella_farcimen,chromista,ochrophyta,dictyochophyceae,florenciellales,florenciellales incertae sedis,pseudochattonella,farcimen,pseudochattonella farcimen,True,True,living,full_body,Q127376560,531467.0,465777.0,603954.0,
 planktoscope,Pseudo-Nitzschia chain,chromista,heterokontophyta,bacillariophyceae,bacillariales,bacillariaceae,pseudo-nitzschia,,pseudo-nitzschia,True,True,living,full_body,Q891709,149151.0,41953.0,87706.0,630
 flowcamnet,Pseudo-Nitzschia chain,chromista,heterokontophyta,bacillariophyceae,bacillariales,bacillariaceae,pseudo-nitzschia,,pseudo-nitzschia,True,True,living,full_body,Q891709,149151.0,41953.0,87706.0,630
 medplanktonset,Pseudo-nitzschia_spp._2_cells,chromista,heterokontophyta,bacillariophyceae,bacillariales,bacillariaceae,pseudo-nitzschia,,pseudo-nitzschia,True,True,living,full_body,Q891709,149151.0,41953.0,87706.0,630
@@ -1314,10 +1314,10 @@ zoolake,synchaeta,animalia,rotifera,eurotatoria,ploima,synchaetidae,synchaeta,,s
 medplanktonset,Syracosphaera_pulchra,chromista,haptophyta,coccolithophyceae,syracosphaerales,syracosphaeraceae,syracosphaera,pulchra,syracosphaera pulchra,True,True,living,full_body,Q23069525,235979.0,418946.0,163626.0,
 syke_ifcb_2022,Cryptophyceae-Teleaulax,chromista,cryptophyta,cryptophyceae,pyrenomonadales,geminigeraceae,teleaulax,,teleaulax,True,True,living,full_body,Q23070355,106285.0,77930.0,99300.0,
 global_uvp5,Teleostei,animalia,chordata,teleostei,,,,,teleostei,True,True,living,full_body,Q204861,293496.0,32443.0,2676441.0,
-planktonset1.0,fish_larvae_deep_body,animalia,chordata,teleostei,,,,,teleostei,False,True,living,larvae,Q204861,293496.0,32443.0,2676441.0,
-planktonset1.0,fish_larvae_medium_body,animalia,chordata,teleostei,,,,,teleostei,False,True,living,larvae,Q204861,293496.0,32443.0,2676441.0,
-planktonset1.0,fish_larvae_thin_body,animalia,chordata,teleostei,,,,,teleostei,False,True,living,larvae,Q204861,293496.0,32443.0,2676441.0,
-planktonset1.0,fish_larvae_very_thin_body,animalia,chordata,teleostei,,,,,teleostei,False,True,living,larvae,Q204861,293496.0,32443.0,2676441.0,
+planktonset1.0,fish_larvae_deep_body,animalia,chordata,teleostei,,,,,teleostei,True,True,living,larvae,Q204861,293496.0,32443.0,2676441.0,
+planktonset1.0,fish_larvae_medium_body,animalia,chordata,teleostei,,,,,teleostei,True,True,living,larvae,Q204861,293496.0,32443.0,2676441.0,
+planktonset1.0,fish_larvae_thin_body,animalia,chordata,teleostei,,,,,teleostei,True,True,living,larvae,Q204861,293496.0,32443.0,2676441.0,
+planktonset1.0,fish_larvae_very_thin_body,animalia,chordata,teleostei,,,,,teleostei,True,True,living,larvae,Q204861,293496.0,32443.0,2676441.0,
 planktoscope,nauplii_Temora,animalia,arthropoda,copepoda,calanoida,temoridae,temora,,temora,True,True,living,full_body,Q10692615,104241.0,261851.0,5800.0,53;759
 planktoscope,Temora,animalia,arthropoda,copepoda,calanoida,temoridae,temora,,temora,True,True,living,full_body,Q10692615,104241.0,261851.0,5800.0,53;759
 zoocamnet,Temoridae,animalia,arthropoda,copepoda,calanoida,temoridae,,,temoridae,True,True,living,full_body,Q3808990,104106.0,88013.0,1755.0,53;759
@@ -1338,7 +1338,7 @@ planktoscope,Thalassiosirales,chromista,heterokontophyta,bacillariophyceae,thala
 global_uvp5,Thaliacea,animalia,chordata,thaliacea,,,,,thaliacea,True,True,living,full_body,Q610887,22626.0,30304.0,27266.0,113;607
 zoocamnet,Thaliacea,animalia,chordata,thaliacea,,,,,thaliacea,True,True,living,full_body,Q610887,22626.0,30304.0,27266.0,113;607
 global_uvp5,Phaeodaria,chromista,cercozoa,thecofilosea,,,,,thecofilosea,True,True,living,full_body,Q7777653,590699.0,1004930.0,886873.0,
-global_uvp5,unknown,chromista,cercozoa,thecofilosea,,,,,thecofilosea,True,True,living,full_body,Q7777653,590699.0,1004930.0,886873.0,
+global_uvp5,unknown,,,,,,,,unknown,False,False,artefact,,,,,,
 planktoscope,Phaeodaria,chromista,cercozoa,thecofilosea,,,,,thecofilosea,True,True,living,full_body,Q7777653,590699.0,1004930.0,886873.0,
 zooscan,Phaeodaria,chromista,cercozoa,thecofilosea,,,,,thecofilosea,True,True,living,full_body,Q7777653,590699.0,1004930.0,886873.0,
 global_uvp5,like<Phaeodaria,chromista,cercozoa,thecofilosea,,,,,thecofilosea,True,True,living,like,Q7777653,590699.0,1004930.0,886873.0,
@@ -1490,27 +1490,27 @@ frepj,"Branchiopoda,Diplostraca,Bosminidae,Bosmina,Bosmina freyi",animalia,arthr
 frepj,"Branchiopoda,Diplostraca,Bosminidae,Bosmina,Bosmina longirostris",animalia,arthropoda,branchiopoda,anomopoda,bosminidae,bosmina,longirostris,bosmina longirostris,True,True,living,full_body,Q618980,106265.0,27402.0,4568.0,
 frepj,"Branchiopoda,Diplostraca,Bosminidae,Bosmina,Bosmina tanakai",animalia,arthropoda,branchiopoda,anomopoda,bosminidae,bosmina,tanakai,bosmina tanakai,True,True,living,full_body,Q618980,106265.0,27402.0,4568.0,
 frepj,"Branchiopoda,Diplostraca,Bosminidae,Bosmina,Sp._unk",animalia,arthropoda,branchiopoda,anomopoda,bosminidae,bosmina,,bosmina,True,True,living,full_body,Q618980,106265.0,27402.0,4568.0,
-frepj,"Branchiopoda,Diplostraca,Bosminidae,Bosminopsis,Bosminopsis deitersi",animalia,arthropoda,branchiopoda,diplostraca,bosminidae,bosminopsis,deitersi,bosminopsis deitersi,True,True,living,full_body,Q4570957,933270.0,189689.0,,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Alona,Alona affinis",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,alona,affinis,alona affinis,True,True,living,full_body,,,,,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Alona,Alona costata",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,alona,costata,alona costata,True,True,living,full_body,,,,,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Alona,Alona guttata",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,alona,guttata,alona guttata,True,True,living,full_body,Q4561166,593151.0,1917096.0,71408.0,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Alona,Alona intermedia",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,alona,intermedia,alona intermedia,True,True,living,full_body,Q4553091,1302235.0,,,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Alona,Sp._unk",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,alona,,alona,True,True,living,full_body,Q4734358,148383.0,362317.0,5249.0,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Alonella,Alonella excisa",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,alonella,excisa,alonella excisa,True,True,living,full_body,Q4544671,1302980.0,1071220.0,,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Camptocercus,Camptocercus australis",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,camptocercus,australis,camptocercus australis,True,True,living,full_body,Q21258897,1302341.0,,,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Camptocercus,Sp._unk",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,camptocercus,,camptocercus,True,True,living,full_body,Q4553018,593107.0,362319.0,5250.0,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Chydorus,Chydorus brevilabris",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,chydorus,brevilabris,chydorus brevilabris,True,True,living,full_body,Q4555689,1302406.0,362310.0,48339.0,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Chydorus,Chydorus sphaericus",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,chydorus,sphaericus,chydorus sphaericus,True,True,living,full_body,Q4557580,148406.0,77745.0,78201.0,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Chydorus,Sp._unk",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,chydorus,,chydorus,True,True,living,full_body,Q4566638,148377.0,77744.0,5255.0,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Disparalona,Disparalona rostrata",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,disparalona,rostrata,disparalona rostrata,True,True,living,full_body,Q4565765,148402.0,1917127.0,191237.0,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Ge._unk,Ge._unk",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,,,chydoridae,True,True,living,full_body,Q4569514,148356.0,77713.0,1573.0,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Leydigia,Leydigia cliata",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,leydigia,cliata,leydigia cliata,True,True,living,full_body,Q4559277,148386.0,527154.0,52789.0,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Leydigia,Leydigia leydigi",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,leydigia,leydigi,leydigia leydigi,True,True,living,full_body,Q4549679,148411.0,,,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Monospilus,Monospilus dispar",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,monospilus,dispar,monospilus dispar,True,True,living,full_body,Q4545545,412824.0,,191241.0,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Pleuroxus,Pleuroxus hamulatus",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,pleuroxus,hamulatus,pleuroxus hamulatus,True,True,living,full_body,Q107064992,1303559.0,,,
-frepj,"Branchiopoda,Diplostraca,Chydoridae,Pleuroxus,Pleuroxus laevis",animalia,arthropoda,branchiopoda,diplostraca,chydoridae,pleuroxus,laevis,pleuroxus laevis,True,True,living,full_body,Q50770444,1303978.0,,,
-frepj,"Branchiopoda,Diplostraca,Daphniida,Simocephalus,Simocephalus serrulatus",animalia,arthropoda,branchiopoda,diplostraca,daphniida,simocephalus,serrulatus,simocephalus serrulatus,True,True,living,full_body,Q6548961,412852.0,117539.0,51840.0,
-frepj,"Branchiopoda,Diplostraca,Daphniida,Simocephalus,Simocephalus vetulus",animalia,arthropoda,branchiopoda,diplostraca,daphniida,simocephalus,vetulus,simocephalus vetulus,True,True,living,full_body,Q2098807,148404.0,77651.0,10044.0,
+frepj,"Branchiopoda,Diplostraca,Bosminidae,Bosminopsis,Bosminopsis deitersi",animalia,arthropoda,branchiopoda,anomopoda,bosminidae,bosminopsis,deitersi,bosminopsis deitersi,True,True,living,full_body,Q4570957,933270.0,189689.0,,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Alona,Alona affinis",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,alona,affinis,alona affinis,True,True,living,full_body,,,,,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Alona,Alona costata",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,alona,costata,alona costata,True,True,living,full_body,,,,,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Alona,Alona guttata",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,alona,guttata,alona guttata,True,True,living,full_body,Q4561166,593151.0,1917096.0,71408.0,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Alona,Alona intermedia",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,alona,intermedia,alona intermedia,True,True,living,full_body,Q4553091,1302235.0,,,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Alona,Sp._unk",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,alona,,alona,True,True,living,full_body,Q4734358,148383.0,362317.0,5249.0,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Alonella,Alonella excisa",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,alonella,excisa,alonella excisa,True,True,living,full_body,Q4544671,1302980.0,1071220.0,,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Camptocercus,Camptocercus australis",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,camptocercus,australis,camptocercus australis,True,True,living,full_body,Q21258897,1302341.0,,,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Camptocercus,Sp._unk",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,camptocercus,,camptocercus,True,True,living,full_body,Q4553018,593107.0,362319.0,5250.0,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Chydorus,Chydorus brevilabris",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,chydorus,brevilabris,chydorus brevilabris,True,True,living,full_body,Q4555689,1302406.0,362310.0,48339.0,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Chydorus,Chydorus sphaericus",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,chydorus,sphaericus,chydorus sphaericus,True,True,living,full_body,Q4557580,148406.0,77745.0,78201.0,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Chydorus,Sp._unk",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,chydorus,,chydorus,True,True,living,full_body,Q4566638,148377.0,77744.0,5255.0,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Disparalona,Disparalona rostrata",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,disparalona,rostrata,disparalona rostrata,True,True,living,full_body,Q4565765,148402.0,1917127.0,191237.0,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Ge._unk,Ge._unk",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,,,chydoridae,True,True,living,full_body,Q4569514,148356.0,77713.0,1573.0,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Leydigia,Leydigia cliata",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,leydigia,cliata,leydigia cliata,True,True,living,full_body,Q4559277,148386.0,527154.0,52789.0,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Leydigia,Leydigia leydigi",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,leydigia,leydigi,leydigia leydigi,True,True,living,full_body,Q4549679,148411.0,,,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Monospilus,Monospilus dispar",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,monospilus,dispar,monospilus dispar,True,True,living,full_body,Q4545545,412824.0,,191241.0,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Pleuroxus,Pleuroxus hamulatus",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,pleuroxus,hamulatus,pleuroxus hamulatus,True,True,living,full_body,Q107064992,1303559.0,,,
+frepj,"Branchiopoda,Diplostraca,Chydoridae,Pleuroxus,Pleuroxus laevis",animalia,arthropoda,branchiopoda,anomopoda,chydoridae,pleuroxus,laevis,pleuroxus laevis,True,True,living,full_body,Q50770444,1303978.0,,,
+frepj,"Branchiopoda,Diplostraca,Daphniida,Simocephalus,Simocephalus serrulatus",animalia,arthropoda,branchiopoda,anomopoda,daphniidae,simocephalus,serrulatus,simocephalus serrulatus,True,True,living,full_body,Q6548961,412852.0,117539.0,51840.0,
+frepj,"Branchiopoda,Diplostraca,Daphniida,Simocephalus,Simocephalus vetulus",animalia,arthropoda,branchiopoda,anomopoda,daphniidae,simocephalus,vetulus,simocephalus vetulus,True,True,living,full_body,Q2098807,148404.0,77651.0,10044.0,
 frepj,"Branchiopoda,Diplostraca,Daphniidae,Ceriodaphnia,Ceriodaphnia cornuta",animalia,arthropoda,branchiopoda,anomopoda,daphniidae,ceriodaphnia,cornuta,ceriodaphnia cornuta,True,True,living,full_body,Q6549092,148376.0,77671.0,4592.0,
 frepj,"Branchiopoda,Diplostraca,Daphniidae,Ceriodaphnia,Ceriodaphnia dubia",animalia,arthropoda,branchiopoda,anomopoda,daphniidae,ceriodaphnia,dubia,ceriodaphnia dubia,True,True,living,full_body,Q6549092,148376.0,77671.0,4592.0,
 frepj,"Branchiopoda,Diplostraca,Daphniidae,Ceriodaphnia,Ceriodaphnia pulchella",animalia,arthropoda,branchiopoda,anomopoda,daphniidae,ceriodaphnia,pulchella,ceriodaphnia pulchella,True,True,living,full_body,Q6549092,148376.0,77671.0,4592.0,
@@ -1526,15 +1526,15 @@ frepj,"Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia mitsukuri",animalia,a
 frepj,"Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia pulex",animalia,arthropoda,branchiopoda,anomopoda,daphniidae,daphnia,pulex,daphnia pulex,True,True,living,full_body,Q269354,148370.0,6668.0,4582.0,
 frepj,"Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia tanakai",animalia,arthropoda,branchiopoda,anomopoda,daphniidae,daphnia,tanakai,daphnia tanakai,True,True,living,full_body,Q269354,148370.0,6668.0,4582.0,
 frepj,"Branchiopoda,Diplostraca,Daphniidae,Daphnia,Sp._unk",animalia,arthropoda,branchiopoda,anomopoda,daphniidae,daphnia,,daphnia,True,True,living,full_body,Q269354,148370.0,6668.0,4582.0,
-frepj,"Branchiopoda,Diplostraca,Daphniidae,Scapholeberis,Scapholeberis smirnovi",animalia,arthropoda,branchiopoda,diplostraca,daphniidae,scapholeberis,smirnovi,scapholeberis smirnovi,True,True,living,full_body,Q136802257,,,,
-frepj,"Branchiopoda,Diplostraca,Holopediidae,Holopedium,Holopedium gibberum",animalia,arthropoda,branchiopoda,diplostraca,holopediidae,holopedium,gibberum,holopedium gibberum,True,True,living,full_body,Q4544645,160273.0,77711.0,8953.0,
+frepj,"Branchiopoda,Diplostraca,Daphniidae,Scapholeberis,Scapholeberis smirnovi",animalia,arthropoda,branchiopoda,anomopoda,daphniidae,scapholeberis,smirnovi,scapholeberis smirnovi,True,True,living,full_body,Q136802257,,,,
+frepj,"Branchiopoda,Diplostraca,Holopediidae,Holopedium,Holopedium gibberum",animalia,arthropoda,branchiopoda,ctenopoda,holopediidae,holopedium,gibberum,holopedium gibberum,True,True,living,full_body,Q4544645,160273.0,77711.0,8953.0,
 frepj,"Branchiopoda,Diplostraca,Leptodoridae,Leptodora,Leptodora kindtii",animalia,arthropoda,branchiopoda,haplopoda,leptodoridae,leptodora,kindtii,leptodora kindtii,True,True,living,full_body,Q15886001,247922.0,77706.0,4564.0,
-frepj,"Branchiopoda,Diplostraca,Macrothricidae,Macrothrix,Sp._unk",animalia,arthropoda,branchiopoda,diplostraca,macrothricidae,macrothrix,,macrothrix,True,True,living,full_body,Q4546201,593153.0,362306.0,5237.0,
-frepj,"Branchiopoda,Diplostraca,Moinidae,Moina,Moina affinis",animalia,arthropoda,branchiopoda,diplostraca,moinidae,moina,affinis,moina affinis,True,True,living,full_body,Q4543971,412855.0,77664.0,,
-frepj,"Branchiopoda,Diplostraca,Moinidae,Moina,Moina micrura jpn1",animalia,arthropoda,branchiopoda,diplostraca,moinidae,moina,micrura,moina micrura,True,True,living,full_body,Q4573229,345486.0,152158.0,52809.0,
-frepj,"Branchiopoda,Diplostraca,Moinidae,Moina,Moina micrura jpn2",animalia,arthropoda,branchiopoda,diplostraca,moinidae,moina,micrura,moina micrura,True,True,living,full_body,Q4573229,345486.0,152158.0,52809.0,
-frepj,"Branchiopoda,Diplostraca,Moinidae,Moina,Moina sp",animalia,arthropoda,branchiopoda,diplostraca,moinidae,moina,,moina,True,True,living,full_body,Q37482091,,,,
-frepj,"Branchiopoda,Diplostraca,Moinidae,Moina,Sp._unk",animalia,arthropoda,branchiopoda,diplostraca,moinidae,moina,,moina,True,True,living,full_body,Q37482091,,,,
+frepj,"Branchiopoda,Diplostraca,Macrothricidae,Macrothrix,Sp._unk",animalia,arthropoda,branchiopoda,anomopoda,macrothricidae,macrothrix,,macrothrix,True,True,living,full_body,Q4546201,593153.0,362306.0,5237.0,
+frepj,"Branchiopoda,Diplostraca,Moinidae,Moina,Moina affinis",animalia,arthropoda,branchiopoda,anomopoda,moinidae,moina,affinis,moina affinis,True,True,living,full_body,Q4543971,412855.0,77664.0,,
+frepj,"Branchiopoda,Diplostraca,Moinidae,Moina,Moina micrura jpn1",animalia,arthropoda,branchiopoda,anomopoda,moinidae,moina,micrura,moina micrura,True,True,living,full_body,Q4573229,345486.0,152158.0,52809.0,
+frepj,"Branchiopoda,Diplostraca,Moinidae,Moina,Moina micrura jpn2",animalia,arthropoda,branchiopoda,anomopoda,moinidae,moina,micrura,moina micrura,True,True,living,full_body,Q4573229,345486.0,152158.0,52809.0,
+frepj,"Branchiopoda,Diplostraca,Moinidae,Moina,Moina sp",animalia,arthropoda,branchiopoda,anomopoda,moinidae,moina,,moina,True,True,living,full_body,Q37482091,,,,
+frepj,"Branchiopoda,Diplostraca,Moinidae,Moina,Sp._unk",animalia,arthropoda,branchiopoda,anomopoda,moinidae,moina,,moina,True,True,living,full_body,Q37482091,,,,
 frepj,"Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma brachyurum",animalia,arthropoda,branchiopoda,ctenopoda,sididae,diaphanosoma,brachyurum,diaphanosoma brachyurum,True,True,living,full_body,Q4561167,234062.0,117531.0,5262.0,
 frepj,"Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma cf. amurensis",animalia,arthropoda,branchiopoda,ctenopoda,sididae,diaphanosoma,,diaphanosoma,True,True,living,full_body,Q4561167,234062.0,117531.0,5262.0,
 frepj,"Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma dubium",animalia,arthropoda,branchiopoda,ctenopoda,sididae,diaphanosoma,dubium,diaphanosoma dubium,True,True,living,full_body,Q4561167,234062.0,117531.0,5262.0,
@@ -1542,7 +1542,7 @@ frepj,"Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma macrophthalma"
 frepj,"Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma nipponica",animalia,arthropoda,branchiopoda,ctenopoda,sididae,diaphanosoma,nipponica,diaphanosoma nipponica,True,True,living,full_body,Q4561167,234062.0,117531.0,5262.0,
 frepj,"Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma orientalis",animalia,arthropoda,branchiopoda,ctenopoda,sididae,diaphanosoma,orientalis,diaphanosoma orientalis,True,True,living,full_body,Q4561167,234062.0,117531.0,5262.0,
 frepj,"Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Sp._unk",animalia,arthropoda,branchiopoda,ctenopoda,sididae,diaphanosoma,,diaphanosoma,True,True,living,full_body,Q4561167,234062.0,117531.0,5262.0,
-frepj,"Branchiopoda,Diplostraca,Sididae,Sida,Sp._unk",animalia,arthropoda,branchiopoda,diplostraca,sididae,sida,,sida,True,True,living,full_body,,,,,
+frepj,"Branchiopoda,Diplostraca,Sididae,Sida,Sp._unk",animalia,arthropoda,branchiopoda,ctenopoda,sididae,sida,,sida,True,True,living,full_body,,,,,
 frepj,"Branchiopoda,Or._unk,Or._unk,Or._unk,Or._unk",animalia,arthropoda,branchiopoda,,,,,branchiopoda,True,True,living,full_body,,,,,
 frepj,"Copepoda,Calanoida,Centropagidae,Sinocalanus,Sinocalanus tenellus",animalia,arthropoda,copepoda,calanoida,centropagidae,sinocalanus,tenellus,sinocalanus tenellus,True,True,living,full_body,Q14342538,355664.0,207960.0,31018.0,
 frepj,"Copepoda,Calanoida,Diaptomidae,Acanthodiaptomus,Acanthodiaptomus pacificus",animalia,arthropoda,copepoda,calanoida,diaptomidae,acanthodiaptomus,pacificus,acanthodiaptomus pacificus,True,True,living,full_body,Q13222854,348459.0,452306.0,675514.0,
@@ -1709,8 +1709,8 @@ frepj,"Heterotrichea,Or._unk,Or._unk,Or._unk,Or._unk",chromista,ciliophora,heter
 frepj,"Insecta,Diptera,Chaoboridae,Chaoborus,Sp._unk_larva_stage",animalia,arthropoda,insecta,diptera,chaoboridae,chaoborus,,chaoborus,True,True,living,full_body,Q2707905,118088.0,41812.0,169991.0,
 frepj,"Insecta,Diptera,Chironomidae,Ge._unk_larva_stage,Ge._unk_larva_stage",animalia,arthropoda,insecta,diptera,chironomidae,,,chironomidae,True,True,living,full_body,Q228145,118100.0,7149.0,1882.0,
 frepj,"Litostomatea,Dileptida,Dileptidae,Paradileptus,Sp._unk",chromista,ciliophora,litostomatea,haptorida,tracheliidae,paradileptus,,paradileptus,True,True,living,full_body,Q25360965,425542.0,2778690.0,72834.0,
-frepj,"Lobosa,Arcellinida,Centropyxidae,Centropyxis,Centropyxis discoides",protozoa,amoebozoa,lobosa,arcellinida,centropyxidae,centropyxis,discoides,centropyxis discoides,True,True,living,full_body,Q72663,136759.0,318527.0,,
-frepj,"Lobosa,Arcellinida,Centropyxidae,Centropyxis,Sp._unk",protozoa,amoebozoa,lobosa,arcellinida,centropyxidae,centropyxis,,centropyxis,True,True,living,full_body,Q72663,136759.0,318527.0,,
+frepj,"Lobosa,Arcellinida,Centropyxidae,Centropyxis,Centropyxis discoides",protozoa,amoebozoa,tubulinea,arcellinida,centropyxidae,centropyxis,discoides,centropyxis discoides,True,True,living,full_body,Q72663,136759.0,318527.0,,
+frepj,"Lobosa,Arcellinida,Centropyxidae,Centropyxis,Sp._unk",protozoa,amoebozoa,tubulinea,arcellinida,centropyxidae,centropyxis,,centropyxis,True,True,living,full_body,Q72663,136759.0,318527.0,,
 frepj,"Oligophymenophorea,Peritrichida,Vorticellidae,Vorticella,Sp._unk",chromista,ciliophora,oligohymenophorea,peritrichida,vorticellidae,vorticella,,vorticella,True,True,living,full_body,Q82743,163573.0,60849.0,,
 frepj,"Ostracoda,Or._unk,Or._unk,Or._unk,Or._unk",animalia,arthropoda,ostracoda,,,,,ostracoda,True,True,living,full_body,,,,,
 tara_pacific_bongo,Rhizaria,chromista,,,,,,,chromista,True,True,living,full_body,Q862296,7.0,,,
@@ -1732,7 +1732,7 @@ tara_pacific_bongo,Dictyocha,chromista,ochrophyta,dictyochophyceae,dictyochales,
 tara_pacific_bongo,Undellidae,chromista,ciliophora,oligotrichea,choreotrichida,undellidae,,,undellidae,True,True,living,full_body,Q25360907,172430.0,1176381.0,1022867.0,490
 tara_pacific_bongo,Tintinnina<Choreotrichida,chromista,ciliophora,oligotrichea,choreotrichida,,,,choreotrichida,True,True,living,full_body,Q23810342,341353.0,200605.0,1022867.0,657
 tara_pacific_bongo,Codonellidae,chromista,ciliophora,oligotrichea,choreotrichida,codonellidae,,,codonellidae,True,True,living,full_body,,150201.0,,,
-tara_pacific_bongo,Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,neoceratium,,neoceratium,True,True,living,full_body,Q18606071,494056.0,665866.0,317205.0,240
+tara_pacific_bongo,Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,,tripos,True,True,living,full_body,Q18606362,494057.0,2126447.0,317196.0,239;457;458;459;472;473;627;629;719;729;737;738
 tara_pacific_bongo,Copepoda<Multicrustacea,animalia,arthropoda,copepoda,,,,,copepoda,True,True,living,full_body,Q189973,1080.0,6830.0,979181.0,175;255;563;575
 tara_pacific_bongo,Synedra,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,synedra,,synedra,True,True,living,full_body,,149186.0,,,
 tara_pacific_bongo,Striatella,chromista,heterokontophyta,bacillariophyceae,striatellales,striatellaceae,striatella,,striatella,True,True,living,full_body,Q23070147,149176.0,2963561.0,604035.0,711
@@ -1873,7 +1873,7 @@ tara_pacific_decknet,Xystonellidae,chromista,ciliophora,oligotrichea,choreotrich
 tara_pacific_decknet,Undellidae,chromista,ciliophora,oligotrichea,choreotrichida,undellidae,,,undellidae,True,True,living,full_body,Q25360907,172430.0,1176381.0,1022867.0,490
 tara_pacific_decknet,Tintinnina<Choreotrichida,chromista,ciliophora,oligotrichea,choreotrichida,,,,choreotrichida,True,True,living,full_body,Q23810342,341353.0,200605.0,1022867.0,657
 tara_pacific_decknet,Codonellidae,chromista,ciliophora,oligotrichea,choreotrichida,codonellidae,,,codonellidae,True,True,living,full_body,,150201.0,,,
-tara_pacific_decknet,Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,neoceratium,,neoceratium,True,True,living,full_body,Q18606071,494056.0,665866.0,317205.0,240
+tara_pacific_decknet,Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,,tripos,True,True,living,full_body,Q18606362,494057.0,2126447.0,317196.0,239;457;458;459;472;473;627;629;719;729;737;738
 tara_pacific_decknet,Copepoda<Multicrustacea,animalia,arthropoda,copepoda,,,,,copepoda,True,True,living,full_body,Q189973,1080.0,6830.0,979181.0,175;255;563;575
 tara_pacific_decknet,Nitzschia,chromista,heterokontophyta,bacillariophyceae,bacillariales,bacillariaceae,nitzschia,,nitzschia,True,True,living,full_body,Q1583107,149045.0,651811.0,87625.0,711
 tara_pacific_decknet,Fragilariopsis,chromista,heterokontophyta,bacillariophyceae,bacillariales,bacillariaceae,fragilariopsis,,fragilariopsis,True,True,living,full_body,Q25366030,149313.0,186035.0,87687.0,711
@@ -2008,14 +2008,14 @@ tara_pacific_hsn,Siphonophorae,animalia,cnidaria,hydrozoa,siphonophorae,,,,sipho
 tara_pacific_hsn,Gymnosomata,animalia,mollusca,gastropoda,pteropoda,,,,pteropoda,True,True,living,full_body,Q1031983,325345.0,977783.0,854079.0,268
 tara_pacific_hsn,Cavoliniidae,animalia,mollusca,gastropoda,pteropoda,cavoliniidae,,,cavoliniidae,True,True,living,full_body,Q3203064,23000.0,216329.0,193217.0,614
 tara_pacific_hsn,Limacinidae,animalia,mollusca,gastropoda,pteropoda,limacinidae,,,limacinidae,True,True,living,full_body,Q6548854,13704.0,220645.0,1836.0,123;617
-tara_pacific_hsn,Creseidae,animalia,mollusca,gastropoda,pteropoda,cliidae,clio,pyramidata,clio pyramidata,True,True,living,full_body,Q3202847,139033.0,356475.0,202265.0,138
+tara_pacific_hsn,Creseidae,animalia,mollusca,gastropoda,pteropoda,creseidae,,,creseidae,True,True,living,full_body,Q18713366,411905.0,356495.0,531899.0,608
 tara_pacific_hsn,Ostracoda,animalia,arthropoda,ostracoda,,,,,ostracoda,True,True,living,full_body,Q276412,1078.0,6670.0,80.0,165;383
 tara_pacific_hsn,Pyrocystaceae,chromista,myzozoa,dinophyceae,gonyaulacales,pyrocystaceae,,,pyrocystaceae,True,True,living,full_body,Q16916347,109444.0,1573500.0,317059.0,240
 tara_pacific_hsn,Euphausiacea,animalia,arthropoda,malacostraca,euphausiacea,,,,euphausiacea,True,True,living,full_body,Q29498,1128.0,6816.0,361.0,199;605
 tara_pacific_hsn,Isopoda,animalia,arthropoda,malacostraca,isopoda,cirolanidae,eurydice,,eurydice,True,True,living,full_body,Q3060902,118401.0,96839.0,4852.0,649
 tara_pacific_hsn,Amphipoda,animalia,arthropoda,malacostraca,amphipoda,,,,amphipoda,True,True,living,full_body,Q193418,1135.0,6821.0,326.0,222;596
 tara_pacific_hsn,Siphonostomatoida,animalia,arthropoda,copepoda,siphonostomatoida,,,,siphonostomatoida,True,True,living,full_body,,1104.0,,,
-tara_pacific_hsn,Monstrilloida,animalia,arthropoda,copepoda,monstrilloida,,,,monstrilloida,True,True,living,full_body,Q3480154,1106.0,84311.0,349765.0,64
+tara_pacific_hsn,Monstrilloida,animalia,arthropoda,copepoda,monstrilloida,,,,monstrilloida,True,True,living,full_body,,1106.0,,,
 tara_pacific_hsn,Harpacticoida,animalia,arthropoda,copepoda,harpacticoida,tachidiidae,euterpina,,euterpina,True,True,living,full_body,Q18091848,115348.0,163465.0,326833.0,22;756
 tara_pacific_hsn,Calanoida,animalia,arthropoda,copepoda,calanoida,,,,calanoida,True,True,living,full_body,Q478553,1100.0,6833.0,386.0,114;320;564
 tara_pacific_hsn,Cirripedia,animalia,arthropoda,thecostraca,,,,,cirripedia,True,True,living,full_body,,1082.0,,,
@@ -2106,7 +2106,7 @@ tara_pacific_hsn,Appendicularia<Tunicata,animalia,chordata,appendicularia,,,,,ap
 tara_pacific_hsn,gonophore<Abylidae,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,,,abylidae,True,True,living,full_body,Q3386609,135336.0,316207.0,109624.0,328
 tara_pacific_hsn,veliger<Mollusca,animalia,mollusca,,,,,,mollusca,True,True,living,full_body,Q25326,51.0,6447.0,23.0,
 tara_pacific_hsn,gonophore<Diphyidae,animalia,cnidaria,hydrozoa,siphonophorae,diphyidae,,,diphyidae,True,True,living,full_body,Q4008468,135338.0,168754.0,24305.0,342
-tara_pacific_hsn,part<Ctenophora,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,ctenophora,,ctenophora,False,False,detritus,part,Q25661394,163921.0,1003038.0,249225.0,456;559
+tara_pacific_hsn,part<Ctenophora,animalia,ctenophora,,,,,,ctenophora,False,False,detritus,part,Q102778,1248.0,10197.0,,456;559
 tara_pacific_hsn,dark<sphere,,,,,,,,shape,False,False,artefact,,,,,,
 tara_pacific_hsn,gonophore<Abylopsis tetragona,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,abylopsis,tetragona,abylopsis tetragona,True,True,living,full_body,Q1931947,135403.0,316209.0,461338.0,321
 tara_pacific_hsn,part<Siphonophorae,animalia,cnidaria,hydrozoa,siphonophorae,,,,siphonophorae,False,False,detritus,part,Q1134438,1371.0,42759.0,263623.0,296;598
@@ -2129,12 +2129,12 @@ tara_pacific_hsn,zoea<Brachyura<Pleocyemata<Decapoda,animalia,arthropoda,malacos
 tara_pacific_hsn,nectophore<Abylidae,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,,,abylidae,True,True,living,full_body,Q3386609,135336.0,316207.0,109624.0,328
 tara_pacific_hsn,multiple<Pyrocystaceae,chromista,myzozoa,dinophyceae,gonyaulacales,pyrocystaceae,,,pyrocystaceae,True,True,living,mix,Q16916347,109444.0,1573500.0,317059.0,240
 tara_pacific_hsn,polype<Leptothecata,animalia,cnidaria,hydrozoa,leptothecata,,,,leptothecata,True,True,living,full_body,Q5122184,13552.0,500008.0,264641.0,644
-tara_pacific_hsn,polype<Anthozoa,animalia,cnidaria,,,,,,anthozoa,True,True,living,full_body,,1292.0,,,
+tara_pacific_hsn,polype<Anthozoa,animalia,cnidaria,anthozoa,,,,,anthozoa,True,True,living,full_body,,1292.0,,,
 tara_pacific_hsn,egg sac<egg,,,,,,,,egg,False,True,living,egg,,,,,213;226;552;750
 tara_pacific_hsn,bract<Bassia bassensis,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,bassia,bassensis,bassia bassensis,True,True,living,full_body,Q2282611,135404.0,645412.0,455875.0,344
 tara_pacific_hsn,empty<Ostracoda,animalia,arthropoda,ostracoda,,,,,ostracoda,True,True,living,full_body,Q276412,1078.0,6670.0,80.0,165;383
 tara_pacific_hsn,Lubbockia,animalia,arthropoda,copepoda,cyclopoida,lubbockiidae,lubbockia,,lubbockia,True,True,living,full_body,,128672.0,,,
-tara_pacific_hsn,Globorotalidae,chromista,foraminifera,,,,,,globorotalidae,True,True,living,full_body,,,,,
+tara_pacific_hsn,Globorotalidae,chromista,foraminifera,globothalamea,rotaliida,globorotalidae,,,globorotalidae,True,True,living,full_body,,,,,
 tara_pacific_hsn,part<Actinopterygii,animalia,chordata,,,,,,chordata,False,False,detritus,part,Q10915,1821.0,7711.0,18.0,
 tara_pacific_hsn,Acantharia,chromista,radiozoa,acantharia,,,,,acantharia,True,True,living,full_body,Q135584,586732.0,65574.0,714957.0,625;640
 tara_pacific_hsn,borax,,,,,,,,detritus,False,False,detritus,,,,,,207;666;717
@@ -2143,7 +2143,7 @@ tara_pacific_hsn,echinopluteus,animalia,echinodermata,echinoidea,,,,,echinoidea,
 tara_pacific_hsn,ophiopluteus,animalia,echinodermata,ophiuroidea,,,,,ophiuroidea,True,True,living,full_body,Q59256,123084.0,7618.0,32.0,267
 tara_pacific_manta,Harosa,chromista,,,,,,,chromista,True,True,living,full_body,Q862296,7.0,,,
 tara_pacific_manta,Mollusca,animalia,mollusca,,,,,,mollusca,True,True,living,full_body,Q25326,51.0,6447.0,23.0,
-tara_pacific_manta,Ctenophora<Animalia,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,ctenophora,,ctenophora,True,True,living,full_body,Q25661394,163921.0,1003038.0,249225.0,456;559
+tara_pacific_manta,Ctenophora<Animalia,animalia,ctenophora,,,,,,ctenophora,True,True,living,full_body,Q102778,1248.0,10197.0,,456;559
 tara_pacific_manta,Cnidaria<Animalia,animalia,cnidaria,,,,,,cnidaria,True,True,living,full_body,Q25441,1267.0,6073.0,3.0,
 tara_pacific_manta,Chaetognatha<Animalia,animalia,chaetognatha,,,,,,chaetognatha,True,True,living,full_body,Q192416,2081.0,10229.0,13.0,115
 tara_pacific_manta,Bryozoa,animalia,bryozoa,,,,,,bryozoa,True,True,living,full_body,Q148134,146142.0,10205.0,7.0,
@@ -2155,7 +2155,7 @@ tara_pacific_manta,Bivalvia<Mollusca,animalia,mollusca,bivalvia,,,,,bivalvia,Tru
 tara_pacific_manta,Spumellaria,chromista,radiozoa,polycystina,spumellaria,,,,spumellaria,True,True,living,full_body,Q3967296,345835.0,65583.0,714957.0,655
 tara_pacific_manta,Insecta,animalia,arthropoda,hexapoda,,,,,hexapoda,False,True,living,full_body,Q105146,1278.0,6960.0,20.0,
 tara_pacific_manta,Nudibranchia,animalia,mollusca,gastropoda,nudibranchia,,,,nudibranchia,True,True,living,full_body,Q733595,1762.0,70849.0,84976.0,111
-tara_pacific_manta,Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,neoceratium,,neoceratium,True,True,living,full_body,Q18606071,494056.0,665866.0,317205.0,240
+tara_pacific_manta,Neoceratium,chromista,myzozoa,dinophyceae,gonyaulacales,ceratiaceae,tripos,,tripos,True,True,living,full_body,Q18606362,494057.0,2126447.0,317196.0,239;457;458;459;472;473;627;629;719;729;737;738
 tara_pacific_manta,Tomopteridae,animalia,annelida,polychaeta,phyllodocida,tomopteridae,,,tomopteridae,True,True,living,full_body,Q3897245,958.0,397572.0,125419.0,201;364
 tara_pacific_manta,Alciopini,animalia,annelida,polychaeta,phyllodocida,phyllodocidae,,,alciopini,True,True,living,full_body,,932.0,,,
 tara_pacific_manta,Eumalacostraca,animalia,arthropoda,malacostraca,,,,,malacostraca,True,True,living,full_body,Q182978,1071.0,6681.0,69.0,
@@ -2168,7 +2168,7 @@ tara_pacific_manta,Doliolida,animalia,chordata,thaliacea,doliolida,,,,doliolida,
 tara_pacific_manta,Gymnosomata,animalia,mollusca,gastropoda,pteropoda,,,,pteropoda,True,True,living,full_body,Q1031983,325345.0,977783.0,854079.0,268
 tara_pacific_manta,Cavoliniidae,animalia,mollusca,gastropoda,pteropoda,cavoliniidae,,,cavoliniidae,True,True,living,full_body,Q3203064,23000.0,216329.0,193217.0,614
 tara_pacific_manta,Limacinidae,animalia,mollusca,gastropoda,pteropoda,limacinidae,,,limacinidae,True,True,living,full_body,Q6548854,13704.0,220645.0,1836.0,123;617
-tara_pacific_manta,Creseidae,animalia,mollusca,gastropoda,pteropoda,cliidae,clio,pyramidata,clio pyramidata,True,True,living,full_body,Q3202847,139033.0,356475.0,202265.0,138
+tara_pacific_manta,Creseidae,animalia,mollusca,gastropoda,pteropoda,creseidae,,,creseidae,True,True,living,full_body,Q18713366,411905.0,356495.0,531899.0,608
 tara_pacific_manta,Diatoma,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,diatoma,,diatoma,True,True,living,full_body,Q14552177,149013.0,2862.0,603667.0,711
 tara_pacific_manta,Ostracoda,animalia,arthropoda,ostracoda,,,,,ostracoda,True,True,living,full_body,Q276412,1078.0,6670.0,80.0,165;383
 tara_pacific_manta,Pyrocystaceae,chromista,myzozoa,dinophyceae,gonyaulacales,pyrocystaceae,,,pyrocystaceae,True,True,living,full_body,Q16916347,109444.0,1573500.0,317059.0,240
@@ -2283,7 +2283,7 @@ tara_pacific_manta,t015,,,,,,,,unknown,False,False,artefact,,,,,,
 tara_pacific_manta,t016,,,,,,,,unknown,False,False,artefact,,,,,,
 tara_pacific_manta,t017,,,,,,,,unknown,False,False,artefact,,,,,,
 tara_pacific_manta,gonophore<Diphyidae,animalia,cnidaria,hydrozoa,siphonophorae,diphyidae,,,diphyidae,True,True,living,full_body,Q4008468,135338.0,168754.0,24305.0,342
-tara_pacific_manta,part<Ctenophora,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,ctenophora,,ctenophora,False,False,detritus,part,Q25661394,163921.0,1003038.0,249225.0,456;559
+tara_pacific_manta,part<Ctenophora,animalia,ctenophora,,,,,,ctenophora,False,False,detritus,part,Q102778,1248.0,10197.0,,456;559
 tara_pacific_manta,ephyra<Scyphozoa,animalia,cnidaria,scyphozoa,,,,,scyphozoa,True,True,living,full_body,Q272388,135220.0,6142.0,25222.0,308;641
 tara_pacific_manta,egg<Mollusca,animalia,mollusca,,,,,,mollusca,True,True,living,egg,Q25326,51.0,6447.0,23.0,
 tara_pacific_manta,gonophore<Abylopsis tetragona,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,abylopsis,tetragona,abylopsis tetragona,True,True,living,full_body,Q1931947,135403.0,316209.0,461338.0,321
@@ -2305,7 +2305,7 @@ tara_pacific_manta,nucleus<Salpidae,animalia,chordata,thaliacea,salpida,salpidae
 tara_pacific_manta,larvae<Porcellanidae,animalia,arthropoda,malacostraca,decapoda,porcellanidae,,,porcellanidae,True,True,living,larvae,Q1435521,106734.0,84660.0,1509.0,645
 tara_pacific_manta,zoea<Brachyura<Pleocyemata<Decapoda,animalia,arthropoda,malacostraca,decapoda,,,,brachyura,True,True,living,full_body,,106673.0,,,
 tara_pacific_manta,polype<Leptothecata,animalia,cnidaria,hydrozoa,leptothecata,,,,leptothecata,True,True,living,full_body,Q5122184,13552.0,500008.0,264641.0,644
-tara_pacific_manta,polype<Anthozoa,animalia,cnidaria,,,,,,anthozoa,True,True,living,full_body,,1292.0,,,
+tara_pacific_manta,polype<Anthozoa,animalia,cnidaria,anthozoa,,,,,anthozoa,True,True,living,full_body,,1292.0,,,
 tara_pacific_manta,Miraciidae,animalia,arthropoda,copepoda,harpacticoida,miraciidae,,,miraciidae,True,True,living,full_body,,115163.0,,,
 tara_pacific_manta,bract<Bassia bassensis,animalia,cnidaria,hydrozoa,siphonophorae,abylidae,bassia,bassensis,bassia bassensis,True,True,living,full_body,Q2282611,135404.0,645412.0,455875.0,344
 tara_pacific_manta,nectophore<Eudoxoides spiralis,animalia,cnidaria,hydrozoa,siphonophorae,diphyidae,eudoxoides,spiralis,eudoxoides spiralis,True,True,living,full_body,,135424.0,,,

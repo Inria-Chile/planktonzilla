@@ -32,20 +32,31 @@ changed code path without that diff.
 **Observability note:** every site below already emits a `logger.warning`/`logger.debug` as of
 Phase 4, so these failures are no longer silent — only their *handling* is unchanged.
 
+**2026-08-27 exception, by maintainer direction:** the ten taxonomy-CSV data items
+(KI-8..KI-10, KI-29..KI-35) were repaired IN THE REPOSITORY ahead of the golden-diff
+harness — test-first, with every value verified against external registries; see
+`RESOLVED_ISSUES.md` and `tests/test_taxonomy_validation.py`. The published artifacts are
+untouched: the gate above still governs regenerating or re-publishing them, and the first
+build from the repaired table should expect label-set differences (five labels retired,
+one of them to its casing twin `Eukaryota`→`eukaryota`; `ctenophora` re-read) rather than
+a byte-identical diff.
+
 ---
 
 ## Index
 
 Entries are numbered in the order they were found, not the order they are read: KI-1..7 and
-KI-16..25 are **code behavior**, KI-8..13 and KI-29..35 are **data** defects in the frozen
-taxonomy CSV (found by the 2026-07-13 and 2026-08-26 audits respectively),
+KI-16..25 are **code behavior**, KI-12..13 are the two **data** defects still open in the
+taxonomy CSV (of twelve documented by the 2026-07-13 and 2026-08-26 audits — the other ten
+were repaired 2026-08-27 and live in `RESOLVED_ISSUES.md`),
 KI-14..15 are **source-license** questions, and KI-26 is a **data** defect in a source's own
 sidecar tables; KI-27 is a decision log like KI-24. Numbers are never reused or renumbered — commits,
 code comments and tests cite them.
 
 **This file lists only what is still open.** Nine resolved entries — KI-11, KI-17..KI-23 and
-KI-25 — were moved verbatim to [`RESOLVED_ISSUES.md`](RESOLVED_ISSUES.md) on 2026-08-04. A
-number missing from the table below is *resolved*, not withdrawn; look for it there.
+KI-25 — were moved verbatim to [`RESOLVED_ISSUES.md`](RESOLVED_ISSUES.md) on 2026-08-04; ten
+more — KI-8, KI-9, KI-10 and KI-29..KI-35 — followed on 2026-08-27 with the taxonomy repair
+pass. A number missing from the table below is *resolved*, not withdrawn; look for it there.
 
 | # | Status | Frozen-output risk | Subject |
 | --- | --- | --- | --- |
@@ -56,11 +67,8 @@ number missing from the table below is *resolved*, not withdrawn; look for it th
 | KI-5 | open, deferred | MEDIUM | a transport-error `None` is cached as a genuine no-match |
 | KI-6 | open, deferred | MEDIUM | "API failed" indistinguishable from "no ID" |
 | KI-7 | **partly resolved** | MEDIUM | null/separator/engine handling; taxonomy-CSV half is done |
-| KI-8 | open, wontfix | data-side | a taxon in a rank slot its suffix contradicts |
-| KI-9 | open, wontfix | data-side | the one uppercase value in a normalized column |
-| KI-10 | open, wontfix | data-side | contradictory `plankton` flag on identical fish-egg taxa |
-| KI-12 | open, wontfix | HIGH | integer IDs serialized as `"12345.0"` |
-| KI-13 | open, wontfix | data-side | one external ID stamped on distinct taxa |
+| KI-12 | open, deferred | HIGH | integer IDs serialized as `"12345.0"` |
+| KI-13 | open, documented | data-side | one external ID stamped on distinct taxa |
 | KI-14 | **open, escalate** | downstream-legal | `whoi` recorded as `mit` — 20.5% of the corpus |
 | KI-15 | open, bounded | downstream-legal | `planktonset1.0` recorded as `other` — states nothing |
 | KI-16 | open, **do not fix** | HIGH | split probe reads the repo root; splits discarded |
@@ -68,13 +76,6 @@ number missing from the table below is *resolved*, not withdrawn; look for it th
 | KI-26 | open, source-side | none (17M) / republished (frepj) | FREPJ `Sampling date` is free text; 7.1% not a date — normalized, 1.9% null |
 | KI-27 | decision log | MEDIUM (rebuild) | `frepj` joined the registry (16th, last); sidecar inputs became an importer protocol |
 | KI-28 | decision log | MEDIUM (rebuild) | the four Tara Pacific deposits joined (17th–20th, last); the first sources with **no archive** |
-| KI-29 | open, wontfix | data-side | zoocamnet `Cladocera` mapped to an extinct fossil bivalve genus |
-| KI-30 | open, wontfix | data-side | contradictory `plankton` flag: `chordata` / `hexapoda` (completes KI-10) |
-| KI-31 | open, wontfix | data-side | four two-parent nodes in the rank hierarchy after the frepj append |
-| KI-32 | open, wontfix | data-side | one raw label, divergent mappings across sources; four look misaligned |
-| KI-33 | open, wontfix | data-side | synonym splits: one taxon ships as two label classes |
-| KI-34 | open, wontfix | data-side | 23 Tara rows carry a label finer than their recorded ranks |
-| KI-35 | open, wontfix | data-side | `ctenophora`: comb-jelly raw labels on the diatom genus lineage |
 
 Three obligations belong to archived entries but are **still open**, and are restated here so
 archiving cannot bury them:
@@ -489,9 +490,18 @@ on a golden-output diff like every other data item here. All three are enumerate
 [`TARA_PACIFIC_TAXONOMY_RECONCILIATION.md`](TARA_PACIFIC_TAXONOMY_RECONCILIATION.md) and asserted
 to be the *only* three by `tests/test_tara_pacific_taxonomy.py`.
 
+*2026-08-27:* that separate change happened — the KI-35 repair re-mapped all 12 `ctenophora`
+rows to the comb-jelly phylum, so `Ctenophora<Animalia` and `part<Ctenophora` no longer depart
+from EcoTaxa's tree, and the regenerated report's §B3 lists `Odontella sp.` alone (still
+asserted to be the only one). See `RESOLVED_ISSUES.md`.
+
 **Frozen-output risk: MEDIUM, rebuild-only.** Nothing published changes; a from-scratch build now
 emits twenty sources, the four appended last. The first 1,715 lines of the taxonomy CSV are still
 byte-frozen, and the fifteen archive-only sources still declare no sidecars.
+
+*2026-08-27:* the byte-frozen claim above ended with the taxonomy repair pass — 38 base and 32
+frepj rows inside those lines were edited in place, and the frepj baseline hash
+(`tests/fixtures/frepj/pre_frepj_taxonomy.sha256`) was re-baselined with them.
 
 ---
 
@@ -505,69 +515,26 @@ against the code as it stands — the same pass that archived the nine resolved 
 (FREPJ) lifecycle assessment and the registry join that followed it. KI-28 recorded 2026-08-26
 with the Tara Pacific registry join (issue #10). KI-29 through KI-35 recorded later the same
 day, from the first full-table audit of `planktonzilla_taxonomy.csv` since the frepj and Tara
-Pacific appends — see the dedicated section below.*
+Pacific appends — and repaired, together with KI-8..KI-10, by the maintainer-directed pass of
+2026-08-27 (see `RESOLVED_ISSUES.md`).*
 
 ---
 
-## Data inconsistencies in `planktonzilla_taxonomy.csv` (KI-8 – KI-13)
+## Data inconsistencies in `planktonzilla_taxonomy.csv` (KI-12 – KI-13, the two still open)
 
-KI-1..KI-7, KI-16 and KI-24 above concern **code behavior**. KI-8..KI-13 below concern **data**
-defects in the frozen `planktonzilla_taxonomy.csv` itself, found by a two-method audit on
-**2026-07-13**
-(deterministic checks + a 27-agent adversarially-verified multi-lens audit; every finding
-below survived independent re-verification, and candidate findings explained by a legitimate
-convention were discarded — see *Verified non-issues*). The CSV is **not edited**: the
-datasets and models derived from it are published and frozen on HuggingFace Hub, so these are
-recorded here and **pinned** by `tests/test_taxonomy_known_issues.py` rather than corrected.
-Row numbers are **0-based data rows** (CSV line = row + 2).
-
-## KI-8 — Rank-column contamination: a taxon in a rank slot its suffix contradicts
-
-**Where:** rows 945 (`neomoelleria cornuta`), 153 (`azadinium caudatum`), 1126
-(`pseudochattonella farcimen`), 817 (`katablepharis remigera`).
-
-**Today:** a taxon name is placed in a rank column that its own name-suffix contradicts,
-disagreeing with the same name's placement in dozens–hundreds of other rows:
-
-- row 945: `bacillariophyceae` (a `-phyceae` **class**, correctly in `Class` in 225 other
-  rows) is duplicated into both `Order` **and** `Family`.
-- row 153: `dinophyceae` (**class**) appears in `Order` as well as `Class`.
-- row 1126: `florenciellales` (an `-ales` **order**) appears in `Family` as well as `Order`.
-- row 817: `cryptophyta` (a **phylum**) appears in `Class` (should be `cryptophyceae`).
-
-**Frozen-output risk: data-side.** Correcting the slot changes that row's lineage in the
-published table. Document only. → data fix gated on a golden diff (`HARDEN-01`).
-
-## KI-9 — Uppercase value in a normalized column
-
-**Where:** row 671 (Dataset=`global_uvp5`, Raw_Labels=`Eukaryota`).
-
-**Today:** `proposed_label='Eukaryota'` — the *only* value with an uppercase letter across
-every normalized column (Kingdom..Species, `proposed_label`, `root_class`, `qualifier`) in all
-1,485 rows; the convention is lowercase. (`Raw_Labels` legitimately preserves source casing.)
-Should read `eukaryota`.
-
-**Frozen-output risk: data-side.** A case-sensitive consumer keying on `proposed_label` treats
-this as a distinct class; changing it alters the label set. Document only.
-
-## KI-10 — Contradictory `plankton` flag for identical fish-egg taxa
-
-**Where:** rows 389/390 (`clupeiformes`, qualifier `egg`) and 645/646 (`engraulidae`,
-qualifier `egg`).
-
-**Today:** within each pair the rows are identical in `proposed_label`, `qualifier`, `living`,
-`root_class`, and every `*_ID` column, yet one is `plankton=True` and the other `False`. Both
-are fish eggs (ichthyoplankton), so no axis justifies the split. *Secondary (semantic, softer):*
-for `teleostei`, adult `full_body` rows are `plankton=True` while `larvae` rows are `False` —
-backwards, since larvae are the planktonic stage; this is a judgement call, not a strict
-same-key contradiction.
-
-**Frozen-output risk: data-side.** Correcting either flag changes the `plankton` column.
-Document only.
-
-*2026-08-26:* the same-key contradiction class is larger than the fish-egg pairs this entry
-records — `chordata` and `hexapoda` carry it too, and the four labels together are now pinned
-as the complete set. See KI-30.
+Until 2026-08-27 this section documented twelve data defects — KI-8..KI-13 from the
+2026-07-13 audit of the 1,485-row table, then KI-29..KI-35 from the 2026-08-26 full-table
+audit — under the document-and-pin rule. On **2026-08-27** a maintainer-directed repair
+pass fixed ten of them in the repository CSV: every proposed value was adversarially
+verified against WoRMS / NCBI / GBIF / Wikidata before being applied, 70 rows (38 base,
+32 frepj) were edited in place (237 cells; the row count and every
+`(Dataset, Raw_Labels)` join key are unchanged, so no importer's coverage moved), and the
+Tara Pacific block was regenerated with its own builder. The fixed entries moved verbatim to
+[`RESOLVED_ISSUES.md`](RESOLVED_ISSUES.md); the invariants that keep them fixed are
+enforced by `tests/test_taxonomy_validation.py`, and the repaired readings are guarded by
+`tests/test_taxonomy_known_issues.py`. The published HuggingFace artifacts are unchanged
+by the repair — the fixed table takes effect at the next dataset build. Two entries
+remain open:
 
 ## KI-12 — Integer IDs serialized as floats
 
@@ -604,188 +571,6 @@ backward (e.g. *Daphnia pulex* ships the genus taxid 6668.0, not its own well-kn
 Per-row provenance is in [`FREPJ_DRAFTED_IDS.md`](FREPJ_DRAFTED_IDS.md) (`reused:<source>` and
 the KI-6 rank-drift caveat); the forward direction is still clean. The counts above are kept
 as the 2026-07-13 base-table measurement.
-
----
-
-## Data inconsistencies from the 2026-08-26 full-table audit (KI-29 – KI-35)
-
-KI-8..KI-13 above were established on the 1,485-row table. The table has since grown to
-2,314 rows (the 229 `frepj` rows of Plan 18, then the 600 `tara_pacific_*` rows of issue
-#10), and a full-table re-audit on **2026-08-26** — the deterministic battery re-run on every
-row, plus row-level verification of each candidate finding — produced the seven entries
-below. Same contract and conventions as KI-8..KI-13: 0-based data rows (CSV line = row + 2),
-the CSV is **not edited**, each entry is pinned by `tests/test_taxonomy_known_issues.py`, and
-any data fix is gated on the golden-output diff (`HARDEN-01`). The audit also re-verified, on
-all 2,314 rows, everything the *Verified non-issues* list below claims (0 duplicate rows,
-0 conflicting source mappings, one lineage and one ID value per label, `living` ⇔
-`root_class`, no rank-ladder holes) — all still hold; `ctenophora` is the one dismissal that
-did not survive (KI-35).
-
-## KI-29 — zoocamnet `Cladocera` is mapped to an extinct fossil bivalve genus
-
-**Where:** row 378 (Dataset=`zoocamnet`, Raw_Labels=`Cladocera`).
-
-**Today:** the water-flea label carries the lineage
-`animalia/mollusca/bivalvia/pteriida/inoceramidae/cladoceramus` — *Cladoceramus* is an
-inoceramid bivalve known only from Cretaceous fossils — flagged `plankton=True`,
-`living=True`. Three internal contradictions mark it as a name-similarity mismatch
-(*Cladocera* → *Cladoceramus*) rather than a reading of the images: global_uvp5's identical
-raw label maps to `branchiopoda` (row 201); zoocamnet's own cladoceran genus class
-(`Penilia`, row 1050) sits under `branchiopoda`; and the row's `aphia_ID`/`NCBI_ID`
-(105.0 / 6544.0) are **class Bivalvia's** identifiers — byte-identical to the `bivalvia`
-label's rows — not *Cladoceramus*'s.
-
-**Frozen-output risk: data-side.** Every zoocamnet image of that class ships with the wrong
-kingdom-to-genus lineage; correcting it changes published rank columns. Document only. →
-data fix gated on `HARDEN-01`.
-
-## KI-30 — Contradictory `plankton` flag: `chordata` and `hexapoda` (completes KI-10)
-
-**Where:** rows 318–328 (`chordata`, qualifier `full_body`) and rows 785/786 (`hexapoda`,
-`full_body`).
-
-**Today:** the same strict-key contradiction KI-10 records for the fish-egg pairs —
-identical `proposed_label`, `qualifier`, `living`, `root_class` and every `*_ID` column, yet
-`plankton` takes both values — exists at two more labels, both already present in the
-1,485-row table the 2026-07-13 audit covered (it missed them). `chordata`: **True** for
-global_uvp5 / isiisnet / planktonset1.0 / uvp6net / zoocamnet / zooscan
-(*Actinopterygii* / *Gnathostomata* / *Tunicata* / `chordate_type1`), **False** for
-jedioceans (`LClass_32.1Adult_Fish` and `LClass_fish_lavae`) and zoolake (`fish`) — fish
-larvae flagged not-plankton is the same "backwards" ichthyoplankton reading KI-10 already
-notes for `teleostei`. `hexapoda`: **True** for global_uvp5 (*Chaeteessa*), **False** for
-zooscan (*Insecta*). The appended blocks inherit the split (three Tara `chordata` rows took
-True, two Tara `Insecta` rows took False). With these, the complete same-key contradiction
-set in the table is exactly four labels — chordata, clupeiformes, engraulidae, hexapoda —
-and the pin asserts that completeness, so a fifth cannot appear silently.
-
-**Frozen-output risk: data-side.** Correcting either side changes the `plankton` column.
-Document only.
-
-## KI-31 — The frepj append gave four hierarchy nodes two parents
-
-**Where:** Family `bosminidae` → Order `anomopoda` (rows 196–197, 1486–1490) AND
-`diplostraca` (row 1491, *Bosminopsis deitersi*); Family `daphniidae` → `anomopoda`
-(rows 266, 510–512, 1512–1526) AND `diplostraca` (row 1527, *Scapholeberis smirnovi*);
-Family `sididae` → `ctenopoda` (rows 551, 1049–1051, 1536–1542) AND `diplostraca`
-(row 1543, *Sida*); Order `arcellinida` → Class `tubulinea` (row 94, base) AND `lobosa`
-(rows 1710–1711, frepj).
-
-**Today:** `FREPJ_TAXONOMY_RECONCILIATION.md` records the order-granularity judgment call
-(Section B.1: new-to-FREPJ cladocerans keep GBIF's `diplostraca`; overlapping genera reuse
-the base's finer orders) and the curated `lobosa` proposal (Section B.7) — but not the
-emergent consequence: the rank columns no longer form a tree. The one-lineage-per-label pin
-cannot see this, because the conflicting rows carry different `proposed_label`s. Grouping by
-a rank column or walking parent→child edges (hierarchical metrics, sankey roll-ups, the
-label graph) now splits three families across two orders each, and *Arcellinida* across two
-classes. Related, documented in Section B.5 of the same file: *Simocephalus*
-(rows 1510–1511) spells its family `daphniida`, leaving it outside the `daphniidae` node
-entirely.
-
-**Frozen-output risk: data-side.** Choosing one parent per node changes rank columns in
-published rows. Document only; pinned as the exact four-node set so a fifth two-parent node
-turns the test red.
-
-## KI-32 — One raw label, divergent mappings across sources; four look misaligned
-
-**Where:** 20 `Raw_Labels` strings map to different `proposed_label`s depending on the
-source dataset (never within one dataset — the zero-conflicting-source-mappings invariant
-still holds).
-
-**Today:** sixteen of the twenty are granularity or context judgment calls — uvp6net
-`Annelida` → `poeobius`, `Trachymedusae` → `botrynema`, `Thecosomata` → `cavolinia inflexa`;
-zooscan `Foraminifera` → `globigerinidae`, `Harpacticoida` → `euterpina`, `Penilia` →
-`penilia avirostris`, `actinula` → `solmundella bitentaculata`; flowcamnet `Dinophyceae` →
-`gonyaulacales`, `Ornithocercus` → `ornithocercus magnificus`; `nauplii` → `arthropoda` vs
-`copepoda`; `filament`, `fiber_detritus`, `darkrods`; plus `Cladocera` (KI-29) and
-`Neoceratium` / `Heterocapsa_triquetra` (KI-33). Four have internal evidence of being wrong
-rather than contextual:
-
-- row 908: zooscan `other_living` → `monstrilloida` — the catch-all bucket declared one
-  copepod order, `plankton=True`, while flowcamnet / isiisnet / planktoscope / zoocamnet map
-  `other_living` → `other` and global_uvp5 maps its own generic `living` / `other<living`
-  buckets → `other` (rows 1000–1001).
-- row 1339: global_uvp5 `unknown` → `thecofilosea` — the only dataset whose `unknown`
-  resolves to a concrete taxon (with full IDs); zoolake's `unknown` → `unknown` / artefact.
-- row 37: flowcamnet `Acantharia` → `amphibelone` — a class-level source label rendered as
-  one genus; every other dataset's `Acantharia` → class `acantharia`.
-- row 387: zooscan `Creseidae` → `clio pyramidata` — a species of a *different* family (the
-  row's own Family column says `cliidae`, contradicting the family the label names);
-  global_uvp5's `Creseidae` keeps family `creseidae` (row 464), and zooscan's own
-  `Creseidae acicula` resolves inside Creseidae (row 466).
-
-**Mechanism, guarded forward (2026-08-26):** `build_tara_pacific_taxonomy` resolved an
-ambiguous verbatim donor by FILE POSITION (`_existing_indexes` keeps the first row per
-`Raw_Labels`), which is how the Tara rows inherited `Creseidae` → `clio pyramidata`
-(rows 2009/2169) and `Harpacticoida` → `euterpina` (rows 2017/2174). The builder now
-refuses an ambiguous donor whose pick is not recorded in its `DIVERGENT_DONORS` table
-(eight acknowledged picks today), so the next append cannot repeat the accident.
-
-**Frozen-output risk: data-side.** Re-mapping any of the four changes `proposed_label` for
-every image of that class. Document only.
-
-## KI-33 — Synonym splits: one taxon ships as two label classes
-
-**Where:** `neoceratium` vs `tripos`; `heterocapsa triquetra` vs
-`kryptoperidinium triquetrum`.
-
-**Today:** raw *Neoceratium* → label `neoceratium` in flowcamnet / planktoscope / zoocamnet
-(rows 940–942, plus three inherited Tara rows) but → `tripos` in zooscan (row 1393);
-sharpest inside planktoscope itself, whose two species-mix classes land in different labels
-(`neoceratium gibberum concilians mix` → `neoceratium`, row 943;
-`neoceratium falcatum inflatum mix` → `tripos`, row 1395). And raw `Heterocapsa_triquetra`
-→ `heterocapsa triquetra` (syke_ifcb_2022, row 783) but → `kryptoperidinium triquetrum`
-(whoi, row 822) — one species, as the shared NCBI taxid 66468 confirms. KI-13 blesses a
-shared taxid across synonyms as ID-side correct; the label-space consequence — a classifier
-trained on this table treats one taxon as two classes — was unrecorded.
-
-**Frozen-output risk: data-side.** Merging either pair changes the label set. Document only.
-
-## KI-34 — 23 Tara rows carry a label finer than their recorded ranks
-
-**Where:** 23 `tara_pacific_*` rows; 12 distinct labels (`cirripedia`, `brachyura`,
-`achelata`, `gammaridea`, `alciopini`, `globorotalidae`, `anthozoa`, `coscinodiscids`,
-`dinophyceae x`, `odontella sp.`, `chaetoceros inter. calothrix`,
-`chaetoceros inter ciliate`).
-
-**Today:** in the base and frepj blocks `proposed_label` always equals the lowest filled
-rank (or the Genus+Species binomial) — an unwritten but previously universal invariant. The
-Tara block breaks it where a taxon sits at a rank the seven-column ladder cannot hold:
-`cirripedia` (infraclass; ranks stop at Class=`thecostraca`, row 2019), `brachyura`
-(infraorder; Order=`decapoda`, row 2047), `achelata` (raw `phyllosoma`, row 2071),
-`gammaridea` (suborder, row 2043), `alciopini` (tribe, row 2158), plus EcoTaxa morpho /
-open-nomenclature nodes (`dinophyceae x`, `odontella sp.`, …). Two have an internal
-precedent showing the ranks were representable: `globorotalidae` (row 2135) is a FAMILY
-label whose Family column is empty, while zooscan's foram family `globigerinidae` (row 733)
-fills `Class=globothalamea / Order=rotaliida`; and `anthozoa` (rows 2130/2306) is a
-CLASS-rank taxon whose Class column is empty because the table's cnidarian Class vocabulary
-is `hexacorallia` (rows 22, 265, 1482). A consumer that derives the class partition from the
-rank columns gets a coarser partition than `proposed_label` for exactly these classes, and a
-label lookup in the rank columns fails for all 23.
-
-**Frozen-output risk: data-side.** Filling ranks or coarsening labels changes published
-columns. Document only; pinned as the exact 23-row / 12-label set.
-
-## KI-35 — `ctenophora`: comb-jelly raw labels carried on the diatom genus lineage
-
-**Where:** 12 rows with `proposed_label='ctenophora'` — 9 base (rows 473–481) and 3 Tara
-(rows 2107, 2144, 2284).
-
-**Today:** the label maps to the DIATOM genus *Ctenophora* (aphia 163921,
-`chromista/heterokontophyta/bacillariophyceae/fragilariales/fragilariaceae`), yet its raw
-labels come from zooplankton imagers and include `Ctenophora<Animalia` (the source names the
-kingdom itself, row 2144), `comb_Ctenophora` (row 477) and `tentacle<Ctenophora` (row 481,
-qualifier `part_tentacle`) — comb plates and tentacles are ctenophore anatomy diatoms do not
-have. The same rows carry the comb-jelly `ecotaxa_ID` pair (`456;559`, identical to the
-*Beroe* / *Lobata* / *Cydippida* rows) beside the diatom aphia/NCBI/BOLD ids, and the comb
-jellies' own subtaxa sit under Phylum `ctenophora` in `animalia` elsewhere in the table.
-This SUPERSEDES the *Verified non-issues* dismissal below (the 2026-07-13 audit read the
-two-rank appearance as a legitimate homonym);
-[`TARA_PACIFIC_TAXONOMY_RECONCILIATION.md`](TARA_PACIFIC_TAXONOMY_RECONCILIATION.md) §B3
-reached the same conclusion independently and records how the three Tara rows inherited it.
-
-**Frozen-output risk: data-side.** Re-reading these 12 rows as the comb jelly means a new
-label (the phylum is `ctenophora` too) or a changed lineage — either changes published
-columns, exactly the golden-diff-gated change §B3 describes. Document only.
 
 ---
 
@@ -851,16 +636,24 @@ The audit tested and *rejected* these as legitimate conventions, not defects:
 - `tripos` and `siphonophora` at two ranks are legitimate biological **homonyms**
   (e.g. `siphonophora` the millipede genus vs `siphonophorae` the cnidarian order), not rank
   contamination. *(2026-08-26: `ctenophora` was originally dismissed here with them; that
-  dismissal is superseded by KI-35 — those rows are comb jellies carried on the diatom genus
-  lineage, as `TARA_PACIFIC_TAXONOMY_RECONCILIATION.md` §B3 also records.)*
+  dismissal was superseded by KI-35 and the rows were repaired to the comb-jelly phylum on
+  2026-08-27 — see `RESOLVED_ISSUES.md`.)*
 - Zoological **tautonyms** (*Eudactylota eudactylota*, row 1637; *Porpita porpita*,
   row 2203) legitimately repeat one value across Genus and Species — not rank duplication
   (2026-08-26). The `PARAMECIUM  BURSARIA` double space (row 1043) is `Raw_Labels`
   source-fidelity, the file's only whitespace anomaly.
+- **13 raw label strings deliberately read differently across sources** (uvp6net
+  `Annelida` → `poeobius`, zooscan `Harpacticoida` → `euterpina`, `nauplii` →
+  `arthropoda` vs `copepoda`, …) — per-dataset granularity choices, not defects; the
+  exact set is pinned in both directions by
+  `tests/test_taxonomy_known_issues.py::test_ki32_remaining_divergences_are_exactly_the_acknowledged_ones`
+  (2026-08-27, after the four misaligned cases were repaired under KI-32).
 
-*KI-8..KI-13 recorded 2026-07-13 from the 1,485-row consistency audit; KI-29..KI-35 (and the
-dated corrections to KI-10, KI-13 and this list) recorded 2026-08-26 from the full-table
-re-audit after the frepj and Tara Pacific appends. All are pinned by
-`tests/test_taxonomy_known_issues.py`. Fixing any of these data items changes frozen output —
-gate on a golden-output diff against the published HuggingFace reference (`HARDEN-01` /
-`HARDEN-02`).*
+*KI-8..KI-13 recorded 2026-07-13 from the 1,485-row consistency audit; KI-29..KI-35 recorded
+2026-08-26 from the full-table re-audit after the frepj and Tara Pacific appends. All but
+KI-12 and KI-13 were repaired by the maintainer-directed pass of 2026-08-27 and live in
+[`RESOLVED_ISSUES.md`](RESOLVED_ISSUES.md); the enforced contract is
+`tests/test_taxonomy_validation.py`, and `tests/test_taxonomy_known_issues.py` pins the two
+open items and guards the repaired readings. The repository CSV and the published artifacts
+now differ by exactly that repair — regenerating or re-publishing the artifacts remains gated
+(`HARDEN-01` / `HARDEN-02`).*
