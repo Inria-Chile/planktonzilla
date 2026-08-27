@@ -1868,32 +1868,20 @@ class SYKEIFCB2022DatasetImporter(DatasetImporter):
             copytree_filtered(plankton_class_dir, self.imagefolder_dir / plankton_class_dir.name)
 
 
-class SYKEZooScan2024DatasetImporter(DatasetImporter):
-    """Importer for the SYKE ZooScan 2024 set.
+class FairdataPackagedDatasetImporter(DatasetImporter):
+    """Base for sources published through Fairdata (Etsin) rather than at a stable URL.
 
-    Copies each class folder from
-    ``0127422/2.3/data/FINAL_Plankton_Segments_12082014``.
+    Fairdata serves no direct ``.zip``: a dataset is obtained by asking the Download
+    API to package it, waiting for that to finish, then authorizing a single-use
+    download. Setting ``fairdata_pid`` runs that flow automatically; leaving it unset
+    falls back to the usual ``manual_download_local_file_names`` route, which reports
+    exactly which file is missing and where to get it.
 
-    The archive is published through Fairdata (Etsin) rather than at a stable direct
-    URL, so ``download_uris`` cannot simply name a ``.zip``. Set ``fairdata_pid`` and
-    this importer asks the Fairdata Download API to package the dataset and downloads
-    the result; leave it unset and it falls back to the usual
-    ``manual_download_local_file_names`` route, which now reports exactly which file is
-    missing and where to get it.
-
-    The package is a zip containing another zip, so the outer extraction must be
-    unwrapped before the class folders are reachable — verified against the real
-    archive on 2026-08-01::
-
-        <package>.zip
-          SYKE-plankton_ZooScan_2024/readme.md
-          SYKE-plankton_ZooScan_2024/SYKE-plankton_ZooScan_2024.zip
-            SYKE-plankton_ZooScan_2024/images/SYKE-plankton_ZooScan_2024/<class>/*.png
-            SYKE-plankton_ZooScan_2024/class_splits/…
-            __MACOSX/…                       (junk; copytree_filtered drops it)
-
-    The 20 class folders that produces match the 20 ``sykezooscan2024`` ``Raw_Labels``
-    in ``planktonzilla_taxonomy.csv`` exactly.
+    Everything here is source-independent, so a subclass supplies only
+    :meth:`_prepare_imagefolder`. Extracted from ``SYKEZooScan2024DatasetImporter``,
+    which was the sole Fairdata source until DAPlankton joined it — the alternative
+    was copying the single-use-token download below, whose whole reason for existing
+    is a failure mode that is invisible until it happens.
     """
 
     def download_targets(self) -> list[tuple[str, str]]:
@@ -1991,6 +1979,32 @@ class SYKEZooScan2024DatasetImporter(DatasetImporter):
             self.manual_download_local_file_names = str(self._fetch_single_use(resolved))
 
         return super()._download_and_extract()
+
+
+class SYKEZooScan2024DatasetImporter(FairdataPackagedDatasetImporter):
+    """Importer for the SYKE ZooScan 2024 set.
+
+    Copies each class folder from
+    ``0127422/2.3/data/FINAL_Plankton_Segments_12082014``.
+
+    The archive is published through Fairdata (Etsin), so the download itself is
+    inherited from :class:`FairdataPackagedDatasetImporter`; only the layout below is
+    specific to this source.
+
+    The package is a zip containing another zip, so the outer extraction must be
+    unwrapped before the class folders are reachable — verified against the real
+    archive on 2026-08-01::
+
+        <package>.zip
+          SYKE-plankton_ZooScan_2024/readme.md
+          SYKE-plankton_ZooScan_2024/SYKE-plankton_ZooScan_2024.zip
+            SYKE-plankton_ZooScan_2024/images/SYKE-plankton_ZooScan_2024/<class>/*.png
+            SYKE-plankton_ZooScan_2024/class_splits/…
+            __MACOSX/…                       (junk; copytree_filtered drops it)
+
+    The 20 class folders that produces match the 20 ``sykezooscan2024`` ``Raw_Labels``
+    in ``planktonzilla_taxonomy.csv`` exactly.
+    """
 
     def _prepare_imagefolder(self):
         root = Path(self.extracted_dirs)

@@ -17,16 +17,15 @@ transcription can drift, so these tests pin it from two independent directions:
   (b) COVERAGE — the table covers exactly the fifteen source datasets that actually
       appear in the published planktonzilla-17M, no more and no fewer. The source of
       that list is ``samples.json`` (a real scan of the frozen dataset), so a
-      hand-maintained table cannot silently miss a source or invent one. The one
-      tolerated extra is spelled out in ``_RECORDED_BUT_NOT_YET_PUBLISHED``: a source
-      whose taxonomy rows and importer config are already in the tree but whose merge
-      into planktonzilla-17M is still pending.
+      hand-maintained table cannot silently miss a source or invent one. The tolerated
+      extras are spelled out in ``_RECORDED_BUT_NOT_YET_PUBLISHED``: sources whose
+      taxonomy rows and importer config are already in the tree but whose merge into
+      planktonzilla-17M is still pending.
 
 Coverage is what makes the frozen artifact safe to relicense-annotate: a missing entry
 would mean published images shipping a null license, and (b) fails before that can
-happen. It also guards the two naming traps documented on DATASET_IMPORT_CONFIGS —
-five ``dataset`` values differ from their config stem, and three sources are absent
-from ``cfg.datasets`` entirely.
+happen. It also guards the naming trap documented on DATASET_IMPORT_CONFIGS: five
+``dataset`` values differ from their config stem.
 
 Reads only committed files: the importer YAMLs, ``samples.json`` and the taxonomy CSV.
 """
@@ -76,12 +75,14 @@ _NON_DEED_URLS = {
 }
 
 # Sources whose terms are recorded ahead of their arrival in the PUBLISHED planktonzilla-17M:
-# in the taxonomy CSV, configs/dataset_import and (since 2026-08-25) the default registry,
-# published on their own (project-oceania/planktonzilla-frepj), but absent from samples.json
-# — a scan of the frozen artifact — until the v1.2 push. Listed explicitly so the
-# samples.json test tolerates nothing else; once the v1.2 artifact is published and
-# samples.json regenerated, this set goes back to empty.
-_RECORDED_BUT_NOT_YET_PUBLISHED = {"frepj"}
+# in the taxonomy CSV, configs/dataset_import and the default registry, but absent from
+# samples.json — a scan of the frozen artifact — until the next push. Listed explicitly so
+# the samples.json test tolerates nothing else; once a pending source lands in the published
+# artifact and samples.json is regenerated, it comes back out of this set (and
+# `len(published)` below moves in the same commit).
+#   frepj      registry since 2026-08-25, published on its own as project-oceania/planktonzilla-frepj
+#   daplankton registry since 2026-08-27
+_RECORDED_BUT_NOT_YET_PUBLISHED = {"frepj", "daplankton"}
 
 
 def _published_dataset_names():
@@ -211,16 +212,21 @@ def test_generate_config_datasets_are_all_covered():
     assert not configured - set(DATASET_LICENSES), (
         f"cfg.datasets source(s) with no recorded license: {sorted(configured - set(DATASET_LICENSES))}"
     )
-    # The registry carries all 15 published sources plus frepj (v1.2), so a from-scratch
-    # build reproduces every source of the published dataset and the one joining it. The
-    # table is still declared independently of cfg.datasets: it is the record of each
-    # source's TERMS, which must survive a source being temporarily removed from the build.
+    # The registry carries all 15 published sources plus the two joining them (frepj at
+    # v1.2, then daplankton), so a from-scratch build reproduces every source of the
+    # published dataset and both newcomers. The table is still declared independently of
+    # cfg.datasets: it is the record of each source's TERMS, which must survive a source
+    # being temporarily removed from the build.
     assert set(DATASET_LICENSES) - configured == set()
-    assert len(configured) == 16
+    assert len(configured) == 17
 
 
 def test_pending_source_license_agrees_with_its_layout_constants():
-    """frepj's slug is transcribed in three places; they must not drift apart."""
-    from planktonzilla.dataset_import import frepj_layout
+    """Each pending source's slug is transcribed in three places; they must not drift apart."""
+    from planktonzilla.dataset_import import daplankton_layout, frepj_layout
 
     assert DATASET_LICENSES["frepj"] == {"license": frepj_layout.LICENSE, "license_url": frepj_layout.LICENSE_URL}
+    assert DATASET_LICENSES["daplankton"] == {
+        "license": daplankton_layout.LICENSE,
+        "license_url": daplankton_layout.LICENSE_URL,
+    }

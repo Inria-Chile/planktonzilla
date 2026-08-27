@@ -63,7 +63,7 @@ LICENSE_COLS = ("license", "license_url")
 
 # ``dataset`` column value -> ``configs/dataset_import/<stem>.yaml``.
 #
-# Five of the sixteen do NOT match: the value written into the ``dataset`` column is
+# Five of the seventeen do NOT match: the value written into the ``dataset`` column is
 # the `name` field of a `cfg.datasets` entry in configs/generate_planktonzilla.yaml,
 # while the importer config is named after the source. No naming rule recovers the
 # difference, so it is written down here and pinned by tests/test_dataset_licenses.py.
@@ -78,6 +78,10 @@ LICENSE_COLS = ("license", "license_url")
 # 2026-08-25, appended last so the fifteen above keep their concatenation index. It is
 # published on its own as project-oceania/planktonzilla-frepj and is absent from the
 # frozen planktonzilla-17M until the v1.2 push.
+#
+# `daplankton` is the seventeenth, appended after frepj for the same reason. Like frepj it
+# is recorded here — and in the taxonomy CSV and the registry — ahead of its arrival in the
+# published artifact, so tests/test_dataset_licenses.py lists BOTH as pending.
 DATASET_IMPORT_CONFIGS = {
     "isiisnet": "isiisnet",
     "whoi": "whoi-plankton",
@@ -97,6 +101,8 @@ DATASET_IMPORT_CONFIGS = {
     "zoolake": "zoolake",
     # Sixteenth entry (v1.2), appended last; not in the frozen 17M until the v1.2 push.
     "frepj": "frepj",
+    # Seventeenth entry, appended after frepj for the same index-preserving reason.
+    "daplankton": "daplankton",
 }
 
 # Canonical deed URL per license slug, used to fill ``license_url`` for the standard
@@ -132,6 +138,12 @@ _LICENSE_DEEDS = {
 #   - planktonset1.0: `other` names nothing, so the URL is the NOAA NCEI DOI for
 #     accession 0127422 already recorded in the config's citation. The published
 #     LICENSE.md words this as "U.S. Government Work — no license stated".
+#
+# `daplankton` post-dates that LICENSE.md too; its slug is pinned against
+# configs/dataset_import/daplankton.yaml and dataset_import.daplankton_layout.LICENSE. CC BY
+# 4.0 is stated identically in three independent places — the Metax record's
+# access_rights.license, the Etsin landing page, and the readme.md bundled inside the archive
+# itself — all read on 2026-08-27.
 DATASET_LICENSES = {
     name: {"license": slug, "license_url": url or _LICENSE_DEEDS[slug]}
     for name, slug, url in (
@@ -151,6 +163,7 @@ DATASET_LICENSES = {
         ("sykezooscan2024", "cc-by-4.0", None),
         ("zoolake", "cc0-1.0", None),
         ("frepj", "cc-by-4.0", None),
+        ("daplankton", "cc-by-4.0", None),
     )
 }
 

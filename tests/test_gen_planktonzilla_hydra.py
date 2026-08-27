@@ -67,9 +67,12 @@ EXPECTED_TABLE = [
     ("zoolake", "zoolake", False, "none"),
     ("jedioceans", "jedi_oceans_cpics", False, "jedi"),
     ("sykezooscan2024", "sykezooscan2024", False, "none"),
-    # Appended 2026-08-25 (v1.2), LAST, so every source above keeps its index. Its redefiner
+    # Appended 2026-08-25 (v1.2), so every source above keeps its index. Its redefiner
     # joins md5-pinned sidecar tables the importer fetches before the first import.
     ("frepj", "frepj", False, "frepj"),
+    # Appended 2026-08-27, LAST, for the same index-preserving reason. Like sykezooscan2024
+    # it resolves its archive through the Fairdata Download API rather than a direct URL.
+    ("daplankton", "daplankton", False, "none"),
 ]
 
 

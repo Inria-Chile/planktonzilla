@@ -84,17 +84,27 @@ _FROZEN_FIFTEEN = [
 
 
 def test_default_config_appends_frepj_last_keeping_the_fifteen_in_place():
-    """The default registry is the frozen fifteen, in order, plus frepj appended LAST (v1.2).
+    """The default registry is the frozen fifteen, in order, then frepj (v1.2), then daplankton.
 
     Registry order is the concatenation order of the output, so appending — never
     inserting — is what keeps every published source at the index it already had.
+
+    frepj is pinned by its ABSOLUTE index, not by ``[-1]``: it stopped being last the
+    moment daplankton was appended after it, and a negative index would have quietly
+    re-pointed this assertion at the new source instead of failing.
     """
     cfg = _compose("generate_planktonzilla")
     try:
         assert cfg.repo_id == "project-oceania/planktonzilla-17M"
-        assert len(cfg.datasets) == 16
+        assert len(cfg.datasets) == 17
         assert [d["name"] for d in cfg.datasets[:15]] == _FROZEN_FIFTEEN
-        assert dict(cfg.datasets[-1]) == {"name": "frepj", "import_name": "frepj", "cleanup": False, "redefiner": "frepj"}
+        assert dict(cfg.datasets[15]) == {"name": "frepj", "import_name": "frepj", "cleanup": False, "redefiner": "frepj"}
+        assert dict(cfg.datasets[16]) == {
+            "name": "daplankton",
+            "import_name": "daplankton",
+            "cleanup": False,
+            "redefiner": "none",
+        }
     finally:
         GlobalHydra.instance().clear()
 

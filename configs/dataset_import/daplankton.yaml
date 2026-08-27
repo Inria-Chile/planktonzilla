@@ -1,0 +1,70 @@
+defaults:
+  - default.yaml
+
+_target_: planktonzilla.dataset_import.daplankton_importer.DAPlanktonDatasetImporter
+hf_dataset_name: daplankton
+push_to_hub: true
+
+human_readable_name: "DAPlankton: Benchmark Dataset for Multi-instrument Plankton Recognition"
+license: "cc-by-4.0"
+description: |
+    DAPlankton is a benchmark for fine-grained plankton recognition ACROSS imaging instruments: the same taxa are
+    imaged by an Imaging FlowCytobot (IFCB), a CytoSense flow cytometer (CS) and a FlowCam imaging microscope (FC),
+    so the domain shift a classifier has to survive is the instrument rather than the label.
+
+    It ships two subsets. DAPlankton_LAB holds 47,471 images of 15 cultured phytoplankton species across all three
+    instruments — balanced, with minimal label uncertainty. DAPlankton_SEA holds 64,453 images of 31 classes from
+    Baltic Sea field samples (Utö Atmospheric and Marine Research Station, summer 2020) across IFCB and CytoSense —
+    strongly imbalanced, with large intra-class variance. Every image was annotated by expert taxonomists, and
+    DAPlankton_SEA follows the label scheme of SYKE-plankton_IFCB_2022: its 31 classes are a strict subset of that
+    dataset's 50.
+
+    The importer merges the five subset/instrument roots into one class dir per taxon, giving 44 distinct classes
+    over 111,924 images — 46 class slots minus the two taxa (Aphanizomenon flos-aquae, Pseudopedinella sp.) that
+    appear in both subsets. Subset and instrument are preserved as a filename prefix (`lab_cs_`, `sea_ifcb_`, …) and
+    remain recoverable from the `original_path` column.
+# Published through Fairdata (Etsin), which serves no stable direct .zip URL: a dataset is
+# downloaded by asking the Download API to package it, waiting for that, then authorizing a
+# single-use download. Setting fairdata_pid runs that flow automatically — the same one
+# sykezooscan2024 uses, inherited from FairdataPackagedDatasetImporter.
+#
+# This is the Etsin dataset UUID, NOT the DOI. Measured against the live service on
+# 2026-08-27: the UUID returns a ready package (status SUCCESS), while the DOI form
+# ("doi:10.23729/32583bd0-...", the value Metax stores as persistent_identifier) 404s
+# against the download host. The whole flow was run end to end that day — /requests then
+# /authorize then the download — and the 2,739,982,748-byte package it returned matched the
+# sha256 the API declared.
+#
+# If the service is down or the contract moves, the resolver fails loudly with the manual
+# fallback rather than importing something wrong:
+#   pz_import_dataset dataset_import=daplankton \
+#     dataset_import.fairdata_pid=null \
+#     dataset_import.manual_download_local_file_names=${paths.data_dir}/manual_downloads/DAPlankton.zip
+fairdata_pid: "a53a55a9-a591-404a-a372-d657d7efb89f"
+download_uris: ""
+manual_download_url: "https://etsin.fairdata.fi/dataset/a53a55a9-a591-404a-a372-d657d7efb89f"
+manual_download_notes: |
+  On the Etsin page choose "Download" > the whole dataset, which produces a .zip of about
+  2.7 GB. Note that what you get wraps a SECOND zip (DAPlankton/DAPlankton.zip) — hand the
+  outer file over as-is, the importer unwraps both. Budget ~9 GB free under data_dir for a
+  from-scratch import (package + unwrapped archive + merged imagefolder).
+source_url: "https://etsin.fairdata.fi/dataset/a53a55a9-a591-404a-a372-d657d7efb89f"
+arxiv_id: "2402.05615"
+citation_apa: |
+    Batrakhanov, D., Eerola, T., Kraft, K., Haraguchi, L., Lensu, L., Suikkanen, S., Camarena-Gómez, M. T.,
+    Seppälä, J., & Kälviäinen, H. (2024). DAPlankton: Benchmark Dataset for Multi-instrument Plankton Recognition
+    via Fine-grained Domain Adaptation [Data set]. LUT University.
+    https://doi.org/10.23729/32583bd0-38cd-4532-a8d6-fc9dc5967dce
+
+citation_bibtex: |
+  @inproceedings{dataset:daplankton,
+    title     = {DAPlankton: Benchmark Dataset for Multi-instrument Plankton Recognition
+  via Fine-grained Domain Adaptation},
+    author    = {Batrakhanov, Daniel and Eerola, Tuomas and Kraft, Kaisa and Haraguchi, Lumi
+  and Lensu, Lasse and Suikkanen, Sanna and Camarena-G{\'o}mez, Mar{\'i}a Teresa
+  and Sepp{\"a}l{\"a}, Jukka and K{\"a}lvi{\"a}inen, Heikki},
+    booktitle = {IEEE International Conference on Image Processing (ICIP)},
+    year      = {2024},
+    doi       = {10.23729/32583bd0-38cd-4532-a8d6-fc9dc5967dce},
+    eprint    = {2402.05615}
+  }
