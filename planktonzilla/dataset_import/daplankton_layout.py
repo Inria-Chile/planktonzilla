@@ -18,8 +18,11 @@ listed. What that enumeration pinned:
   * and the five-domain merge policy (see :data:`DOMAIN_PREFIXES`).
 
 Nothing here downloads, extracts, or mutates anything; the merge helper operates only on
-paths it is explicitly handed. ``daplankton.yaml`` and ``DAPlanktonDatasetImporter``
-import these constants rather than restating them.
+paths it is explicitly handed. ``DAPlanktonDatasetImporter`` imports these constants and
+``daplankton.yaml`` mirrors the deposit-identity ones as literals — Hydra cannot read a
+Python module — so the two are pinned together by
+``tests/test_dataset_import_configs.py::test_daplankton_is_configured_for_fairdata``
+rather than trusted to stay in step.
 """
 
 import shutil
@@ -169,13 +172,17 @@ def merge_domain_roots(archive_root: str | Path, dest_dir: str | Path) -> int:
         dest_dir: Destination imagefolder root; created if absent.
 
     Returns:
-        The number of image files copied.
+        The number of image files COPIED BY THIS CALL — not the number present in
+        ``dest_dir`` afterwards. The two differ on any re-run over a populated
+        imagefolder, where every file is skipped and this returns 0 while the tree is
+        complete, so a completeness check must count the destination instead.
     """
     archive_root = Path(archive_root)
     dest_dir = Path(dest_dir)
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     copied = 0
+    skipped = 0
     for (subset, instrument), prefix in DOMAIN_PREFIXES:
         root = archive_root / subset / instrument
         if not root.is_dir():
@@ -191,7 +198,15 @@ def merge_domain_roots(archive_root: str | Path, dest_dir: str | Path) -> int:
                     shutil.copy2(image, target)
                     copied += 1
                 else:
-                    logger.warning(f"Refusing to overwrite existing «{target}»; skipped.")
+                    # DEBUG, not WARNING, and counted rather than enumerated: an already-present
+                    # file is the NORMAL state of `refresh=rebuild`, which re-enters this function
+                    # over a populated imagefolder (only `redownload` clears it first). At full
+                    # scale that path skips all 111,924 files, and one warning record each buries
+                    # every other line the run emits.
+                    logger.debug(f"«{target}» already present; not overwritten.")
+                    skipped += 1
+    if skipped:
+        logger.info(f"Left {skipped} already-present DAPlankton image(s) untouched; nothing was overwritten.")
     return copied
 
 

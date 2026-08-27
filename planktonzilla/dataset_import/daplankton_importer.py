@@ -79,17 +79,28 @@ class DAPlanktonDatasetImporter(FairdataPackagedDatasetImporter):
         logger.info(f"DAPlankton subset roots located at «{archive_root}».")
 
         copied = daplankton_layout.merge_domain_roots(archive_root, self.imagefolder_dir)
+        present = sum(
+            1
+            for path in self.imagefolder_dir.rglob("*")
+            if path.is_file() and path.suffix.lower() in daplankton_layout.IMAGE_SUFFIXES
+        )
         logger.info(
             f"Merged {copied} DAPlankton image(s) from {len(daplankton_layout.DOMAIN_PREFIXES)} subset/instrument "
-            f"root(s) into «{self.imagefolder_dir}»."
+            f"root(s) into «{self.imagefolder_dir}»; {present} image(s) now present."
         )
-        if copied != daplankton_layout.N_IMAGES:
-            # Not fatal — a partial archive is still importable, and the taxonomy join
-            # does not depend on the count. But the recorded figure is what the authors
-            # state AND what a full enumeration of the real archive produced, so any
-            # other number means this run did not see the whole dataset.
+        if present != daplankton_layout.N_IMAGES:
+            # Counted from the DESTINATION, not from `copied`. `copied` is what this call
+            # wrote, which is 0 on any re-run over a populated imagefolder — and
+            # `refresh=rebuild` is exactly that (only `redownload` clears the folder
+            # first), so testing `copied` made every healthy rebuild report itself as a
+            # truncated download.
+            #
+            # Not fatal either way: a partial archive is still importable and the taxonomy
+            # join does not read the count. But the recorded figure is what the authors
+            # state AND what a full enumeration of the real archive produced, so any other
+            # number means this run did not end up with the whole dataset.
             logger.warning(
-                f"Expected {daplankton_layout.N_IMAGES} DAPlankton images but merged {copied}. "
+                f"Expected {daplankton_layout.N_IMAGES} DAPlankton images but the imagefolder holds {present}. "
                 "The archive may be partial, or its layout may have changed upstream."
             )
 

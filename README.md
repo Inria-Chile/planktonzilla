@@ -339,7 +339,7 @@ to republish the taxonomy too.
 
 The same holds for `custom_metadata` (added for v1.2): one JSON object per image holding what
 only its source knows and no consolidated column covers — FREPJ's `magnification` and raw `site`
-token; the literal `{}` for the fifteen existing sources. A base that predates the column is
+token; the literal `{}` for every other source. A base that predates the column is
 filled with `{}` on its next `pz_planktonzilla base=…` run (logged loudly), so that run too
 belongs on a new `push_revision`, not over the frozen one.
 
@@ -539,18 +539,19 @@ and **DAPlankton**. Each has an importer config in `configs/dataset_import/`:
 | **ZooLake** | `zoolake` | 17,942 | Lake Greifensee (Switzerland) zooplankton | `cc-by-4.0` |
 | **Lensless** | `lensless` | 6,400 | Lensless plankton microscopy (lab culture) | `cc-by-4.0` |
 | **FREPJ-Z** (v1.2) | `frepj` | 88,686 | Freshwater zooplankton of Japanese lakes and reservoirs, 40×/100× microscopy — registry only, not in the published 17M yet | `cc-by-4.0` |
-| **DAPlankton** | `daplankton` | 111,924 | Multi-instrument benchmark: the same Baltic taxa imaged by IFCB, CytoSense and FlowCam — registry only, not in the published 17M yet | `cc-by-4.0` |
+| **DAPlankton** | `daplankton` | 111,924 | Multi-instrument benchmark: 15 cultured classes imaged by IFCB, CytoSense and FlowCam, plus 31 Baltic field classes by IFCB and CytoSense — registry only, not in the published 17M yet | `cc-by-4.0` |
 
 Note that the `dataset` column value does not always match the importer config stem (`whoi` vs
 `whoi-plankton.yaml`, `zooscan` vs `zooscannet.yaml`, and three more). The mapping is recorded in
 `constants.DATASET_IMPORT_CONFIGS`.
 
-**DAPlankton** is the one source whose class dirs are not simply copied across. It is laid out as
+**DAPlankton**, like FREPJ-Z, does not copy its class dirs across unchanged. It is laid out as
 `<subset>/<instrument>/<class>/`, over two subsets (15 cultured species; 31 Baltic Sea field
-classes) and three instruments — so 46 class slots that are really 44 taxa, since *Aphanizomenon
-flos-aquae* and *Pseudopedinella* sp. appear in both subsets. The importer merges the five
-subset/instrument roots into one class dir per taxon, exactly as FREPJ-Z merges its two
-magnifications, and preserves the provenance as a filename prefix (`lab_cs_`, `sea_ifcb_`, …) that
+classes) and three instruments — FlowCam imaged the cultures only, so there is no `DAPlankton_sea/FC`
+and the tree has five roots, not six. That is 46 class slots which are really 44 taxa, since
+*Aphanizomenon flos-aquae* and *Pseudopedinella* sp. appear in both subsets. The importer merges the
+five subset/instrument roots into one class dir per taxon — the same merge FREPJ-Z applies to its two
+magnifications — and preserves the provenance as a filename prefix (`lab_cs_`, `sea_ifcb_`, …) that
 stays readable in the `original_path` column. Its 31 sea classes are a strict subset of the 50 in
 SYKE IFCB 2022, whose label scheme it follows.
 
@@ -573,8 +574,8 @@ are mutually incompatible. Every image therefore carries its source's terms in t
 terms are stated).
 
 The shares below describe the **published** dataset. The registry covers all 15 of its
-sources plus `frepj` (v1.2), so a from-scratch rebuild reproduces the same mix of terms —
-`frepj` adds `cc-by-4.0` images only.
+sources plus the two joining them — `frepj` (v1.2) and `daplankton` — so a from-scratch
+rebuild reproduces the same mix of terms: both add `cc-by-4.0` images only.
 
 | License | Images | Share | Reuse |
 | --- | ---: | ---: | --- |

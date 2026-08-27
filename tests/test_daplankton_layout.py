@@ -216,7 +216,7 @@ def test_merge_skips_an_absent_domain_root(tmp_path):
     assert dl.merge_domain_roots(archive_root, dest) == 1
 
 
-def test_merge_refuses_to_overwrite(tmp_path, caplog):
+def test_merge_refuses_to_overwrite(tmp_path):
     """No file is ever silently clobbered — the guard is explicit, not incidental."""
     archive_root = tmp_path / "DAPlankton"
     _build_domains(archive_root, {("DAPlankton_lab", "CS"): {"Ciliata": ["Ciliata00001.jpg"]}})
@@ -226,6 +226,36 @@ def test_merge_refuses_to_overwrite(tmp_path, caplog):
     # A second run copies nothing new and leaves the existing file alone.
     assert dl.merge_domain_roots(archive_root, dest) == 0
     assert len(list((dest / "Ciliata").iterdir())) == 1
+
+
+def test_a_rebuild_does_not_emit_a_warning_per_already_present_file(tmp_path, caplog):
+    """Skipping an existing file is the NORMAL state of a rebuild, not a warning-worthy event.
+
+    ``refresh=rebuild`` re-enters ``_prepare_imagefolder`` over a populated imagefolder —
+    only ``redownload`` clears it first — so every one of the source's images is skipped.
+    At full scale that is 111,924 skips, and one WARNING record each buries every other
+    line the run emits. One summary line at INFO, and the detail at DEBUG.
+    """
+    archive_root = tmp_path / "DAPlankton"
+    _build_domains(
+        archive_root,
+        {
+            ("DAPlankton_lab", "CS"): {"Ciliata": ["Ciliata00001.jpg", "Ciliata00002.jpg"]},
+            ("DAPlankton_sea", "IFCB"): {"Ciliata": ["Ciliata00001.png"]},
+        },
+    )
+    dest = tmp_path / "imagefolder"
+    assert dl.merge_domain_roots(archive_root, dest) == 3
+
+    caplog.clear()
+    with caplog.at_level("DEBUG"):
+        assert dl.merge_domain_roots(archive_root, dest) == 0
+
+    warnings = [record for record in caplog.records if record.levelname == "WARNING"]
+    assert warnings == [], f"a rebuild emitted {len(warnings)} warning(s)"
+    assert any("Left 3 already-present" in record.message for record in caplog.records)
+    # And the tree is still complete — the skip is correct behaviour, not a loss.
+    assert len(list((dest / "Ciliata").iterdir())) == 3
 
 
 def test_find_archive_root_handles_the_double_nesting(tmp_path):

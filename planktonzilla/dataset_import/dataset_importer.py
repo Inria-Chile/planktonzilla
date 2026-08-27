@@ -1019,7 +1019,8 @@ class DatasetImporter:
 
         Subclasses that override ``_download_and_extract`` override this in step:
         :class:`LenslessDatasetImporter` (bundled zip) and
-        :class:`SYKEZooScan2024DatasetImporter` (Fairdata). A source with a SECOND
+        :class:`FairdataPackagedDatasetImporter` (Fairdata — ``sykezooscan2024``,
+        ``daplankton``). A source with a SECOND
         download outside the lifecycle — :class:`GlobalUVP5NetDatasetImporter`'s objects
         metadata, fetched from ``_prepare_imagefolder`` — adds it here as well, since a
         build stops just as dead on that one. A source with inputs it needs on EVERY run,
@@ -1045,7 +1046,7 @@ class DatasetImporter:
         """
         targets = self.download_targets()
         # Guaranteed here, not only in download_targets(): a subclass that overrides that
-        # method without calling super() (Lensless, SYKE ZooScan) would otherwise drop the
+        # method without calling super() (Lensless; the Fairdata base on its PID branch) would otherwise drop the
         # sidecar targets it later declares, and the pre-flight would never probe them.
         targets += [target for target in self.sidecar_targets() if target not in targets]
 

@@ -1269,7 +1269,7 @@ def _drive_plain_run(monkeypatch, cfg, tmp_path, ensure_side_effect, import_side
 
 
 def test_a_plain_run_obtains_sidecars_before_the_first_import(monkeypatch, tmp_path):
-    """Every source's sidecars are obtained up front — seconds, not at the sixteenth source's turn."""
+    """Every source's sidecars are obtained up front — seconds, not at the seventeenth source's turn."""
     cfg = _preflight_cfg(tmp_path, [], "test_make_sidecars_first")
     order = []
     tiny = Dataset.from_dict({"x": [1]})
