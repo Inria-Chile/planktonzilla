@@ -1597,8 +1597,19 @@ class WHOIPlanktonDatasetImporter(DatasetImporter):
             position=0,
             disable=not self.show_progress,
         ):
+            release_root = self.raw_dir / release_folder
+            # Each release archive unpacks to a wrapper directory (observed: the release
+            # year, e.g. `2006/<class>/*.png`) ABOVE the class dirs, not the class dirs
+            # directly — a plain `release_root.glob("*")` picked up that wrapper as if it
+            # were itself a (image-less) class, silently produced zero-file imagefolder
+            # entries, and the eventual `load_dataset("imagefolder", ...)` died with
+            # `Instruction "train" corresponds to no data!`. Locating class dirs by where
+            # the `.png` files actually are — as `import_dataset`'s own integrity-check
+            # rglob already does — is depth-agnostic and self-corrects regardless of how
+            # many wrapper levels a given release's archive happens to add.
+            class_dirs = sorted({img_file.parent for img_file in release_root.rglob("*.png")})
             for folder in tqdm(
-                [item for item in (self.raw_dir / release_folder).glob("*") if item.is_dir()],
+                class_dirs,
                 desc=f"Moving release {release_folder}",
                 leave=False,
                 position=1,

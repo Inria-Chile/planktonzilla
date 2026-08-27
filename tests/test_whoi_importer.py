@@ -65,6 +65,39 @@ def test_whoi_prepares_into_a_data_dir_that_never_held_it(tmp_path, monkeypatch)
     assert imp.hf_dataset == "FAKE_DATASET"
 
 
+def test_whoi_finds_classes_nested_under_a_release_year_wrapper(tmp_path, monkeypatch):
+    """The observed crash: a real ``pz_planktonzilla sources=[whoi]`` build downloaded all
+    nine release archives, extracted them, then died with
+    ``ValueError: Instruction "train" corresponds to no data!`` because each archive
+    unpacks to a year-named wrapper directory ABOVE the class dirs
+    (``<release>/2006/Ciliate/*.png``), not the class dirs directly
+    (``<release>/Ciliate/*.png``) that ``_prepare_imagefolder`` assumed. It copied zero
+    files and left empty ``2006``..``2014`` folders in the imagefolder.
+    """
+    imp = dataset_importer.WHOIPlanktonDatasetImporter(
+        data_dir=tmp_path,
+        hf_dataset_name="whoi",
+        push_to_hub=False,
+        show_progress=False,
+    )
+
+    _write_rgb_png(imp.raw_dir / "release_2006" / "2006" / "Ciliate" / "img_0.png")
+    _write_rgb_png(imp.raw_dir / "release_2006" / "2006" / "Chaetoceros" / "img_1.png")
+    monkeypatch.setattr(
+        dataset_importer.WHOIPlanktonDatasetImporter,
+        "_download_and_extract",
+        lambda self: setattr(self, "extracted_dirs", ["release_2006"]),
+    )
+    monkeypatch.setattr(dataset_importer, "load_dataset", lambda *args, **kwargs: "FAKE_DATASET")
+
+    imp.import_dataset()
+
+    assert sorted(path.name for path in (imp.imagefolder_dir / "Ciliate").glob("*.png")) == ["img_0.png"]
+    assert sorted(path.name for path in (imp.imagefolder_dir / "Chaetoceros").glob("*.png")) == ["img_1.png"]
+    # No leftover empty year-wrapper directory at the imagefolder root.
+    assert not (imp.imagefolder_dir / "2006").exists()
+
+
 def test_import_dataset_creates_the_imagefolder_root_before_the_subclass_hook(tmp_path, monkeypatch):
     """The guarantee is the BASE class's, so every _prepare_imagefolder may rely on it."""
     seen = {}
