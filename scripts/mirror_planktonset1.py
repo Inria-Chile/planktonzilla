@@ -183,6 +183,9 @@ def _worker(jobs, out_root, counters, lock):
                         try:
                             ftp.quit()
                         except Exception:
+                            # The retry exists because this connection just failed; QUIT
+                            # on a dead control channel raising too is expected, and the
+                            # reconnect below replaces the connection either way.
                             pass
                         ftp = _connect()
 
@@ -191,6 +194,9 @@ def _worker(jobs, out_root, counters, lock):
     try:
         ftp.quit()
     except Exception:
+        # Best-effort goodbye at teardown: a worker that just drained the queue may be
+        # holding a connection the server already dropped, and nothing is left to do
+        # with it either way.
         pass
 
 
