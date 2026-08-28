@@ -1064,8 +1064,17 @@ class DatasetImporter:
         There, "non-empty" would silently accept a fraction of the source as the whole of
         it — so it overrides this with a real count, and a partial imagefolder resumes
         instead of being published as if it were finished.
+
+        "Holds at least one FILE" rather than the literal "directory is non-empty" the
+        gates once tested inline: a preparation broken by an upstream layout change can
+        leave an imagefolder of empty class dirs (WHOI's year wrapper did), and reusing
+        that hollow tree crashes the loader with "Instruction \"train\" corresponds to
+        no data!" on every later run. Any REAL imagefolder answers this from its first
+        class folder's first entry, so the strengthening is free for them.
         """
-        return not is_dir_empty(self.imagefolder_dir)
+        if is_dir_empty(self.imagefolder_dir):
+            return False
+        return any(path.is_file() for path in self.imagefolder_dir.rglob("*"))
 
     def download_targets(self) -> list[tuple[str, str]]:
         """What a real import of this source would have to obtain, as ``(kind, location)``.
@@ -1576,30 +1585,37 @@ class DatasetImporter:
             self.imagefolder_dir.mkdir(parents=True, exist_ok=True)
             self._prepare_imagefolder()
 
-            # A hook that copied NOTHING must fail here, loudly, naming itself.
+            # A hook that produced no IMAGES must fail here, loudly, naming itself.
             #
             # Every _prepare_imagefolder locates its class folders by walking a path it
             # believes the archive has, and `Path.glob` on a path that does not exist
             # returns an empty iterator rather than raising — so a layout that shifted by
             # one directory produces an EMPTY imagefolder and no error. That has now
             # happened three times: SYKE ZooScan (KI-22, which globbed PlanktonSet1's
-            # accession path by mistake), whoi (fixed in 25d111f, whose nine archives nest
-            # one wrapper deeper than assumed), and it stays latent in every importer that
-            # still hard-codes a subpath. Left unchecked the run continues for hours and
-            # dies inside load_dataset with `Instruction "train" corresponds to no data!`,
+            # accession path by mistake), whoi (whose nine archives wrap their classes in
+            # a year directory), and it stays latent in every importer that still
+            # hard-codes a subpath. Left unchecked the run continues for hours and dies
+            # inside load_dataset with `Instruction "train" corresponds to no data!`,
             # which names neither the source nor the reason — or worse, pushes a silently
             # short dataset to the Hub.
             #
+            # Images specifically, not merely files: copytree_filtered can carry junk
+            # across (a stray .DS_Store), and a tree of nothing but junk is just as broken
+            # as an empty one while passing an is_file() test. That is a deliberate
+            # asymmetry with imagefolder_is_complete(), which stays on the cheaper
+            # "any file" question because it runs on the REUSE path of every source on
+            # every run, where this one runs once, right after preparation.
+            #
             # A short-circuiting search, NOT a count: global_uvp5 (7.4M images) and whoi
-            # (3.3M) would pay a full multi-million-entry rglob on every build to learn a
-            # single bit. The count is computed only to enrich the failure message.
+            # (3.3M) would otherwise pay a full multi-million-entry rglob to learn one bit.
             if not any(path.suffix.lower() in IMAGE_SUFFIXES for path in self.imagefolder_dir.rglob("*")):
                 raise RuntimeError(
                     f"«{self.human_readable_name or self.hf_dataset_name}»: "
-                    f"{type(self).__name__}._prepare_imagefolder() produced no image files under "
+                    f"{type(self).__name__}._prepare_imagefolder() finished but left no image files under "
                     f"{self.imagefolder_dir}. The extracted layout almost certainly differs from the path that "
-                    f"method expects — check it against {self.extracted_dirs}, and prefer locating the class "
-                    f"folders (find_class_root, or an rglob for the image files) over a hard-coded subpath."
+                    f"method expects — inspect what was extracted under {self.raw_dir} ({self.extracted_dirs}), "
+                    f"and prefer locating the class folders (find_class_root, or an rglob for the image files) "
+                    f"over a hard-coded subpath."
                 )
 
         else:
@@ -1783,6 +1799,13 @@ class WHOIPlanktonDatasetImporter(DatasetImporter):
     Iterates the extracted release folders and copies each release's per-class ``.png``
     images into the imagefolder root (merging classes across releases), then deletes
     each consumed release folder from ``raw_dir`` to save space.
+
+    The class folders are LOCATED per release, not assumed to be the extraction root's
+    immediate children: each archive wraps them in a year directory
+    (``2014/<class>/*.png`` — verified against the live bitstreams' central
+    directories, 2026-08-26). Iterating the extraction root itself created one EMPTY
+    dir per year and copied nothing, which a later run then reused as if it were the
+    built source.
     """
 
     def _prepare_imagefolder(self):
@@ -1793,19 +1816,9 @@ class WHOIPlanktonDatasetImporter(DatasetImporter):
             position=0,
             disable=not self.show_progress,
         ):
-            release_root = self.raw_dir / release_folder
-            # Each release archive unpacks to a wrapper directory (observed: the release
-            # year, e.g. `2006/<class>/*.png`) ABOVE the class dirs, not the class dirs
-            # directly — a plain `release_root.glob("*")` picked up that wrapper as if it
-            # were itself a (image-less) class, silently produced zero-file imagefolder
-            # entries, and the eventual `load_dataset("imagefolder", ...)` died with
-            # `Instruction "train" corresponds to no data!`. Locating class dirs by where
-            # the `.png` files actually are — as `import_dataset`'s own integrity-check
-            # rglob already does — is depth-agnostic and self-corrects regardless of how
-            # many wrapper levels a given release's archive happens to add.
-            class_dirs = sorted({img_file.parent for img_file in release_root.rglob("*.png")})
+            class_root = find_class_root(self.raw_dir / release_folder)
             for folder in tqdm(
-                class_dirs,
+                [item for item in class_root.glob("*") if item.is_dir()],
                 desc=f"Moving release {release_folder}",
                 leave=False,
                 position=1,
