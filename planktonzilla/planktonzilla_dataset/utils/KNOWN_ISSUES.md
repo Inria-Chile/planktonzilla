@@ -70,14 +70,18 @@ number missing from the table below is *resolved*, not withdrawn; look for it th
 | KI-29 | decision log | MEDIUM (rebuild) | the four Tara Pacific deposits joined (18th–21st, last); the first sources with **no archive** |
 | KI-30 | decision log | none (same rows) | `planktonset1.0` is fetched from a mirror we keep; NCEI's on-demand generator cannot resume or be size-checked |
 
-Three obligations belong to archived entries but are **still open**, and are restated here so
+Two obligations belong to archived entries but are **still open**, and are restated here so
 archiving cannot bury them:
 
 | from | open obligation |
 | --- | --- |
-| KI-17 | MedPlanktonSet's first real run must report **139** classes, matching its CSV rows — the importer was written against an unverifiable archive layout |
 | KI-21 / KI-24 | `zoolake` and `jedioceans` are verified for reachability and archive shape only; **no full import has completed** |
 | KI-23 | deriving the two licence columns is safe; **re-pushing** the published artifact from that schema is still gated |
+
+*KI-17's obligation is **discharged** (2026-08-28): MedPlanktonSet has now had a real run, and
+its imagefolder holds exactly **139** class directories, matching the 139 `medplanktonset` rows
+in `planktonzilla_taxonomy.csv`. `find_class_root` picked the right level on the archive layout
+that could not be verified when the importer was written.*
 
 **The three that want action, in order:** KI-14 (largest open legal exposure), the missing
 golden-diff harness (blocks every HIGH item above), and KI-16's discarded split provenance
