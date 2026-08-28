@@ -20,9 +20,25 @@ fresh machine is the actual problem. So: mirror it ONCE with this script, keep t
 resulting archive somewhere you control, and point the importer at it forever after::
 
     uv run python scripts/mirror_planktonset1.py
-    # then, on any machine:
-    pz_planktonzilla sources=[planktonset1.0] \
-      import_overrides=[dataset_import.manual_download_local_file_names=<path>/0127422.2.3.tar.gz]
+    # then, on any machine, to build this source's imagefolder from the archive:
+    uv run pz_import_dataset action=import dataset_import=planktonset1 \
+      dataset_import.push_to_hub=false \
+      dataset_import.manual_download_local_file_names=<abs path>/0127422.2.3.tar.gz
+
+``action=import`` is not optional: the entry point defaults to ``action=show``, which only
+queries the Hub and never imports anything.
+
+Inside a full ``pz_planktonzilla`` run the same override goes through ``import_overrides``,
+where BOTH the list and the element need quoting — the brackets are a glob to zsh, and
+Hydra's override grammar rejects a bare ``=`` inside a list element::
+
+    uv run pz_planktonzilla repo_id=<org>/<name> "sources=[planktonset1.0]" base=local \
+      'import_overrides=["dataset_import.manual_download_local_file_names=<abs path>.tar.gz"]'
+
+Note that ``import_overrides`` is appended to EVERY selected source's block, so pass it
+only when ``sources`` is this one source. And once the imagefolder exists, ``refresh=reuse``
+skips the import entirely and the override is never read — it matters on a fresh machine,
+which is the whole point of keeping the archive.
 
 FTP rather than the HTTPS form of the same mirror on purpose: ``ncei.noaa.gov/robots.txt``
 says ``Disallow: /data*``, which covers the HTTPS mirror path, while the FTP tree is the
@@ -275,9 +291,13 @@ def main():
 
     print(
         f"\nWrote {archive} ({archive.stat().st_size} bytes).\n\n"
-        f"Keep this somewhere you control, then import from it on any machine:\n"
-        f"  pz_planktonzilla sources=[planktonset1.0] base=hub \\\n"
-        f"    import_overrides=[dataset_import.manual_download_local_file_names={archive}]\n",
+        f"Keep this somewhere you control, then build the imagefolder from it on any machine:\n"
+        f"  uv run pz_import_dataset action=import dataset_import=planktonset1 \\\n"
+        f"    dataset_import.push_to_hub=false \\\n"
+        f"    dataset_import.manual_download_local_file_names={archive}\n\n"
+        f"(action=import is required — the entry point defaults to action=show, which only\n"
+        f"queries the Hub. Inside a full pz_planktonzilla run the override goes through\n"
+        f"import_overrides, where the list AND the element both need quoting.)\n",
         flush=True,
     )
     return 0
