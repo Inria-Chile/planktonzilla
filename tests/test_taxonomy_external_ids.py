@@ -81,10 +81,13 @@ ACCEPTED_CONTRADICTIONS: dict[tuple[str, str], str] = {
 
 # Ranked labels the GBIF backbone will not match, pinned as a set so a NEW one — the
 # signature of a typo or a fabricated name entering a rank column — fails the suite.
-# Three causes, all benign: informal EcoTaxa morphotypes registered in
-# `constants.SUB_RANK_LABELS`; high-rank names GBIF declines to match when its own
-# backbone disagrees with this table's rank vocabulary (the KI-31 orders, `hexapoda` as a
-# Class); and genus homonyms it refuses to disambiguate even given the lineage hints.
+# Four causes, all benign and each checked by hand: informal EcoTaxa morphotypes
+# registered in `constants.SUB_RANK_LABELS`; high-rank names GBIF declines to match when
+# its own backbone disagrees with this table's rank vocabulary (the KI-31 orders,
+# `hexapoda` as a Class); genus homonyms it refuses to disambiguate even given the
+# lineage hints; and species its backbone simply does not carry, where it answers with
+# the genus at `matchType=HIGHERRANK` — which the checker refuses rather than accept as a
+# name match (`rhinomonas nottbeckii`, whose genus lineage GBIF confirms exactly).
 GBIF_UNMATCHED_LABELS = frozenset(
     {
         "achelata", "actinosphaerium nucleofilum", "anabaenopsis", "animalia", "arthropoda",
@@ -97,7 +100,8 @@ GBIF_UNMATCHED_LABELS = frozenset(
         "fragilaria", "gymnodinium", "haslea silbo", "helix", "hemiaulus", "hexapoda", "hydra",
         "leydigia cliata", "macrothrix", "melosira", "microstellaria", "neobrightwellia alternans",
         "nodularia", "obelia", "odontella sp.", "oltmannsiellopsis viridis", "pennales",
-        "phyllodocidae", "rotifera", "spirorbis", "synedra", "teleostei", "thecofilosea",
+        "phyllodocidae", "rhinomonas nottbeckii", "rotifera", "spirorbis", "synedra",
+        "teleostei", "thecofilosea",
         "thecosomata", "thecostraca", "trichodesmium", "tripos geniculatus", "volvox", "vorticella",
     }
 )

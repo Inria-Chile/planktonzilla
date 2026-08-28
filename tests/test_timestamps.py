@@ -78,6 +78,11 @@ REAL_PATHS_WITHOUT_TIME = [
     # PlanktoScope's own date-less variant: a time of day with no date is not a
     # timestamp, and must not be completed with a guessed day.
     ("planktoscope", "/Eutintinnus/20_06_43_996335_3.jpg"),
+    # daplankton: the merged filenames are a domain prefix + the class name + a 5-digit
+    # per-folder counter. Nothing in them is a date, and the counter must not be read as
+    # one — this source carries no capture time at all.
+    ("daplankton", "/Ciliata/sea_ifcb_Ciliata00001.png"),
+    ("daplankton", "/Aphanizomenon_flosaquae/lab_cs_Aphanizomenon_flosaquae00001.jpg"),
 ]
 
 

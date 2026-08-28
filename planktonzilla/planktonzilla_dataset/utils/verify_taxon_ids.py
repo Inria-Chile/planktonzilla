@@ -671,9 +671,15 @@ def main(argv=None) -> int:
     if not args.report:
         keys = collect_keys(rows)
         snapshot = fetch_all(keys, only=args.only)
-        if args.only and args.snapshot.exists():
-            merged = {key: value for key, value in load_snapshot(args.snapshot).items()}
-            merged.update(snapshot)
+        if args.snapshot.exists():
+            # Refreshes are quality-monotonic: a transient failure must never DOWNGRADE a
+            # record the committed snapshot already resolved, or one flaky run would
+            # quietly stop verifying those identifiers while the suite stayed green.
+            merged = dict(load_snapshot(args.snapshot))
+            for key, record in snapshot.items():
+                if record["status"] == STATUS_ERROR and merged.get(key, {}).get("status") == STATUS_OK:
+                    continue
+                merged[key] = record
             snapshot = merged
         # Prune to what the table still uses: a `--only` refresh merges over the old
         # snapshot, so an identifier removed from the CSV would otherwise linger here

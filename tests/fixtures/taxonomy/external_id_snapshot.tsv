@@ -47,6 +47,7 @@ gbif	anuraeopsis	ok	anuraeopsis	genus	animalia|anuraeopsis|brachionidae|eurotato
 gbif	anuraeopsis fissa	ok	anuraeopsis fissa	species	animalia|anuraeopsis|anuraeopsis fissa|brachionidae|eurotatoria|ploima|rotifera
 gbif	aphanizomenon	ok	aphanizomenon	genus	aphanizomenon|aphanizomenonaceae|bacteria|cyanobacteria|cyanobacteriales|cyanobacteriia
 gbif	aphanothece parallelliformis	ok	aphanothece parallelliformis	species	aphanothece|aphanothece parallelliformis|bacteria|cyanobacteria|cyanobacteriales|cyanobacteriia|microcystaceae
+gbif	apocalathium malmogiense	ok	apocalathium malmogiense	species	apocalathium|apocalathium malmogiense|chromista|dinophyceae|myzozoa|thoracosphaeraceae|thoracosphaerales
 gbif	appendicularia	ok	appendicularia	genus	animalia|appendicularia|chordata|copelata|fritillariidae
 gbif	arcella vulgaris	ok	arcella vulgaris	species	amoebozoa|arcella|arcella vulgaris|arcellidae|arcellinida|lobosa|protozoa
 gbif	arthropoda	unknown			
@@ -177,6 +178,7 @@ gbif	chroococcus	unknown
 gbif	chrysochromulina	ok	chrysochromulina	genus	chromista|chrysochromulina|chrysochromulinaceae|haptophyta|prymnesiales|prymnesiophyceae
 gbif	chrysochromulina lanceolata	ok	chrysochromulina lanceolata	species	chromista|chrysochromulina|chrysochromulina lanceolata|chrysochromulinaceae|haptophyta|prymnesiales|prymnesiophyceae
 gbif	chrysochromulina parkeae	ok	chrysochromulina parva	species	chromista|chrysochromulina|chrysochromulina parva|chrysochromulinaceae|haptophyta|prymnesiales|prymnesiophyceae
+gbif	chrysotila roscoffensis	ok	chrysotila roscoffensis	species	chromista|chrysotila|chrysotila roscoffensis|haptophyta|prymnesiophyceae|syracosphaeraceae|syracosphaerales
 gbif	chydoridae	ok	chydoridae	family	animalia|arthropoda|branchiopoda|chydoridae|diplostraca
 gbif	chydorus	unknown			
 gbif	chydorus brevilabris	ok	chydorus brevilabris	species	animalia|arthropoda|branchiopoda|chydoridae|chydorus|chydorus brevilabris|diplostraca
@@ -380,6 +382,7 @@ gbif	guinardia flaccida	ok	guinardia flaccida	species	bacillariophyceae|chromist
 gbif	guinardia striata	ok	guinardia striata	species	bacillariophyceae|chromista|guinardia|guinardia striata|ochrophyta|rhizosoleniaceae|rhizosoleniales
 gbif	gymnodiniales	ok	gymnodiniales	order	chromista|dinophyceae|gymnodiniales|myzozoa
 gbif	gymnodinium	unknown			
+gbif	gymnodinium corollarium	ok	gymnodinium corollarium	species	chromista|dinophyceae|gymnodiniaceae|gymnodiniales|gymnodinium|gymnodinium corollarium|myzozoa
 gbif	gyrodinium	ok	gyrodinium	genus	chromista|dinophyceae|gymnodiniaceae|gymnodiniales|gyrodinium|myzozoa
 gbif	habrotrochidae	ok	habrotrochidae	family	animalia|bdelloidea|eurotatoria|habrotrochidae|rotifera
 gbif	halacaridae	ok	halacaridae	family	animalia|arachnida|arthropoda|halacaridae|trombidiformes
@@ -426,6 +429,7 @@ gbif	kellicottia longispina	ok	kellicottia longispina	species	animalia|brachioni
 gbif	keratella	ok	keratella	genus	animalia|brachionidae|eurotatoria|keratella|ploima|rotifera
 gbif	keratella cochlearis	ok	keratella cochlearis	species	animalia|brachionidae|eurotatoria|keratella|keratella cochlearis|ploima|rotifera
 gbif	keratella quadrata	ok	keratella quadrata	species	animalia|brachionidae|eurotatoria|keratella|keratella quadrata|ploima|rotifera
+gbif	kryptoperidinium foliaceum	ok	kryptoperidinium foliaceum	species	chromista|dinophyceae|kryptoperidinium|kryptoperidinium foliaceum|myzozoa|peridiniaceae|peridiniales
 gbif	kryptoperidinium triquetrum	ok	kryptoperidinium triquetrum	species	chromista|dinophyceae|kryptoperidinium|kryptoperidinium triquetrum|myzozoa|peridiniaceae|peridiniales
 gbif	laboea strobila	ok	laboea strobila	species	chromista|ciliophora|laboea|laboea strobilia|oligotrichea|strombidiida|strombidiidae
 gbif	lacinularia flosculosa	ok	lacinularia flosculosa	species	animalia|eurotatoria|flosculariaceae|flosculariidae|lacinularia|lacinularia flosculosa|rotifera
@@ -533,6 +537,7 @@ gbif	neobrightwellia alternans	unknown
 gbif	neocalyptrella	ok	neocalyptrella	genus	bacillariophyceae|chromista|neocalyptrella|ochrophyta|rhizosoleniaceae|rhizosoleniales
 gbif	neodiaptomus schmackeri	ok	neodiaptomus schmackeri	species	animalia|arthropoda|calanoida|copepoda|diaptomidae|neodiaptomus|neodiaptomus schmackeri
 gbif	neomoelleria cornuta	ok	neomoelleria cornuta	species	bacillariophyceae|chromista|neomoelleria|neomoelleria cornuta|ochrophyta
+gbif	nephroselmis pyriformis	ok	nephroselmis pyriformis	species	chlorophyta|nephroselmidaceae|nephroselmidales|nephroselmidophyceae|nephroselmis|nephroselmis pyriformis|plantae
 gbif	neutrodiaptomus formosus	ok	neutrodiaptomus formosus	species	animalia|arthropoda|calanoida|copepoda|diaptomidae|neutrodiaptomus|neutrodiaptomus formosus
 gbif	nitzschia	ok	nitzschia	genus	bacillariaceae|bacillariales|bacillariophyceae|chromista|nitzschia|ochrophyta
 gbif	nitzschia paleacea	ok	nitzschia paleacea	species	bacillariaceae|bacillariales|bacillariophyceae|chromista|nitzschia|nitzschia paleacea|ochrophyta
@@ -679,10 +684,12 @@ gbif	rhabdonella	ok	rhabdonella	genus	choreotrichida|chromista|ciliophora|oligot
 gbif	rhabdonellopsis	ok	rhabdonellopsis	genus	choreotrichida|chromista|ciliophora|oligotrichea|rhabdonellidae|rhabdonellopsis
 gbif	rhabdosphaera clavigera	ok	rhabdosphaera clavigera	species	chromista|haptophyta|prymnesiophyceae|rhabdolithes|rhabdolithes claviger|rhabdosphaeraceae|syracosphaerales
 gbif	rhincalanidae	ok	rhincalanidae	family	animalia|arthropoda|calanoida|copepoda|rhincalanidae
+gbif	rhinomonas nottbeckii	unknown			
 gbif	rhizosolenia	ok	rhizosolenia	genus	bacillariophyceae|chromista|ochrophyta|rhizosolenia|rhizosoleniaceae|rhizosoleniales
 gbif	rhizosolenia bergonii	ok	rhizosolenia bergonii	species	bacillariophyceae|chromista|ochrophyta|rhizosolenia|rhizosolenia bergonii|rhizosoleniaceae|rhizosoleniales
 gbif	rhizosoleniaceae	ok	rhizosoleniaceae	family	bacillariophyceae|chromista|ochrophyta|rhizosoleniaceae|rhizosoleniales
 gbif	rhizostomeae	ok	rhizostomeae	order	animalia|cnidaria|rhizostomeae|scyphozoa
+gbif	rhodomonas salina	ok	rhodomonas salina	species	chromista|cryptophyceae|cryptophyta|pyrenomonadaceae|pyrenomonadales|rhodomonas|rhodomonas salina
 gbif	rhopalonema	ok	rhopalonema	genus	animalia|cnidaria|hydrozoa|rhopalonema|rhopalonematidae|trachymedusae
 gbif	rhopalonema velatum	ok	rhopalonema velatum	species	animalia|cnidaria|hydrozoa|rhopalonema|rhopalonema velatum|rhopalonematidae|trachymedusae
 gbif	rhopalonematidae	ok	rhopalonematidae	family	animalia|cnidaria|hydrozoa|rhopalonematidae|trachymedusae
@@ -751,6 +758,7 @@ gbif	synchaeta tremula	ok	synchaeta tremula	species	animalia|eurotatoria|ploima|
 gbif	synedra	unknown			
 gbif	syracosphaera pulchra	ok	syracosphaera pulchra	species	chromista|haptophyta|prymnesiophyceae|syracosphaera|syracosphaera pulchra|syracosphaeraceae|syracosphaerales
 gbif	teleaulax	ok	teleaulax	genus	chromista|cryptophyceae|cryptophyta|geminigeraceae|pyrenomonadales|teleaulax
+gbif	teleaulax acuta	ok	teleaulax acuta	species	chromista|cryptophyceae|cryptophyta|geminigeraceae|pyrenomonadales|teleaulax|teleaulax acuta
 gbif	teleostei	unknown			
 gbif	temora	ok	temora	genus	animalia|arthropoda|calanoida|copepoda|temora|temoridae
 gbif	temoridae	ok	temoridae	family	animalia|arthropoda|calanoida|copepoda|temoridae
@@ -760,6 +768,7 @@ gbif	testudinella	ok	testudinella	genus	animalia|eurotatoria|flosculariaceae|rot
 gbif	testudinella brevicaudata	ok	testudinella brevicaudata	species	animalia|eurotatoria|flosculariaceae|rotifera|testudinella|testudinella brevicaudata|testudinellidae
 gbif	testudinella patina	ok	testudinella patina	species	animalia|eurotatoria|flosculariaceae|rotifera|testudinella|testudinella patina|testudinellidae
 gbif	tetramastix opoliensis	ok	tetramastix opoliensis	species	animalia|eurotatoria|filinia|filinia opoliensis|flosculariaceae|rotifera|trochosphaeridae
+gbif	tetraselmis	ok	tetraselmis	genus	chlorodendraceae|chlorodendrales|chlorophyta|plantae|prasinophyceae|tetraselmis
 gbif	thalassionema	ok	thalassionema	genus	bacillariophyceae|chromista|ochrophyta|thalassionema|thalassionemataceae|thalassionematales
 gbif	thalassionematales	ok	thalassionematales	order	bacillariophyceae|chromista|ochrophyta|thalassionematales
 gbif	thalassiosira	ok	thalassiosira	genus	bacillariophyceae|chromista|ochrophyta|thalassiosira|thalassiosiraceae|thalassiosirales
@@ -929,6 +938,7 @@ ncbi	128125	ok	olindiidae	family	cellular organisms|cnidaria|eukaryota|eumetazoa
 ncbi	128126	ok	aequoreidae	family	cellular organisms|cnidaria|eukaryota|eumetazoa|hydroidolina|hydrozoa|leptothecata|metazoa|opisthokonta
 ncbi	1292460	ok	dadayiella	genus	alveolata|cellular organisms|choreotrichia|ciliophora|eukaryota|intramacronucleata|sar|spirotrichea|tintinnida|tintinnidae
 ncbi	1323122	ok	cavolinia inflexa	species	bilateria|cavolinia|cavoliniidae|cellular organisms|eukaryota|eumetazoa|euthecosomata|euthyneura|gastropoda|heterobranchia|limacinoidea|lophotrochozoa|metazoa|mollusca|opisthokonta|protostomia|pteropoda|spiralia|tectipleura|thecosomata
+ncbi	1326783	ok	rhinomonas nottbeckii	species	cellular organisms|cryptophyceae|eukaryota|pyrenomonadaceae|pyrenomonadales|rhinomonas
 ncbi	1332241	ok	aulographis	genus	aulacanthidae|cellular organisms|cercozoa|eukaryota|phaeocystida|phaeodarea|rhizaria|sar|thecofilosea
 ncbi	133427	ok	protoceratium reticulatum	species	alveolata|cellular organisms|dinophyceae|eukaryota|gonyaulacales|protoceratiaceae|protoceratium|sar
 ncbi	1334934	ok	dactyliosolen blavyanus	species	bacillariophyta|cellular organisms|coscinodiscophyceae|coscinodiscophycidae|dactyliosolen|eukaryota|ochrophyta|rhizosoleniaceae|rhizosoleniales|sar|stramenopiles
@@ -958,10 +968,12 @@ ncbi	152158	ok	moina micrura	species	allotriocarida|altocrustacea|anomopoda|arth
 ncbi	1527828	ok	eucampia cornuta	species	bacillariophyta|cellular organisms|chaetocerotophycidae|eucampia|eucampiaceae|eucampiales|eukaryota|ochrophyta|sar|stramenopiles|thalassiosirophyceae
 ncbi	1529359	ok	asteromphalus	genus	bacillariophyta|cellular organisms|coscinodiscaceae|coscinodiscales|coscinodiscophyceae|coscinodiscophycidae|eukaryota|ochrophyta|sar|stramenopiles
 ncbi	1538290	ok	sminthea	genus	cellular organisms|cnidaria|eukaryota|eumetazoa|hydrozoa|metazoa|opisthokonta|rhopalonematidae|trachylinae|trachymedusae
+ncbi	156128	ok	nephroselmis pyriformis	species	cellular organisms|chlorophyta|eukaryota|nephroselmidaceae|nephroselmidales|nephroselmidophyceae|nephroselmis|viridiplantae
 ncbi	1572404	ok	tuscaroridae	family	cellular organisms|cercozoa|eukaryota|phaeocalpida|phaeodarea|rhizaria|sar|thecofilosea
 ncbi	1573500	ok	pyrocystaceae	family	alveolata|cellular organisms|dinophyceae|eukaryota|gonyaulacales|sar
 ncbi	158030	ok	thecosomata	suborder	bilateria|cellular organisms|eukaryota|eumetazoa|euthyneura|gastropoda|heterobranchia|lophotrochozoa|metazoa|mollusca|opisthokonta|protostomia|pteropoda|spiralia|tectipleura
 ncbi	160015	ok	pyramidellidae	family	bilateria|cellular organisms|eukaryota|eumetazoa|euthyneura|gastropoda|heterobranchia|lophotrochozoa|metazoa|mollusca|opisthokonta|panpulmonata|protostomia|pyramidelloidea|spiralia
+ncbi	160619	ok	kryptoperidinium foliaceum	species	alveolata|cellular organisms|dinophyceae|eukaryota|kryptoperidiniaceae|kryptoperidinium|peridiniales|sar
 ncbi	1606835	ok	thermocyclops taihokuensis	species	allotriocarida|altocrustacea|arthropoda|bilateria|cellular organisms|copepoda|cyclopidae|cyclopoida|ecdysozoa|eukaryota|eumetazoa|mandibulata|metazoa|neocopepoda|opisthokonta|panarthropoda|pancrustacea|podoplea|protostomia|thermocyclops
 ncbi	1606869	ok	strombidium capitatum	species	alveolata|cellular organisms|ciliophora|eukaryota|intramacronucleata|oligotrichia|sar|spirotrichea|strombidiidae|strombidium
 ncbi	1611840	ok	lecane ungulata	species	bilateria|cellular organisms|eukaryota|eumetazoa|eurotatoria|gnathifera|lecane|lecanidae|metazoa|monogononta|opisthokonta|ploima|protostomia|pseudotrocha|rotifera|spiralia
@@ -1006,6 +1018,7 @@ ncbi	192514	ok	munnopsidae	family	altocrustacea|arthropoda|asellota|bilateria|ce
 ncbi	1925418	ok	parafavella	genus	alveolata|cellular organisms|choreotrichia|ciliophora|eukaryota|intramacronucleata|sar|spirotrichea|tintinnida|xystonellidae
 ncbi	1925537	ok	parvicorbicula	genus	acanthoecida|acanthoecidae|cellular organisms|choanoflagellata|eukaryota|opisthokonta
 ncbi	1926390	ok	colurella	genus	bilateria|cellular organisms|eukaryota|eumetazoa|eurotatoria|gnathifera|lepadellidae|metazoa|monogononta|opisthokonta|ploima|protostomia|pseudotrocha|rotifera|spiralia
+ncbi	195071	ok	teleaulax acuta	species	cellular organisms|cryptophyceae|eukaryota|geminigeraceae|pyrenomonadales|teleaulax
 ncbi	195257	ok	phyllodocidae	family	annelida|bilateria|cellular organisms|errantia|eukaryota|eumetazoa|lophotrochozoa|metazoa|opisthokonta|phyllodocida|polychaeta|protostomia|spiralia
 ncbi	1954218	ok	hemidiscus	genus	bacillariophyta|cellular organisms|coscinodiscales|coscinodiscophyceae|coscinodiscophycidae|eukaryota|hemidiscaceae|ochrophyta|sar|stramenopiles
 ncbi	195508	ok	floscularia	genus	bilateria|cellular organisms|eukaryota|eumetazoa|eurotatoria|flosculariaceae|flosculariidae|gnathifera|gnesiotrocha|metazoa|monogononta|opisthokonta|protostomia|rotifera|spiralia
@@ -1149,6 +1162,7 @@ ncbi	30302	ok	appendicularia	class	bilateria|cellular organisms|chordata|deutero
 ncbi	30304	ok	thaliacea	class	bilateria|cellular organisms|chordata|deuterostomia|eukaryota|eumetazoa|metazoa|opisthokonta|tunicata
 ncbi	30307	ok	salpida	order	bilateria|cellular organisms|chordata|deuterostomia|eukaryota|eumetazoa|metazoa|opisthokonta|thaliacea|tunicata
 ncbi	303396	ok	nitzschia paleacea	species	bacillariaceae|bacillariales|bacillariophyceae|bacillariophycidae|bacillariophyta|cellular organisms|eukaryota|nitzschia|ochrophyta|sar|stramenopiles
+ncbi	3034	ok	rhodomonas salina	species	cellular organisms|cryptophyceae|eukaryota|pyrenomonadaceae|pyrenomonadales|rhodomonas
 ncbi	3038	ok	euglena	genus	cellular organisms|discoba|euglenaceae|euglenales|euglenida|euglenophyceae|euglenozoa|eukaryota|spirocuta
 ncbi	3042	ok	chlamydomonadales	order	cellular organisms|chlorophyceae|chlorophyta|core chlorophytes|cs clade|eukaryota|viridiplantae
 ncbi	3066	ok	volvox	genus	cellular organisms|chlamydomonadales|chlorophyceae|chlorophyta|core chlorophytes|cs clade|eukaryota|viridiplantae|volvocaceae
@@ -1158,6 +1172,7 @@ ncbi	3077087	ok	cannosphaeridae	family	cellular organisms|cercozoa|eukaryota|pha
 ncbi	3077321	ok	circoporidae	family	cellular organisms|cercozoa|eukaryota|phaeocalpida|phaeodarea|rhizaria|sar|thecofilosea
 ncbi	3093593	ok	lioloma	genus	bacillariophyta|cellular organisms|eukaryota|fragilariophyceae|fragilariophycidae|ochrophyta|sar|stramenopiles|thalassionemataceae|thalassionematales
 ncbi	3095340	ok	octactis	genus	cellular organisms|dictyochaceae|dictyochales|dictyochophyceae|eukaryota|ochrophyta|sar|stramenopiles
+ncbi	3098606	ok	apocalathium malmogiense	species	alveolata|apocalathium|cellular organisms|dinophyceae|eukaryota|sar|thoracosphaeraceae|thoracosphaerales
 ncbi	3104	ok	pediastrum	genus	cellular organisms|chlorophyceae|chlorophyta|core chlorophytes|cs clade|eukaryota|hydrodictyaceae|sphaeropleales|viridiplantae
 ncbi	3108434	ok	cymbulia peronii	species	bilateria|cellular organisms|cymbulia|cymbuliidae|eukaryota|eumetazoa|euthyneura|gastropoda|heterobranchia|lophotrochozoa|metazoa|mollusca|opisthokonta|protostomia|pseudothecosomata|pteropoda|spiralia|tectipleura|thecosomata
 ncbi	310905	ok	cyclotella choctawhatcheeana	species	bacillariophyta|cellular organisms|cyclotella|eukaryota|ochrophyta|sar|stramenopiles|thalassiosiraceae|thalassiosirales|thalassiosirophyceae|thalassiosirophycidae
@@ -1169,6 +1184,7 @@ ncbi	31279	ok	pleuronema	genus	alveolata|cellular organisms|ciliophora|eukaryota
 ncbi	3138939	ok	callimitra	genus	cellular organisms|eukaryota|nassellaria|plagiacanthidae|polycystinea|retaria|rhizaria|sar
 ncbi	316207	ok	abylidae	family	calycophorae|cellular organisms|cnidaria|eukaryota|eumetazoa|hydroidolina|hydrozoa|metazoa|opisthokonta|siphonophorae
 ncbi	316209	ok	abylopsis tetragona	species	abylidae|abylopsis|calycophorae|cellular organisms|cnidaria|eukaryota|eumetazoa|hydroidolina|hydrozoa|metazoa|opisthokonta|siphonophorae
+ncbi	3164	ok	tetraselmis	genus	cellular organisms|chlorodendraceae|chlorodendrales|chlorodendrophyceae|chlorophyta|core chlorophytes|eukaryota|viridiplantae
 ncbi	317538	ok	stegocephalus inflatus	species	altocrustacea|amphilochidea|amphipoda|arthropoda|bilateria|cellular organisms|communostraca|ecdysozoa|eukaryota|eumalacostraca|eumetazoa|lysianassida|lysianassidira|malacostraca|mandibulata|metazoa|opisthokonta|panarthropoda|pancrustacea|peracarida|protostomia|stegocephalidae|stegocephaloidea|stegocephalus
 ncbi	318527	ok	centropyxis	genus	amoebozoa|arcellinida|cellular organisms|centropyxidae|difflugina|elardia|eukaryota|tubulinea
 ncbi	322838	ok	distaplia	genus	aplousobranchia|ascidiacea|bilateria|cellular organisms|chordata|clavelinidae|deuterostomia|eukaryota|eumetazoa|metazoa|opisthokonta|tunicata
@@ -1257,6 +1273,7 @@ ncbi	41212	ok	harpacticoida	order	allotriocarida|altocrustacea|arthropoda|bilate
 ncbi	41302	ok	oikopleuridae	family	appendicularia|bilateria|cellular organisms|chordata|copelata|deuterostomia|eukaryota|eumetazoa|metazoa|opisthokonta|tunicata
 ncbi	414914	ok	actinommidae	family	cellular organisms|eukaryota|polycystinea|retaria|rhizaria|sar|spumellaria
 ncbi	41812	ok	chaoborus	genus	allotriocarida|altocrustacea|aparaglossata|arthropoda|bilateria|cellular organisms|chaoboridae|chaoborinae|culicoidea|culicomorpha|dicondylia|diptera|ecdysozoa|endopterygota|eukaryota|eumetabola|eumetazoa|hexapoda|insecta|mandibulata|metazoa|nematocera|neoptera|opisthokonta|panarthropoda|pancrustacea|panorpida|protostomia|pterygota
+ncbi	418908	ok	chrysotila roscoffensis	species	cellular organisms|chrysotila|eukaryota|haptista|haptophyta|isochrysidaceae|isochrysidales|prymnesiophyceae
 ncbi	418928	ok	syracosphaerales	order	cellular organisms|eukaryota|haptista|haptophyta|prymnesiophyceae
 ncbi	418932	ok	syracosphaeraceae	family	cellular organisms|eukaryota|haptista|haptophyta|prymnesiophyceae|syracosphaerales
 ncbi	418940	ok	scyphosphaera apsteinii	species	cellular organisms|coccosphaerales|eukaryota|haptista|haptophyta|pontosphaeraceae|prymnesiophyceae|scyphosphaera
@@ -1367,6 +1384,7 @@ ncbi	6103	ok	actiniaria	order	anthozoa|cellular organisms|cnidaria|eukaryota|eum
 ncbi	6137	ok	cubozoa	class	cellular organisms|cnidaria|eukaryota|eumetazoa|metazoa|opisthokonta
 ncbi	6142	ok	scyphozoa	class	cellular organisms|cnidaria|eukaryota|eumetazoa|metazoa|opisthokonta
 ncbi	6143	ok	semaeostomeae	order	cellular organisms|cnidaria|eukaryota|eumetazoa|metazoa|opisthokonta|scyphozoa
+ncbi	614669	ok	gymnodinium corollarium	species	alveolata|cellular organisms|dinophyceae|eukaryota|gymnodiniaceae|gymnodiniales|gymnodinium|sar
 ncbi	6157	ok	platyhelminthes	phylum	bilateria|cellular organisms|eukaryota|eumetazoa|lophotrochozoa|metazoa|opisthokonta|protostomia|spiralia
 ncbi	6231	ok	nematoda	phylum	bilateria|cellular organisms|ecdysozoa|eukaryota|eumetazoa|metazoa|opisthokonta|protostomia
 ncbi	630347	ok	ornithocercus steinii	species	alveolata|cellular organisms|dinophyceae|dinophysaceae|dinophysales|eukaryota|ornithocercus|sar
@@ -1681,6 +1699,7 @@ wikidata	Q21229661	ok	monostyla		lecanidae
 wikidata	Q21230272	ok	gossleriella		gossleriellaceae
 wikidata	Q21230498	ok	grimothea		munididae
 wikidata	Q21258897	ok	camptocercus australis		camptocercus
+wikidata	Q21308196	ok	rhodomonas salina		rhodomonas
 wikidata	Q21349732	ok	conochiloides		conochilidae
 wikidata	Q21358870	ok	liriope		geryoniidae
 wikidata	Q21445673	ok	aegina		aeginidae
@@ -1695,6 +1714,7 @@ wikidata	Q22286410	ok	skeletonema marinoi		skeletonema
 wikidata	Q2271481	ok	ploesoma truncatum		ploesoma
 wikidata	Q228145	ok	chironomidae		chironomoidea|culicomorpha
 wikidata	Q2282611	ok	bassia bassensis		bassia
+wikidata	Q23055863	ok	teleaulax acuta		teleaulax
 wikidata	Q23056005	ok	katablepharis remigera		katablepharis
 wikidata	Q23056098	ok	umbilicosphaera sibogae		umbilicosphaera
 wikidata	Q23057172	ok	chrysochromulina lanceolata		chrysochromulina
@@ -1776,31 +1796,31 @@ wikidata	Q25366002	ok	hemiaulus		hemiaulaceae
 wikidata	Q25366030	ok	fragilariopsis		bacillariaceae
 wikidata	Q25366092	ok	mastogloia		mastogloiaceae
 wikidata	Q25366184	ok	pleurosigma		pleurosigmataceae
-wikidata	Q25366222	ok	entomoneis		entomoneidaceae
-wikidata	Q25366246	ok	biddulphia		biddulphiaceae
-wikidata	Q25366249	ok	isthmia		isthmiaceae
-wikidata	Q25366253	ok	trigonium		biddulphiaceae
-wikidata	Q25366255	ok	corethron		corethraceae
-wikidata	Q25366283	ok	bellerochea		bellerocheaceae
-wikidata	Q25366289	ok	climacodium		hemiaulaceae
-wikidata	Q25366290	ok	eucampia		hemiaulaceae
-wikidata	Q25366303	ok	leptocylindrus		leptocylindraceae
-wikidata	Q25366354	ok	lithodesmium		lithodesmiaceae
-wikidata	Q25366375	ok	stephanopyxis		stephanopyxidaceae
-wikidata	Q25366440	ok	dactyliosolen		rhizosoleniaceae
-wikidata	Q25366444	ok	guinardia		rhizosoleniaceae
-wikidata	Q25366448	ok	neocalyptrella		rhizosoleniaceae
-wikidata	Q25366453	ok	proboscia		probosciaceae
-wikidata	Q25366456	ok	pseudosolenia		rhizosoleniaceae
-wikidata	Q25366473	ok	lauderia		lauderiaceae
-wikidata	Q25366520	ok	climacosphenia		climacospheniaceae
-wikidata	Q25366557	ok	asterionellopsis		fragilariaceae
-wikidata	Q25366563	ok	bleakeleya		fragilariaceae
-wikidata	Q25366573	ok	licmophora		licmophoraceae
-wikidata	Q25366584	ok	delphineis		rhaphoneidaceae
-wikidata	Q25366594	ok	lioloma		thalassionemataceae
-wikidata	Q25367449	ok	dictyocha		dictyochaceae
-wikidata	Q25367454	ok	octactis		dictyochaceae
+wikidata	Q25366222	ok	entomoneis		
+wikidata	Q25366246	ok	biddulphia		
+wikidata	Q25366249	ok	isthmia		
+wikidata	Q25366253	ok	trigonium		
+wikidata	Q25366255	ok	corethron		
+wikidata	Q25366283	ok	bellerochea		
+wikidata	Q25366289	ok	climacodium		
+wikidata	Q25366290	ok	eucampia		
+wikidata	Q25366303	ok	leptocylindrus		
+wikidata	Q25366354	ok	lithodesmium		
+wikidata	Q25366375	ok	stephanopyxis		
+wikidata	Q25366440	ok	dactyliosolen		
+wikidata	Q25366444	ok	guinardia		
+wikidata	Q25366448	ok	neocalyptrella		
+wikidata	Q25366453	ok	proboscia		
+wikidata	Q25366456	ok	pseudosolenia		
+wikidata	Q25366473	ok	lauderia		
+wikidata	Q25366520	ok	climacosphenia		
+wikidata	Q25366557	ok	asterionellopsis		
+wikidata	Q25366563	ok	bleakeleya		
+wikidata	Q25366573	ok	licmophora		
+wikidata	Q25366584	ok	delphineis		
+wikidata	Q25366594	ok	lioloma		
+wikidata	Q25367449	ok	dictyocha		
+wikidata	Q25367454	ok	octactis		
 wikidata	Q25368	ok	bivalvia		mollusca
 wikidata	Q25368413	ok	callimitra		plagiacanthidae
 wikidata	Q25368763	ok	sticholonchida		sticholonchea
@@ -1901,31 +1921,31 @@ wikidata	Q3855072	ok	nannosquillidae		lysiosquilloidea
 wikidata	Q3870511	ok	nassellaria		polycystinea
 wikidata	Q3897245	ok	tomopteridae		phyllodocida
 wikidata	Q3901525	ok	flota		fauveliopsidae
-wikidata	Q3917508	ok	phyllodocidae		phyllodocida
-wikidata	Q3926068	ok	pyramimonas		pyramimonadaceae
-wikidata	Q394190	ok	aglantha digitale		aglantha
-wikidata	Q3967296	ok	spumellaria		polycystinea
-wikidata	Q4001548	ok	hippopodiidae		calycophorae
-wikidata	Q4002700	ok	aglantha		rhopalonematidae
-wikidata	Q4005869	ok	sphaeronectes		sphaeronectidae
-wikidata	Q4006610	ok	rhopalonema		rhopalonematidae
-wikidata	Q4006872	ok	haliscera		halicreatidae
-wikidata	Q4008468	ok	diphyidae		calycophorae
-wikidata	Q4012392	ok	sminthea		rhopalonematidae
-wikidata	Q4015103	ok	sarsia		corynidae
-wikidata	Q4015312	ok	solmaris		solmarisidae
-wikidata	Q40866968	ok	halicreas		halicreatidae
-wikidata	Q416309	ok	akashiwo sanguinea		akashiwo
-wikidata	Q4167633	ok	philodinidae		bdelloidea|philodinida
-wikidata	Q4168526	ok	asplanchnopus		asplanchnidae
-wikidata	Q4168651	ok	scaridium longicaudum		scaridium
-wikidata	Q4169618	ok	lecane flexilis		lecane
-wikidata	Q4169857	ok	dicranophorus		dicranophoridae
-wikidata	Q4169991	ok	lecane papuana		lecane
-wikidata	Q4170636	ok	lecane latissima		lecane
-wikidata	Q4170667	ok	anuraeopsis		brachionidae
-wikidata	Q4171220	ok	pompholyx complanata		pompholyx
-wikidata	Q4172405	ok	lecane curvicornis		lecane
+wikidata	Q3917508	ok	phyllodocidae		
+wikidata	Q3926068	ok	pyramimonas		
+wikidata	Q394190	ok	aglantha digitale		
+wikidata	Q3967296	ok	spumellaria		
+wikidata	Q4001548	ok	hippopodiidae		
+wikidata	Q4002700	ok	aglantha		
+wikidata	Q4005869	ok	sphaeronectes		
+wikidata	Q4006610	ok	rhopalonema		
+wikidata	Q4006872	ok	haliscera		
+wikidata	Q4008468	ok	diphyidae		
+wikidata	Q4012392	ok	sminthea		
+wikidata	Q4015103	ok	sarsia		
+wikidata	Q4015312	ok	solmaris		
+wikidata	Q40866968	ok	halicreas		
+wikidata	Q416309	ok	akashiwo sanguinea		
+wikidata	Q4167633	ok	philodinidae		
+wikidata	Q4168526	ok	asplanchnopus		
+wikidata	Q4168651	ok	scaridium longicaudum		
+wikidata	Q4169618	ok	lecane flexilis		
+wikidata	Q4169857	ok	dicranophorus		
+wikidata	Q4169991	ok	lecane papuana		
+wikidata	Q4170636	ok	lecane latissima		
+wikidata	Q4170667	ok	anuraeopsis		
+wikidata	Q4171220	ok	pompholyx complanata		
+wikidata	Q4172405	ok	lecane curvicornis		
 wikidata	Q4173259	ok	ploesoma		synchaetidae
 wikidata	Q4173288	ok	euchlanis pyriformis		euchlanis
 wikidata	Q4175006	ok	encentrum		dicranophoridae
@@ -2001,31 +2021,31 @@ wikidata	Q49550119	ok	dinophysis sacculus		dinophysis
 wikidata	Q49550128	ok	dinophysis tripos		dinophysis
 wikidata	Q49558835	ok	blepharisma americanum		blepharisma
 wikidata	Q49559016	ok	euplotes eurystomus		euplotes
-wikidata	Q49600010	ok	nitzschia paleacea		nitzschia
-wikidata	Q49605569	ok	spirostomum ambiguum		spirostomum
-wikidata	Q49618649	ok	chaetoceros socialis		chaetoceros
-wikidata	Q49618661	ok	chaetoceros peruvianus		chaetoceros
-wikidata	Q49620201	ok	chaetoceros danicus		chaetoceros
-wikidata	Q49620299	ok	chaetoceros affinis		chaetoceros
-wikidata	Q49620360	ok	dictyocha fibula		dictyocha
-wikidata	Q49620606	ok	asterionellopsis glacialis		asterionellopsis
-wikidata	Q49622035	ok	chaetoceros decipiens		chaetoceros
-wikidata	Q49627729	ok	platyias patulus		platyias
-wikidata	Q49630032	ok	dinophysis caudata		dinophysis
-wikidata	Q49633159	ok	protoperidinium divergens		protoperidinium
-wikidata	Q496637	ok	beroida		nuda
-wikidata	Q50770444	ok	pleuroxus laevis		picripleuroxus
-wikidata	Q50807513	ok	amphibelone		amphilithidae
-wikidata	Q5122184	ok	leptothecata		hydroidolina
-wikidata	Q5173858	ok	coscinodiscaceae		coscinodiscales
-wikidata	Q5185	ok	nematoda		ecdysozoa|nematoida
-wikidata	Q5190992	ok	cryptomonadales		cryptophyceae
-wikidata	Q5276756	ok	dileptus		dileptidae|tracheliidae
-wikidata	Q5278597	ok	dinophysis		dinophysiaceae
-wikidata	Q5385729	ok	euchlanis		euchlanidae
-wikidata	Q5385942	ok	dipleuchlanis propatula		dipleuchlanis
-wikidata	Q5387223	ok	mytilina compressa		mytilina
-wikidata	Q5388604	ok	notommata		notommatidae
+wikidata	Q49600010	ok	nitzschia paleacea		
+wikidata	Q49605569	ok	spirostomum ambiguum		
+wikidata	Q49618649	ok	chaetoceros socialis		
+wikidata	Q49618661	ok	chaetoceros peruvianus		
+wikidata	Q49620201	ok	chaetoceros danicus		
+wikidata	Q49620299	ok	chaetoceros affinis		
+wikidata	Q49620360	ok	dictyocha fibula		
+wikidata	Q49620606	ok	asterionellopsis glacialis		
+wikidata	Q49622035	ok	chaetoceros decipiens		
+wikidata	Q49627729	ok	platyias patulus		
+wikidata	Q49630032	ok	dinophysis caudata		
+wikidata	Q49633159	ok	protoperidinium divergens		
+wikidata	Q496637	ok	beroida		
+wikidata	Q50770444	ok	pleuroxus laevis		
+wikidata	Q50807513	ok	amphibelone		
+wikidata	Q5122184	ok	leptothecata		
+wikidata	Q5173858	ok	coscinodiscaceae		
+wikidata	Q5185	ok	nematoda		
+wikidata	Q5190992	ok	cryptomonadales		
+wikidata	Q5276756	ok	dileptus		
+wikidata	Q5278597	ok	dinophysis		
+wikidata	Q5385729	ok	euchlanis		
+wikidata	Q5385942	ok	dipleuchlanis propatula		
+wikidata	Q5387223	ok	mytilina compressa		
+wikidata	Q5388604	ok	notommata		
 wikidata	Q5582128	ok	gonyaulax		gonyaulacaceae
 wikidata	Q5643460	ok	halosphaera		pyramimonadaceae
 wikidata	Q5881117	ok	globigerinidae		globigerinoidea
@@ -2112,6 +2132,8 @@ wikidata	Q67899499	ok	rhizosolenia bergonii		rhizosolenia
 wikidata	Q68104031	ok	rhabdosphaera clavigera		rhabdosphaera
 wikidata	Q68377307	ok	eucampia cornuta		eucampia
 wikidata	Q683918	ok	penaeidae		penaeoidea
+wikidata	Q68393149	ok	rhinomonas nottbeckii		rhinomonas
+wikidata	Q68398131	ok	chrysotila roscoffensis		chrysotila
 wikidata	Q68403873	ok	azadinium caudatum		azadinium
 wikidata	Q68417250	ok	dinophysis parva		dinophysis
 wikidata	Q68420199	ok	ornithocercus magnificus		ornithocercus
@@ -2162,8 +2184,10 @@ wikidata	Q68451460	ok	protoceratium reticulatum		protoceratium
 wikidata	Q68451858	ok	pyrophacus horologium		pyrophacus
 wikidata	Q68452340	ok	ceratoperidinium margalefii		ceratoperidinium
 wikidata	Q68452360	ok	pseliodinium fusus		pseliodinium
+wikidata	Q68454893	ok	gymnodinium corollarium		gymnodinium
 wikidata	Q68463348	ok	warnowia polyphemus		warnowia
 wikidata	Q68465167	ok	heterocapsa rotundata		heterocapsa
+wikidata	Q68466614	ok	kryptoperidinium foliaceum		kryptoperidinium
 wikidata	Q68466630	ok	kryptoperidinium triquetrum		kryptoperidinium
 wikidata	Q68466752	ok	corythodinium constrictum		corythodinium
 wikidata	Q68466957	ok	corythodinium milneri		corythodinium
@@ -2176,6 +2200,7 @@ wikidata	Q68471959	ok	podolampas bipes		podolampas
 wikidata	Q686325	ok	trombidiformes		acariformes
 wikidata	Q69674374	ok	monoraphidium contortum		monoraphidium
 wikidata	Q69714553	ok	oltmannsiellopsis viridis		oltmannsiellopsis
+wikidata	Q69727928	ok	nephroselmis pyriformis		nephroselmis
 wikidata	Q69728784	ok	cymbomonas tetramitiformis		cymbomonas
 wikidata	Q69729612	ok	pyramimonas longicauda		pyramimonas
 wikidata	Q7103629	ok	ornithocercus		dinophysiaceae
@@ -2192,6 +2217,7 @@ wikidata	Q756491	ok	atlantidae		pterotracheoidea
 wikidata	Q7579018	ok	spongodiscidae		spumellaria
 wikidata	Q7624374	ok	strombidium		strombidiidae
 wikidata	Q7656187	ok	swima		acrocirridae
+wikidata	Q7706731	ok	tetraselmis		chlorodendraceae
 wikidata	Q772011	ok	thecosomata		opisthobranchia
 wikidata	Q7777653	ok	thecofilosea		monadofilosa
 wikidata	Q7840756	ok	trichodesmium		microcoleaceae
@@ -2266,6 +2292,8 @@ worms	106267	ok	evadne	genus	animalia|arthropoda|branchiopoda|evadne|onychopoda|
 worms	106269	ok	podon	genus	animalia|arthropoda|branchiopoda|onychopoda|podon|podonidae
 worms	106272	ok	penilia avirostris	species	animalia|arthropoda|branchiopoda|ctenopoda|penilia|penilia avirostris|sididae
 worms	106285	ok	teleaulax	genus	chromista|cryptophyceae|cryptophyta|geminigeraceae|pyrenomonadales|teleaulax
+worms	106305	ok	teleaulax acuta	species	chromista|cryptophyceae|cryptophyta|geminigeraceae|pyrenomonadales|teleaulax|teleaulax acuta
+worms	106316	ok	rhodomonas salina	species	chromista|cryptophyceae|cryptophyta|pyrenomonadaceae|pyrenomonadales|rhodomonas|rhodomonas salina
 worms	106318	ok	cestidae	family	animalia|cestida|cestidae|ctenophora|tentaculata
 worms	106331	ok	beroe	genus	animalia|beroe|beroida|beroidae|ctenophora|nuda
 worms	106413	ok	cyclopidae	family	animalia|arthropoda|copepoda|cyclopidae|cyclopoida
@@ -2336,6 +2364,7 @@ worms	110082	ok	oxytoxum caudatum	species	chromista|dinophyceae|myzozoa|oxytoxac
 worms	1101	ok	cyclopoida	order	animalia|arthropoda|copepoda|cyclopoida
 worms	110115	ok	oxytoxum scolopax	species	chromista|dinophyceae|myzozoa|oxytoxaceae|oxytoxum|oxytoxum scolopax|peridiniales
 worms	110152	ok	heterocapsa rotundata	species	chromista|dinophyceae|heterocapsa|heterocapsa rotundata|heterocapsaceae|myzozoa|peridiniales
+worms	110154	ok	kryptoperidinium triquetrum	species	chromista|dinophyceae|kryptoperidinium|kryptoperidinium foliaceum|kryptoperidinium triquetrum|myzozoa|peridiniaceae|peridiniales
 worms	110156	ok	peridiniella catenata	species	chromista|cladopyxidaceae|dinophyceae|gonyaulacales|myzozoa|peridiniella|peridiniella catenata
 worms	110199	ok	podolampas bipes	species	chromista|dinophyceae|myzozoa|peridiniales|podolampadaceae|podolampas|podolampas bipes
 worms	1102	ok	harpacticoida	order	animalia|arthropoda|copepoda|harpacticoida
@@ -2427,9 +2456,12 @@ worms	1303559	ok	disparalona hamata	species	animalia|anomopoda|arthropoda|branch
 worms	1303978	ok	picripleuroxus laevis	species	animalia|anomopoda|arthropoda|branchiopoda|chydoridae|picripleuroxus laevis|pleuroxus|pleuroxus laevis
 worms	1304629	ok	pennales	order	bacillariophyceae|chromista|heterokontophyta|pennales
 worms	1324082	ok	neomoelleria cornuta	species	bacillariophyceae|chromista|heterokontophyta|neomoelleria|neomoelleria cornuta
+worms	1327470	ok	chrysotila roscoffensis	species	chromista|chrysotila|chrysotila roscoffensis|coccolithophyceae|haptophyta|isochrysidaceae|isochrysidales
 worms	1337	ok	hydrozoa	class	animalia|cnidaria|hydrozoa
+worms	134526	ok	tetraselmis	genus	chlorodendraceae|chlorodendrales|chlorodendrophyceae|chlorophyta|plantae|tetraselmis
 worms	134528	ok	halosphaera	genus	chlorophyta|halosphaera|plantae|pyramimonadaceae|pyramimonadales|pyramimonadophyceae
 worms	134529	ok	pyramimonas	genus	chlorophyta|plantae|pyramimonadaceae|pyramimonadales|pyramimonadophyceae|pyramimonas
+worms	134541	ok	nephroselmis pyriformis	species	chlorophyta|nephroselmidaceae|nephroselmidales|nephroselmidophyceae|nephroselmis|nephroselmis pyriformis|plantae
 worms	134545	ok	cymbomonas tetramitiformis	species	chlorophyta|cymbomonas|cymbomonas tetramitiformis|plantae|pyramimonadaceae|pyramimonadales|pyramimonadophyceae
 worms	1346683	ok	kryptoperidinium triquetrum	species	chromista|dinophyceae|kryptoperidinium|kryptoperidinium triquetrum|myzozoa|peridiniaceae|peridiniales
 worms	134913	ok	philodinidae	family	animalia|eurotatoria|philodinida|philodinidae|rotifera
@@ -2498,6 +2530,7 @@ worms	137217	ok	salpidae	family	animalia|chordata|salpida|salpidae|thaliacea
 worms	137224	ok	pyrosoma	genus	animalia|chordata|pyrosoma|pyrosomatida|pyrosomatidae|thaliacea
 worms	137754	ok	diacavolinia	genus	animalia|cavoliniidae|diacavolinia|gastropoda|mollusca|pteropoda
 worms	137755	ok	diacria	genus	animalia|cavoliniidae|diacria|gastropoda|mollusca|pteropoda
+worms	1380043	ok	apocalathium malmogiense	species	apocalathium|apocalathium malmogiense|chromista|dinophyceae|myzozoa|thoracosphaeraceae|thoracosphaerales
 worms	138009	ok	pterotrachea	genus	animalia|gastropoda|littorinimorpha|mollusca|pterotrachea|pterotracheidae
 worms	1381154	ok	tripos teres	species	ceratiaceae|chromista|dinophyceae|gonyaulacales|myzozoa|tripos|tripos teres
 worms	138122	ok	limacina	genus	animalia|gastropoda|limacina|limacinidae|mollusca|pteropoda
@@ -2889,6 +2922,7 @@ worms	607338	ok	zoantharia	order	animalia|cnidaria|hexacorallia|zoantharia
 worms	609727	ok	nitzschia paleacea	species	bacillariaceae|bacillariales|bacillariophyceae|chromista|heterokontophyta|nitzschia|nitzschia paleacea
 worms	613430	ok	phaeocystis jahnii	species	chromista|coccolithophyceae|haptophyta|phaeocystaceae|phaeocystales|phaeocystis|phaeocystis jahnii
 worms	618883	ok	katagnymene spiralis	species	bacteria|cyanobacteria|cyanophyceae|gomontiellaceae|gomontiellales|katagnymene|katagnymene spiralis
+worms	623645	ok	gymnodinium corollarium	species	chromista|dinophyceae|gymnodiniaceae|gymnodiniales|gymnodinium|gymnodinium corollarium|myzozoa
 worms	624358	ok	phalacroma oxytoxoides	species	chromista|dinophyceae|dinophysales|myzozoa|oxyphysaceae|phalacroma|phalacroma oxytoxoides
 worms	627117	ok	katablepharis remigera	species	chromista|cryptophyta|cryptophyta incertae sedis|katablepharidaceae|katablepharis|katablepharis remigera
 worms	643805	ok	corythodinium milneri	species	chromista|corythodinium|corythodinium milneri|dinophyceae|myzozoa|oxytoxaceae|peridiniales

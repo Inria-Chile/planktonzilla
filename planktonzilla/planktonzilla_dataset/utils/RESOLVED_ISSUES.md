@@ -626,3 +626,40 @@ flags/qualifier and the comb-jelly `ecotaxa_ID` pair `456;559`. The diatom genus
 is gone table-wide; the two builder `HOMONYM_NOTES` entries that inherited it were
 retired, and the *Verified non-issues* dismissal in `KNOWN_ISSUES.md` is formally
 superseded. Guarded by `test_ki35_resolved_ctenophora_is_the_comb_jelly`.
+
+
+---
+
+## The daplankton merge (2026-08-28) — the enforcement suite's first live catch
+
+The `daplankton` source (KI-36) was authored on a branch that forked BEFORE the
+2026-08-27 repair pass, so three of its 44 rows were built by copying rows that still
+carried defects the pass had since fixed. Merging the two branches put those copies next
+to the repaired originals, and the enforcement suite caught all of it — this is the first
+time these tests judged data they were not written against:
+
+- `tests/test_taxonomy_validation.py::test_each_label_has_one_lineage` and
+  `::test_rank_columns_form_a_tree` failed on `Katablepharis_remigera`: the daplankton row
+  had been copied from the pre-repair row 817 and carried the KI-8 defect verbatim
+  (`cryptophyta` — a phylum name — in the Class slot, `kathablepharidacea` in Order). Given
+  the same registry-verified values as its original: `Class=cryptophyceae`,
+  `Order=katablepharidales`.
+- `tests/test_taxonomy_known_issues.py::test_ki33_resolved_synonym_merges` failed on
+  `Heterocapsa_triquetra`, which re-introduced the label KI-33 had merged into
+  `kryptoperidinium triquetrum`. Given the accepted-name payload byte-exactly, as its two
+  siblings were.
+- `tests/test_taxonomy_external_ids.py::test_labels_are_names_the_gbif_backbone_recognizes`
+  flagged the new label `rhinomonas nottbeckii`. Checked and benign: GBIF's backbone does
+  not carry that species, only the genus, and answers with the genus at
+  `matchType=HIGHERRANK` — which the checker refuses rather than accept as a name match.
+  The row's genus lineage is exactly GBIF's. Recorded in that test's allowlist.
+
+Nothing else in the 44 rows moved: the Tara Pacific block rebuilds byte-identically with
+daplankton in the donor pool, the block's 120 identifiers score clean against the
+registries, and the frepj byte-freeze prefix is untouched by the insert (the daplankton
+rows land after it, at lines 1716-1759).
+
+*The value here is the mechanism, not the three rows.* A defect fixed on one branch can
+be re-introduced by another branch that copied it before the fix — silently, because the
+copy is internally consistent. Generic invariants over the whole table are what make that
+loud at merge time instead of at publication.

@@ -68,14 +68,15 @@ def _one(rows, dataset, raw_label):
 
 
 def test_frozen_table_anchor(rows):
-    """Sanity anchor: 1,485 base rows + 229 frepj + 600 Tara Pacific, expected schema.
+    """Sanity anchor: 1,485 base + 229 frepj + 44 daplankton + 600 Tara Pacific, expected schema.
 
     The base is no longer byte-frozen: the 2026-08-27 repair pass edited 70 rows in
-    place (tests/fixtures/frepj/pre_frepj_taxonomy.sha256 was re-baselined with it).
-    Row COUNT and the (Dataset, Raw_Labels) key set are unchanged — no importer's
-    coverage moved.
+    place (tests/fixtures/frepj/pre_frepj_taxonomy.sha256 was re-baselined with it, and
+    again for the retired-taxid blanking). Row COUNT and the (Dataset, Raw_Labels) key
+    set are unchanged by the repair — no importer's coverage moved. The later blocks are
+    strictly appended and carry their own coverage tests.
     """
-    assert len(rows) == 1485 + 229 + 600
+    assert len(rows) == 1485 + 229 + 44 + 600
     expected = {*RANKS, "proposed_label", "root_class", "qualifier", *ID_COLUMNS, "Dataset", "Raw_Labels", "plankton", "living"}
     assert expected <= set(rows[0])
 
