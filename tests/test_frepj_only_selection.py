@@ -84,20 +84,29 @@ _FROZEN_FIFTEEN = [
 
 
 def test_default_config_appends_frepj_last_keeping_the_fifteen_in_place():
-    """The default registry is the frozen fifteen, in order, then the v1.2 appends.
+    """The default registry is the frozen fifteen, in order, then frepj (v1.2), then
+    daplankton, then the four Tara Pacific deposits.
 
     Registry order is the concatenation order of the output, so appending — never
-    inserting — is what keeps every published source at the index it already had. frepj
-    went on the end on 2026-08-25 and the four Tara Pacific deposits on 2026-08-26, so the
-    fifteen are still exactly the first fifteen.
+    inserting — is what keeps every published source at the index it already had.
+
+    frepj is pinned by its ABSOLUTE index, not by ``[-1]``: it stopped being last the
+    moment daplankton was appended after it, and a negative index would have quietly
+    re-pointed this assertion at the new source instead of failing.
     """
     cfg = _compose("generate_planktonzilla")
     try:
         assert cfg.repo_id == "project-oceania/planktonzilla-17M"
-        assert len(cfg.datasets) == 20
+        assert len(cfg.datasets) == 21
         assert [d["name"] for d in cfg.datasets[:15]] == _FROZEN_FIFTEEN
         assert dict(cfg.datasets[15]) == {"name": "frepj", "import_name": "frepj", "cleanup": False, "redefiner": "frepj"}
-        assert [dict(d) for d in cfg.datasets[16:]] == [
+        assert dict(cfg.datasets[16]) == {
+            "name": "daplankton",
+            "import_name": "daplankton",
+            "cleanup": False,
+            "redefiner": "none",
+        }
+        assert [dict(d) for d in cfg.datasets[17:]] == [
             {"name": name, "import_name": name, "cleanup": False, "redefiner": "tara_pacific"}
             for name in (
                 "tara_pacific_bongo",

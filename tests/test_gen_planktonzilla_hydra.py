@@ -71,6 +71,9 @@ EXPECTED_TABLE = [
     # Appended 2026-08-25 (v1.2), so every source above keeps its index. Its redefiner
     # joins md5-pinned sidecar tables the importer fetches before the first import.
     ("frepj", "frepj", False, "frepj"),
+    # Appended 2026-08-27 for the same index-preserving reason. Like sykezooscan2024
+    # it resolves its archive through the Fairdata Download API rather than a direct URL.
+    ("daplankton", "daplankton", False, "none"),
     # Appended 2026-08-26 (v1.2), LAST, same reason. The four Tara Pacific deposits have no
     # archive at all: their redefiner joins the per-object EcoTaxa manifests their importer
     # fetches as sidecars before the first import.
@@ -492,7 +495,7 @@ def test_import_and_redefine_source_accepts_an_instantiated_importer(monkeypatch
 
 
 def test_a_source_without_sidecars_attaches_an_empty_dict(monkeypatch, tmp_path):
-    """The fifteen archive-only sources hand their redefiner {} — and every redefiner accepts it."""
+    """The sixteen archive-only sources hand their redefiner {} — and every redefiner accepts it."""
     imagefolder = tmp_path / "src_imagefolder"
     (imagefolder / "cls").mkdir(parents=True)
     (imagefolder / "cls" / "img.png").write_bytes(b"x")

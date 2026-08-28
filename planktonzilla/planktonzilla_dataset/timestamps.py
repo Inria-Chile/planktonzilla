@@ -7,7 +7,7 @@ Plankton imagers name their output after the moment the frame was taken — it i
 one piece of provenance that survives every re-packaging of a dataset, because it is
 carried by the file name rather than by a sidecar the archive may not ship. Six
 conventions are recognised (see :data:`PATTERNS`) — five verified against real data,
-one reserved for modern IFCB exports — and together they cover five of the sixteen
+one reserved for modern IFCB exports — and together they cover five of the seventeen
 registry sources at a precision the pipeline previously discarded.
 
 Why this exists at all: before it, ``timestamp`` was populated only by

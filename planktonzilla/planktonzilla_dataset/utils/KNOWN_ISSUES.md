@@ -39,7 +39,7 @@ Phase 4, so these failures are no longer silent — only their *handling* is unc
 Entries are numbered in the order they were found, not the order they are read: KI-1..7 and
 KI-16..25 are **code behavior**, KI-8..13 are **data** defects in the frozen taxonomy CSV,
 KI-14..15 are **source-license** questions, and KI-26 is a **data** defect in a source's own
-sidecar tables; KI-27 is a decision log like KI-24. Numbers are never reused or renumbered — commits,
+sidecar tables; KI-27 through KI-30 are decision logs like KI-24. Numbers are never reused or renumbered — commits,
 code comments and tests cite them.
 
 **This file lists only what is still open.** Nine resolved entries — KI-11, KI-17..KI-23 and
@@ -65,9 +65,10 @@ number missing from the table below is *resolved*, not withdrawn; look for it th
 | KI-16 | open, **do not fix** | HIGH | split probe reads the repo root; splits discarded |
 | KI-24 | decision log | MEDIUM (rebuild) | `zoolake`/`jedioceans` joined; the licence mix widened |
 | KI-26 | open, source-side | none (17M) / republished (frepj) | FREPJ `Sampling date` is free text; 7.1% not a date — normalized, 1.9% null |
-| KI-27 | decision log | MEDIUM (rebuild) | `frepj` joined the registry (16th, last); sidecar inputs became an importer protocol |
-| KI-28 | decision log | MEDIUM (rebuild) | the four Tara Pacific deposits joined (17th–20th, last); the first sources with **no archive** |
-| KI-29 | decision log | none (same rows) | `planktonset1.0` is fetched from a mirror we keep; NCEI's on-demand generator cannot resume or be size-checked |
+| KI-27 | decision log | MEDIUM (rebuild) | `frepj` joined the registry (16th); sidecar inputs became an importer protocol |
+| KI-28 | decision log | MEDIUM (rebuild) | `daplankton` joined the registry (17th); Fairdata-resolved, doubly-nested archive, 44 merged classes |
+| KI-29 | decision log | MEDIUM (rebuild) | the four Tara Pacific deposits joined (18th–21st, last); the first sources with **no archive** |
+| KI-30 | decision log | none (same rows) | `planktonset1.0` is fetched from a mirror we keep; NCEI's on-demand generator cannot resume or be size-checked |
 
 Three obligations belong to archived entries but are **still open**, and are restated here so
 archiving cannot bury them:
@@ -375,7 +376,7 @@ without them); not blocking.
 
 ---
 
-## KI-27 — `frepj` joined the registry (sixteenth, last); sidecar inputs became an importer protocol
+## KI-27 — `frepj` joined the registry (sixteenth); sidecar inputs became an importer protocol
 
 **Where:** `configs/generate_planktonzilla.yaml` `datasets`; `DatasetImporter.sidecar_targets` /
 `missing_sidecars` / `ensure_sidecars`; `RedefineDataset.attach_sidecars`;
@@ -406,7 +407,8 @@ and knows no source by name. Consequences, stated plainly:
   goes through the same seam and behaves identically.
 
 **Frozen-output risk: MEDIUM, rebuild-only.** Nothing published changes; a from-scratch build now
-emits a sixteenth source, appended last. The fifteen existing sources' rows are byte-identical
+emits a sixteenth source. (It was appended last when this was recorded; `daplankton` was appended
+after it — see KI-28 — which left its index unchanged.) The fifteen existing sources' rows are byte-identical
 (`sidecar_targets() == []`, `ensure_sidecars() == {}` — pinned by
 `tests/test_dataset_import_configs.py::test_sources_without_sidecars_are_unchanged`; `attach_sidecars({})`
 is a no-op — pinned by `tests/test_frepj_redefiner.py::test_attach_sidecars_is_a_no_op_on_the_other_redefiners`).
@@ -430,7 +432,64 @@ estimate (a non-blocking WARN at worst). `global_uvp5` has the same shape on `re
 
 ---
 
-## KI-28 — the four Tara Pacific deposits joined the registry (17th–20th, last); the first sources with **no archive**
+## KI-28 — `daplankton` joined the registry (seventeenth); a doubly-nested archive and a five-root class merge
+
+**Where:** `configs/generate_planktonzilla.yaml` `datasets`; `configs/dataset_import/daplankton.yaml`;
+`dataset_import.daplankton_layout` / `daplankton_importer`;
+`dataset_import.dataset_importer.FairdataPackagedDatasetImporter`; the 44 `daplankton` rows appended
+to `planktonzilla_taxonomy.csv`.
+
+**Change (2026-08-27, maintainer decision).** `{name: daplankton, import_name: daplankton,
+cleanup: false, redefiner: none}` is **appended, not inserted** — registry order is the
+concatenation order of the output, so the sixteen entries above keep the index they already had.
+It is `cc-by-4.0`, so the licence mix's set of terms is unchanged; the slug was read from three
+independent places (the Metax record's `access_rights.license`, the Etsin landing page, and the
+`readme.md` bundled inside the archive).
+
+DAPlankton is the second Fairdata-published source, so the Download API flow that had lived inside
+`SYKEZooScan2024DatasetImporter` — request a package, poll, authorize a **single-use** URL, fetch it
+exactly once — was extracted unchanged into `FairdataPackagedDatasetImporter` and is now shared.
+Copying it was the alternative; its whole reason for existing is a failure mode (a second GET on a
+consumed token returns 401) that is invisible until it happens.
+
+Two properties of the source drive the importer, both established by downloading the real
+2,739,982,748-byte package on 2026-08-27, matching its declared sha256, and enumerating all 112,040
+entries:
+
+- **The archive is doubly nested.** The package holds exactly one member,
+  `DAPlankton/DAPlankton.zip`, which is itself the real archive, so a single unwrap yields a zip
+  rather than class folders. The importer unwraps twice and *locates* the subset roots
+  (`find_archive_root`) instead of hard-coding a path. Consequence: a from-scratch import wants
+  roughly **9 GB** free under `data_dir` (package + unwrapped archive + merged imagefolder), and
+  `cleanup: false` keeps the first two.
+- **The label space is five-fold redundant.** Images are laid out
+  `<subset>/<instrument>/<class>/` over two subsets (`DAPlankton_lab`, 15 cultured classes;
+  `DAPlankton_sea`, 31 Baltic field classes) and three instruments (IFCB, CytoSense, FlowCam —
+  which imaged the cultures only, hence five roots, not six). Subset and instrument are per-image
+  provenance, not five label spaces, so the five roots are merged into **one class dir per taxon**,
+  the policy KI-27's FREPJ-Z already applies to its two magnifications. That is 46 class slots but
+  **44 distinct taxa**: `Aphanizomenon_flosaquae` and `Pseudopedinella_sp` are imaged in both
+  subsets. Provenance survives as a filename prefix (`lab_cs_`, `sea_ifcb_`, …) readable in
+  `original_path`, and the prefix is load-bearing — per-folder counters restart, so basenames
+  collide five ways without it.
+
+**Taxonomy.** 44 rows appended at EOF, after the frepj block, leaving the sha256-frozen first 1,486
+lines untouched. 31 reuse `syke_ifcb_2022` rows verbatim (DAPlankton_SEA follows that dataset's
+label scheme and its 31 classes are a strict subset of those 50); 4 more reuse an existing row; 9
+were resolved against WoRMS, NCBI, Wikidata and BOLD, with anything an authority could not confirm
+left **blank rather than guessed**. Reuse is not tidiness:
+`test_forward_id_mapping_is_clean` fails if one `proposed_label` carries two different values in an
+ID column, so an independent re-lookup differing by a digit would break the suite.
+
+**Frozen-output risk: MEDIUM, rebuild-only.** Nothing published changes — `daplankton` is absent
+from `samples.json` and listed in `_RECORDED_BUT_NOT_YET_PUBLISHED` alongside `frepj` — but a
+from-scratch build now emits a seventeenth source, appended last.
+
+**Known imprecision (accepted).** The importer's completeness check counts the images *present in
+the imagefolder* against `N_IMAGES` and warns on a mismatch. It is a diagnostic only: nothing
+raises, and the taxonomy join does not read the count. A deliberately partial or manually staged
+import will therefore emit one WARNING per run.
+## KI-29 — the four Tara Pacific deposits joined the registry (18th–21st, last); the first sources with **no archive**
 
 **Where:** `configs/generate_planktonzilla.yaml` `datasets`; `configs/dataset_import/tara_pacific_*.yaml`;
 `planktonzilla/dataset_import/{tara_pacific_layout,ecotaxa_client,tara_pacific_importer}.py`;
@@ -495,8 +554,55 @@ KI-16 through KI-24 recorded 2026-08-01 during the `pz_planktonzilla` consolidat
 KI-25, and the corrections dated 2026-08-04 throughout, from a full re-audit of every entry
 against the code as it stands — the same pass that archived the nine resolved entries to
 [`RESOLVED_ISSUES.md`](RESOLVED_ISSUES.md). KI-26 and KI-27 recorded 2026-08-25 during the v1.2
-(FREPJ) lifecycle assessment and the registry join that followed it. KI-28 recorded 2026-08-26
-with the Tara Pacific registry join (issue #10).*
+(FREPJ) lifecycle assessment and the registry join that followed it. KI-28 recorded 2026-08-27
+with the daplankton registry join (issue #17). KI-29 recorded 2026-08-26 with the Tara Pacific
+registry join (issue #10).*
+
+---
+
+## KI-30 — `planktonset1.0` is fetched from a mirror we keep, not from NCEI's on-demand generator
+
+**Where:** `configs/dataset_import/planktonset1.yaml`; `PlanktonSet1DatasetImporter` and
+`DatasetImporter._fetch_archive_verified` in `planktonzilla/dataset_import/dataset_importer.py`;
+`scripts/mirror_planktonset1.py`. Output rows are **unchanged** — same 60,736 images.
+
+**Change (2026-08-28).** `download_uris` never named a stored file. It names NCEI's Archive
+Management System *download* endpoint, which tars accession 0127422 **on demand**. Measured against
+the live service 2026-08-27: ~22 s to first byte, then ~0.6 MB/s (≈1 h for the archive), `Range`
+**ignored** (a ranged GET answers `200`, not `206`), `Transfer-Encoding: chunked` with **no
+`Content-Length`**, and a sustained `503` that was still returning `503` a full day later.
+
+So every run was an hour-long transfer that could not resume and could not be size-checked, and any
+interruption lost all of it. Two things hid this: `datasets` 5.0.1 declares but never reads
+`resume_download` or the `DownloadConfig` `max_retries` the project was passing (so the promised
+resume and five retries did not exist), and `datasets` + fsspec probe HEAD-then-GET, making the
+server build the tarball two or three times per attempt.
+
+Three consequences, recorded because they change how this source behaves:
+
+- The archive is fetched by `_fetch_archive_verified`, not `DownloadManager`: one request per
+  attempt, real retries, and a **gzip-framing check fed from the chunks as they arrive** — the only
+  truncation signal available when the server discloses no size.
+- The class tree is **located** (`FINAL_Plankton_Segments*`, then `find_class_root`) instead of
+  walked to via `0127422/2.3/data/0-data/FINAL_Plankton_Segments_12082014`. That path pinned the
+  accession **version**, and upstream already publishes 1.1, 2.2 and 2.3; `Path.glob` on a missing
+  path yields nothing rather than raising, so a 2.4 re-release would have silently produced an empty
+  imagefolder — the KI-22 / WHOI failure mode, latent here.
+- The data is **121 classes / 60,736 JPEGs / 108,723,866 bytes and immutable since 2015**, so it is
+  now mirrored once (`scripts/mirror_planktonset1.py`, over FTP) and imported from that archive via
+  `manual_download_local_file_names`. NCEI's uptime leaves the critical path entirely.
+
+FTP, not the HTTPS form of the same mirror: `ncei.noaa.gov/robots.txt` says `Disallow: /data*`,
+which covers the HTTPS mirror path, while the FTP tree is the bulk route the accession landing page
+itself advertises. Mirroring is ~4.3 h at 4 workers (~4 files/s) and resumable; it is slower than
+the archive whenever the archive is up, which is why the generator stays the default route.
+
+*Verified 2026-08-28 end to end: mirrored 60,736 files / 108,723,866 bytes with 0 failures, packaged
+to a 91,292,764-byte `.tar.gz`, imported through `pz_import_dataset action=import`, and the built
+imagefolder holds 121 classes / 60,736 images / 108,723,866 bytes whose names match the 121
+`planktonset1.0` rows of the taxonomy CSV exactly, in both directions. Unrelated to
+[KI-15](#ki-15--planktonset10-is-recorded-as-other-which-states-nothing), which concerns this same
+source's `license: other`.*
 
 ---
 
@@ -634,50 +740,6 @@ is the authoritative record for the actual terms.
 value a license filter cannot act on: `other` can be neither included nor excluded on merit.
 
 ---
-
-## KI-29 — `planktonset1.0` is fetched from a mirror we keep, not from NCEI's on-demand generator
-
-**Where:** `configs/dataset_import/planktonset1.yaml`; `PlanktonSet1DatasetImporter` and
-`DatasetImporter._fetch_archive_verified` in `planktonzilla/dataset_import/dataset_importer.py`;
-`scripts/mirror_planktonset1.py`. Output rows are **unchanged** — same 60,736 images.
-
-**Change (2026-08-28).** `download_uris` never named a stored file. It names NCEI's Archive
-Management System *download* endpoint, which tars accession 0127422 **on demand**. Measured against
-the live service 2026-08-27: ~22 s to first byte, then ~0.6 MB/s (≈1 h for the archive), `Range`
-**ignored** (a ranged GET answers `200`, not `206`), `Transfer-Encoding: chunked` with **no
-`Content-Length`**, and a sustained `503` that was still returning `503` a full day later.
-
-So every run was an hour-long transfer that could not resume and could not be size-checked, and any
-interruption lost all of it. Two things hid this: `datasets` 5.0.1 declares but never reads
-`resume_download` or the `DownloadConfig` `max_retries` the project was passing (so the promised
-resume and five retries did not exist), and `datasets` + fsspec probe HEAD-then-GET, making the
-server build the tarball two or three times per attempt.
-
-Three consequences, recorded because they change how this source behaves:
-
-- The archive is fetched by `_fetch_archive_verified`, not `DownloadManager`: one request per
-  attempt, real retries, and a **gzip-framing check fed from the chunks as they arrive** — the only
-  truncation signal available when the server discloses no size.
-- The class tree is **located** (`FINAL_Plankton_Segments*`, then `find_class_root`) instead of
-  walked to via `0127422/2.3/data/0-data/FINAL_Plankton_Segments_12082014`. That path pinned the
-  accession **version**, and upstream already publishes 1.1, 2.2 and 2.3; `Path.glob` on a missing
-  path yields nothing rather than raising, so a 2.4 re-release would have silently produced an empty
-  imagefolder — the KI-22 / WHOI failure mode, latent here.
-- The data is **121 classes / 60,736 JPEGs / 108,723,866 bytes and immutable since 2015**, so it is
-  now mirrored once (`scripts/mirror_planktonset1.py`, over FTP) and imported from that archive via
-  `manual_download_local_file_names`. NCEI's uptime leaves the critical path entirely.
-
-FTP, not the HTTPS form of the same mirror: `ncei.noaa.gov/robots.txt` says `Disallow: /data*`,
-which covers the HTTPS mirror path, while the FTP tree is the bulk route the accession landing page
-itself advertises. Mirroring is ~4.3 h at 4 workers (~4 files/s) and resumable; it is slower than
-the archive whenever the archive is up, which is why the generator stays the default route.
-
-*Verified 2026-08-28 end to end: mirrored 60,736 files / 108,723,866 bytes with 0 failures, packaged
-to a 91,292,764-byte `.tar.gz`, imported through `pz_import_dataset action=import`, and the built
-imagefolder holds 121 classes / 60,736 images / 108,723,866 bytes whose names match the 121
-`planktonset1.0` rows of the taxonomy CSV exactly, in both directions. Unrelated to
-[KI-15](#ki-15--planktonset10-is-recorded-as-other-which-states-nothing), which concerns this same
-source's `license: other`.*
 
 ---
 

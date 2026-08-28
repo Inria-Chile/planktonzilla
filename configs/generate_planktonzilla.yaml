@@ -41,15 +41,15 @@ num_proc: null
 # (`fairdata_pid`).
 #
 # The registry therefore covers all 15 sources of the published dataset — a from-scratch
-# build reproduces it, rather than 12 of its 15 parts — plus `frepj` (v1.2), appended
-# last, which enters the published artifact with the v1.2 push.
+# build reproduces it, rather than 12 of its 15 parts — plus two appended after them that
+# enter the published artifact later: `frepj` (v1.2) and `daplankton`.
 #
 # Each entry carries THREE distinct identifiers — do not interchange them:
 #   name        the source's identity. It is the `dataset` column value AND the
 #               taxonomy CSV `Dataset` value, so it must match the CSV exactly.
 #   import_name the configs/dataset_import/<stem>.yaml filename.
 #   redefiner   a key into the REDEFINERS map above.
-# For 5 of the 16 active entries name != import_name (whoi/whoi-plankton,
+# For 5 of the 17 active entries name != import_name (whoi/whoi-plankton,
 # zooscan/zooscannet, planktonset1.0/planktonset1, global_uvp5/global_uvp5net,
 # jedioceans/jedi_oceans_cpics).
 #
@@ -133,7 +133,7 @@ datasets:
       cleanup: false,
       redefiner: none,
     }
-  # Sixteenth and LAST (milestone v1.2): appended so the fifteen sources of the published
+  # Sixteenth (milestone v1.2): appended so the fifteen sources of the published
   # planktonzilla-17M keep the concatenation index they already had. cc-by-4.0, so the
   # licence mix is unchanged. Besides its 963 MB figshare archive, its redefiner joins
   # three md5-pinned sidecar tables (Table_S1/S3/S4, 8.6 MB, figshare article 26891563)
@@ -144,7 +144,21 @@ datasets:
   # included: delete the file to force one. cleanup:false keeps the raw archive for
   # reuse, like the three entries above.
   - { name: frepj, import_name: frepj, cleanup: false, redefiner: frepj }
-  # Entries 17-20 (milestone v1.2): the four Tara Pacific deposits of Mériguet et al. 2025
+  # Seventeenth: appended after frepj so every source above keeps the
+  # concatenation index it already had. cc-by-4.0, so the licence mix is unchanged.
+  #
+  # Like sykezooscan2024 it resolves its archive through the Fairdata Download API
+  # (`fairdata_pid`) rather than a direct URL — verified end to end on 2026-08-27: the
+  # 2,739,982,748-byte package downloaded and matched the sha256 the API declares, and its
+  # 44 merged class folders / 111,924 images match the 44 `daplankton` labels in
+  # planktonzilla_taxonomy.csv exactly.
+  #
+  # The archive is DOUBLY nested (the package holds DAPlankton/DAPlankton.zip, itself the
+  # real archive) and the importer unwraps both, so budget ~9 GB free under data_dir for a
+  # from-scratch import. cleanup:false keeps the raw copies for reuse, like the four entries
+  # above; set it true if that disk is wanted back.
+  - { name: daplankton, import_name: daplankton, cleanup: false, redefiner: none }
+  # Entries 18-21 (milestone v1.2): the four Tara Pacific deposits of Mériguet et al. 2025
   # (essd-17-2761-2025), appended last so every source above keeps its concatenation index.
   # All four are cc-by-4.0, so the licence mix is unchanged.
   #
