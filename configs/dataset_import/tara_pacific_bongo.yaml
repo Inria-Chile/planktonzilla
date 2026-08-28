@@ -31,6 +31,11 @@ ecotaxa_projects: [11370, 11369]
 ecotaxa_window_size: 10000
 ecotaxa_image_workers: 8
 ecotaxa_max_missing_images: 0
+# Deliberately NOT http_timeout (3600, sized for streaming whole archives). A vignette is
+# a few kB and latency-bound, so at 3600 one hung connection parked a worker for an hour
+# and the retry below it could not run until that fired.
+ecotaxa_image_timeout: 60
+ecotaxa_manifest_timeout: 120
 
 description: |
   Quantitative imaging dataset of FlowCam-imaged micro-plankton (> 20 µm) collected with

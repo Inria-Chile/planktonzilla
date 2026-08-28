@@ -926,6 +926,22 @@ class DatasetImporter:
     # to finish. 0 = none: an incomplete import is a failure, not a smaller dataset. The
     # fetch is resumable, so the remedy for a transient outage is to re-run.
     ecotaxa_max_missing_images: int = 0
+    # EcoTaxa gets its OWN timeouts rather than borrowing http_timeout, which is 3600 —
+    # a value chosen for streaming multi-gigabyte archives (whoi's 36 GB) and 60x too long
+    # for anything here.
+    #
+    # It matters because of what a timeout costs on this path. A vignette is a few kB and
+    # latency-bound, and the walk is ~2.35M of them through 8 workers, so a hung connection
+    # is not rare — it is certain, repeatedly. At 3600 each hang parked one of the 8 workers
+    # for an hour (up to 5 retries x 3600 for a single image) with no progress and no error,
+    # which is what a "stalled" EcoTaxa fetch actually was. The retry logic below it was
+    # always sound; it simply could not run until the timeout fired.
+    #
+    # 60/120 are ecotaxa_client's own documented defaults, restored here: a vignette that
+    # has not answered in 60s is not going to, and failing fast is what lets the retry
+    # actually retry. The manifest gets 120 because each request returns 10,000 objects.
+    ecotaxa_image_timeout: int = 60
+    ecotaxa_manifest_timeout: int = 120
 
     cleanup_after_processing: Optional[bool] = False
 
