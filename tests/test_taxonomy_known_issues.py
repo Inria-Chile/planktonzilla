@@ -53,14 +53,15 @@ def rows():
 
 
 def test_frozen_table_anchor(rows):
-    """Sanity anchor: 1,485 frozen rows + the v1.2 appends, expected schema.
+    """Sanity anchor: 1,485 frozen rows + 229 frepj (v1.2) + 44 daplankton + 600 Tara Pacific, expected schema.
 
     The 1,485-row base is still byte-frozen — tests/test_frepj_taxonomy_coverage.py pins
-    its sha256 — so the KI-8..KI-13 findings below are unchanged; the 229 frepj rows and
-    then the 600 Tara Pacific rows were APPENDED after it and are covered by their own
-    tests (tests/test_frepj_taxonomy_coverage.py, tests/test_tara_pacific_taxonomy.py).
+    its sha256 — so the KI-8..KI-13 findings below are unchanged; the later blocks were
+    APPENDED after it and are covered by their own tests
+    (tests/test_frepj_taxonomy_coverage.py, tests/test_daplankton_taxonomy_coverage.py,
+    tests/test_tara_pacific_taxonomy.py).
     """
-    assert len(rows) == 1485 + 229 + 600
+    assert len(rows) == 1485 + 229 + 44 + 600
     assert {*NORMALIZED_COLUMNS, *ID_COLUMNS, "Dataset", "Raw_Labels", "plankton", "living"} <= set(rows[0])
 
 

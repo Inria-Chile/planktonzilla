@@ -273,7 +273,7 @@ def test_attached_sidecars_win_over_tables_dir(tmp_path):
 
 
 def test_attach_sidecars_is_a_no_op_on_the_other_redefiners(tmp_path):
-    """The fifteen archive-only sources' redefiners accept the seam's call and keep nothing."""
+    """The sixteen archive-only sources' redefiners accept the seam's call and keep nothing."""
     csv_path = tmp_path / "taxo.csv"
     _write_taxonomy_csv(csv_path)
     for klass in (gp.NoMetadataRedefiner, gp.WHOIRedefiner, gp.EcoTaxaRedefiner, gp.JediRedefiner):

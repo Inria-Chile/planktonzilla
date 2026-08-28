@@ -433,6 +433,29 @@ def test_sykezooscan2024_is_configured_for_fairdata(tmp_path):
     assert importer.fairdata_api_base == inspect.signature(di.resolve_fairdata_download_url).parameters["api_base"].default
 
 
+def test_daplankton_is_configured_for_fairdata(tmp_path):
+    """daplankton's deposit identity is transcribed twice; pin the two copies together.
+
+    ``daplankton_layout`` records the identity for the code, and ``daplankton.yaml``
+    restates it because Hydra cannot read a Python module. Nothing but this test stops
+    the two from drifting — and a stale PID here does not fail loudly, it resolves a
+    DIFFERENT dataset and imports it under the daplankton name.
+    """
+    from planktonzilla.dataset_import import daplankton_layout
+
+    importer = _importer("daplankton", tmp_path)
+
+    assert importer.fairdata_pid == daplankton_layout.FAIRDATA_PID
+    assert importer.download_targets() == [("fairdata", daplankton_layout.FAIRDATA_PID)]
+    assert importer.source_url == daplankton_layout.SOURCE_URL
+    assert daplankton_layout.FAIRDATA_PID in importer.manual_download_url
+    assert importer.license == daplankton_layout.LICENSE
+
+    # Same trap as sykezooscan2024: the importer passes this explicitly, so a value that
+    # differs from the resolver's own default silently overrides the verified endpoint.
+    assert importer.fairdata_api_base == inspect.signature(di.resolve_fairdata_download_url).parameters["api_base"].default
+
+
 class _FakeResponse:
     def __init__(self, payload, ok=True, status_code=200):
         self._payload = payload
@@ -853,7 +876,7 @@ class _FakeHTTP:
 
 
 def test_download_targets_normalises_a_bare_string_and_a_list(tmp_path):
-    """14 of the 16 sources declare download_uris as a string; whoi declares nine.
+    """15 of the 17 sources declare download_uris as a string; whoi declares nine.
 
     Iterating the string form directly would probe one URL per CHARACTER, so the
     coercion is the difference between a report and nonsense.
@@ -1360,7 +1383,7 @@ SIDECAR_CONFIG_NAMES = {"frepj", *(name for name in IMPORT_CONFIG_NAMES if name.
 
 @pytest.mark.parametrize("name", [n for n in IMPORT_CONFIG_NAMES if n not in SIDECAR_CONFIG_NAMES])
 def test_sources_without_sidecars_are_unchanged(name, tmp_path):
-    """The fifteen archive-only sources: no sidecars, and download_targets() exactly as before."""
+    """The sixteen archive-only sources: no sidecars, and download_targets() exactly as before."""
     importer = _importer(name, tmp_path)
     assert importer.sidecar_targets() == []
     assert importer.missing_sidecars() == []

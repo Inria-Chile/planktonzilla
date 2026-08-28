@@ -46,9 +46,9 @@ from planktonzilla.planktonzilla_dataset.utils import build_tara_pacific_taxonom
 RANKS = constants.TAXONOMY_RANKS
 NORMALIZED_COLUMNS = (*RANKS, "proposed_label", "root_class", "qualifier")
 
-# The pristine CSV (header + 1485 rows) plus the 229 frepj rows is exactly 1715 lines;
-# the Tara Pacific rows are strictly appended after them.
-LINES_BEFORE_TARA_PACIFIC = 1715
+# The pristine CSV (header + 1485 rows) plus the 229 frepj rows and the 44 daplankton
+# rows is exactly 1759 lines; the Tara Pacific rows are strictly appended after them.
+LINES_BEFORE_TARA_PACIFIC = 1759
 EXPECTED_ROWS = 600
 
 

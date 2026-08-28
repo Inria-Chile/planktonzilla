@@ -1713,6 +1713,50 @@ frepj,"Lobosa,Arcellinida,Centropyxidae,Centropyxis,Centropyxis discoides",proto
 frepj,"Lobosa,Arcellinida,Centropyxidae,Centropyxis,Sp._unk",protozoa,amoebozoa,lobosa,arcellinida,centropyxidae,centropyxis,,centropyxis,True,True,living,full_body,Q72663,136759.0,318527.0,,
 frepj,"Oligophymenophorea,Peritrichida,Vorticellidae,Vorticella,Sp._unk",chromista,ciliophora,oligohymenophorea,peritrichida,vorticellidae,vorticella,,vorticella,True,True,living,full_body,Q82743,163573.0,60849.0,,
 frepj,"Ostracoda,Or._unk,Or._unk,Or._unk,Or._unk",animalia,arthropoda,ostracoda,,,,,ostracoda,True,True,living,full_body,,,,,
+daplankton,Aphanizomenon_flosaquae,bacteria,cyanobacteria,cyanophyceae,nostocales,aphanizomenonaceae,aphanizomenon,,aphanizomenon,True,True,living,full_body,Q309515,160567.0,1175.0,468448.0,697
+daplankton,Apocalathium_malmogiense,chromista,myzozoa,dinophyceae,thoracosphaerales,thoracosphaeraceae,apocalathium,malmogiense,apocalathium malmogiense,True,True,living,full_body,,1380043.0,3098606.0,,58496
+daplankton,Centrales_sp,chromista,heterokontophyta,bacillariophyceae,centrales,,,,centrales,True,True,living,full_body,Q20670868,341285.0,33849.0,74456.0,711
+daplankton,Chaetoceros_sp,chromista,heterokontophyta,bacillariophyceae,chaetocerotanae,chaetocerotaceae,chaetoceros,,chaetoceros,True,True,living,full_body,Q1761179,148985.0,49237.0,87566.0,540;734;754;760
+daplankton,Chaetoceros_sp_single,chromista,heterokontophyta,bacillariophyceae,chaetocerotanae,chaetocerotaceae,chaetoceros,,chaetoceros,True,True,living,full_body,Q1761179,148985.0,49237.0,87566.0,540;734;754;760
+daplankton,Chlorococcales,plantae,chlorophyta,chlorophyceae,chlorococcales,,,,chlorococcales,True,True,living,full_body,Q255460,17111.0,3042.0,112297.0,
+daplankton,Chroococcales,bacteria,cyanobacteria,cyanophyceae,chroococcales,,,,chroococcales,True,True,living,full_body,Q3488765,146543.0,1118.0,176329.0,697
+daplankton,Chrysotila_roscoffensis,chromista,haptophyta,coccolithophyceae,isochrysidales,isochrysidaceae,chrysotila,roscoffensis,chrysotila roscoffensis,True,True,living,full_body,Q68398131,1327470.0,418908.0,,
+daplankton,Ciliata,chromista,ciliophora,,,,,,ciliophora,True,True,living,full_body,Q106345,11.0,5878.0,72834.0,657
+daplankton,Cryptomonadales,chromista,cryptophyta,cryptophyceae,cryptomonadales,,,,cryptomonadales,True,True,living,full_body,Q5190992,17640.0,589350.0,99181.0,
+daplankton,Cryptophyceae_Teleaulax,chromista,cryptophyta,cryptophyceae,pyrenomonadales,geminigeraceae,teleaulax,,teleaulax,True,True,living,full_body,Q23070355,106285.0,77930.0,99300.0,
+daplankton,Cyclotella_choctawhatcheeana,chromista,heterokontophyta,bacillariophyceae,thalassiosirales,stephanodiscaceae,cyclotella,choctawhatcheeana,cyclotella choctawhatcheeana,True,True,living,full_body,Q67886087,148908.0,310905.0,604181.0,711
+daplankton,Diatoma_tenuis,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,diatoma,tenuis,diatoma tenuis,True,True,living,full_body,Q67871395,149014.0,426639.0,603665.0,711
+daplankton,Dinophyceae,chromista,myzozoa,dinophyceae,,,,,dinophyceae,True,True,living,full_body,Q2567254,19542.0,2864.0,317011.0,240
+daplankton,Dinophysis_acuminata,chromista,myzozoa,dinophyceae,dinophysales,dinophysaceae,dinophysis,acuminata,dinophysis acuminata,True,True,living,full_body,Q16961867,109603.0,47934.0,317238.0,480;544;545
+daplankton,Dolichospermum_Anabaenopsis,bacteria,cyanobacteria,cyanophyceae,nostocales,nodulariaceae,anabaenopsis,,anabaenopsis,True,True,living,full_body,Q4750553,146590.0,110103.0,741486.0,697
+daplankton,Dolichospermum_Anabaenopsis_coiled,bacteria,cyanobacteria,cyanophyceae,nostocales,nodulariaceae,anabaenopsis,,anabaenopsis,True,True,living,full_body,Q4750553,146590.0,110103.0,741486.0,697
+daplankton,Euglenophyceae,protozoa,euglenozoa,euglenophyceae,,,,,euglenophyceae,True,True,living,full_body,Q2356588,19539.0,2704141.0,544174.0,
+daplankton,Eutreptiella_sp,protozoa,euglenozoa,euglenophyceae,eutreptiales,eutreptiaceae,eutreptiella,,eutreptiella,True,True,living,full_body,Q16235248,17657.0,73024.0,603466.0,
+daplankton,Gymnodiniales,chromista,myzozoa,dinophyceae,gymnodiniales,,,,gymnodiniales,True,True,living,full_body,Q5890243,109392.0,2953.0,317015.0,240
+daplankton,Gymnodinium_corollarium,chromista,myzozoa,dinophyceae,gymnodiniales,gymnodiniaceae,gymnodinium,corollarium,gymnodinium corollarium,True,True,living,full_body,Q68454893,623645.0,614669.0,,
+daplankton,Gymnodinium_like,chromista,myzozoa,dinophyceae,gymnodiniales,gymnodiniaceae,gymnodinium,,gymnodinium,True,True,living,like,Q140581,109475.0,2955.0,317017.0,240
+daplankton,Heterocapsa_rotundata,chromista,myzozoa,dinophyceae,peridiniales,heterocapsaceae,heterocapsa,rotundata,heterocapsa rotundata,True,True,living,full_body,Q68465167,110152.0,89963.0,317216.0,240
+daplankton,Heterocapsa_triquetra,chromista,myzozoa,dinophyceae,peridiniales,heterocapsaceae,heterocapsa,triquetra,heterocapsa triquetra,True,True,living,full_body,Q110558775,110153.0,66468.0,317225.0,240
+daplankton,Heterocyte,bacteria,cyanobacteria,,,,,,cyanobacteria,True,True,living,full_body,Q93315,146537.0,1117.0,1349790.0,697
+daplankton,Katablepharis_remigera,chromista,cryptophyta,cryptophyta,kathablepharidacea,katablepharidaceae,katablepharis,remigera,katablepharis remigera,True,True,living,full_body,Q23056005,627117.0,324623.0,99173.0,
+daplankton,Kryptoperidium_foliaceum,chromista,myzozoa,dinophyceae,peridiniales,peridiniaceae,kryptoperidinium,foliaceum,kryptoperidinium foliaceum,True,True,living,full_body,Q68466614,110154.0,160619.0,,
+daplankton,Levanderina_fissa,chromista,myzozoa,dinophyceae,,,,,dinophyceae,True,True,living,full_body,Q2567254,19542.0,2864.0,317011.0,240
+daplankton,Melosira_arctica,chromista,heterokontophyta,bacillariophyceae,melosirales,melosiraceae,melosira,arctica,melosira arctica,True,True,living,full_body,Q67898176,149042.0,1453603.0,1023161.0,711
+daplankton,Mesodinium_rubrum,chromista,ciliophora,litostomatea,cyclotrichiida,mesodiniidae,mesodinium,rubrum,mesodinium rubrum,True,True,living,full_body,Q61999423,232069.0,704171.0,72834.0,657
+daplankton,Monoraphidium_contortum,plantae,chlorophyta,chlorophyceae,sphaeropleales,selenastraceae,monoraphidium,contortum,monoraphidium contortum,True,True,living,full_body,Q69674374,160591.0,307511.0,762197.0,
+daplankton,Nephroselmis_pyriformis,plantae,chlorophyta,nephroselmidophyceae,nephroselmidales,nephroselmidaceae,nephroselmis,pyriformis,nephroselmis pyriformis,True,True,living,full_body,Q69727928,134541.0,156128.0,,
+daplankton,Nitzschia_paleacea,chromista,heterokontophyta,bacillariophyceae,bacillariales,bacillariaceae,nitzschia,paleacea,nitzschia paleacea,True,True,living,full_body,Q49600010,609727.0,303396.0,785727.0,711
+daplankton,Nodularia_spumigena,bacteria,cyanobacteria,cyanophyceae,nostocales,nodulariaceae,nodularia,spumigena,nodularia spumigena,True,True,living,full_body,Q30752967,160566.0,70799.0,703247.0,697
+daplankton,Oocystis_sp,plantae,chlorophyta,trebouxiophyceae,chlorellales,oocystaceae,oocystis,,oocystis,True,True,living,full_body,Q2024765,178611.0,120746.0,440455.0,
+daplankton,Peridiniella_catenata,chromista,myzozoa,dinophyceae,gonyaulacales,cladopyxidaceae,peridiniella,catenata,peridiniella catenata,True,True,living,full_body,Q68470873,110156.0,3111327.0,317031.0,240
+daplankton,Pseudopedinella_sp,chromista,ochrophyta,dictyochophyceae,pedinellales,actinomonadaceae,pseudopedinella,,pseudopedinella,True,True,living,full_body,Q7255240,160599.0,35683.0,603965.0,
+daplankton,Pyramimonas_sp,plantae,chlorophyta,pyramimonadophyceae,pyramimonadales,pyramimonadaceae,pyramimonas,,pyramimonas,True,True,living,full_body,Q3926068,134529.0,36882.0,163628.0,
+daplankton,Rhinomonas_nottbecki,chromista,cryptophyta,cryptophyceae,pyrenomonadales,pyrenomonadaceae,rhinomonas,nottbeckii,rhinomonas nottbeckii,True,True,living,full_body,Q68393149,,1326783.0,,
+daplankton,Rhodomonas_salina,chromista,cryptophyta,cryptophyceae,pyrenomonadales,pyrenomonadaceae,rhodomonas,salina,rhodomonas salina,True,True,living,full_body,Q21308196,106316.0,3034.0,,
+daplankton,Skeletonema_marinoi,chromista,heterokontophyta,bacillariophyceae,thalassiosirales,skeletonemaceae,skeletonema,marinoi,skeletonema marinoi,True,True,living,full_body,Q22286410,376667.0,267567.0,320025.0,711
+daplankton,Snowella_Woronichinia,bacteria,cyanobacteria,cyanophyceae,synechococcales,coelosphaeriaceae,woronichinia,,woronichinia,True,True,living,full_body,Q19842555,146617.0,283819.0,708003.0,697
+daplankton,Teleaulax_acuta,chromista,cryptophyta,cryptophyceae,pyrenomonadales,geminigeraceae,teleaulax,acuta,teleaulax acuta,True,True,living,full_body,Q23055863,106305.0,195071.0,,
+daplankton,Tetraselmis_sp,plantae,chlorophyta,chlorodendrophyceae,chlorodendrales,chlorodendraceae,tetraselmis,,tetraselmis,True,True,living,full_body,Q7706731,134526.0,3164.0,,
 tara_pacific_bongo,Rhizaria,chromista,,,,,,,chromista,True,True,living,full_body,Q862296,7.0,,,
 tara_pacific_bongo,Cyanobacteria<Proteobacteria,bacteria,cyanobacteria,,,,,,cyanobacteria,True,True,living,full_body,Q93315,146537.0,1117.0,1349790.0,697
 tara_pacific_bongo,Retaria,chromista,,,,,,,chromista,True,True,living,full_body,Q862296,7.0,,,
