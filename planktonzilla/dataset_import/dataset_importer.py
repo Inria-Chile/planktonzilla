@@ -643,7 +643,7 @@ def probe_url(url: str, *, timeout: int = 30, session=None, user_agent: Optional
     requester = session or requests
     headers = {"User-Agent": user_agent} if user_agent else {}
 
-    response, head_failure = None, None
+    response, head_failure, used_ranged_get = None, None, False
     try:
         response = requester.head(url, headers=headers, allow_redirects=True, timeout=timeout)
     except requests.RequestException as e:
@@ -656,6 +656,7 @@ def probe_url(url: str, *, timeout: int = 30, session=None, user_agent: Optional
 
     if response is None or response.status_code in HEAD_UNSUPPORTED_STATUSES or not response.ok:
         try:
+            used_ranged_get = True
             response = requester.get(
                 url,
                 headers={**headers, "Range": "bytes=0-0"},
@@ -690,11 +691,37 @@ def probe_url(url: str, *, timeout: int = 30, session=None, user_agent: Optional
     if not ok and response.status_code in (401, 403):
         detail += f". {BLOCKED_HINT}"
 
-    warning = None
+    # Accumulated, not assigned: these conditions co-occur. planktonset1.0's NCEI endpoint
+    # triggers BOTH of the new ones at once, and the HTML test double below discloses no
+    # Content-Length either — so an implementation that overwrote would silently drop the
+    # warning a caller was already relying on.
+    warnings = []
     if ok and content_type.startswith("text/html"):
-        warning = "the server returned an HTML page, not a file — a login wall, a moved-dataset notice or an interstitial"
+        warnings.append(
+            "the server returned an HTML page, not a file — a login wall, a moved-dataset notice or an interstitial"
+        )
+    if ok and used_ranged_get and response.status_code == 200:
+        # A server honouring Range answers 206. Answering 200 to `Range: bytes=0-0` means
+        # it ignored the header and is streaming the whole file, so NOTHING downstream can
+        # resume this download: every retry restarts at byte 0. Measured on NCEI
+        # (planktonset1.0) 2026-08-27, where that turns a ~1h transfer into an all-or-
+        # nothing one. Reported, not failed — the URL does serve the file.
+        warnings.append(
+            "the server ignored Range (answered 200, not 206), so an interrupted download cannot resume "
+            "and every retry restarts from the beginning"
+        )
+    if ok and size is None:
+        # No Content-Length (typically Transfer-Encoding: chunked) means no layer can tell
+        # a complete download from one that stopped early, and the target contributes 0 to
+        # the run's disk estimate.
+        warnings.append(
+            "the server disclosed no size, so a truncated download cannot be detected and this target adds "
+            "nothing to the disk estimate"
+        )
 
-    return ProbeResult(kind="url", location=url, ok=ok, detail=detail, size=size, warning=warning)
+    return ProbeResult(
+        kind="url", location=url, ok=ok, detail=detail, size=size, warning="; ".join(warnings) or None
+    )
 
 
 def probe_local_file(path, *, kind: str = "file") -> ProbeResult:
@@ -1173,6 +1200,23 @@ class DatasetImporter:
             download_config=DownloadConfig(
                 cache_dir=self.raw_dir,
                 force_download=self.force_download,
+                # INERT against datasets 5.0.1 — passed for forward compatibility only, so
+                # read neither as a guarantee of resume nor of retry. Verified 2026-08-27
+                # against the installed package: `resume_download` appears exactly twice in
+                # all of datasets (download/download_config.py:20 docstring, :56 field) and
+                # nothing reads it, while the only `max_retries` reads
+                # (utils/file_utils.py:838, :972) take config.STREAMING_*_MAX_RETRIES —
+                # module constants on the streaming xopen path, not this field on the
+                # DownloadManager.download path.
+                #
+                # This matters because it is why planktonset1.0 was misdiagnosed for so
+                # long: its NCEI endpoint needs ~22s to emit a first byte, then streams a
+                # multi-GB archive at ~0.6 MB/s while IGNORING Range (a ranged GET answers
+                # 200, not 206) and disclosing no Content-Length. The config promised a
+                # resumable, five-times-retried download; in reality every attempt restarts
+                # at byte 0 and none is retried, so the leftover `.incomplete` is not
+                # progress. A source that needs real resume must implement it itself — see
+                # _fetch_single_use for the in-house pattern.
                 resume_download=self.resume_download,
                 max_retries=self.max_download_retries,
                 # 1, NOT self.num_proc — for downloads only. self.num_proc still drives
@@ -1379,7 +1423,16 @@ class DatasetImporter:
             RuntimeError: If extraction failed and no raw data is available to prepare
                 the imagefolder.
         """
-        raw_exists = self.raw_dir.exists() and bool(os.listdir(self.raw_dir))
+        # `.incomplete` and `.lock` do NOT count as raw data. A download that died
+        # mid-stream leaves both behind, and counting them made this report a cache hit
+        # that does not exist: planktonset1.0's raw_dir held nothing but a 116 MB
+        # `.incomplete` and a 0-byte `.lock`, so the run announced it was "resolving
+        # extracted paths from cache" and then refetched the whole archive from byte 0.
+        # Anyone reading that log — including anyone debugging why this source keeps
+        # failing — was told a resume was happening that datasets does not implement.
+        raw_exists = self.raw_dir.exists() and any(
+            not entry.endswith((".incomplete", ".lock")) for entry in os.listdir(self.raw_dir)
+        )
 
         need_to_build_imagefolder = not self.imagefolder_is_complete() or self.force_imagefolder_preparation
 
@@ -1389,8 +1442,8 @@ class DatasetImporter:
             else:
                 logger.info("Downloading and extracting dataset.")
 
-            # Si los archivos ya están en el raw_dir,
-            # no los descargará de nuevo; solo leerá la caché y asignará la ruta
+            # A cached archive is reused rather than refetched; note that a PARTIAL one is
+            # not resumed (see the DownloadConfig comment in _download_and_extract).
             self._download_and_extract()
 
             if getattr(self, "extracted_dirs", None) is None:
@@ -1405,6 +1458,32 @@ class DatasetImporter:
             # a single file.
             self.imagefolder_dir.mkdir(parents=True, exist_ok=True)
             self._prepare_imagefolder()
+
+            # A hook that copied NOTHING must fail here, loudly, naming itself.
+            #
+            # Every _prepare_imagefolder locates its class folders by walking a path it
+            # believes the archive has, and `Path.glob` on a path that does not exist
+            # returns an empty iterator rather than raising — so a layout that shifted by
+            # one directory produces an EMPTY imagefolder and no error. That has now
+            # happened three times: SYKE ZooScan (KI-22, which globbed PlanktonSet1's
+            # accession path by mistake), whoi (fixed in 25d111f, whose nine archives nest
+            # one wrapper deeper than assumed), and it stays latent in every importer that
+            # still hard-codes a subpath. Left unchecked the run continues for hours and
+            # dies inside load_dataset with `Instruction "train" corresponds to no data!`,
+            # which names neither the source nor the reason — or worse, pushes a silently
+            # short dataset to the Hub.
+            #
+            # A short-circuiting search, NOT a count: global_uvp5 (7.4M images) and whoi
+            # (3.3M) would pay a full multi-million-entry rglob on every build to learn a
+            # single bit. The count is computed only to enrich the failure message.
+            if not any(path.suffix.lower() in IMAGE_SUFFIXES for path in self.imagefolder_dir.rglob("*")):
+                raise RuntimeError(
+                    f"«{self.human_readable_name or self.hf_dataset_name}»: "
+                    f"{type(self).__name__}._prepare_imagefolder() produced no image files under "
+                    f"{self.imagefolder_dir}. The extracted layout almost certainly differs from the path that "
+                    f"method expects — check it against {self.extracted_dirs}, and prefer locating the class "
+                    f"folders (find_class_root, or an rglob for the image files) over a hard-coded subpath."
+                )
 
         else:
             logger.info(

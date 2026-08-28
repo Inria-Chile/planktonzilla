@@ -98,6 +98,66 @@ def test_whoi_finds_classes_nested_under_a_release_year_wrapper(tmp_path, monkey
     assert not (imp.imagefolder_dir / "2006").exists()
 
 
+def test_import_dataset_refuses_an_imagefolder_a_hook_left_empty(tmp_path, monkeypatch):
+    """The bug CLASS behind both WHOI failures, caught once for every importer.
+
+    Every _prepare_imagefolder walks a path it believes the archive has, and Path.glob on
+    a path that does not exist returns nothing rather than raising — so a layout that
+    shifted by one directory yields an EMPTY imagefolder and no error. That has bitten
+    SYKE ZooScan (KI-22), then WHOI. Unguarded, the run continues to load_dataset and dies
+    with `Instruction "train" corresponds to no data!`, naming neither the source nor the
+    cause; this must fail immediately instead, naming both.
+    """
+    import pytest
+
+    class _MissesEverything(dataset_importer.DatasetImporter):
+        def _download_and_extract(self):
+            self.extracted_dirs = "somewhere"
+
+        def _prepare_imagefolder(self):
+            # The real shape of the bug: a glob over a path that is not there.
+            for stray in (self.raw_dir / "not-the-real-layout").glob("*"):
+                copied = stray  # pragma: no cover - the point is that this never runs
+
+    imp = _MissesEverything(
+        data_dir=tmp_path,
+        hf_dataset_name="misses",
+        push_to_hub=False,
+        show_progress=False,
+    )
+    monkeypatch.setattr(dataset_importer, "load_dataset", lambda *args, **kwargs: "FAKE_DATASET")
+
+    with pytest.raises(RuntimeError) as excinfo:
+        imp.import_dataset()
+
+    message = str(excinfo.value)
+    assert "_MissesEverything._prepare_imagefolder" in message, "name the hook that produced nothing"
+    assert str(imp.imagefolder_dir) in message
+
+
+def test_import_dataset_accepts_an_imagefolder_that_holds_images(tmp_path, monkeypatch):
+    """The guard must not fire on a hook that did its job — including a split layout."""
+
+    class _NestsTwoDeep(dataset_importer.DatasetImporter):
+        def _download_and_extract(self):
+            self.extracted_dirs = "somewhere"
+
+        def _prepare_imagefolder(self):
+            _write_rgb_png(self.imagefolder_dir / "train" / "classA" / "0.png")
+
+    imp = _NestsTwoDeep(
+        data_dir=tmp_path,
+        hf_dataset_name="nested",
+        push_to_hub=False,
+        show_progress=False,
+    )
+    monkeypatch.setattr(dataset_importer, "load_dataset", lambda *args, **kwargs: "FAKE_DATASET")
+
+    imp.import_dataset()
+
+    assert imp.hf_dataset == "FAKE_DATASET"
+
+
 def test_import_dataset_creates_the_imagefolder_root_before_the_subclass_hook(tmp_path, monkeypatch):
     """The guarantee is the BASE class's, so every _prepare_imagefolder may rely on it."""
     seen = {}
