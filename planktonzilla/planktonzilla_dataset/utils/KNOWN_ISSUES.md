@@ -67,6 +67,7 @@ number missing from the table below is *resolved*, not withdrawn; look for it th
 | KI-26 | open, source-side | none (17M) / republished (frepj) | FREPJ `Sampling date` is free text; 7.1% not a date — normalized, 1.9% null |
 | KI-27 | decision log | MEDIUM (rebuild) | `frepj` joined the registry (16th, last); sidecar inputs became an importer protocol |
 | KI-28 | decision log | MEDIUM (rebuild) | the four Tara Pacific deposits joined (17th–20th, last); the first sources with **no archive** |
+| KI-29 | decision log | none (same rows) | `planktonset1.0` is fetched from a mirror we keep; NCEI's on-demand generator cannot resume or be size-checked |
 
 Three obligations belong to archived entries but are **still open**, and are restated here so
 archiving cannot bury them:
@@ -631,6 +632,52 @@ is the authoritative record for the actual terms.
 
 **Risk: downstream-legal, bounded.** The smallest ambiguity in the table, but it is the one
 value a license filter cannot act on: `other` can be neither included nor excluded on merit.
+
+---
+
+## KI-29 — `planktonset1.0` is fetched from a mirror we keep, not from NCEI's on-demand generator
+
+**Where:** `configs/dataset_import/planktonset1.yaml`; `PlanktonSet1DatasetImporter` and
+`DatasetImporter._fetch_archive_verified` in `planktonzilla/dataset_import/dataset_importer.py`;
+`scripts/mirror_planktonset1.py`. Output rows are **unchanged** — same 60,736 images.
+
+**Change (2026-08-28).** `download_uris` never named a stored file. It names NCEI's Archive
+Management System *download* endpoint, which tars accession 0127422 **on demand**. Measured against
+the live service 2026-08-27: ~22 s to first byte, then ~0.6 MB/s (≈1 h for the archive), `Range`
+**ignored** (a ranged GET answers `200`, not `206`), `Transfer-Encoding: chunked` with **no
+`Content-Length`**, and a sustained `503` that was still returning `503` a full day later.
+
+So every run was an hour-long transfer that could not resume and could not be size-checked, and any
+interruption lost all of it. Two things hid this: `datasets` 5.0.1 declares but never reads
+`resume_download` or the `DownloadConfig` `max_retries` the project was passing (so the promised
+resume and five retries did not exist), and `datasets` + fsspec probe HEAD-then-GET, making the
+server build the tarball two or three times per attempt.
+
+Three consequences, recorded because they change how this source behaves:
+
+- The archive is fetched by `_fetch_archive_verified`, not `DownloadManager`: one request per
+  attempt, real retries, and a **gzip-framing check fed from the chunks as they arrive** — the only
+  truncation signal available when the server discloses no size.
+- The class tree is **located** (`FINAL_Plankton_Segments*`, then `find_class_root`) instead of
+  walked to via `0127422/2.3/data/0-data/FINAL_Plankton_Segments_12082014`. That path pinned the
+  accession **version**, and upstream already publishes 1.1, 2.2 and 2.3; `Path.glob` on a missing
+  path yields nothing rather than raising, so a 2.4 re-release would have silently produced an empty
+  imagefolder — the KI-22 / WHOI failure mode, latent here.
+- The data is **121 classes / 60,736 JPEGs / 108,723,866 bytes and immutable since 2015**, so it is
+  now mirrored once (`scripts/mirror_planktonset1.py`, over FTP) and imported from that archive via
+  `manual_download_local_file_names`. NCEI's uptime leaves the critical path entirely.
+
+FTP, not the HTTPS form of the same mirror: `ncei.noaa.gov/robots.txt` says `Disallow: /data*`,
+which covers the HTTPS mirror path, while the FTP tree is the bulk route the accession landing page
+itself advertises. Mirroring is ~4.3 h at 4 workers (~4 files/s) and resumable; it is slower than
+the archive whenever the archive is up, which is why the generator stays the default route.
+
+*Verified 2026-08-28 end to end: mirrored 60,736 files / 108,723,866 bytes with 0 failures, packaged
+to a 91,292,764-byte `.tar.gz`, imported through `pz_import_dataset action=import`, and the built
+imagefolder holds 121 classes / 60,736 images / 108,723,866 bytes whose names match the 121
+`planktonset1.0` rows of the taxonomy CSV exactly, in both directions. Unrelated to
+[KI-15](#ki-15--planktonset10-is-recorded-as-other-which-states-nothing), which concerns this same
+source's `license: other`.*
 
 ---
 
