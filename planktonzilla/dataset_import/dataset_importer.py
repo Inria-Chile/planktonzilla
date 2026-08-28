@@ -24,6 +24,7 @@ import re
 import shutil
 import stat
 import time
+import zlib
 from dataclasses import dataclass
 from functools import lru_cache
 from multiprocessing import cpu_count
@@ -719,9 +720,7 @@ def probe_url(url: str, *, timeout: int = 30, session=None, user_agent: Optional
             "nothing to the disk estimate"
         )
 
-    return ProbeResult(
-        kind="url", location=url, ok=ok, detail=detail, size=size, warning="; ".join(warnings) or None
-    )
+    return ProbeResult(kind="url", location=url, ok=ok, detail=detail, size=size, warning="; ".join(warnings) or None)
 
 
 def probe_local_file(path, *, kind: str = "file") -> ProbeResult:
@@ -1179,6 +1178,124 @@ class DatasetImporter:
         if isinstance(self.download_uris, str):
             return self.download_uris
         return _as_uri_list(self.download_uris)
+
+    def _fetch_archive_verified(self, url: str, target: Path, *, attempts: int = 3) -> Path:
+        """Download one archive to ``target`` ourselves, verifying it before accepting it.
+
+        For hosts the ordinary ``DownloadManager`` path handles badly. It differs from
+        that path in three ways that matter on a hostile endpoint:
+
+        - **One request per attempt.** ``datasets`` calls ``fsspec_head`` and then
+          ``fsspec_get``, and ``HTTPFileSystem._info`` itself falls back from HEAD to a
+          full GET whose body it abandons when no size is disclosed. Against an
+          ON-DEMAND archive generator that means asking the server to build the whole
+          tarball two or three times per attempt and throwing all but one away — the
+          same trap ``_fetch_single_use`` documents for Fairdata.
+        - **Truncation is detected.** A ``.gz`` body is fed to a decompressor as it
+          arrives, so a stream that stops early is caught by the gzip framing itself
+          (``decompressor.eof`` is False) even when the server discloses no
+          ``Content-Length`` to compare against. This costs one pass over data already
+          in memory, no extra I/O. Without it a short-but-cleanly-framed body is
+          promoted to a complete cache entry and surfaces hours later as a corrupt
+          extraction or a silently short dataset.
+        - **Retries actually happen.** ``max_download_retries`` is inert (see
+          ``_download_and_extract``), so the loop lives here.
+
+        Written to a ``.part`` and renamed only once verified, so ``target.exists()``
+        always means a complete, well-framed archive that a later run may reuse.
+
+        Args:
+            url: Archive to fetch.
+            target: Final path; its parent is created.
+            attempts: Total tries before giving up, with linear backoff between them.
+
+        Returns:
+            ``target``.
+
+        Raises:
+            RuntimeError: If every attempt failed, naming the last reason.
+        """
+        target.parent.mkdir(parents=True, exist_ok=True)
+
+        if target.exists() and not self.force_download:
+            logger.info(f"Reusing the archive already at {target} (force_download=True to re-fetch).")
+            return target
+
+        partial = target.with_suffix(target.suffix + ".part")
+        checks_gzip = "".join(target.suffixes[-2:]).endswith((".gz", ".tgz"))
+        last = None
+
+        for attempt in range(1, attempts + 1):
+            partial.unlink(missing_ok=True)
+            # NOT a resume: an endpoint that ignores Range restarts at byte 0 regardless,
+            # so keeping the partial would only risk splicing two different bodies.
+            decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS) if checks_gzip else None
+            written = 0
+            try:
+                with requests.get(
+                    url,
+                    stream=True,
+                    timeout=self.http_timeout,
+                    headers={"User-Agent": self.http_user_agent},
+                ) as response:
+                    response.raise_for_status()
+                    declared = int(response.headers.get("Content-Length") or 0)
+                    with (
+                        open(partial, "wb") as handle,
+                        tqdm(
+                            total=declared or None,
+                            unit="B",
+                            unit_scale=True,
+                            desc=f"{target.name} (try {attempt}/{attempts})",
+                            disable=not self.show_progress,
+                            leave=False,
+                        ) as progress,
+                    ):
+                        for chunk in response.iter_content(chunk_size=1024 * 1024):
+                            handle.write(chunk)
+                            written += len(chunk)
+                            progress.update(len(chunk))
+                            if decompressor is not None:
+                                decompressor.decompress(chunk, 1)
+                                decompressor.flush()
+
+                if declared and written != declared:
+                    raise RuntimeError(f"stopped at {naturalsize(written)} of {naturalsize(declared)}")
+                if not written:
+                    raise RuntimeError("the server sent an empty body")
+                if decompressor is not None and not decompressor.eof:
+                    # The gzip member never terminated: the transfer stopped mid-stream.
+                    # This is the ONLY truncation signal available when the server sends
+                    # no Content-Length, which is exactly when it is needed.
+                    raise RuntimeError(
+                        f"the gzip stream is unterminated after {naturalsize(written)} — the download was cut short"
+                    )
+
+                partial.replace(target)
+                logger.info(f"Downloaded {target.name} ({naturalsize(written)}), archive framing verified.")
+                return target
+
+            except (requests.RequestException, zlib.error, RuntimeError, OSError) as e:
+                last = f"{type(e).__name__}: {e}"
+                logger.warning(f"Attempt {attempt}/{attempts} for {url} failed — {last}")
+                partial.unlink(missing_ok=True)
+                if attempt < attempts:
+                    time.sleep(5 * attempt)
+
+        # NOT manual_download_instructions(): that speaks only when a manual archive is
+        # already CONFIGURED and missing from disk, so on a source still using its normal
+        # URL it returns "" — silent at exactly the moment the fallback is worth knowing.
+        hint = ""
+        if self.manual_download_url:
+            hint = f"\nA copy can be obtained by hand from: {self.manual_download_url}"
+            if self.manual_download_notes:
+                hint += f"\n{self.manual_download_notes.strip()}"
+            hint += "\nThen re-run with dataset_import.manual_download_local_file_names=<path to the archive>."
+
+        raise RuntimeError(
+            f"Could not download «{self.human_readable_name or self.hf_dataset_name}» from {url} after "
+            f"{attempts} attempts. Last failure: {last}.{hint}"
+        )
 
     def _download_and_extract(self):
         """Download ``download_uris`` (or use manual files) and extract them.
@@ -1962,16 +2079,83 @@ class GlobalUVP5NetDatasetImporter(DatasetImporter):
 
 
 class PlanktonSet1DatasetImporter(DatasetImporter):
-    """Importer for PlanktonSet-1.
+    """Importer for PlanktonSet-1 (NOAA NCEI accession 0127422).
 
-    Copies each class folder from the deeply nested
-    ``0127422/2.3/data/0-data/FINAL_Plankton_Segments_12082014`` path, skipping non-dirs
-    and dotfile/macOS junk entries.
+    Copies the 121 class folders of the labeled ``FINAL_Plankton_Segments_*`` tree —
+    60,736 JPEGs, ~104 MB — out of an accession archive that also carries a 258 MB
+    metadata XML, a 34 MB ``solution.csv`` and the unlabeled NDSB ``test/`` tree.
+
+    **The download is the hard part.** ``download_uris`` names NCEI's Archive Management
+    System *download* endpoint, which does not serve a stored file: it tars the accession
+    on demand. Measured 2026-08-27, that endpoint
+
+    - needs ~22 s to emit a first byte and then streams at ~0.6 MB/s, so a full fetch is
+      about an hour;
+    - IGNORES ``Range`` — a ranged GET answers ``200``, not ``206`` — so nothing can
+      resume it and every retry restarts at byte 0;
+    - sends ``Transfer-Encoding: chunked`` with no ``Content-Length``, so a truncated
+      body cannot be detected by size;
+    - and returns ``503`` outright when busy (observed for a sustained period the same
+      afternoon it had served 57 MB happily).
+
+    An hour-long, unresumable, unverifiable transfer is why this source failed over and
+    over. It is therefore fetched through :meth:`_fetch_archive_verified` rather than the
+    ordinary ``DownloadManager`` path, which cuts the two-to-three archive builds per
+    attempt down to one, catches a cut-short stream through the gzip framing, and retries
+    for real.
+
+    When the generator is down there is a static, resumable mirror of the same accession
+    that ``manual_download_url`` points a human at — see the config. It carries no
+    tarball, only the extracted tree, so it is a manual fallback rather than a second
+    automatic route: the 60,736 files fetch at ~1.25/s over one FTP connection, i.e.
+    ~13 h, which is worse than the archive whenever the archive is up.
     """
 
+    # Matched as a PREFIX, and searched for rather than walked to. The path used to be
+    # hard-coded as `0127422/2.3/data/0-data/FINAL_Plankton_Segments_12082014` — five
+    # segments, one of them the accession VERSION. `Path.glob` on a path that is not
+    # there yields nothing rather than raising, so a 2.4 re-release (1.1, 2.2 and 2.3 all
+    # exist upstream) would have silently produced an EMPTY imagefolder. That is the bug
+    # that hit whoi and SYKE ZooScan; here it was latent, and this removes it.
+    SEGMENTS_DIR_PREFIX: ClassVar[str] = "FINAL_Plankton_Segments"
+
+    def _download_and_extract(self):
+        """Fetch the on-demand tarball ourselves, then hand it to the ordinary path."""
+        if not self.manual_download_local_file_names and self.download_uris:
+            # A bare string, NOT a one-element list: DownloadManager.extract mirrors the
+            # structure it is given, and _prepare_imagefolder does Path(self.extracted_dirs).
+            self.manual_download_local_file_names = str(
+                self._fetch_archive_verified(
+                    self._downloadable_uris() if isinstance(self.download_uris, str) else self.download_uris[0],
+                    self.raw_dir / "0127422.2.3.tar.gz",
+                )
+            )
+
+        return super()._download_and_extract()
+
+    def _segments_root(self) -> Path:
+        """Locate the labeled class tree inside the extraction, wherever it sits."""
+        root = Path(self.extracted_dirs)
+
+        for candidate in sorted(root.rglob(f"{self.SEGMENTS_DIR_PREFIX}*")):
+            if candidate.is_dir():
+                return candidate
+
+        # No FINAL_ tree: either the accession renamed it or this is a hand-downloaded
+        # archive of a different shape. Fall back to the layout-independent scan every
+        # other importer in this file now uses, rather than to an empty imagefolder.
+        logger.warning(
+            f"No «{self.SEGMENTS_DIR_PREFIX}*» directory under {root}; falling back to find_class_root(). "
+            f"Note the accession also ships an unlabeled test/ tree and a train/ duplicate."
+        )
+        return find_class_root(root)
+
     def _prepare_imagefolder(self):
+        segments_root = self._segments_root()
+        logger.info(f"Copying PlanktonSet-1 class folders from {segments_root}.")
+
         for plankton_class_dir in tqdm(
-            (Path(self.extracted_dirs) / "0127422" / "2.3" / "data" / "0-data" / "FINAL_Plankton_Segments_12082014").glob("*"),
+            sorted(segments_root.glob("*")),
             desc="Progress",
             leave=False,
             disable=not self.show_progress,
