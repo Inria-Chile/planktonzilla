@@ -344,16 +344,10 @@ HOMONYM_NOTES = {
         "micro-plankton sample cannot contain a springtail. Taking the existing `odontella` row "
         "(Chromista > Heterokontophyta > Bacillariophyceae) is the correct reading AND the consistent one."
     ),
-    "Ctenophora<Animalia": (
-        "INHERITED ISSUE, not introduced here. EcoTaxa says Animalia > Ctenophora (the comb jellies), but "
-        "the master CSV has mapped `ctenophora` to the DIATOM genus Ctenophora (aphia 163921) since long "
-        "before this milestone — nine rows across zooscan, uvp6net, zoocamnet, isiisnet, global_uvp5 and "
-        "planktoscope, all of them zooplankton imagers where the comb jelly is the only plausible reading. "
-        "These rows follow the table rather than contradict it: a second `ctenophora` lineage would break "
-        "the one-label-one-lineage invariant across all of them. Correcting the homonym is a separate "
-        "change to those nine rows, gated on a golden-output diff like every other KNOWN_ISSUES data item."
-    ),
-    "part<Ctenophora": "Same inherited `ctenophora` homonym as `Ctenophora<Animalia` above.",
+    # `Ctenophora<Animalia` and `part<Ctenophora` were listed here through 2026-08-26 as
+    # inheriting the master CSV's diatom-genus reading of `ctenophora`. The KI-35 repair
+    # (2026-08-27) re-mapped all `ctenophora` rows to the comb-jelly phylum EcoTaxa
+    # already asserts, so those two class dirs no longer depart from EcoTaxa's tree.
 }
 
 # A rank the frozen EcoTaxa lineage leaves blank while asserting DEEPER ones, filled by
@@ -374,6 +368,36 @@ HOMONYM_NOTES = {
 #     orders `centrales`/`pennales` the same way).
 RANK_GAP_FILLS = {
     "branchiostoma lanceolatum": {"Order": "amphioxiformes"},
+    # KI-34 rank fills (2026-08-27, both verified against WoRMS/NCBI): Anthozoa IS a
+    # class-rank taxon (NCBI 6101; WoRMS now ranks it subphylum, but this table's Class
+    # column is the pragmatic slot — hexacorallia stays a parallel finer Class under
+    # cnidaria); Globorotaliidae (WoRMS 111930, table spelling `globorotalidae` from the
+    # EcoTaxa node) is a planktonic foram family under Globothalamea/Rotaliida, the same
+    # vocabulary the globigerinidae row already uses.
+    "anthozoa": {"Class": "anthozoa"},
+    "globorotalidae": {"Class": "globothalamea", "Order": "rotaliida", "Family": "globorotalidae"},
+}
+
+# A class dir whose verbatim donor is AMBIGUOUS: the master CSV maps that exact
+# `Raw_Labels` string differently in different sources (KNOWN_ISSUES KI-32), and
+# `_existing_indexes` keeps only the FIRST such row in file order — so file position, not
+# a decision, would pick which mapping the new source inherits. Each affected class dir
+# is listed here with the `proposed_label` the first-in-file donor carries, and
+# `_assert_divergent_donors_acknowledged` fails the build on any unlisted one (or on a
+# reorder that flips a pick) — the same cannot-slip-in-unremarked contract as
+# HOMONYM_NOTES. Acknowledging a pick is not endorsing it: `Harpacticoida` lands on the
+# over-specific side of its divergence (zooscan's genus row), one of the 13 deliberate
+# per-dataset readings the ledger pins; re-picking it is a data change to be ledgered
+# like the 2026-08-27 repairs were.
+# Down from eight entries on 2026-08-27: the KI-29/KI-32/KI-33 repairs unified the
+# master rows for `Acantharia`, `Creseidae` and `Neoceratium`, so those donors are no
+# longer ambiguous.
+DIVERGENT_DONORS = {
+    "Annelida": "annelida",  # global_uvp5's phylum-level row, not uvp6net's `poeobius`
+    "Dinophyceae": "dinophyceae",  # global_uvp5's class-level row, not flowcamnet's `gonyaulacales`
+    "Foraminifera": "foraminifera",  # flowcamnet's phylum-level row, not zooscan's `globigerinidae`
+    "Harpacticoida": "euterpina",  # zooscan's genus, not global_uvp5's order-level `harpacticoida`
+    "Ornithocercus": "ornithocercus",  # planktoscope's genus row, not flowcamnet's `ornithocercus magnificus`
 }
 
 TOKENS_WITHOUT_PRECEDENT = frozenset(
@@ -647,8 +671,44 @@ def _assert_no_rank_gaps(rows) -> None:
         )
 
 
+def _assert_divergent_donors_acknowledged(class_map, master_rows) -> None:
+    """Fail the build when a verbatim donor is ambiguous and the pick is not on record.
+
+    ``_existing_indexes`` keeps the FIRST row per ``Raw_Labels`` value, so when the
+    master table maps the same raw label differently in different sources (KNOWN_ISSUES
+    KI-32) the verbatim rule would silently copy whichever mapping sits earliest in the
+    file — which is exactly how this block inherited zooscan's ``Creseidae`` and
+    ``Harpacticoida`` readings. Every such pick must be listed in
+    :data:`DIVERGENT_DONORS`, so a new divergence (or a file reorder that flips a pick)
+    is an error at build time rather than an accident of position.
+    """
+    grouped = defaultdict(list)
+    for row in master_rows:
+        if row["Dataset"] in DATASET_NAMES:
+            continue
+        grouped[row["Raw_Labels"]].append(row)
+
+    payload_columns = [column for column in CSV_COLUMNS if column not in ("Dataset", "Raw_Labels")]
+    offenders = []
+    for class_dir in sorted({entry["class_dir"] for entry in class_map}):
+        rows = grouped.get(class_dir, [])
+        if len({tuple(row[column] for column in payload_columns) for row in rows}) <= 1:
+            continue
+        landed = (rows[0]["proposed_label"] or "").strip().lower()
+        if DIVERGENT_DONORS.get(class_dir) != landed:
+            candidates = sorted({(row["Dataset"], row["proposed_label"]) for row in rows})
+            offenders.append(f"`{class_dir}` lands on {landed!r} among {candidates}")
+    if offenders:
+        raise ValueError(
+            f"{len(offenders)} class dir(s) resolve through a Raw_Labels value the master CSV maps more than one "
+            f"way, and the first-in-file pick is not acknowledged in DIVERGENT_DONORS: {'; '.join(offenders[:5])}. "
+            "Record each pick there (KI-32) so it is a decision, not an accident of file order."
+        )
+
+
 def build_rows(class_map, taxa, master_rows):
     """Turn the frozen tuples into complete CSV rows. Returns ``(rows, decisions)``."""
+    _assert_divergent_donors_acknowledged(class_map, master_rows)
     by_raw, by_label = _existing_indexes(master_rows)
     rows, decisions = [], []
 
@@ -794,9 +854,9 @@ _B2_INTRO = (
 )
 
 _B3_INTRO = (
-    "All three take the lineage the master CSV already records for their `proposed_label`, because "
-    "the table's invariant is one lineage per label. Two of them repair an upstream misplacement; "
-    "one inherits an issue the table already had. A test asserts these are the only three."
+    "Each takes the lineage the master CSV already records for its `proposed_label`, because "
+    "the table's invariant is one lineage per label — here that repairs an upstream "
+    "misplacement. A test asserts these are the only departures."
 )
 
 _B5_NOTE = (

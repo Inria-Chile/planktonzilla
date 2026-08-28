@@ -6,6 +6,14 @@
 
 Generated deterministically by `build_frepj_taxonomy.py`. Documents how the 229 frozen FREPJ class-dir tuples were reconciled against the existing `planktonzilla_taxonomy.csv` sources (TAX-04) and enumerates the genuine granularity / spelling / judgment-call conflicts (TAX-06) for the Phase-18 human-verify checkpoint. External-ID columns are left blank in Plan 18-01; Plan 18-02 performs the single authoritative fill.
 
+> **2026-08-27 — historical record.** The open questions below were settled by the KI-31
+> repair (see `RESOLVED_ISSUES.md`): the `diplostraca` orders of Section B.1 were mapped to
+> the finer cladoceran orders the table already used (Chydoridae and the other anomopod
+> families → `anomopoda`; Holopediidae/Sididae → `ctenopoda`), Section B.5's `daphniida` was
+> corrected to `daphniidae`, and Section B.7's curated `lobosa` proposal was superseded by
+> the table's own `tubulinea` anchor. None of those values occur in the CSV any more; the
+> body below is kept verbatim as the record of the Plan 18-01 reconciliation.
+
 ## Section A — Cross-source overlap reuse (TAX-04)
 
 18 FREPJ genera already exist in the CSV from another source. For each, the existing higher-rank spellings are reused VERBATIM (this is what makes the Order reconciliation below deterministic), and the existing external IDs are the values Plan 18-02 will copy in.
