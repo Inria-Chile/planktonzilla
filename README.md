@@ -193,7 +193,7 @@ There is no mode switch. The run is described by three orthogonal parameters:
 | `sync_taxonomy` | re-apply the CSV to carried-over rows | `true` · `false` |
 
 ```bash
-# Create the whole dataset from scratch (all 17 sources) — the default
+# Create the whole dataset from scratch (all 21 sources) — the default
 uv run pz_planktonzilla
 
 # The taxonomy CSV changed: re-sync every row, rebuild nothing
@@ -515,11 +515,13 @@ flowchart TB
 
 ### Source datasets
 
-Fifteen public plankton-imaging sources are assembled into `planktonzilla-17M`. Two more are in
+Fifteen public plankton-imaging sources are assembled into `planktonzilla-17M`. Six more are in
 the build registry but not yet in the published composite: **FREPJ-Z** (since v1.2, which it
 enters with the v1.2 release; until then published on its own as
-[`project-oceania/planktonzilla-frepj`](https://huggingface.co/datasets/project-oceania/planktonzilla-frepj))
-and **DAPlankton**. Each has an importer config in `configs/dataset_import/`:
+[`project-oceania/planktonzilla-frepj`](https://huggingface.co/datasets/project-oceania/planktonzilla-frepj)),
+**DAPlankton**, and the four **Tara Pacific** deposits of [Mériguet et al.
+(2025)](https://doi.org/10.5194/essd-17-2761-2025). Each has an importer config in
+`configs/dataset_import/`:
 
 | Source | `dataset` value | Images | Description | License |
 | --- | --- | ---: | --- | --- |
@@ -540,6 +542,10 @@ and **DAPlankton**. Each has an importer config in `configs/dataset_import/`:
 | **Lensless** | `lensless` | 6,400 | Lensless plankton microscopy (lab culture) | `cc-by-4.0` |
 | **FREPJ-Z** (v1.2) | `frepj` | 88,686 | Freshwater zooplankton of Japanese lakes and reservoirs, 40×/100× microscopy — registry only, not in the published 17M yet | `cc-by-4.0` |
 | **DAPlankton** | `daplankton` | 111,924 | Multi-instrument benchmark: 15 cultured classes imaged by IFCB, CytoSense and FlowCam, plus 31 Baltic field classes by IFCB and CytoSense — registry only, not in the published 17M yet | `cc-by-4.0` |
+| **Tara Pacific Deck net** (v1.2) | `tara_pacific_decknet` | 1,581,623 | FlowCam surface micro-plankton, Atlantic + Pacific, 2016–2018 — registry only | `cc-by-4.0` |
+| **Tara Pacific Bongo** (v1.2) | `tara_pacific_bongo` | 380,769 | FlowCam surface micro-plankton, reefs and lagoons — registry only | `cc-by-4.0` |
+| **Tara Pacific HSN** (v1.2) | `tara_pacific_hsn` | 256,352 | ZooScan surface meso-plankton, high-speed net — registry only | `cc-by-4.0` |
+| **Tara Pacific Manta** (v1.2) | `tara_pacific_manta` | 135,876 | ZooScan surface meso-plankton **and microplastics**, incl. the Great Pacific Garbage Patch — registry only | `cc-by-4.0` |
 
 Note that the `dataset` column value does not always match the importer config stem (`whoi` vs
 `whoi-plankton.yaml`, `zooscan` vs `zooscannet.yaml`, and three more). The mapping is recorded in
@@ -554,6 +560,42 @@ five subset/instrument roots into one class dir per taxon — the same merge FRE
 magnifications — and preserves the provenance as a filename prefix (`lab_cs_`, `sea_ifcb_`, …) that
 stays readable in the `original_path` column. Its 31 sea classes are a strict subset of the 50 in
 SYKE IFCB 2022, whose label scheme it follows.
+
+#### The Tara Pacific sources have no archive
+
+The four Tara Pacific deposits are the only sources in the registry that download no archive, and
+it is worth knowing why before running one. Their SEANOE records
+([102694](https://doi.org/10.17882/102694), [102697](https://doi.org/10.17882/102697),
+[102336](https://doi.org/10.17882/102336), [102537](https://doi.org/10.17882/102537)) publish
+**EcoTaxa TSV exports** — per-object metadata and morphological features, one `.tsv` per sample, no
+vignettes — and point at seven public EcoTaxa projects for the images. EcoTaxa's own archive export
+needs an account, so the importer walks the public read API instead: a per-object manifest from
+`POST /api/object_set/{project}/query`, then one vignette per object from `/vault`.
+
+Practical consequences:
+
+- **`dry_run=true` reports the manifests under `sidecars:`**, and `check_downloads` probes the
+  EcoTaxa project endpoints. There is no `.zip` to hand-download if the service is unreachable.
+- The manifests land in `<data_dir>/tara_pacific_manifests/` and are **reused until deleted** (or
+  until `refresh=redownload`). They are also what the `tara_pacific` redefiner reads, so the
+  redefine step makes **zero** requests — unlike `redefiner: ecotaxa`, which issues one per image.
+- The vignette fetch is **resumable**: an image already on disk is skipped, so an interrupted run is
+  finished by re-running it, not restarted. An import refuses to finish while more than
+  `dataset_import.ecotaxa_max_missing_images` (default 0) vignettes are still missing.
+- Because that imagefolder is filled one fetch at a time, "non-empty" does **not** mean "finished" —
+  an interruption leaves it genuinely half-built. These importers therefore report completeness by
+  COUNTING the images on disk against the objects their manifest names, so `pz_planktonzilla` resumes
+  a partial imagefolder instead of carrying a fraction of the deposit into the composite as though it
+  were the whole of it. The count is logged (`holds N of the M vignette(s) its manifest names`).
+- Class folders are named from the committed `planktonzilla/dataset_import/tara_pacific_classes.tsv`
+  map keyed by the EcoTaxa taxon id, **not** from the live display name — EcoTaxa renames taxa in
+  place, and a renamed folder would silently repoint every `Raw_Labels` join key. A rename is
+  reported; a taxon new to EcoTaxa is skipped rather than imported without a taxonomy row.
+
+One upstream defect worth recording: the DeckNet deposit's `100% > 501 pixels` archive
+(`.../00915/102697/data/114288.zip`) downloads in full and is still unreadable — its central
+directory overshoots the file by exactly 4,000,000 bytes (checked 2026-08-26, two independent
+downloads). Nothing here reads it; the images come from EcoTaxa either way.
 
 For training, `configs/dataset/` selects either the composite `planktonzilla` dataset or a single
 source; **CIFAR-10** is also configured there as a generic sanity-check/smoke-test target.
@@ -574,8 +616,9 @@ are mutually incompatible. Every image therefore carries its source's terms in t
 terms are stated).
 
 The shares below describe the **published** dataset. The registry covers all 15 of its
-sources plus the two joining them — `frepj` (v1.2) and `daplankton` — so a from-scratch
-rebuild reproduces the same mix of terms: both add `cc-by-4.0` images only.
+sources plus the six joining them — `frepj` (v1.2), `daplankton` and the four `tara_pacific_*`
+sources — so a from-scratch rebuild reproduces the same mix of terms: all six add `cc-by-4.0`
+images only.
 
 | License | Images | Share | Reuse |
 | --- | ---: | ---: | --- |

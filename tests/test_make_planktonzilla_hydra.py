@@ -68,6 +68,9 @@ def _drive(monkeypatch, cfg, tmp_path, entry_point, push_mock=None):
         return MagicMock()
 
     monkeypatch.setattr(gp.hydra, "compose", _fake_compose)
+    # The tokenless-push guard fires before any import; wiring tests are not about
+    # tokens, so give them one (CI has none).
+    monkeypatch.setattr(mk, "get_token", lambda: "test-token")
 
     importer = MagicMock()
     importer.imagefolder_dir = tmp_path
@@ -435,13 +438,13 @@ def test_module_has_no_output_dir_constant():
     assert not hasattr(mk, "OUTPUT_DIR")
 
 
-def test_resolve_base_location():
+def test_resolve_base_location(tmp_path):
     """base resolves to a Hub repo, the output dir, an explicit path, or nothing."""
     cfg = _compose(job_name="test_make_baseloc")
     GlobalHydra.instance().clear()
     OmegaConf.set_struct(cfg, False)
 
-    out = root / "somewhere"
+    out = tmp_path / "planktonzilla-17M"
 
     cfg.base = None
     assert mk.resolve_base_location(cfg, out) is None
@@ -449,9 +452,15 @@ def test_resolve_base_location():
     cfg.base = "hub"
     assert mk.resolve_base_location(cfg, out) == ("hub", cfg.base_repo_id)
 
+    # `local` is "what is already there": nothing there yet degrades to no base (a
+    # first build on a clean machine must be able to run the documented incremental
+    # command), while an existing artifact is spliced into as always.
     cfg.base = "local"
+    assert mk.resolve_base_location(cfg, out) is None
+    out.mkdir()
     assert mk.resolve_base_location(cfg, out) == ("disk", out)
 
+    # An explicit path never degrades: a typo must not silently become "no base".
     cfg.base = "/data/staged-pz"
     kind, target = mk.resolve_base_location(cfg, out)
     assert kind == "disk"
@@ -864,6 +873,102 @@ def _preflight_cfg(tmp_path, overrides, job_name):
     return cfg
 
 
+def test_a_missing_base_on_disk_stops_the_run_before_any_import(monkeypatch, tmp_path):
+    """A `base` on disk is read at the END of the build; verifying it is two JSON reads.
+
+    Without this the run imported and redefined every selected source — hours, and on the
+    Tara Pacific sources a multi-million-image fetch — and only then raised
+    FileNotFoundError from `load_from_disk`, discarding all of it. The check is local and
+    free, so it runs on a plain run too, where no pre-flight does.
+    """
+    cfg = _preflight_cfg(tmp_path, [f"base={tmp_path / 'staged-pz'}", "sources=[isiisnet]"], "test_make_missing_base")
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("nothing may be imported before the base is known to be usable")
+
+    monkeypatch.setattr(mk, "import_and_redefine_source", _boom)
+    monkeypatch.setattr(mk, "atomic_replace", lambda ds, path: None)
+
+    with pytest.raises(RuntimeError) as excinfo:
+        _drive(monkeypatch, cfg, tmp_path, mk.main)
+
+    message = str(excinfo.value)
+    assert "does not exist" in message
+    # The remedy, not just the diagnosis.
+    assert "base=null" in message and "base=hub" in message
+
+
+def test_a_usable_base_on_disk_does_not_stop_the_run(monkeypatch, tmp_path):
+    """The guard is about an unusable base, not about having one at all."""
+    output_dir = tmp_path / "planktonzilla-17M"
+    Dataset.from_dict({"x": [1]}).save_to_disk(str(output_dir))
+
+    cfg = _preflight_cfg(tmp_path, ["base=local", "sources=[isiisnet]"], "test_make_present_base")
+    monkeypatch.setattr(mk, "atomic_replace", lambda ds, path: None)
+    monkeypatch.setattr(mk, "load_base", lambda location: Dataset.from_dict({"x": [1]}))
+    monkeypatch.setattr(mk, "ensure_license_columns", lambda ds, where: ds)
+    monkeypatch.setattr(mk, "ensure_custom_metadata", lambda ds, where: ds)
+    monkeypatch.setattr(mk, "assert_consolidated_schema", lambda ds, where, reference=None: None)
+    monkeypatch.setattr(mk, "assemble", lambda **kwargs: Dataset.from_dict({"x": [1]}))
+
+    _drive(monkeypatch, cfg, tmp_path, mk.main)
+
+
+def test_base_local_with_no_artifact_yet_degrades_to_a_sources_only_build(monkeypatch, tmp_path):
+    """A FIRST build on a clean machine: base=local has nothing to splice into.
+
+    The published dataset is not on this disk, so demanding base=null just to bootstrap
+    made the documented incremental command unrunnable from scratch — the observed run
+    imported for half an hour and then died in load_from_disk. Nothing local exists, so
+    nothing can be lost: the run warns and proceeds exactly as base=null would.
+    """
+    cfg = _preflight_cfg(tmp_path, ["base=local", "sources=[isiisnet]"], "test_make_first_build_base")
+
+    def _no_load(location):
+        raise AssertionError("no base may be loaded on a first build")
+
+    seen = {}
+
+    def _fake_assemble(**kwargs):
+        seen["base"] = kwargs["base"]
+        return Dataset.from_dict({"x": [1]})
+
+    monkeypatch.setattr(mk, "atomic_replace", lambda ds, path: None)
+    monkeypatch.setattr(mk, "load_base", _no_load)
+    monkeypatch.setattr(mk, "assemble", _fake_assemble)
+
+    _drive(monkeypatch, cfg, tmp_path, mk.main)
+
+    assert seen == {"base": None}
+
+
+def test_push_without_a_token_stops_the_run_before_any_import(monkeypatch, tmp_path):
+    """push_to_hub=true with no token anywhere cannot succeed, and the push happens at
+    the END — after every import. Resolving a token is a local read, so a plain run
+    checks it up front instead of discovering the doomed push hours later."""
+    cfg = _preflight_cfg(tmp_path, ["push_to_hub=true", "sources=[isiisnet]"], "test_make_tokenless_push")
+    cfg.hf_token = None  # an ambient HF_TOKEN in the environment must not leak into the scenario
+    monkeypatch.setattr(mk, "get_token", lambda: None)
+
+    with pytest.raises(RuntimeError, match="no HuggingFace token"):
+        mk.main(cfg)
+
+
+def test_base_local_with_a_broken_artifact_still_stops_the_run(monkeypatch, tmp_path):
+    """Degrading is only for NOTHING on disk: an existing-but-unreadable artifact means
+    something was there, and guessing between "splice into garbage" and "quietly drop it"
+    would both be wrong — so that still stops the run before any import."""
+    output_dir = tmp_path / "planktonzilla-17M"
+    output_dir.mkdir()
+    (output_dir / "junk.txt").write_text("not a saved dataset")
+
+    cfg = _preflight_cfg(tmp_path, ["base=local", "sources=[isiisnet]"], "test_make_broken_base")
+    monkeypatch.setattr(mk, "atomic_replace", lambda ds, path: None)
+
+    with pytest.raises(RuntimeError, match="not a saved dataset"):
+        _drive(monkeypatch, cfg, tmp_path, mk.main)
+
+
 def test_a_plain_run_never_pre_flights(monkeypatch, tmp_path):
     """check_downloads=none without dry_run leaves the run exactly as it always was.
 
@@ -1219,7 +1324,7 @@ def test_verified_sidecars_leave_a_built_source_unprobed(tmp_path):
 
     assert fetch_names == []
     (sidecar_check,) = [c for c in checks if c.name == "sidecars:src"]
-    assert sidecar_check.ok and "on disk with their md5 pin" in sidecar_check.detail
+    assert sidecar_check.ok and "fetched sidecar target(s) satisfied" in sidecar_check.detail
 
     download_checks, _ = mk.check_source_downloads([(_SRC, stub)], fetch_names, scope="needed", timeout=1, audit=True)
     assert stub.probes == []
@@ -1237,7 +1342,7 @@ def test_a_drifted_sidecar_is_a_warning_not_a_failure(tmp_path):
 
     assert fetch_names == ["src"]
     warnings = [c for c in checks if c.name == "sidecars:src" and not c.ok]
-    assert len(warnings) == 1 and not warnings[0].blocking and "fails its md5 pin" in warnings[0].detail
+    assert len(warnings) == 1 and not warnings[0].blocking and "fails verification" in warnings[0].detail
 
 
 def test_a_missing_bundled_sidecar_blocks_a_dry_run(monkeypatch, tmp_path):

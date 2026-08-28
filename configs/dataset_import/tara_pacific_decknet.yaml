@@ -1,0 +1,70 @@
+defaults:
+  - default.yaml
+
+_target_: planktonzilla.dataset_import.tara_pacific_importer.TaraPacificDeckNetDatasetImporter
+hf_dataset_name: tara-pacific-decknet
+push_to_hub: false
+check_image_file_integrity: true
+
+human_readable_name: "Tara Pacific Deck net / FlowCam surface micro-plankton"
+license: "cc-by-4.0"
+source_url: "https://doi.org/10.17882/102697"
+
+# EMPTY ON PURPOSE — this source has no archive to download; see tara_pacific_bongo.yaml
+# for the full reason (the SEANOE deposit publishes EcoTaxa TSV exports, not vignettes).
+#
+# This deposit is also the one with a broken archive, which is worth recording next to the
+# field that would otherwise name it: `.../00915/102697/data/114288.zip` ("subset 100% >
+# 501 pixels") downloads in full — 281 669 134 bytes, exactly its Content-Length — and is
+# still unreadable. Its end-of-central-directory offset overshoots the file by exactly
+# 4 000 000 bytes; `unzip` reports "missing 4000000 bytes in zipfile" and the entries
+# straddling the gap cannot be extracted (checked 2026-08-26, two independent downloads).
+# The EcoTaxa route below is unaffected — it never reads that archive.
+download_uris: ""
+
+# The public EcoTaxa projects the images come from, in import order.
+#   11353  Tara Pacific DN 20 microns - Subset 30% <500 pix     (523 639 objects)
+#   11341  Tara Pacific DN 20 microns - Subset 100% >501pix   (1 057 984 objects)
+ecotaxa_projects: [11353, 11341]
+ecotaxa_window_size: 10000
+ecotaxa_image_workers: 8
+ecotaxa_max_missing_images: 0
+# Deliberately NOT http_timeout (3600, sized for streaming whole archives). A vignette is
+# a few kB and latency-bound, so at 3600 one hung connection parked a worker for an hour
+# and the retry below it could not run until that fired. This is the largest deposit
+# (1.06M objects in project 11341), so it is the one that pays for a bad timeout most.
+ecotaxa_image_timeout: 60
+ecotaxa_manifest_timeout: 120
+
+description: |
+  Quantitative imaging dataset of FlowCam-imaged micro-plankton (> 20 µm) collected with
+  the Deck Net during the Tara Pacific Expedition (2016-2018). Samples were collected at
+  the surface, generally daily, across the Atlantic and Pacific Oceans from 142 open-ocean
+  stations and from 62 stations in the coastal waters of 32 Pacific islands.
+
+  The deposit publishes 1 581 613 plankton individuals, plankton parts, non-living
+  particles and imaging artefacts, ranging from 20 µm to 200 µm, individually imaged and
+  measured with the FlowCam, classified into 129 taxonomic and morphological groups.
+  planktonzilla imports the images from the two open-access EcoTaxa projects the deposit
+  names (https://ecotaxa.obs-vlfr.fr/prj/11353 and https://ecotaxa.obs-vlfr.fr/prj/11341),
+  which reported 1 581 623 objects on 2026-08-26 under 132 distinct EcoTaxa taxa. This is
+  the largest of the four Tara Pacific sources.
+
+citation_apa: |
+  Mériguet, Z., Bourdin, G., Jalabert, L., Bun, O., Caray-Counil, L., Elineau, A.,
+  Gorsky, G., & Lombard, F. (2024). Global scale surface micro-plankton dataset collected
+  with Deck Net and imaged with FlowCam during the Tara Pacific Expedition. SEANOE.
+  https://doi.org/10.17882/102697
+
+citation_bibtex: |
+  @article{dataset:tara_pacific_decknet,
+    title   = {Global scale surface micro-plankton dataset collected with Deck Net
+  and imaged with FlowCam during the Tara Pacific Expedition},
+    author  = {M\'eriguet, Zo\'e and Bourdin, Guillaume and Jalabert, La\"etitia
+  and Bun, Olivier and Caray-Counil, Louis and Elineau, Amanda and Gorsky, Gaby
+  and Lombard, Fabien},
+    year    = {2024},
+    journal = {SEANOE},
+    doi     = {10.17882/102697},
+    url     = {https://doi.org/10.17882/102697}
+  }

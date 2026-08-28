@@ -84,7 +84,8 @@ _FROZEN_FIFTEEN = [
 
 
 def test_default_config_appends_frepj_last_keeping_the_fifteen_in_place():
-    """The default registry is the frozen fifteen, in order, then frepj (v1.2), then daplankton.
+    """The default registry is the frozen fifteen, in order, then frepj (v1.2), then
+    daplankton, then the four Tara Pacific deposits.
 
     Registry order is the concatenation order of the output, so appending — never
     inserting — is what keeps every published source at the index it already had.
@@ -96,7 +97,7 @@ def test_default_config_appends_frepj_last_keeping_the_fifteen_in_place():
     cfg = _compose("generate_planktonzilla")
     try:
         assert cfg.repo_id == "project-oceania/planktonzilla-17M"
-        assert len(cfg.datasets) == 17
+        assert len(cfg.datasets) == 21
         assert [d["name"] for d in cfg.datasets[:15]] == _FROZEN_FIFTEEN
         assert dict(cfg.datasets[15]) == {"name": "frepj", "import_name": "frepj", "cleanup": False, "redefiner": "frepj"}
         assert dict(cfg.datasets[16]) == {
@@ -105,6 +106,15 @@ def test_default_config_appends_frepj_last_keeping_the_fifteen_in_place():
             "cleanup": False,
             "redefiner": "none",
         }
+        assert [dict(d) for d in cfg.datasets[17:]] == [
+            {"name": name, "import_name": name, "cleanup": False, "redefiner": "tara_pacific"}
+            for name in (
+                "tara_pacific_bongo",
+                "tara_pacific_decknet",
+                "tara_pacific_hsn",
+                "tara_pacific_manta",
+            )
+        ]
     finally:
         GlobalHydra.instance().clear()
 

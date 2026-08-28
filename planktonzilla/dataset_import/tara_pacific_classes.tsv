@@ -1,0 +1,601 @@
+dataset	class_dir	ecotaxa_taxon_id
+tara_pacific_bongo	Rhizaria	342
+tara_pacific_bongo	Cyanobacteria<Proteobacteria	849
+tara_pacific_bongo	Retaria	2244
+tara_pacific_bongo	Ciliophora	2250
+tara_pacific_bongo	Trichodesmium	8976
+tara_pacific_bongo	UCYNA like	8983
+tara_pacific_bongo	Mollusca	11498
+tara_pacific_bongo	Foraminifera	11758
+tara_pacific_bongo	Acantharea	11762
+tara_pacific_bongo	Spumellaria	13378
+tara_pacific_bongo	Nassellaria<Polycystina	13379
+tara_pacific_bongo	Peridiniales	13944
+tara_pacific_bongo	Dinophyceae X	13950
+tara_pacific_bongo	Bacillariophyceae	17519
+tara_pacific_bongo	Rhizosolenids	17523
+tara_pacific_bongo	Dictyocha	17608
+tara_pacific_bongo	Undellidae	18597
+tara_pacific_bongo	Tintinnina<Choreotrichida	18599
+tara_pacific_bongo	Codonellidae	18611
+tara_pacific_bongo	Neoceratium	18758
+tara_pacific_bongo	Copepoda<Multicrustacea	25828
+tara_pacific_bongo	Synedra	28119
+tara_pacific_bongo	Striatella	28121
+tara_pacific_bongo	Pseudo-nitzschia	28138
+tara_pacific_bongo	Licmophora	28161
+tara_pacific_bongo	Diatoma	28189
+tara_pacific_bongo	Cylindrotheca	28194
+tara_pacific_bongo	Asterionella	28208
+tara_pacific_bongo	Bacteriastrum<Chaetocerotaceae	28217
+tara_pacific_bongo	Planktoniella	28227
+tara_pacific_bongo	Hemiaulus	28244
+tara_pacific_bongo	Eucampia	28248
+tara_pacific_bongo	Ditylum	28249
+tara_pacific_bongo	Chaetoceros<Chaetocerotaceae	28257
+tara_pacific_bongo	Biddulphia	28263
+tara_pacific_bongo	Rhizosolenia	28296
+tara_pacific_bongo	Guinardia	28299
+tara_pacific_bongo	Dactyliosolen	28300
+tara_pacific_bongo	Lacrymaria	30896
+tara_pacific_bongo	Vorticella	31098
+tara_pacific_bongo	Epiplocylis	31189
+tara_pacific_bongo	Cyttarocylis	31190
+tara_pacific_bongo	Dictyocysta	31192
+tara_pacific_bongo	Metacylis	31196
+tara_pacific_bongo	Rhabdonella	31203
+tara_pacific_bongo	Steenstrupiella	31218
+tara_pacific_bongo	Eutintinnus	31221
+tara_pacific_bongo	Amphorides	31223
+tara_pacific_bongo	Neoceratium pentagonum	31583
+tara_pacific_bongo	Neoceratium fusus<Neoceratium	31593
+tara_pacific_bongo	Neoceratium furca<Neoceratium	31594
+tara_pacific_bongo	Neoceratium candelabrum	31601
+tara_pacific_bongo	Phalacroma	31661
+tara_pacific_bongo	Ornithocercus	31663
+tara_pacific_bongo	Pyrophacus	31699
+tara_pacific_bongo	Protoperidinium	31853
+tara_pacific_bongo	Pyrocystaceae	31874
+tara_pacific_bongo	Cyclopoida	45072
+tara_pacific_bongo	Calanoida	45074
+tara_pacific_bongo	Ornithocercus magnificus<Ornithocercus	58202
+tara_pacific_bongo	Podolampas	58422
+tara_pacific_bongo	Odontella sp.	62348
+tara_pacific_bongo	Oncaeidae	78418
+tara_pacific_bongo	Corycaeidae	78426
+tara_pacific_bongo	duplicate	84961
+tara_pacific_bongo	detritus<not-living	84963
+tara_pacific_bongo	larvae<Annelida	84965
+tara_pacific_bongo	artefact	85008
+tara_pacific_bongo	centric	85009
+tara_pacific_bongo	pennate<Bacillariophyta	85010
+tara_pacific_bongo	other<Biota	85011
+tara_pacific_bongo	t001	85012
+tara_pacific_bongo	t002	85013
+tara_pacific_bongo	t003	85014
+tara_pacific_bongo	t004	85015
+tara_pacific_bongo	t005	85016
+tara_pacific_bongo	t006	85017
+tara_pacific_bongo	t007	85018
+tara_pacific_bongo	t008	85019
+tara_pacific_bongo	feces	85026
+tara_pacific_bongo	dark<detritus	85054
+tara_pacific_bongo	light<detritus	85055
+tara_pacific_bongo	bubble	85060
+tara_pacific_bongo	badfocus<artefact	85061
+tara_pacific_bongo	part<other	85068
+tara_pacific_bongo	othertocheck	85069
+tara_pacific_bongo	fiber<detritus	85076
+tara_pacific_bongo	egg<other	85078
+tara_pacific_bongo	multiple<other	85079
+tara_pacific_bongo	part<Crustacea	85115
+tara_pacific_bongo	nauplii<Crustacea	85116
+tara_pacific_bongo	t010	85124
+tara_pacific_bongo	veliger<Mollusca	85128
+tara_pacific_bongo	t011	85136
+tara_pacific_bongo	t012	85137
+tara_pacific_bongo	t013	85138
+tara_pacific_bongo	t014	85139
+tara_pacific_bongo	t015	85140
+tara_pacific_bongo	t016	85141
+tara_pacific_bongo	t017	85142
+tara_pacific_bongo	chainthin	85352
+tara_pacific_bongo	chainlarge	85353
+tara_pacific_bongo	spines<Acantharia	85355
+tara_pacific_bongo	Amphitetras	85519
+tara_pacific_bongo	Oxytoxum	85674
+tara_pacific_bongo	part<Copepoda	92069
+tara_pacific_bongo	Coscinodiscophycidae	92144
+tara_pacific_bongo	Asterolamprales	92151
+tara_pacific_bongo	Hemidiscus cuneiformis	92343
+tara_pacific_bongo	Cladopyxis quadrispina	92501
+tara_pacific_bongo	Ornithocercus steinii	92505
+tara_pacific_bongo	Rhizosolenia inter. Richelia	92691
+tara_pacific_bongo	Chaetoceros inter. Calothrix	92692
+tara_pacific_bongo	Poroecus	92706
+tara_pacific_bongo	multiple<Diatoma	92750
+tara_pacific_bongo	Cladopyxis	92753
+tara_pacific_bongo	Richelia	92769
+tara_pacific_bongo	Rhabdonellopsis	92773
+tara_pacific_bongo	larvae<Echinodermata	92801
+tara_pacific_bongo	Thalassionematales	92831
+tara_pacific_bongo	trochozoa	92838
+tara_pacific_bongo	crumple sphere	92842
+tara_pacific_bongo	egg sac<egg	92843
+tara_pacific_bongo	larvae<Polychaeta	92872
+tara_pacific_bongo	rhizosolenia inter richelia tmp i	92967
+tara_pacific_bongo	rhizosolenia tmp i	92970
+tara_pacific_bongo	lightrods<rods	93389
+tara_pacific_bongo	darkrods<rods	93390
+tara_pacific_bongo	trochophore	93547
+tara_pacific_bongo	Chaetoceros inter ciliate	93596
+tara_pacific_bongo	part<Ciliophora	93615
+tara_pacific_bongo	spines<Rhizaria	93666
+tara_pacific_bongo	larvae<Biota	93687
+tara_pacific_bongo	aggregates	93714
+tara_pacific_bongo	part diatom	94026
+tara_pacific_bongo	Hemidiscus	94061
+tara_pacific_bongo	lightrods<othertocheck	94071
+tara_pacific_decknet	Rhizaria	342
+tara_pacific_decknet	Cyanobacteria<Proteobacteria	849
+tara_pacific_decknet	Retaria	2244
+tara_pacific_decknet	Ciliophora	2250
+tara_pacific_decknet	UCYNA like	8983
+tara_pacific_decknet	Rotifera	11486
+tara_pacific_decknet	Foraminifera	11758
+tara_pacific_decknet	Dictyochophyceae<Ochrophyta	11812
+tara_pacific_decknet	Dinophyceae	11921
+tara_pacific_decknet	Pterosperma	12402
+tara_pacific_decknet	Tunicata	12860
+tara_pacific_decknet	Spumellaria	13378
+tara_pacific_decknet	Nassellaria<Polycystina	13379
+tara_pacific_decknet	Gymnodiniales	13947
+tara_pacific_decknet	Gonyaulacales	13948
+tara_pacific_decknet	Bacillariophyceae	17519
+tara_pacific_decknet	Rhizosolenids	17523
+tara_pacific_decknet	Coscinodiscids	17527
+tara_pacific_decknet	Zoothamniidae	18529
+tara_pacific_decknet	Xystonellidae	18596
+tara_pacific_decknet	Undellidae	18597
+tara_pacific_decknet	Tintinnina<Choreotrichida	18599
+tara_pacific_decknet	Codonellidae	18611
+tara_pacific_decknet	Neoceratium	18758
+tara_pacific_decknet	Copepoda<Multicrustacea	25828
+tara_pacific_decknet	Nitzschia	28152
+tara_pacific_decknet	Fragilariopsis	28174
+tara_pacific_decknet	Asterionellopsis	28207
+tara_pacific_decknet	Bacteriastrum<Chaetocerotaceae	28217
+tara_pacific_decknet	Planktoniella	28227
+tara_pacific_decknet	Hemiaulus	28244
+tara_pacific_decknet	Helicotheca	28245
+tara_pacific_decknet	Eucampia	28248
+tara_pacific_decknet	Ditylum	28249
+tara_pacific_decknet	Chaetoceros<Chaetocerotaceae	28257
+tara_pacific_decknet	Corethron	28277
+tara_pacific_decknet	Guinardia	28299
+tara_pacific_decknet	Dactyliosolen	28300
+tara_pacific_decknet	Lacrymaria	30896
+tara_pacific_decknet	Epiplocylis	31189
+tara_pacific_decknet	Cyttarocylis	31190
+tara_pacific_decknet	Dictyocysta	31192
+tara_pacific_decknet	Codonaria	31194
+tara_pacific_decknet	Metacylis	31196
+tara_pacific_decknet	Rhabdonella	31203
+tara_pacific_decknet	Steenstrupiella	31218
+tara_pacific_decknet	Salpingella<Tintinnidae	31219
+tara_pacific_decknet	Eutintinnus	31221
+tara_pacific_decknet	Codonellopsis<Tintinnidiidae	31222
+tara_pacific_decknet	Amphorides	31223
+tara_pacific_decknet	Dadayiella	31229
+tara_pacific_decknet	Neoceratium pentagonum	31583
+tara_pacific_decknet	Tripos limulus<Tripos	31588
+tara_pacific_decknet	Neoceratium fusus<Neoceratium	31593
+tara_pacific_decknet	Neoceratium furca<Neoceratium	31594
+tara_pacific_decknet	Neoceratium candelabrum	31601
+tara_pacific_decknet	Amphisolenia	31660
+tara_pacific_decknet	Phalacroma	31661
+tara_pacific_decknet	Ornithocercus	31663
+tara_pacific_decknet	Dinophysis	31666
+tara_pacific_decknet	Ceratocorys	31677
+tara_pacific_decknet	Pyrophacus	31699
+tara_pacific_decknet	Protoperidinium	31853
+tara_pacific_decknet	Pyrocystaceae	31874
+tara_pacific_decknet	Amphibelone	54903
+tara_pacific_decknet	Chaetoceros peruvianus	55846
+tara_pacific_decknet	Planktoniella sol	55930
+tara_pacific_decknet	Codonellopsis orthoceras	57392
+tara_pacific_decknet	Ornithocercus quadratus<Ornithocercus	58201
+tara_pacific_decknet	Ornithocercus magnificus<Ornithocercus	58202
+tara_pacific_decknet	Ornithocercus heteroporus	58203
+tara_pacific_decknet	Podolampas	58422
+tara_pacific_decknet	duplicate	84961
+tara_pacific_decknet	detritus<not-living	84963
+tara_pacific_decknet	larvae<Annelida	84965
+tara_pacific_decknet	tail<Appendicularia	85004
+tara_pacific_decknet	artefact	85008
+tara_pacific_decknet	pennate<Bacillariophyta	85010
+tara_pacific_decknet	t001	85012
+tara_pacific_decknet	t002	85013
+tara_pacific_decknet	t003	85014
+tara_pacific_decknet	t004	85015
+tara_pacific_decknet	dark<detritus	85054
+tara_pacific_decknet	light<detritus	85055
+tara_pacific_decknet	bubble	85060
+tara_pacific_decknet	badfocus<artefact	85061
+tara_pacific_decknet	othertocheck	85069
+tara_pacific_decknet	fiber<detritus	85076
+tara_pacific_decknet	egg<other	85078
+tara_pacific_decknet	multiple<other	85079
+tara_pacific_decknet	pollen	85091
+tara_pacific_decknet	cyst<unicellular	85096
+tara_pacific_decknet	part<Crustacea	85115
+tara_pacific_decknet	nauplii<Crustacea	85116
+tara_pacific_decknet	Appendicularia<Tunicata	85123
+tara_pacific_decknet	veliger<Mollusca	85128
+tara_pacific_decknet	Pseudo-Nitzschia chain	85198
+tara_pacific_decknet	dark<sphere	85217
+tara_pacific_decknet	chainthin	85352
+tara_pacific_decknet	chainlarge	85353
+tara_pacific_decknet	spines<Acantharia	85355
+tara_pacific_decknet	Oxytoxum	85674
+tara_pacific_decknet	Asterolamprales	92151
+tara_pacific_decknet	Chaetoceros protuberans	92203
+tara_pacific_decknet	Climacodium	92214
+tara_pacific_decknet	Hemidiscus cuneiformis	92343
+tara_pacific_decknet	Cladopyxis quadrispina	92501
+tara_pacific_decknet	Ornithocercus steinii	92505
+tara_pacific_decknet	Rhizosolenia inter. Richelia	92691
+tara_pacific_decknet	Climacodium inter. Crocosphaera	92693
+tara_pacific_decknet	Poroecus	92706
+tara_pacific_decknet	multiple<Diatoma	92750
+tara_pacific_decknet	Cladopyxis	92753
+tara_pacific_decknet	Richelia	92769
+tara_pacific_decknet	Rhabdonellopsis	92773
+tara_pacific_decknet	Thalassionematales	92831
+tara_pacific_decknet	trochozoa	92838
+tara_pacific_decknet	crumple sphere	92842
+tara_pacific_decknet	egg sac<egg	92843
+tara_pacific_decknet	cyano a	93052
+tara_pacific_decknet	cyano b	93053
+tara_pacific_decknet	Neoceratium geniculatum	93068
+tara_pacific_decknet	Acantharia	93382
+tara_pacific_decknet	Amplectella	93387
+tara_pacific_decknet	light<sphere	93388
+tara_pacific_decknet	part<Ciliophora	93615
+tara_pacific_decknet	attached	93637
+tara_pacific_decknet	polar view	94057
+tara_pacific_decknet	lightrods<othertocheck	94071
+tara_pacific_decknet	darkrods<othertocheck	94072
+tara_pacific_decknet	othersphere	94482
+tara_pacific_decknet	Bacillariaceae	94614
+tara_pacific_hsn	Harosa	5
+tara_pacific_hsn	Cyanobacteria<Negibacteria	233
+tara_pacific_hsn	Mollusca	11498
+tara_pacific_hsn	Echinodermata	11509
+tara_pacific_hsn	Chaetognatha<Animalia	11514
+tara_pacific_hsn	Bryozoa	11515
+tara_pacific_hsn	Annelida	11518
+tara_pacific_hsn	Foraminifera	11758
+tara_pacific_hsn	Crustacea	12846
+tara_pacific_hsn	Scyphozoa	12863
+tara_pacific_hsn	Hydrozoa	12865
+tara_pacific_hsn	Ophiuroidea	12873
+tara_pacific_hsn	Cephalopoda	12906
+tara_pacific_hsn	Bivalvia<Mollusca	12908
+tara_pacific_hsn	Spumellaria	13378
+tara_pacific_hsn	Collodaria	13381
+tara_pacific_hsn	Insecta	16627
+tara_pacific_hsn	Nudibranchia	16797
+tara_pacific_hsn	Eumalacostraca	25824
+tara_pacific_hsn	Oikopleuridae	25932
+tara_pacific_hsn	Salpida	25942
+tara_pacific_hsn	Doliolida	25944
+tara_pacific_hsn	Siphonophorae	25990
+tara_pacific_hsn	Gymnosomata	26427
+tara_pacific_hsn	Cavoliniidae	26480
+tara_pacific_hsn	Limacinidae	26524
+tara_pacific_hsn	Creseidae	26525
+tara_pacific_hsn	Ostracoda	30815
+tara_pacific_hsn	Pyrocystaceae	31874
+tara_pacific_hsn	Euphausiacea	45041
+tara_pacific_hsn	Isopoda	45051
+tara_pacific_hsn	Amphipoda	45054
+tara_pacific_hsn	Siphonostomatoida	45068
+tara_pacific_hsn	Monstrilloida	45069
+tara_pacific_hsn	Harpacticoida	45071
+tara_pacific_hsn	Calanoida	45074
+tara_pacific_hsn	Cirripedia	45079
+tara_pacific_hsn	Physonectae	51381
+tara_pacific_hsn	Orbulina	54944
+tara_pacific_hsn	Diacria	56458
+tara_pacific_hsn	Actinopterygii	56693
+tara_pacific_hsn	Temoridae	61973
+tara_pacific_hsn	Rhincalanidae	61977
+tara_pacific_hsn	Pontellidae	61980
+tara_pacific_hsn	Metridinidae	61982
+tara_pacific_hsn	Heterorhabdidae	61985
+tara_pacific_hsn	Euchaetidae	61986
+tara_pacific_hsn	Eucalanidae	61987
+tara_pacific_hsn	Centropagidae	61990
+tara_pacific_hsn	Candaciidae	61991
+tara_pacific_hsn	Calanidae	61993
+tara_pacific_hsn	Acartiidae	61996
+tara_pacific_hsn	Oithonidae	62005
+tara_pacific_hsn	Velella	72302
+tara_pacific_hsn	Porpita	72303
+tara_pacific_hsn	Diphyidae	72396
+tara_pacific_hsn	Cavolinia inflexa	74144
+tara_pacific_hsn	Creseis virgula	74170
+tara_pacific_hsn	Creseis acicula	74172
+tara_pacific_hsn	Hyperiidea	78159
+tara_pacific_hsn	Gammaridea	78160
+tara_pacific_hsn	Sapphirinidae	78412
+tara_pacific_hsn	Oncaeidae	78418
+tara_pacific_hsn	Corycaeidae	78426
+tara_pacific_hsn	Brachyura	81916
+tara_pacific_hsn	Podon	81940
+tara_pacific_hsn	Evadne	81941
+tara_pacific_hsn	Copilia	81977
+tara_pacific_hsn	Spirorbis	82020
+tara_pacific_hsn	Phronimidae	82147
+tara_pacific_hsn	Calocalanus pavo	82515
+tara_pacific_hsn	Pontellina plumata	82530
+tara_pacific_hsn	Abylopsis tetragona	83278
+tara_pacific_hsn	Laomediidae	83671
+tara_pacific_hsn	Caprellidae	83760
+tara_pacific_hsn	detritus<not-living	84963
+tara_pacific_hsn	larvae<Annelida	84965
+tara_pacific_hsn	part<Annelida	84966
+tara_pacific_hsn	cyphonautes	84967
+tara_pacific_hsn	tail<Chaetognatha	84968
+tara_pacific_hsn	part<Cnidaria	84970
+tara_pacific_hsn	nectophore<Abylopsis tetragona	84974
+tara_pacific_hsn	eudoxid<Abylopsis tetragona	84975
+tara_pacific_hsn	nectophore<Diphyidae	84976
+tara_pacific_hsn	eudoxid<Diphyidae	84977
+tara_pacific_hsn	nectophore<Hippopodiidae	84979
+tara_pacific_hsn	nectophore<Physonectae	84980
+tara_pacific_hsn	metanauplii<Crustacea	84983
+tara_pacific_hsn	phyllosoma	84988
+tara_pacific_hsn	megalopa<Brachyura	84991
+tara_pacific_hsn	calyptopsis	84993
+tara_pacific_hsn	protozoea<Sergestidae	84994
+tara_pacific_hsn	larvae<Squillidae	84996
+tara_pacific_hsn	nauplii<Cirripedia	84997
+tara_pacific_hsn	cypris<Cirripedia	84998
+tara_pacific_hsn	pluteus<Ophiuroidea	84999
+tara_pacific_hsn	pluteus<Echinoidea	85000
+tara_pacific_hsn	part<Mollusca	85003
+tara_pacific_hsn	tail<Appendicularia	85004
+tara_pacific_hsn	juvenile<Salpida	85005
+tara_pacific_hsn	wing	85007
+tara_pacific_hsn	artefact	85008
+tara_pacific_hsn	t002	85013
+tara_pacific_hsn	t003	85014
+tara_pacific_hsn	t004	85015
+tara_pacific_hsn	larvae<Porpitidae	85022
+tara_pacific_hsn	multiple<Copepoda	85044
+tara_pacific_hsn	dark<detritus	85054
+tara_pacific_hsn	bubble	85060
+tara_pacific_hsn	badfocus<artefact	85061
+tara_pacific_hsn	seaweed	85067
+tara_pacific_hsn	othertocheck	85069
+tara_pacific_hsn	gelatinous	85070
+tara_pacific_hsn	fiber<detritus	85076
+tara_pacific_hsn	egg<other	85078
+tara_pacific_hsn	multiple<other	85079
+tara_pacific_hsn	part<Crustacea	85115
+tara_pacific_hsn	nauplii<Crustacea	85116
+tara_pacific_hsn	egg<Actinopterygii	85117
+tara_pacific_hsn	scale	85118
+tara_pacific_hsn	Appendicularia<Tunicata	85123
+tara_pacific_hsn	gonophore<Abylidae	85126
+tara_pacific_hsn	veliger<Mollusca	85128
+tara_pacific_hsn	gonophore<Diphyidae	85185
+tara_pacific_hsn	part<Ctenophora	85187
+tara_pacific_hsn	dark<sphere	85217
+tara_pacific_hsn	gonophore<Abylopsis tetragona	92012
+tara_pacific_hsn	part<Siphonophorae	92039
+tara_pacific_hsn	cirrus	92040
+tara_pacific_hsn	badfocus<Copepoda	92042
+tara_pacific_hsn	head<Chaetognatha	92068
+tara_pacific_hsn	part<Copepoda	92069
+tara_pacific_hsn	nectophore<Bassia bassensis	92109
+tara_pacific_hsn	trunk<Appendicularia	92112
+tara_pacific_hsn	Pterotrachea	92124
+tara_pacific_hsn	Halobates	92138
+tara_pacific_hsn	Atlanta	92139
+tara_pacific_hsn	bract<Diphyidae	92230
+tara_pacific_hsn	bract<Abylopsis tetragona	92231
+tara_pacific_hsn	bract<Abylidae	92232
+tara_pacific_hsn	part<Thaliacea	92235
+tara_pacific_hsn	nucleus<Salpidae	92236
+tara_pacific_hsn	larvae<Porcellanidae	92238
+tara_pacific_hsn	zoea<Brachyura<Pleocyemata<Decapoda	92239
+tara_pacific_hsn	nectophore<Abylidae	92311
+tara_pacific_hsn	multiple<Pyrocystaceae	92772
+tara_pacific_hsn	polype<Leptothecata	92774
+tara_pacific_hsn	polype<Anthozoa	92775
+tara_pacific_hsn	egg sac<egg	92843
+tara_pacific_hsn	bract<Bassia bassensis	92873
+tara_pacific_hsn	empty<Ostracoda	92980
+tara_pacific_hsn	Lubbockia	93061
+tara_pacific_hsn	Globorotalidae	93380
+tara_pacific_hsn	part<Actinopterygii	93381
+tara_pacific_hsn	Acantharia	93382
+tara_pacific_hsn	borax	93661
+tara_pacific_hsn	damaged<Copepoda	94133
+tara_pacific_hsn	echinopluteus	94199
+tara_pacific_hsn	ophiopluteus	94201
+tara_pacific_manta	Harosa	5
+tara_pacific_manta	Mollusca	11498
+tara_pacific_manta	Ctenophora<Animalia	11511
+tara_pacific_manta	Cnidaria<Animalia	11512
+tara_pacific_manta	Chaetognatha<Animalia	11514
+tara_pacific_manta	Bryozoa	11515
+tara_pacific_manta	Annelida	11518
+tara_pacific_manta	Foraminifera	11758
+tara_pacific_manta	Hydrozoa	12865
+tara_pacific_manta	Cephalopoda	12906
+tara_pacific_manta	Bivalvia<Mollusca	12908
+tara_pacific_manta	Spumellaria	13378
+tara_pacific_manta	Insecta	16627
+tara_pacific_manta	Nudibranchia	16797
+tara_pacific_manta	Neoceratium	18758
+tara_pacific_manta	Tomopteridae	25631
+tara_pacific_manta	Alciopini	25632
+tara_pacific_manta	Eumalacostraca	25824
+tara_pacific_manta	Copepoda<Multicrustacea	25828
+tara_pacific_manta	Fritillariidae	25930
+tara_pacific_manta	Oikopleuridae	25932
+tara_pacific_manta	Salpida	25942
+tara_pacific_manta	Pyrosomatida	25943
+tara_pacific_manta	Doliolida	25944
+tara_pacific_manta	Gymnosomata	26427
+tara_pacific_manta	Cavoliniidae	26480
+tara_pacific_manta	Limacinidae	26524
+tara_pacific_manta	Creseidae	26525
+tara_pacific_manta	Diatoma	28189
+tara_pacific_manta	Ostracoda	30815
+tara_pacific_manta	Pyrocystaceae	31874
+tara_pacific_manta	Amphipoda	45054
+tara_pacific_manta	Harpacticoida	45071
+tara_pacific_manta	Calanoida	45074
+tara_pacific_manta	Gerridae	47562
+tara_pacific_manta	Branchiostoma lanceolatum	51173
+tara_pacific_manta	Orbulina	54944
+tara_pacific_manta	Diacavolinia	56457
+tara_pacific_manta	Actinopterygii	56693
+tara_pacific_manta	Terebellidae	60205
+tara_pacific_manta	Temoridae	61973
+tara_pacific_manta	Pontellidae	61980
+tara_pacific_manta	Metridinidae	61982
+tara_pacific_manta	Euchaetidae	61986
+tara_pacific_manta	Eucalanidae	61987
+tara_pacific_manta	Centropagidae	61990
+tara_pacific_manta	Candaciidae	61991
+tara_pacific_manta	Calanidae	61993
+tara_pacific_manta	Acartiidae	61996
+tara_pacific_manta	Oithonidae	62005
+tara_pacific_manta	Velella	72302
+tara_pacific_manta	Aglaura	72431
+tara_pacific_manta	Creseis virgula	74170
+tara_pacific_manta	Creseis acicula	74172
+tara_pacific_manta	Diacria trispinosa	74198
+tara_pacific_manta	Hyperiidea	78159
+tara_pacific_manta	Gammaridea	78160
+tara_pacific_manta	Sapphirinidae	78412
+tara_pacific_manta	Oncaeidae	78418
+tara_pacific_manta	Corycaeidae	78426
+tara_pacific_manta	Haloptilus	80121
+tara_pacific_manta	Porpita porpita	81608
+tara_pacific_manta	Chelophyes	81821
+tara_pacific_manta	Physalia	81832
+tara_pacific_manta	Rhopalonema velatum	81871
+tara_pacific_manta	Brachyura	81916
+tara_pacific_manta	Evadne	81941
+tara_pacific_manta	Copilia	81977
+tara_pacific_manta	Spirorbis	82020
+tara_pacific_manta	Oxycephalidae	82138
+tara_pacific_manta	Calocalanus pavo	82515
+tara_pacific_manta	Pontellina plumata	82530
+tara_pacific_manta	Phronima	83681
+tara_pacific_manta	detritus<not-living	84963
+tara_pacific_manta	larvae<Annelida	84965
+tara_pacific_manta	part<Annelida	84966
+tara_pacific_manta	cyphonautes	84967
+tara_pacific_manta	tail<Chaetognatha	84968
+tara_pacific_manta	part<Cnidaria	84970
+tara_pacific_manta	nectophore<Abylopsis tetragona	84974
+tara_pacific_manta	eudoxid<Abylopsis tetragona	84975
+tara_pacific_manta	nectophore<Diphyidae	84976
+tara_pacific_manta	eudoxid<Diphyidae	84977
+tara_pacific_manta	nectophore<Hippopodiidae	84979
+tara_pacific_manta	nectophore<Physonectae	84980
+tara_pacific_manta	metanauplii<Crustacea	84983
+tara_pacific_manta	protozoea<Penaeidae	84987
+tara_pacific_manta	zoea<Galatheidae	84989
+tara_pacific_manta	megalopa<Brachyura	84991
+tara_pacific_manta	like<Laomediidae	84992
+tara_pacific_manta	calyptopsis	84993
+tara_pacific_manta	protozoea<Sergestidae	84994
+tara_pacific_manta	protozoea<Mysida	84995
+tara_pacific_manta	larvae<Squillidae	84996
+tara_pacific_manta	nauplii<Cirripedia	84997
+tara_pacific_manta	cypris<Cirripedia	84998
+tara_pacific_manta	pluteus<Ophiuroidea	84999
+tara_pacific_manta	pluteus<Echinoidea	85000
+tara_pacific_manta	part<Mollusca	85003
+tara_pacific_manta	tail<Appendicularia	85004
+tara_pacific_manta	juvenile<Salpida	85005
+tara_pacific_manta	chain<Salpida	85006
+tara_pacific_manta	wing	85007
+tara_pacific_manta	artefact	85008
+tara_pacific_manta	other<Biota	85011
+tara_pacific_manta	t002	85013
+tara_pacific_manta	t003	85014
+tara_pacific_manta	t004	85015
+tara_pacific_manta	t005	85016
+tara_pacific_manta	t007	85018
+tara_pacific_manta	t008	85019
+tara_pacific_manta	larvae<Porpitidae	85022
+tara_pacific_manta	multiple<Copepoda	85044
+tara_pacific_manta	dark<detritus	85054
+tara_pacific_manta	fiber<plastic	85057
+tara_pacific_manta	other<plastic	85058
+tara_pacific_manta	bubble	85060
+tara_pacific_manta	badfocus<artefact	85061
+tara_pacific_manta	seaweed	85067
+tara_pacific_manta	part<other	85068
+tara_pacific_manta	othertocheck	85069
+tara_pacific_manta	filament<plastic	85071
+tara_pacific_manta	film	85072
+tara_pacific_manta	fragment	85073
+tara_pacific_manta	pellet	85074
+tara_pacific_manta	multiple<plastic	85075
+tara_pacific_manta	fiber<detritus	85076
+tara_pacific_manta	egg<other	85078
+tara_pacific_manta	multiple<other	85079
+tara_pacific_manta	larvae<Crustacea	85114
+tara_pacific_manta	part<Crustacea	85115
+tara_pacific_manta	nauplii<Crustacea	85116
+tara_pacific_manta	egg<Actinopterygii	85117
+tara_pacific_manta	scale	85118
+tara_pacific_manta	t010	85124
+tara_pacific_manta	t012	85137
+tara_pacific_manta	t013	85138
+tara_pacific_manta	t014	85139
+tara_pacific_manta	t015	85140
+tara_pacific_manta	t016	85141
+tara_pacific_manta	t017	85142
+tara_pacific_manta	gonophore<Diphyidae	85185
+tara_pacific_manta	part<Ctenophora	85187
+tara_pacific_manta	ephyra<Scyphozoa	85188
+tara_pacific_manta	egg<Mollusca	85193
+tara_pacific_manta	gonophore<Abylopsis tetragona	92012
+tara_pacific_manta	part<Siphonophorae	92039
+tara_pacific_manta	cirrus	92040
+tara_pacific_manta	badfocus<Copepoda	92042
+tara_pacific_manta	head<Chaetognatha	92068
+tara_pacific_manta	part<Copepoda	92069
+tara_pacific_manta	polystyrene	92077
+tara_pacific_manta	gonophore<Bassia bassensis	92108
+tara_pacific_manta	nectophore<Bassia bassensis	92109
+tara_pacific_manta	trunk<Appendicularia	92112
+tara_pacific_manta	Pterotrachea	92124
+tara_pacific_manta	Atlanta	92139
+tara_pacific_manta	bract<Diphyidae	92230
+tara_pacific_manta	bract<Abylopsis tetragona	92231
+tara_pacific_manta	part<Thaliacea	92235
+tara_pacific_manta	nucleus<Salpidae	92236
+tara_pacific_manta	larvae<Porcellanidae	92238
+tara_pacific_manta	zoea<Brachyura<Pleocyemata<Decapoda	92239
+tara_pacific_manta	polype<Leptothecata	92774
+tara_pacific_manta	polype<Anthozoa	92775
+tara_pacific_manta	Miraciidae	92860
+tara_pacific_manta	bract<Bassia bassensis	92873
+tara_pacific_manta	nectophore<Eudoxoides spiralis	92945
+tara_pacific_manta	eudoxid<Eudoxoides spiralis	92946
+tara_pacific_manta	gonophore<Eudoxoides spiralis	92947
+tara_pacific_manta	Lubbockia	93061
+tara_pacific_manta	damaged<Copepoda	94133

@@ -89,7 +89,10 @@ drop: []
 # WHERE THE ROWS OF THE SOURCES NOT IN `sources` COME FROM.
 #   null   -> nothing; the run produces only what `sources` rebuilds
 #   hub    -> load_dataset(base_repo_id, split="train")
-#   local  -> load_from_disk(output_dir)
+#   local  -> load_from_disk(output_dir); when no output_dir exists yet (a first
+#             build on this machine) there is nothing to carry over, so the run
+#             warns and proceeds as base=null. An output_dir that exists but is
+#             not a saved dataset still stops the run.
 #   <path> -> load_from_disk(<path>)   (for a literal ./hub or ./local dir, say ./hub)
 base: null
 

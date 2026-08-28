@@ -157,6 +157,22 @@ def resolve_base_location(cfg, output_dir: Path):
     if base == "hub":
         return ("hub", cfg.base_repo_id)
     if base == "local":
+        if not output_dir.exists():
+            # A FIRST build on this machine: `local` means "what is already there", and
+            # nothing is. Refusing here made the documented incremental command
+            # unrunnable from scratch, so the run proceeds with only `sources` — which
+            # is exactly what base=null does on a machine with no output_dir, and loses
+            # nothing because there is nothing to lose. An output_dir that EXISTS but
+            # is broken still stops the run (the unconditional check below), and an
+            # explicit `base=<path>` never degrades: a typo must not silently become
+            # "no base".
+            logger.warning(
+                f"base=local, but there is no artifact at {output_dir} yet — a first build on this machine has "
+                "nothing to splice into, so this run builds ONLY the sources named in `sources` and saves them "
+                "as the new local artifact. To splice into the published dataset instead, pass base=hub "
+                "(and base_repo_id= when it should differ from repo_id)."
+            )
+            return None
         return ("disk", output_dir)
     return ("disk", Path(base))
 
@@ -818,10 +834,13 @@ def report_source_state(importers, cfg) -> tuple:
                 wanted = f"{len(missing)} archive(s) must be downloaded by hand: {missing}"
                 checks.append(Check(f"manual:{name}", False, wanted))
 
-        # Inputs a source needs on EVERY run, imagefolder or not (FREPJ's md5-pinned geodata
-        # tables). Absent ones are not a failure — the run fetches them before its first
-        # import — but they make the source a fetcher, so `check_downloads=needed` probes
-        # it. A bundled one that is gone cannot be repaired by any run, so it blocks.
+        # Inputs a source needs on EVERY run, imagefolder or not: FREPJ's md5-pinned geodata
+        # tables, and the Tara Pacific sources' per-object EcoTaxa manifests. Absent ones are
+        # not a failure — the run fetches them before its first import — but they make the
+        # source a fetcher, so `check_downloads=needed` probes it. A bundled one that is gone
+        # cannot be repaired by any run, so it blocks. The wording below stays neutral about
+        # HOW a source verifies its own sidecars (an md5 pin for frepj, a promised row count
+        # for a Tara Pacific manifest), because this function knows no source by name.
         targets = importer.sidecar_targets()
         if targets:
             gone = [location for kind, location in targets if kind == "bundled" and not Path(location).exists()]
@@ -840,21 +859,21 @@ def report_source_state(importers, cfg) -> tuple:
                 logger.info(f"   sidecars: {len(absent)} absent/unverified -> would be fetched: {listed}")
                 fetched_into = absent[0].parent
                 detail = (
-                    f"{len(absent)} sidecar file(s) absent or failing their md5 pin ({listed}) -> would be fetched "
-                    f"md5-verified into {fetched_into} before the first import"
+                    f"{len(absent)} sidecar file(s) absent or failing verification ({listed}) -> would be fetched "
+                    f"into {fetched_into} before the first import"
                 )
                 checks.append(Check(f"sidecars:{name}", True, detail))
                 for path in absent:
                     if path.exists():
                         drifted = (
-                            f"{path.name} is on disk but fails its md5 pin — would be re-fetched before the first "
+                            f"{path.name} is on disk but fails verification — would be re-fetched before the first "
                             "import (an upstream re-upload, or a truncated copy)"
                         )
                         checks.append(Check(f"sidecars:{name}", False, drifted, blocking=False))
             elif not gone:
                 fetched = sum(1 for kind, _ in targets if kind == "url")
                 bundled = sum(1 for kind, _ in targets if kind == "bundled")
-                detail = f"{fetched} sidecar file(s) on disk with their md5 pin, {bundled} bundled"
+                detail = f"{fetched} fetched sidecar target(s) satisfied, {bundled} bundled"
                 checks.append(Check(f"sidecars:{name}", True, detail))
 
     return checks, fetch_names
@@ -1232,10 +1251,45 @@ def main(cfg: DictConfig) -> None:
         dropped=dropped,
     )
 
+    preflight_will_run = bool(cfg.dry_run) or cfg.check_downloads != "none"
+
+    # A `base` on disk is not read until the very END of the run — after every selected
+    # source has been imported and redefined. Verifying it is two small JSON reads and no
+    # network, so it is done up front and UNCONDITIONALLY: without this, a `base`
+    # pointing at a directory that does not exist bought a full multi-hour build and then
+    # raised FileNotFoundError from load_from_disk with everything discarded. Skipped only
+    # when the pre-flight below is going to make the same check, so it is reported once.
+    if base_location is not None and base_location[0] == "disk" and not preflight_will_run:
+        broken = [check for check in check_base_on_disk(base_location[1]) if not check.ok and check.blocking]
+        if broken:
+            raise RuntimeError(
+                "Nothing was built: the `base` this run would splice into is not usable, and it is only read at the "
+                "END of the build. " + " | ".join(check.detail for check in broken) + ". "
+                "Pass base=null to build only the sources named in `sources` (add allow_partial_overwrite=true if a "
+                "PARTIAL rebuild really should overwrite an existing output_dir), base=hub to splice into the "
+                "published dataset, or point base= at a directory that holds a saved dataset."
+            )
+
+    # The push, like a base on disk, only happens at the very END of the run — and
+    # resolving a token is a local read (cfg, the HF_TOKEN variable, the `hf auth login`
+    # store), no network. So when this run is going to push, having SOME token is
+    # required up front: without this, push_to_hub=true on a machine that was never
+    # logged in bought the entire multi-day build and then failed inside push_to_hub
+    # with nothing published. Whether the token can actually write to repo_id is a
+    # network question, answered by the pre-flight (check_downloads religiously checks
+    # it) — this guard only refuses the push that cannot possibly succeed.
+    if cfg.get("push_to_hub", False) and not preflight_will_run:
+        if not cfg.get("hf_token", None) and not get_token():
+            raise RuntimeError(
+                "Nothing was built: push_to_hub=true, but no HuggingFace token is available anywhere (hf_token=, "
+                "HF_TOKEN, or `hf auth login`), and the push only happens at the END of the build. Provide a "
+                "token, or pass push_to_hub=false to build without publishing."
+            )
+
     # The pre-flight runs for a dry run (which is nothing else) and whenever the network
     # checks were asked for on a real run — there, refusing to start beats failing four
     # sources in. A plain run skips it entirely and behaves exactly as it always has.
-    if cfg.dry_run or cfg.check_downloads != "none":
+    if preflight_will_run:
         checks = run_preflight(
             selected=selected,
             cfg=cfg,

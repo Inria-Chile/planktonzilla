@@ -79,9 +79,10 @@ LICENSE_COLS = ("license", "license_url")
 # published on its own as project-oceania/planktonzilla-frepj and is absent from the
 # frozen planktonzilla-17M until the v1.2 push.
 #
-# `daplankton` is the seventeenth, appended after frepj for the same reason. Like frepj it
-# is recorded here — and in the taxonomy CSV and the registry — ahead of its arrival in the
-# published artifact, so tests/test_dataset_licenses.py lists BOTH as pending.
+# `daplankton` is the seventeenth, appended after frepj for the same reason, and the four
+# `tara_pacific_*` entries (v1.2, added 2026-08-26) follow it — all recorded here, in the
+# taxonomy CSV and in the registry ahead of their arrival in the published artifact, so
+# tests/test_dataset_licenses.py lists every one of them as pending.
 DATASET_IMPORT_CONFIGS = {
     "isiisnet": "isiisnet",
     "whoi": "whoi-plankton",
@@ -103,6 +104,17 @@ DATASET_IMPORT_CONFIGS = {
     "frepj": "frepj",
     # Seventeenth entry, appended after frepj for the same index-preserving reason.
     "daplankton": "daplankton",
+    # Entries 18-21 (v1.2): the four Tara Pacific deposits of Mériguet et al. 2025
+    # (essd-17-2761-2025), appended after daplankton so every earlier source keeps its
+    # concatenation index. name == import_name for all four, on purpose — five of the
+    # sixteen above differ, and there is no reason to add a sixth trap. Unlike every other
+    # source these have NO archive: their SEANOE deposits publish EcoTaxa TSV exports
+    # (metadata, no vignettes), so the importer walks the public EcoTaxa API instead. See
+    # planktonzilla.dataset_import.tara_pacific_layout.
+    "tara_pacific_bongo": "tara_pacific_bongo",
+    "tara_pacific_decknet": "tara_pacific_decknet",
+    "tara_pacific_hsn": "tara_pacific_hsn",
+    "tara_pacific_manta": "tara_pacific_manta",
 }
 
 # Canonical deed URL per license slug, used to fill ``license_url`` for the standard
@@ -164,6 +176,14 @@ DATASET_LICENSES = {
         ("zoolake", "cc0-1.0", None),
         ("frepj", "cc-by-4.0", None),
         ("daplankton", "cc-by-4.0", None),
+        # The four Tara Pacific deposits, each CC BY 4.0 as read from its SEANOE record on
+        # 2026-08-26. Pinned against configs/dataset_import/tara_pacific_*.yaml and
+        # dataset_import.tara_pacific_layout.LICENSE by the tests. They add nothing new to
+        # the licence mix.
+        ("tara_pacific_bongo", "cc-by-4.0", None),
+        ("tara_pacific_decknet", "cc-by-4.0", None),
+        ("tara_pacific_hsn", "cc-by-4.0", None),
+        ("tara_pacific_manta", "cc-by-4.0", None),
     )
 }
 

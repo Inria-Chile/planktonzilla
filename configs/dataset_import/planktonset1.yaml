@@ -23,8 +23,57 @@ description: |
   vision community as a standard machine learning benchmark. This ''Plankton 1.0'' dataset is a medium-size 
   dataset with a fair amount of complexity where image classification improvements can still be made.
 
+# NOT a stored file: this NCEI Archive Management System endpoint tars the accession ON
+# DEMAND. Measured 2026-08-27 — ~22 s to first byte, then ~0.6 MB/s (so ~1 h for the full
+# archive), Range IGNORED (a ranged GET answers 200, not 206), no Content-Length, and a
+# sustained 503 when the service is busy. Nothing downstream can resume or size-check it,
+# which is why this source failed repeatedly; PlanktonSet1DatasetImporter therefore fetches
+# it through _fetch_archive_verified (one request per attempt, gzip-framing check, real
+# retries) instead of the ordinary DownloadManager path.
 download_uris: "https://www.ncei.noaa.gov/archive/archive-management-system/OAS/bin/prd/jquery/download/127422.2.3.tar.gz"
 source_url: "https://www.ncei.noaa.gov/archive/archive-management-system/OAS/bin/prd/jquery/accession/download/127422"
+
+# Fallback for when the generator is down. NOAA mirrors the SAME accession as a static,
+# range-supporting tree (HEAD works, Accept-Ranges: bytes, exact per-file sizes) — but it
+# publishes no tarball there, only the extracted files, so it is a human's route rather
+# than a second automatic one. Surveyed 2026-08-27 over FTP: 121 class directories,
+# 60,736 files, 108,723,866 bytes — matching the 121 classes and 60,736 images this
+# source is documented to have.
+#
+# Fetching it whole is SLOW (~1.25 files/s on one FTP connection, i.e. ~13 h), so prefer
+# retrying the generator unless it is persistently unavailable. Note that the HTTPS form
+# of this mirror lives under a path ncei.noaa.gov/robots.txt disallows ("Disallow: /data*"),
+# so bulk retrieval should go over FTP, which is the route the accession landing page
+# itself advertises.
+manual_download_url: "ftp://ftp-oceans.ncei.noaa.gov/nodc/archive/arc0075/0127422/2.3/"
+manual_download_notes: |
+  Preferred: retry the AMS download endpoint — it is intermittently 503 but serves the
+  whole .tar.gz when up, and the importer now verifies and retries it.
+
+  If it stays down, mirror the labeled tree from the static FTP copy once and keep the
+  archive — the data is immutable since 2015, so this never has to be repeated:
+    uv run python scripts/mirror_planktonset1.py
+  (~4.3 h at 4 workers, resumable; it verifies 121 classes / 60,736 files / 108,723,866
+  bytes and refuses to package anything short of that, then writes 0127422.2.3.tar.gz.)
+
+  Build this source's imagefolder from that archive on any machine:
+    uv run pz_import_dataset action=import dataset_import=planktonset1 \
+      dataset_import.push_to_hub=false \
+      dataset_import.manual_download_local_file_names=<abs path to 0127422.2.3.tar.gz>
+  action=import is REQUIRED: the entry point defaults to action=show, which only queries
+  the Hub and imports nothing.
+
+  Inside a full pz_planktonzilla run the same override goes through import_overrides,
+  where the list AND the element both need quoting — bare brackets are a glob to zsh, and
+  Hydra's grammar rejects a bare `=` inside a list element:
+    uv run pz_planktonzilla repo_id=<org>/<name> "sources=[planktonset1.0]" base=local \
+      'import_overrides=["dataset_import.manual_download_local_file_names=<abs path>.tar.gz"]'
+  import_overrides is appended to EVERY selected source, so pass it only when `sources` is
+  this one source; and once the imagefolder exists, refresh=reuse skips the import and the
+  override is never read.
+
+  The importer locates the FINAL_Plankton_Segments_* directory anywhere in the archive,
+  so the wrapping does not have to match the accession's own layout.
 paperswithcode_id: planktonset1
 citation_apa: |
     Cowen, R. K., Sponaugle, S., Robinson, K. L., Luo, J., & Guigand, C. (2015). PlanktonSet 1.0: Plankton imagery data 

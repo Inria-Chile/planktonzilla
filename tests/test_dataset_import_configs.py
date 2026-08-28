@@ -1003,6 +1003,40 @@ def test_probe_url_reports_an_html_body_as_a_warning_not_a_pass(tmp_path):
     assert "HTML" in result.warning
 
 
+def test_probe_url_warns_when_the_server_ignores_range_and_hides_the_size(tmp_path):
+    """The planktonset1.0 shape: reachable, but unresumable and unverifiable.
+
+    Measured against NCEI on 2026-08-27 — its on-demand generator refuses HEAD, then
+    answers the ranged GET with 200 (not 206) and Transfer-Encoding: chunked. Both facts
+    are fatal downstream: nothing can resume the ~1h transfer, and with no Content-Length
+    a truncated archive cannot be told from a complete one. The audit called this source
+    green for months, which is why a build kept committing to it.
+    """
+    session = _FakeHTTP(
+        head=_FakeHTTPResponse(status_code=403),
+        get=_FakeHTTPResponse(status_code=200, headers={"Content-Type": "application/x-gzip"}),
+    )
+
+    result = di.probe_url("https://example.invalid/on-demand.tar.gz", session=session)
+
+    assert result.ok, "the URL does serve the file — this is an advisory, not a failure"
+    assert result.size is None
+    assert "ignored Range" in result.warning
+    assert "disclosed no size" in result.warning
+
+
+def test_probe_url_does_not_cry_range_when_the_head_alone_answered(tmp_path):
+    """A plain 200 from HEAD is not evidence that Range would be ignored."""
+    session = _FakeHTTP(
+        head=_FakeHTTPResponse(headers={"Content-Type": "application/zip", "Content-Length": "10"}),
+    )
+
+    result = di.probe_url("https://example.invalid/data.zip", session=session)
+
+    assert result.ok
+    assert result.warning is None, "no ranged GET was made, and the size was disclosed"
+
+
 def test_probe_url_reports_a_dead_url_and_a_dead_network(tmp_path):
     """A 404 and a transport failure are verdicts, not exceptions."""
     import requests as _requests
@@ -1342,7 +1376,12 @@ def test_download_targets_frepj_appends_the_sidecar_tables_and_the_crosswalk(tmp
     assert importer._downloadable_uris() == frepj_layout.DOWNLOAD_URL
 
 
-@pytest.mark.parametrize("name", [n for n in IMPORT_CONFIG_NAMES if n != "frepj"])
+# The sources that DO declare sidecars: frepj (its md5-pinned geodata tables) and the four
+# Tara Pacific deposits (their per-object EcoTaxa manifests). Everything else is archive-only.
+SIDECAR_CONFIG_NAMES = {"frepj", *(name for name in IMPORT_CONFIG_NAMES if name.startswith("tara_pacific_"))}
+
+
+@pytest.mark.parametrize("name", [n for n in IMPORT_CONFIG_NAMES if n not in SIDECAR_CONFIG_NAMES])
 def test_sources_without_sidecars_are_unchanged(name, tmp_path):
     """The sixteen archive-only sources: no sidecars, and download_targets() exactly as before."""
     importer = _importer(name, tmp_path)
@@ -1472,7 +1511,7 @@ def test_preflight_reports_the_real_frepj_importers_sidecars(monkeypatch, tmp_pa
     checks, fetch_names = mk.report_source_state([(entry, importer)], SimpleNamespace(refresh="reuse"))
     assert fetch_names == []
     (check,) = [c for c in checks if c.name == "sidecars:frepj"]
-    assert check.ok and check.detail == "3 sidecar file(s) on disk with their md5 pin, 1 bundled"
+    assert check.ok and check.detail == "3 fetched sidecar target(s) satisfied, 1 bundled"
 
 
 def test_frepj_verified_sidecars_survive_refresh_redownload(monkeypatch, tmp_path):

@@ -1,0 +1,610 @@
+ecotaxa_taxon_id	name	display_name	type	rank	aphia_id	id_lineage	lineage
+1	Biota	Biota	P	Superdomain	1	1	Biota
+3	Bacteria	Bacteria	P	Kingdom	6	1;3	Biota>Bacteria
+5	Harosa	Harosa	P	Subkingdom	582419	1;100002;5	Biota>Chromista>Harosa
+96	Proteobacteria	Proteobacteria	P	Phylum	178054	1;3;96	Biota>Bacteria>Proteobacteria
+119	Oscillatoriales	Oscillatoriales	P	Order	146603	1;3;100089;233;1680;100111;119	Biota>Bacteria>Negibacteria>Cyanobacteria>Cyanophyceae>Oscillatoriophycidae>Oscillatoriales
+233	Cyanobacteria	Cyanobacteria<Negibacteria	P	Phylum	146537	1;3;100089;233	Biota>Bacteria>Negibacteria>Cyanobacteria
+342	Rhizaria	Rhizaria	P	Infrakingdom	582420	1;100002;5;342	Biota>Chromista>Harosa>Rhizaria
+343	Alveolata	Alveolata	P	Infrakingdom	536209	1;100002;5;343	Biota>Chromista>Harosa>Alveolata
+391	Viridiplantae	Viridiplantae	P	Subkingdom	368663	1;100059;391	Biota>Plantae>Viridiplantae
+849	Cyanobacteria	Cyanobacteria<Proteobacteria	P			1;3;96;849	Biota>Bacteria>Proteobacteria>Cyanobacteria
+1680	Cyanophyceae	Cyanophyceae	P	Class	146542	1;3;100089;233;1680	Biota>Bacteria>Negibacteria>Cyanobacteria>Cyanophyceae
+2237	Ochrophyta	Ochrophyta	P	Phylum	345465	1;100002;5;100027;2237	Biota>Chromista>Harosa>Heterokonta>Ochrophyta
+2244	Retaria	Retaria	P			1;100002;5;342;2244	Biota>Chromista>Harosa>Rhizaria>Retaria
+2248	Myzozoa	Myzozoa	P	Phylum	450030	1;100002;5;343;2248	Biota>Chromista>Harosa>Alveolata>Myzozoa
+2250	Ciliophora	Ciliophora	P	Phylum	11	1;100002;5;343;2250	Biota>Chromista>Harosa>Alveolata>Ciliophora
+2367	Animalia	Animalia	P	Kingdom	2	1;2367	Biota>Animalia
+2385	Chlorophyta	Chlorophyta<Viridiplantae	P	Phylum (Division)	801	1;100059;391;2385	Biota>Plantae>Viridiplantae>Chlorophyta
+8976	Trichodesmium	Trichodesmium	P	Genus	177604	1;3;100089;233;1680;100111;119;95494;8976	Biota>Bacteria>Negibacteria>Cyanobacteria>Cyanophyceae>Oscillatoriophycidae>Oscillatoriales>Microcoleaceae>Trichodesmium
+8983	UCYNA like	UCYNA like	P			1;3;100089;233;1680;8983	Biota>Bacteria>Negibacteria>Cyanobacteria>Cyanophyceae>UCYNA like
+11221	Intramacronucleata	Intramacronucleata	P	Subphylum	425401	1;100002;5;343;2250;11221	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata
+11341	Pyramimonadales	Pyramimonadales	P	Order	17330	1;100059;391;2385;100340;100339;11341	Biota>Plantae>Viridiplantae>Chlorophyta>Prasinophytina>Pyramimonadophyceae>Pyramimonadales
+11486	Rotifera	Rotifera	P	Phylum	14260	1;2367;11486	Biota>Animalia>Rotifera
+11498	Mollusca	Mollusca	P	Phylum	51	1;2367;11498	Biota>Animalia>Mollusca
+11509	Echinodermata	Echinodermata	P	Phylum	1806	1;2367;11509	Biota>Animalia>Echinodermata
+11511	Ctenophora	Ctenophora<Animalia	P	Phylum	1248	1;2367;11511	Biota>Animalia>Ctenophora
+11512	Cnidaria	Cnidaria<Animalia	P	Phylum	1267	1;2367;11512	Biota>Animalia>Cnidaria
+11513	Chordata	Chordata	P	Phylum	1821	1;2367;11513	Biota>Animalia>Chordata
+11514	Chaetognatha	Chaetognatha<Animalia	P	Phylum	2081	1;2367;11514	Biota>Animalia>Chaetognatha
+11515	Bryozoa	Bryozoa	P	Phylum	146142	1;2367;11515	Biota>Animalia>Bryozoa
+11517	Arthropoda	Arthropoda	P	Phylum	1065	1;2367;11517	Biota>Animalia>Arthropoda
+11518	Annelida	Annelida	P	Phylum	882	1;2367;11518	Biota>Animalia>Annelida
+11758	Foraminifera	Foraminifera	P	Phylum	1410	1;100002;5;342;11758	Biota>Chromista>Harosa>Rhizaria>Foraminifera
+11762	Acantharea	Acantharea	P			1;100002;5;342;2244;11762	Biota>Chromista>Harosa>Rhizaria>Retaria>Acantharea
+11812	Dictyochophyceae	Dictyochophyceae<Ochrophyta	P	Class	146232	1;100002;5;100027;2237;11812	Biota>Chromista>Harosa>Heterokonta>Ochrophyta>Dictyochophyceae
+11816	Bacillariophyta	Bacillariophyta<Chromista	P	Phylum	148898	1;100002;11816	Biota>Chromista>Bacillariophyta
+11886	Oligohymenophorea	Oligohymenophorea	P	Class	162991	1;100002;5;343;2250;11221;100001;11886	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Ventrata>Oligohymenophorea
+11888	Litostomatea	Litostomatea	P	Class	292892	1;100002;5;343;2250;11221;100276;11888	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Rhabdophora>Litostomatea
+11921	Dinophyceae	Dinophyceae	P	Class	19542	1;100002;5;343;2248;96576;96577;11921	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae
+12402	Pterosperma	Pterosperma	P	Genus	160595	1;100059;391;2385;100340;100339;11341;100914;12402	Biota>Plantae>Viridiplantae>Chlorophyta>Prasinophytina>Pyramimonadophyceae>Pyramimonadales>Pterospermataceae>Pterosperma
+12838	Polychaeta	Polychaeta	P	Class	883	1;2367;11518;12838	Biota>Animalia>Annelida>Polychaeta
+12845	Hexapoda	Hexapoda	P	Class	1278	1;2367;11517;12846;100012;12845	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Hexapoda
+12846	Crustacea	Crustacea	P	Subphylum	1066	1;2367;11517;12846	Biota>Animalia>Arthropoda>Crustacea
+12860	Tunicata	Tunicata	P	Subphylum	146420	1;2367;11513;12860	Biota>Animalia>Chordata>Tunicata
+12862	Cephalochordata	Cephalochordata	P	Subphylum	1824	1;2367;11513;12862	Biota>Animalia>Chordata>Cephalochordata
+12863	Scyphozoa	Scyphozoa	P	Class	135220	1;2367;11512;93496;12863	Biota>Animalia>Cnidaria>Medusozoa>Scyphozoa
+12865	Hydrozoa	Hydrozoa	P	Class	1337	1;2367;11512;93496;12865	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa
+12868	Anthozoa	Anthozoa<Cnidaria	P	Subphylum	1292	1;2367;11512;12868	Biota>Animalia>Cnidaria>Anthozoa
+12873	Ophiuroidea	Ophiuroidea	P	Class	123084	1;2367;11509;100640;12873	Biota>Animalia>Echinodermata>Asterozoa>Ophiuroidea
+12875	Echinoidea	Echinoidea	P	Class	123082	1;2367;11509;100418;12875	Biota>Animalia>Echinodermata>Echinozoa>Echinoidea
+12905	Gastropoda	Gastropoda<Mollusca	P	Class	101	1;2367;11498;12905	Biota>Animalia>Mollusca>Gastropoda
+12906	Cephalopoda	Cephalopoda	P	Class	11707	1;2367;11498;12906	Biota>Animalia>Mollusca>Cephalopoda
+12908	Bivalvia	Bivalvia<Mollusca	P	Class	105	1;2367;11498;12908	Biota>Animalia>Mollusca>Bivalvia
+13377	Globothalamea	Globothalamea	P	Class	744104	1;100002;5;342;11758;13377	Biota>Chromista>Harosa>Rhizaria>Foraminifera>Globothalamea
+13378	Spumellaria	Spumellaria	P	Order	345835	1;100002;5;342;92677;100197;13378	Biota>Chromista>Harosa>Rhizaria>Radiozoa>Polycystina>Spumellaria
+13379	Nassellaria	Nassellaria<Polycystina	P	Order	235741	1;100002;5;342;92677;100197;13379	Biota>Chromista>Harosa>Rhizaria>Radiozoa>Polycystina>Nassellaria
+13381	Collodaria	Collodaria	P	Suborder	863399	1;100002;5;342;92677;100197;13379;13381	Biota>Chromista>Harosa>Rhizaria>Radiozoa>Polycystina>Nassellaria>Collodaria
+13459	Coscinodiscophytina	Coscinodiscophytina	P			1;100002;11816;13459	Biota>Chromista>Bacillariophyta>Coscinodiscophytina
+13461	Bacillariophytina	Bacillariophytina	P	Subphylum	493822	1;100002;100021;13461	Biota>Chromista>Heterokontophyta>Bacillariophytina
+13688	Dictyochales	Dictyochales	P	Order	157256	1;100002;5;100027;2237;11812;13688	Biota>Chromista>Harosa>Heterokonta>Ochrophyta>Dictyochophyceae>Dictyochales
+13865	Haptoria	Haptoria	P	Subclass	425417	1;100002;5;343;2250;11221;100276;11888;13865	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Rhabdophora>Litostomatea>Haptoria
+13870	Sessilida	Sessilida	P	Order	414711	1;100002;5;343;2250;11221;100001;11886;13873;13870	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Ventrata>Oligohymenophorea>Peritrichia>Sessilida
+13873	Peritrichia	Peritrichia	P	Subclass	163067	1;100002;5;343;2250;11221;100001;11886;13873	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Ventrata>Oligohymenophorea>Peritrichia
+13897	Oligotrichia	Oligotrichia	P	Subclass	425509	1;100002;5;343;2250;11221;100030;13897	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia
+13944	Peridiniales	Peridiniales	P	Order	109394	1;100002;5;343;2248;96576;96577;11921;31819;13944	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Peridiniales
+13947	Gymnodiniales	Gymnodiniales	P	Order	109392	1;100002;5;343;2248;96576;96577;11921;13947	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Gymnodiniales
+13948	Gonyaulacales	Gonyaulacales	P	Order	109391	1;100002;5;343;2248;96576;96577;11921;31819;13948	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales
+13949	Dinophysales	Dinophysales	P	Order	1732560	1;100002;5;343;2248;96576;96577;11921;13949	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Dinophysales
+13950	Dinophyceae X	Dinophyceae X	P			1;100002;5;343;2248;96576;96577;11921;13950	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Dinophyceae X
+16612	Sedentaria	Sedentaria	P	Subclass	754175	1;2367;11518;12838;16612	Biota>Animalia>Annelida>Polychaeta>Sedentaria
+16613	Errantia	Errantia	P	Subclass	754174	1;2367;11518;12838;16613	Biota>Animalia>Annelida>Polychaeta>Errantia
+16619	Oligostraca	Oligostraca	P	Superclass	845957	1;2367;11517;12846;16619	Biota>Animalia>Arthropoda>Crustacea>Oligostraca
+16622	Malacostraca	Malacostraca	P	Class	1071	1;2367;11517;12846;100016;16622	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca
+16625	Branchiopoda	Branchiopoda	P	Class	1069	1;2367;11517;12846;100012;16625	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Branchiopoda
+16627	Insecta	Insecta	P	Subclass	1307	1;2367;11517;12846;100012;12845;16627	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Hexapoda>Insecta
+16630	Collembola	Collembola	P	Subclass	118086	1;2367;11517;12846;100012;12845;16630	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Hexapoda>Collembola
+16655	Branchiostomatidae	Branchiostomatidae	P	Family	196078	1;2367;11513;12862;100844;16655	Biota>Animalia>Chordata>Cephalochordata>Leptocardii>Branchiostomatidae
+16656	Vertebrata	Vertebrata	P	Subphylum	146419	1;2367;11513;16656	Biota>Animalia>Chordata>Vertebrata
+16659	Thaliacea	Thaliacea	P	Class	22626	1;2367;11513;12860;16659	Biota>Animalia>Chordata>Tunicata>Thaliacea
+16670	Trachylinae	Trachylinae	P	Subclass	22754	1;2367;11512;93496;12865;16670	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Trachylinae
+16675	Hydroidolina	Hydroidolina	P	Subclass	19494	1;2367;11512;93496;12865;16675	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina
+16797	Nudibranchia	Nudibranchia	P	Order	1762	1;2367;11498;12905;16799;88136;100007;90517;16797	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Ringipleura>Nudipleura>Nudibranchia
+16799	Heterobranchia	Heterobranchia	P	Subclass	14712	1;2367;11498;12905;16799	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia
+16803	Caenogastropoda	Caenogastropoda	P	Subclass	224570	1;2367;11498;12905;16803	Biota>Animalia>Mollusca>Gastropoda>Caenogastropoda
+17309	Rotaliida	Rotaliida	P	Order	163158	1;100002;5;342;11758;13377;100147;17309	Biota>Chromista>Harosa>Rhizaria>Foraminifera>Globothalamea>Rotaliana>Rotaliida
+17519	Bacillariophyceae	Bacillariophyceae	P	Class	148899	1;100002;100021;13461;17519	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae
+17523	Rhizosolenids	Rhizosolenids	P			1;100002;11816;13459;17523	Biota>Chromista>Bacillariophyta>Coscinodiscophytina>Rhizosolenids
+17527	Coscinodiscids	Coscinodiscids	P			1;100002;11816;13459;17527	Biota>Chromista>Bacillariophyta>Coscinodiscophytina>Coscinodiscids
+17608	Dictyocha	Dictyocha	P	Genus	157258	1;100002;5;100027;2237;11812;13688;100026;17608	Biota>Chromista>Harosa>Heterokonta>Ochrophyta>Dictyochophyceae>Dictyochales>Dictyochaceae>Dictyocha
+18476	Lacrymariidae	Lacrymariidae	P	Family	425420	1;100002;5;343;2250;11221;100276;11888;13865;18478;18476	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Rhabdophora>Litostomatea>Haptoria>Haptorida>Lacrymariidae
+18478	Haptorida	Haptorida	P	Order	163057	1;100002;5;343;2250;11221;100276;11888;13865;18478	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Rhabdophora>Litostomatea>Haptoria>Haptorida
+18529	Zoothamniidae	Zoothamniidae	P	Family	235773	1;100002;5;343;2250;11221;100001;11886;13873;13870;18529	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Ventrata>Oligohymenophorea>Peritrichia>Sessilida>Zoothamniidae
+18560	Vorticellidae	Vorticellidae	P	Family	163172	1;100002;5;343;2250;11221;100001;11886;13873;13870;18560	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Ventrata>Oligohymenophorea>Peritrichia>Sessilida>Vorticellidae
+18596	Xystonellidae	Xystonellidae	P	Family	172429	1;100002;5;343;2250;11221;100030;13897;100043;18599;18596	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Xystonellidae
+18597	Undellidae	Undellidae	P	Family	172430	1;100002;5;343;2250;11221;100030;13897;100043;18599;18597	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Undellidae
+18598	Tintinnidiidae	Tintinnidiidae	P	Family	247914	1;100002;5;343;2250;11221;100030;13897;100043;18599;18598	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Tintinnidiidae
+18599	Tintinnina	Tintinnina<Choreotrichida	P	Suborder	732976	1;100002;5;343;2250;11221;100030;13897;100043;18599	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina
+18604	Rhabdonellidae	Rhabdonellidae	P	Family	183549	1;100002;5;343;2250;11221;100030;13897;100043;18599;18604	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Rhabdonellidae
+18606	Metacylididae	Metacylididae	P	Family	150206	1;100002;5;343;2250;11221;100030;13897;100043;18599;18606	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Metacylididae
+18608	Dictyocystidae	Dictyocystidae	P	Family	196833	1;100002;5;343;2250;11221;100030;13897;100043;18599;18608	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Dictyocystidae
+18609	Cyttarocylididae	Cyttarocylididae	P	Family	150202	1;100002;5;343;2250;11221;100030;13897;100043;18599;18609	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Cyttarocylididae
+18610	Codonellopsidae	Codonellopsidae	P	Family	196206	1;100002;5;343;2250;11221;100030;13897;100043;18599;18610	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Codonellopsidae
+18611	Codonellidae	Codonellidae	P	Family	150201	1;100002;5;343;2250;11221;100030;13897;100043;18599;18611	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Codonellidae
+18758	Neoceratium	Neoceratium	P	Genus	494056	1;100002;5;343;2248;96576;96577;11921;31819;13948;18806;18758	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Ceratiaceae>Neoceratium
+18789	Oxyphysaceae	Oxyphysaceae	P	Family	231781	1;100002;5;343;2248;96576;96577;11921;13949;18789	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Dinophysales>Oxyphysaceae
+18790	Dinophysaceae	Dinophysaceae	P	Family	231772	1;100002;5;343;2248;96576;96577;11921;13949;18790	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Dinophysales>Dinophysaceae
+18792	Amphisoleniaceae	Amphisoleniaceae<Dinophysales	P	Family	109405	1;100002;5;343;2248;96576;96577;11921;13949;18792	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Dinophysales>Amphisoleniaceae
+18799	Pyrophacaceae	Pyrophacaceae	P	Family	109436	1;100002;5;343;2248;96576;96577;11921;31819;13948;18799	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Pyrophacaceae
+18805	Ceratocoryaceae	Ceratocoryaceae	P	Family	109422	1;100002;5;343;2248;96576;96577;11921;31819;13948;18805	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Ceratocoryaceae
+18806	Ceratiaceae	Ceratiaceae	P	Family	109421	1;100002;5;343;2248;96576;96577;11921;31819;13948;18806	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Ceratiaceae
+18872	Protoperidiniaceae	Protoperidiniaceae<Peridiniales	P	Family	109435	1;100002;5;343;2248;96576;96577;11921;31819;13944;18872	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Peridiniales>Protoperidiniaceae
+25631	Tomopteridae	Tomopteridae	P	Family	958	1;2367;11518;12838;16613;94045;100624;25631	Biota>Animalia>Annelida>Polychaeta>Errantia>Phyllodocida>Phyllodocida incertae sedis>Tomopteridae
+25632	Alciopini	Alciopini	P	Tribe	932	1;2367;11518;12838;16613;94045;100410;25634;100611;25632	Biota>Animalia>Annelida>Polychaeta>Errantia>Phyllodocida>Phyllodociformia>Phyllodocidae>Eteoninae>Alciopini
+25634	Phyllodocidae	Phyllodocidae	P	Family	931	1;2367;11518;12838;16613;94045;100410;25634	Biota>Animalia>Annelida>Polychaeta>Errantia>Phyllodocida>Phyllodociformia>Phyllodocidae
+25817	Diplostraca	Diplostraca	P	Superorder	155670	1;2367;11517;12846;100012;16625;100053;25817	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Branchiopoda>Phyllopoda>Diplostraca
+25823	Hoplocarida	Hoplocarida	P	Subclass	1087	1;2367;11517;12846;100016;16622;25823	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Hoplocarida
+25824	Eumalacostraca	Eumalacostraca	P	Subclass	1086	1;2367;11517;12846;100016;16622;25824	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca
+25825	Thecostraca	Thecostraca	P	Class	22388	1;2367;11517;12846;100016;25825	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Thecostraca
+25828	Copepoda	Copepoda<Multicrustacea	P	Class	1080	1;2367;11517;12846;100016;25828	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda
+25833	Poduromorpha	Poduromorpha	P			1;2367;11517;12846;100012;12845;16630;25833	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Hexapoda>Collembola>Poduromorpha
+25849	Pterygota	Pterygota	P	Infraclass	151152	1;2367;11517;12846;100012;12845;16627;25849	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Hexapoda>Insecta>Pterygota
+25925	Branchiostoma	Branchiostoma	P	Genus	104902	1;2367;11513;12862;100844;16655;25925	Biota>Animalia>Chordata>Cephalochordata>Leptocardii>Branchiostomatidae>Branchiostoma
+25928	Gnathostomata	Gnathostomata	P	Infraphylum	1828	1;2367;11513;16656;25928	Biota>Animalia>Chordata>Vertebrata>Gnathostomata
+25930	Fritillariidae	Fritillariidae	P	Family	103354	1;2367;11513;12860;85123;100216;25930	Biota>Animalia>Chordata>Tunicata>Appendicularia>Copelata>Fritillariidae
+25932	Oikopleuridae	Oikopleuridae	P	Family	103356	1;2367;11513;12860;85123;100216;25932	Biota>Animalia>Chordata>Tunicata>Appendicularia>Copelata>Oikopleuridae
+25942	Salpida	Salpida	P	Order	137214	1;2367;11513;12860;16659;25942	Biota>Animalia>Chordata>Tunicata>Thaliacea>Salpida
+25943	Pyrosomatida	Pyrosomatida	P	Order	137213	1;2367;11513;12860;16659;25943	Biota>Animalia>Chordata>Tunicata>Thaliacea>Pyrosomatida
+25944	Doliolida	Doliolida	P	Order	137212	1;2367;11513;12860;16659;25944	Biota>Animalia>Chordata>Tunicata>Thaliacea>Doliolida
+25990	Siphonophorae	Siphonophorae	P	Order	1371	1;2367;11512;93496;12865;16675;25990	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae
+25991	Leptothecata	Leptothecata	P	Order	13552	1;2367;11512;93496;12865;16675;25991	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Leptothecata
+25992	Anthoathecata	Anthoathecata	P	Order	13551	1;2367;11512;93496;12865;16675;25992	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Anthoathecata
+25998	Trachymedusae	Trachymedusae	P	Order	16350	1;2367;11512;93496;12865;16670;25998	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Trachylinae>Trachymedusae
+26427	Gymnosomata	Gymnosomata	P	Suborder	164	1;2367;11498;12905;16799;88136;100014;92976;26427	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda>Gymnosomata
+26480	Cavoliniidae	Cavoliniidae	P	Family	23000	1;2367;11498;12905;16799;88136;100014;92976;91869;100245;26480	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda>Euthecosomata>Cavolinioidea>Cavoliniidae
+26524	Limacinidae	Limacinidae	P	Family	13704	1;2367;11498;12905;16799;88136;100014;92976;91869;100118;26524	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda>Euthecosomata>Limacinoidea>Limacinidae
+26525	Creseidae	Creseidae	P	Family	411905	1;2367;11498;12905;16799;88136;100014;92976;91869;100245;26525	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda>Euthecosomata>Cavolinioidea>Creseidae
+27704	Symphyacanthida	Symphyacanthida	P	Order	367299	1;100002;5;342;92677;93382;27704	Biota>Chromista>Harosa>Rhizaria>Radiozoa>Acantharia>Symphyacanthida
+28119	Synedra	Synedra	P	Genus	149186	1;100002;100021;13461;17519;100040;95917;94763;94764;28119	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae>Fragilariophycanae>Fragilariales>Fragilariaceae>Synedra
+28121	Striatella	Striatella	P	Genus	149176	1;100002;100021;13461;17519;100040;95917;93636;100308;28121	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae>Fragilariophycanae>Striatellales>Striatellaceae>Striatella
+28138	Pseudo-nitzschia	Pseudo-nitzschia	P	Genus	149151	1;100002;100021;13461;17519;100020;100120;94613;94614;28138	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Bacillariophycidae>Bacillariophycanae>Bacillariales>Bacillariaceae>Pseudo-nitzschia
+28152	Nitzschia	Nitzschia	P	Genus	149045	1;100002;100021;13461;17519;100020;100120;94613;94614;28152	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Bacillariophycidae>Bacillariophycanae>Bacillariales>Bacillariaceae>Nitzschia
+28161	Licmophora	Licmophora	P	Genus	149342	1;100002;100021;13461;17519;100040;95917;100628;100627;28161	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae>Fragilariophycanae>Licmophorales>Licmophoraceae>Licmophora
+28174	Fragilariopsis	Fragilariopsis	P	Genus	149313	1;100002;100021;13461;17519;100020;100120;94613;94614;28174	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Bacillariophycidae>Bacillariophycanae>Bacillariales>Bacillariaceae>Fragilariopsis
+28189	Diatoma	Diatoma	P	Genus	149013	1;100002;100021;13461;17519;100040;95917;94763;94764;28189	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae>Fragilariophycanae>Fragilariales>Fragilariaceae>Diatoma
+28194	Cylindrotheca	Cylindrotheca	P	Genus	149003	1;100002;100021;13461;17519;100020;100120;94613;94614;28194	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Bacillariophycidae>Bacillariophycanae>Bacillariales>Bacillariaceae>Cylindrotheca
+28207	Asterionellopsis	Asterionellopsis	P	Genus	149138	1;100002;100021;13461;17519;100040;95917;94763;94764;28207	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae>Fragilariophycanae>Fragilariales>Fragilariaceae>Asterionellopsis
+28208	Asterionella	Asterionella	P	Genus	148953	1;100002;100021;13461;17519;100040;95917;94763;94764;28208	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae>Fragilariophycanae>Fragilariales>Fragilariaceae>Asterionella
+28217	Bacteriastrum	Bacteriastrum<Chaetocerotaceae	P	Genus	149118	1;100002;100021;13461;17519;92144;92166;100153;100152;28217	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Chaetocerotanae>Chaetocerotanae incertae sedis>Chaetocerotaceae>Bacteriastrum
+28227	Planktoniella	Planktoniella	P	Genus	148979	1;100002;100021;13461;17519;92144;100086;94996;100148;28227	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Thalassiosiranae>Thalassiosirales>Thalassiosiraceae>Planktoniella
+28244	Hemiaulus	Hemiaulus	P	Genus	163248	1;100002;100021;13461;17519;92144;94575;92213;100130;28244	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Biddulphianae>Hemiaulales>Hemiaulaceae>Hemiaulus
+28245	Helicotheca	Helicotheca	P	Genus	157438	1;100002;100021;13461;17519;92144;100168;100167;100166;28245	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Lithodesmiophycanae>Lithodesmiales>Lithodesmiaceae>Helicotheca
+28248	Eucampia	Eucampia	P	Genus	149130	1;100002;100021;13461;17519;92144;94575;92213;100130;28248	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Biddulphianae>Hemiaulales>Hemiaulaceae>Eucampia
+28249	Ditylum	Ditylum	P	Genus	149022	1;100002;100021;13461;17519;92144;100168;100167;100166;28249	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Lithodesmiophycanae>Lithodesmiales>Lithodesmiaceae>Ditylum
+28257	Chaetoceros	Chaetoceros<Chaetocerotaceae	P	Genus	148985	1;100002;100021;13461;17519;92144;92166;100153;100152;28257	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Chaetocerotanae>Chaetocerotanae incertae sedis>Chaetocerotaceae>Chaetoceros
+28263	Biddulphia	Biddulphia	P	Genus	148967	1;100002;100021;13461;17519;92144;94575;100025;100024;28263	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Biddulphianae>Biddulphiales>Biddulphiaceae>Biddulphia
+28277	Corethron	Corethron	P	Genus	149109	1;100002;100021;13461;17519;92144;100559;100558;100557;28277	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Corethranae>Corethrales>Corethraceae>Corethron
+28296	Rhizosolenia	Rhizosolenia	P	Genus	149069	1;100002;100021;13461;17519;92144;100239;93849;95487;28296	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Rhizosolenianae>Rhizosoleniales>Rhizosoleniaceae>Rhizosolenia
+28299	Guinardia	Guinardia	P	Genus	149111	1;100002;100021;13461;17519;92144;100239;93849;95487;28299	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Rhizosolenianae>Rhizosoleniales>Rhizosoleniaceae>Guinardia
+28300	Dactyliosolen	Dactyliosolen	P	Genus	149309	1;100002;100021;13461;17519;92144;100239;93849;95487;28300	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Rhizosolenianae>Rhizosoleniales>Rhizosoleniaceae>Dactyliosolen
+30804	Canalipalpata	Canalipalpata	P	Infraclass	154974	1;2367;11518;12838;16612;30804	Biota>Animalia>Annelida>Polychaeta>Sedentaria>Canalipalpata
+30815	Ostracoda	Ostracoda	P	Class	1078	1;2367;11517;12846;16619;30815	Biota>Animalia>Arthropoda>Crustacea>Oligostraca>Ostracoda
+30896	Lacrymaria	Lacrymaria	P	Genus	179314	1;100002;5;343;2250;11221;100276;11888;13865;18478;18476;30896	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Rhabdophora>Litostomatea>Haptoria>Haptorida>Lacrymariidae>Lacrymaria
+31098	Vorticella	Vorticella	P	Genus	163573	1;100002;5;343;2250;11221;100001;11886;13873;13870;18560;31098	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Ventrata>Oligohymenophorea>Peritrichia>Sessilida>Vorticellidae>Vorticella
+31189	Epiplocylis	Epiplocylis	P	Genus	183562	1;100002;5;343;2250;11221;100030;13897;100043;18599;93073;31189	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Epiplocylididae>Epiplocylis
+31190	Cyttarocylis	Cyttarocylis	P	Genus	150205	1;100002;5;343;2250;11221;100030;13897;100043;18599;18609;31190	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Cyttarocylididae>Cyttarocylis
+31192	Dictyocysta	Dictyocysta	P	Genus	196834	1;100002;5;343;2250;11221;100030;13897;100043;18599;18608;31192	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Dictyocystidae>Dictyocysta
+31193	Codonellopsis	Codonellopsis<Codonellopsidae	P	Genus	204197	1;100002;5;343;2250;11221;100030;13897;100043;18599;18610;31193	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Codonellopsidae>Codonellopsis
+31194	Codonaria	Codonaria	P	Genus	150204	1;100002;5;343;2250;11221;100030;13897;100043;18599;18611;31194	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Codonellidae>Codonaria
+31196	Metacylis	Metacylis	P	Genus	172438	1;100002;5;343;2250;11221;100030;13897;100043;18599;18606;31196	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Metacylididae>Metacylis
+31203	Rhabdonella	Rhabdonella	P	Genus	183576	1;100002;5;343;2250;11221;100030;13897;100043;18599;18604;31203	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Rhabdonellidae>Rhabdonella
+31217	Tintinnidae	Tintinnidae	P	Family	183533	1;100002;5;343;2250;11221;100030;13897;100043;18599;31217	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Tintinnidae
+31218	Steenstrupiella	Steenstrupiella	P	Genus	183545	1;100002;5;343;2250;11221;100030;13897;100043;18599;31217;31218	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Tintinnidae>Steenstrupiella
+31219	Salpingella	Salpingella<Tintinnidae	P	Genus	183566	1;100002;5;343;2250;11221;100030;13897;100043;18599;31217;31219	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Tintinnidae>Salpingella
+31221	Eutintinnus	Eutintinnus	P	Genus	183543	1;100002;5;343;2250;11221;100030;13897;100043;18599;100568;31221	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Eutintinnidae>Eutintinnus
+31222	Codonellopsis	Codonellopsis<Tintinnidiidae	P			1;100002;5;343;2250;11221;100030;13897;100043;18599;18598;31222	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Tintinnidiidae>Codonellopsis
+31223	Amphorides	Amphorides	P	Genus	183539	1;100002;5;343;2250;11221;100030;13897;100043;18599;31217;31223	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Tintinnidae>Amphorides
+31229	Dadayiella	Dadayiella	P	Genus	183541	1;100002;5;343;2250;11221;100030;13897;100043;18599;31217;31229	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Tintinnidae>Dadayiella
+31583	Neoceratium pentagonum	Neoceratium pentagonum	P			1;100002;5;343;2248;96576;96577;11921;31819;13948;18806;18758;31583	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Ceratiaceae>Neoceratium>Neoceratium pentagonum
+31588	Tripos limulus	Tripos limulus<Tripos	P	Species	841258	1;100002;5;343;2248;96576;96577;11921;31819;13948;18806;94603;31588	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Ceratiaceae>Tripos>Tripos limulus
+31593	Neoceratium fusus	Neoceratium fusus<Neoceratium	P			1;100002;5;343;2248;96576;96577;11921;31819;13948;18806;18758;31593	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Ceratiaceae>Neoceratium>Neoceratium fusus
+31594	Neoceratium furca	Neoceratium furca<Neoceratium	P			1;100002;5;343;2248;96576;96577;11921;31819;13948;18806;18758;31594	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Ceratiaceae>Neoceratium>Neoceratium furca
+31601	Neoceratium candelabrum	Neoceratium candelabrum	P			1;100002;5;343;2248;96576;96577;11921;31819;13948;18806;18758;31601	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Ceratiaceae>Neoceratium>Neoceratium candelabrum
+31660	Amphisolenia	Amphisolenia	P	Genus	109459	1;100002;5;343;2248;96576;96577;11921;13949;18792;31660	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Dinophysales>Amphisoleniaceae>Amphisolenia
+31661	Phalacroma	Phalacroma	P	Genus	109466	1;100002;5;343;2248;96576;96577;11921;13949;18789;31661	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Dinophysales>Oxyphysaceae>Phalacroma
+31663	Ornithocercus	Ornithocercus	P	Genus	109464	1;100002;5;343;2248;96576;96577;11921;13949;18790;31663	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Dinophysales>Dinophysaceae>Ornithocercus
+31666	Dinophysis	Dinophysis	P	Genus	109462	1;100002;5;343;2248;96576;96577;11921;13949;18790;31666	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Dinophysales>Dinophysaceae>Dinophysis
+31677	Ceratocorys	Ceratocorys	P	Genus	109507	1;100002;5;343;2248;96576;96577;11921;31819;13948;18805;31677	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Ceratocoryaceae>Ceratocorys
+31699	Pyrophacus	Pyrophacus	P	Genus	109555	1;100002;5;343;2248;96576;96577;11921;31819;13948;18799;31699	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Pyrophacaceae>Pyrophacus
+31795	Podolampadaceae	Podolampadaceae	P	Family	231806	1;100002;5;343;2248;96576;96577;11921;31819;13944;31795	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Peridiniales>Podolampadaceae
+31816	Oxytoxaceae	Oxytoxaceae<Peridiniales	P	Family	109432	1;100002;5;343;2248;96576;96577;11921;31819;13944;31816	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Peridiniales>Oxytoxaceae
+31819	Peridiniphycidae	Peridiniphycidae	P	Subclass	493845	1;100002;5;343;2248;96576;96577;11921;31819	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae
+31853	Protoperidinium	Protoperidinium	P	Genus	109553	1;100002;5;343;2248;96576;96577;11921;31819;13944;18872;31853	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Peridiniales>Protoperidiniaceae>Protoperidinium
+31874	Pyrocystaceae	Pyrocystaceae	P	Family	109444	1;100002;5;343;2248;96576;96577;11921;31819;13948;31874	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Pyrocystaceae
+43756	Sabellida	Sabellida	P	Order	901	1;2367;11518;12838;16612;30804;43756	Biota>Animalia>Annelida>Polychaeta>Sedentaria>Canalipalpata>Sabellida
+43757	Terebellida	Terebellida	P	Order	900	1;2367;11518;12838;16612;30804;43757	Biota>Animalia>Annelida>Polychaeta>Sedentaria>Canalipalpata>Terebellida
+45041	Euphausiacea	Euphausiacea	P	Order	1128	1;2367;11517;12846;100016;16622;25824;100036;45041	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Euphausiacea
+45043	Decapoda	Decapoda	P	Order	1130	1;2367;11517;12846;100016;16622;25824;100036;45043	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda
+45048	Mysida	Mysida	P	Order	149668	1;2367;11517;12846;100016;16622;25824;100028;45048	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Mysida
+45051	Isopoda	Isopoda	P	Order	1131	1;2367;11517;12846;100016;16622;25824;100028;45051	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Isopoda
+45054	Amphipoda	Amphipoda	P	Order	1135	1;2367;11517;12846;100016;16622;25824;100028;45054	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Amphipoda
+45064	Squillidae	Squillidae	P	Family	136093	1;2367;11517;12846;100016;16622;25823;92093;100173;100172;45064	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Hoplocarida>Stomatopoda>Unipeltata>Squilloidea>Squillidae
+45068	Siphonostomatoida	Siphonostomatoida	P	Order	1104	1;2367;11517;12846;100016;25828;94879;92249;45068	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Podoplea>Siphonostomatoida
+45069	Monstrilloida	Monstrilloida	P	Order	1106	1;2367;11517;12846;100016;25828;94879;92249;45069	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Podoplea>Monstrilloida
+45071	Harpacticoida	Harpacticoida	P	Order	1102	1;2367;11517;12846;100016;25828;94879;92249;45071	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Podoplea>Harpacticoida
+45072	Cyclopoida	Cyclopoida	P	Order	1101	1;2367;11517;12846;100016;25828;94879;92249;45072	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Podoplea>Cyclopoida
+45074	Calanoida	Calanoida	P	Order	1100	1;2367;11517;12846;100016;25828;94879;100015;45074	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida
+45079	Cirripedia	Cirripedia	P	Subclass	1082	1;2367;11517;12846;100016;25825;45079	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Thecostraca>Cirripedia
+45117	Odontella	Odontella<Poduromorpha	P			1;2367;11517;12846;100012;12845;16630;25833;45117	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Hexapoda>Collembola>Poduromorpha>Odontella
+47562	Gerridae	Gerridae	P	Family	160268	1;2367;11517;12846;100012;12845;16627;25849;100011;49933;100102;47562	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Hexapoda>Insecta>Pterygota>Hemiptera>Heteroptera>Gerromorpha>Gerridae
+49933	Heteroptera	Heteroptera	P	Suborder	151134	1;2367;11517;12846;100012;12845;16627;25849;100011;49933	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Hexapoda>Insecta>Pterygota>Hemiptera>Heteroptera
+51173	Branchiostoma lanceolatum	Branchiostoma lanceolatum	P	Species	104906	1;2367;11513;12862;100844;16655;25925;51173	Biota>Animalia>Chordata>Cephalochordata>Leptocardii>Branchiostomatidae>Branchiostoma>Branchiostoma lanceolatum
+51236	Salpidae	Salpidae	P	Family	137217	1;2367;11513;12860;16659;25942;51236	Biota>Animalia>Chordata>Tunicata>Thaliacea>Salpida>Salpidae
+51338	Porpitidae	Porpitidae	P	Family	20790	1;2367;11512;93496;12865;16675;25992;93098;51338	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Anthoathecata>Capitata>Porpitidae
+51381	Physonectae	Physonectae	P	Suborder	135335	1;2367;11512;93496;12865;16675;25990;51381	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Physonectae
+51382	Cystonectae	Cystonectae	P	Suborder	135334	1;2367;11512;93496;12865;16675;25990;51382	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Cystonectae
+51383	Calycophorae	Calycophorae	P	Suborder	135333	1;2367;11512;93496;12865;16675;25990;51383	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae
+51390	Rhopalonematidae	Rhopalonematidae	P	Family	16842	1;2367;11512;93496;12865;16670;25998;51390	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Trachylinae>Trachymedusae>Rhopalonematidae
+54903	Amphibelone	Amphibelone	P	Genus	1701367	1;100002;5;342;92677;93382;27704;100467;54903	Biota>Chromista>Harosa>Rhizaria>Radiozoa>Acantharia>Symphyacanthida>Amphilithidae>Amphibelone
+54944	Orbulina	Orbulina	P	Genus	112203	1;100002;5;342;11758;13377;100147;17309;100146;100145;94106;100352;54944	Biota>Chromista>Harosa>Rhizaria>Foraminifera>Globothalamea>Rotaliana>Rotaliida>Globigerinina>Globigerinoidea>Globigerinidae>Orbulininae>Orbulina
+55846	Chaetoceros peruvianus	Chaetoceros peruvianus	P	Species	966682	1;100002;100021;13461;17519;92144;92166;100153;100152;28257;55846	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Chaetocerotanae>Chaetocerotanae incertae sedis>Chaetocerotaceae>Chaetoceros>Chaetoceros peruvianus
+55930	Planktoniella sol	Planktoniella sol	P	Species	196815	1;100002;100021;13461;17519;92144;100086;94996;100148;28227;55930	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Thalassiosiranae>Thalassiosirales>Thalassiosiraceae>Planktoniella>Planktoniella sol
+56317	Creseis	Creseis	P	Genus	137752	1;2367;11498;12905;16799;88136;100014;92976;91869;100245;26525;56317	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda>Euthecosomata>Cavolinioidea>Creseidae>Creseis
+56457	Diacavolinia	Diacavolinia	P	Genus	137754	1;2367;11498;12905;16799;88136;100014;92976;91869;100245;26480;100739;56457	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda>Euthecosomata>Cavolinioidea>Cavoliniidae>Cavoliniinae>Diacavolinia
+56458	Diacria	Diacria	P	Genus	137755	1;2367;11498;12905;16799;88136;100014;92976;91869;100245;26480;100746;56458	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda>Euthecosomata>Cavolinioidea>Cavoliniidae>Diacriinae>Diacria
+56459	Cavolinia	Cavolinia	P	Genus	137750	1;2367;11498;12905;16799;88136;100014;92976;91869;100245;26480;100739;56459	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda>Euthecosomata>Cavolinioidea>Cavoliniidae>Cavoliniinae>Cavolinia
+56693	Actinopterygii	Actinopterygii	P	Gigaclass	10194	1;2367;11513;16656;25928;100042;56693	Biota>Animalia>Chordata>Vertebrata>Gnathostomata>Osteichthyes>Actinopterygii
+57392	Codonellopsis orthoceras	Codonellopsis orthoceras	P	Species	417162	1;100002;5;343;2250;11221;100030;13897;100043;18599;18610;31193;57392	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Codonellopsidae>Codonellopsis>Codonellopsis orthoceras
+58201	Ornithocercus quadratus	Ornithocercus quadratus<Ornithocercus	P	Species	109694	1;100002;5;343;2248;96576;96577;11921;13949;18790;31663;58201	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Dinophysales>Dinophysaceae>Ornithocercus>Ornithocercus quadratus
+58202	Ornithocercus magnificus	Ornithocercus magnificus<Ornithocercus	P	Species	109693	1;100002;5;343;2248;96576;96577;11921;13949;18790;31663;58202	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Dinophysales>Dinophysaceae>Ornithocercus>Ornithocercus magnificus
+58203	Ornithocercus heteroporus	Ornithocercus heteroporus	P	Species	109692	1;100002;5;343;2248;96576;96577;11921;13949;18790;31663;58203	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Dinophysales>Dinophysaceae>Ornithocercus>Ornithocercus heteroporus
+58422	Podolampas	Podolampas	P	Genus	109550	1;100002;5;343;2248;96576;96577;11921;31819;13944;31795;58422	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Peridiniales>Podolampadaceae>Podolampas
+60205	Terebellidae	Terebellidae	P	Family	982	1;2367;11518;12838;16612;30804;43757;100743;60205	Biota>Animalia>Annelida>Polychaeta>Sedentaria>Canalipalpata>Terebellida>Terebelliformia>Terebellidae
+61973	Temoridae	Temoridae	P	Family	104106	1;2367;11517;12846;100016;25828;94879;100015;45074;61973	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Temoridae
+61977	Rhincalanidae	Rhincalanidae	P	Family	345271	1;2367;11517;12846;100016;25828;94879;100015;45074;61977	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Rhincalanidae
+61980	Pontellidae	Pontellidae	P	Family	104097	1;2367;11517;12846;100016;25828;94879;100015;45074;61980	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Pontellidae
+61981	Paracalanidae	Paracalanidae	P	Family	104093	1;2367;11517;12846;100016;25828;94879;100015;45074;61981	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Paracalanidae
+61982	Metridinidae	Metridinidae	P	Family	104092	1;2367;11517;12846;100016;25828;94879;100015;45074;61982	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Metridinidae
+61985	Heterorhabdidae	Heterorhabdidae	P	Family	104087	1;2367;11517;12846;100016;25828;94879;100015;45074;61985	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Heterorhabdidae
+61986	Euchaetidae	Euchaetidae	P	Family	104086	1;2367;11517;12846;100016;25828;94879;100015;45074;61986	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Euchaetidae
+61987	Eucalanidae	Eucalanidae	P	Family	104085	1;2367;11517;12846;100016;25828;94879;100015;45074;61987	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Eucalanidae
+61990	Centropagidae	Centropagidae	P	Family	104081	1;2367;11517;12846;100016;25828;94879;100015;45074;61990	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Centropagidae
+61991	Candaciidae	Candaciidae	P	Family	104080	1;2367;11517;12846;100016;25828;94879;100015;45074;61991	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Candaciidae
+61993	Calanidae	Calanidae	P	Family	104079	1;2367;11517;12846;100016;25828;94879;100015;45074;61993	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Calanidae
+61994	Augaptilidae	Augaptilidae	P	Family	104077	1;2367;11517;12846;100016;25828;94879;100015;45074;61994	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Augaptilidae
+61996	Acartiidae	Acartiidae	P	Family	104074	1;2367;11517;12846;100016;25828;94879;100015;45074;61996	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Acartiidae
+62005	Oithonidae	Oithonidae	P	Family	106422	1;2367;11517;12846;100016;25828;94879;92249;45072;100073;62005	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Podoplea>Cyclopoida>Oithonida>Oithonidae
+62348	Odontella sp.	Odontella sp.	P			1;2367;11517;12846;100012;12845;16630;25833;45117;62348	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Hexapoda>Collembola>Poduromorpha>Odontella>Odontella sp.
+72302	Velella	Velella	P	Genus	117200	1;2367;11512;93496;12865;16675;25992;93098;51338;72302	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Anthoathecata>Capitata>Porpitidae>Velella
+72303	Porpita	Porpita	P	Genus	117199	1;2367;11512;93496;12865;16675;25992;93098;51338;72303	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Anthoathecata>Capitata>Porpitidae>Porpita
+72395	Hippopodiidae	Hippopodiidae	P	Family	135339	1;2367;11512;93496;12865;16675;25990;51383;72395	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Hippopodiidae
+72396	Diphyidae	Diphyidae	P	Family	135338	1;2367;11512;93496;12865;16675;25990;51383;72396	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Diphyidae
+72398	Abylidae	Abylidae	P	Family	135336	1;2367;11512;93496;12865;16675;25990;51383;72398	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Abylidae
+72400	Physaliidae	Physaliidae	P	Family	135342	1;2367;11512;93496;12865;16675;25990;51382;72400	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Cystonectae>Physaliidae
+72428	Rhopalonema	Rhopalonema	P	Genus	117221	1;2367;11512;93496;12865;16670;25998;51390;72428	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Trachylinae>Trachymedusae>Rhopalonematidae>Rhopalonema
+72431	Aglaura	Aglaura	P	Genus	117213	1;2367;11512;93496;12865;16670;25998;51390;72431	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Trachylinae>Trachymedusae>Rhopalonematidae>Aglaura
+74144	Cavolinia inflexa	Cavolinia inflexa	P	Species	139029	1;2367;11498;12905;16799;88136;100014;92976;91869;100245;26480;100739;56459;74144	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda>Euthecosomata>Cavolinioidea>Cavoliniidae>Cavoliniinae>Cavolinia>Cavolinia inflexa
+74170	Creseis virgula	Creseis virgula	P	Species	139035	1;2367;11498;12905;16799;88136;100014;92976;91869;100245;26525;56317;74170	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda>Euthecosomata>Cavolinioidea>Creseidae>Creseis>Creseis virgula
+74172	Creseis acicula	Creseis acicula	P	Species	139034	1;2367;11498;12905;16799;88136;100014;92976;91869;100245;26525;56317;74172	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda>Euthecosomata>Cavolinioidea>Creseidae>Creseis>Creseis acicula
+74198	Diacria trispinosa	Diacria trispinosa	P	Species	139045	1;2367;11498;12905;16799;88136;100014;92976;91869;100245;26480;100746;56458;74198	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda>Euthecosomata>Cavolinioidea>Cavoliniidae>Diacriinae>Diacria>Diacria trispinosa
+78158	Senticaudata	Senticaudata	P	Suborder	719424	1;2367;11517;12846;100016;16622;25824;100028;45054;78158	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Amphipoda>Senticaudata
+78159	Hyperiidea	Hyperiidea	P	Suborder	1205	1;2367;11517;12846;100016;16622;25824;100028;45054;78159	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Amphipoda>Hyperiidea
+78160	Gammaridea	Gammaridea	P			1;2367;11517;12846;100016;16622;25824;100028;45054;78160	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Amphipoda>Gammaridea
+78372	Pleocyemata	Pleocyemata	P	Suborder	106670	1;2367;11517;12846;100016;16622;25824;100036;45043;78372	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Pleocyemata
+78373	Dendrobranchiata	Dendrobranchiata	P	Suborder	106669	1;2367;11517;12846;100016;16622;25824;100036;45043;78373	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Dendrobranchiata
+78391	Podonidae	Podonidae	P	Family	106264	1;2367;11517;12846;100012;16625;100053;25817;100052;78391	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Branchiopoda>Phyllopoda>Diplostraca>Onychopoda>Podonidae
+78412	Sapphirinidae	Sapphirinidae	P	Family	128595	1;2367;11517;12846;100016;25828;94879;92249;45072;94885;78412	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Podoplea>Cyclopoida>Ergasilida>Sapphirinidae
+78418	Oncaeidae	Oncaeidae	P	Family	128586	1;2367;11517;12846;100016;25828;94879;92249;45072;94885;78418	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Podoplea>Cyclopoida>Ergasilida>Oncaeidae
+78426	Corycaeidae	Corycaeidae	P	Family	128569	1;2367;11517;12846;100016;25828;94879;92249;45072;94885;78426	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Podoplea>Cyclopoida>Ergasilida>Corycaeidae
+78485	Serpulidae	Serpulidae	P	Family	988	1;2367;11518;12838;16612;30804;43756;78485	Biota>Animalia>Annelida>Polychaeta>Sedentaria>Canalipalpata>Sabellida>Serpulidae
+80121	Haloptilus	Haloptilus	P	Genus	104140	1;2367;11517;12846;100016;25828;94879;100015;45074;61994;80121	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Augaptilidae>Haloptilus
+80164	Calocalanus	Calocalanus<Paracalanidae	P	Genus	104193	1;2367;11517;12846;100016;25828;94879;100015;45074;61981;80164	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Paracalanidae>Calocalanus
+80167	Pontellina	Pontellina	P	Genus	104210	1;2367;11517;12846;100016;25828;94879;100015;45074;61980;80167	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Pontellidae>Pontellina
+81608	Porpita porpita	Porpita porpita	P	Species	117831	1;2367;11512;93496;12865;16675;25992;93098;51338;72303;81608	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Anthoathecata>Capitata>Porpitidae>Porpita>Porpita porpita
+81813	Abylopsis	Abylopsis	P	Genus	135352	1;2367;11512;93496;12865;16675;25990;51383;72398;100684;81813	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Abylidae>Abylopsinae>Abylopsis
+81821	Chelophyes	Chelophyes	P	Genus	135360	1;2367;11512;93496;12865;16675;25990;51383;72396;100066;81821	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Diphyidae>Diphyinae>Chelophyes
+81832	Physalia	Physalia	P	Genus	135382	1;2367;11512;93496;12865;16675;25990;51382;72400;81832	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Cystonectae>Physaliidae>Physalia
+81871	Rhopalonema velatum	Rhopalonema velatum	P	Species	117865	1;2367;11512;93496;12865;16670;25998;51390;72428;81871	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Trachylinae>Trachymedusae>Rhopalonematidae>Rhopalonema>Rhopalonema velatum
+81904	Penaeidae	Penaeidae	P	Family	106727	1;2367;11517;12846;100016;16622;25824;100036;45043;78373;92080;81904	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Dendrobranchiata>Penaeoidea>Penaeidae
+81905	Sergestidae	Sergestidae	P	Family	106731	1;2367;11517;12846;100016;16622;25824;100036;45043;78373;92079;81905	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Dendrobranchiata>Sergestoidea>Sergestidae
+81910	Gebiidea	Gebiidea	P	Infraorder	477323	1;2367;11517;12846;100016;16622;25824;100036;45043;78372;81910	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Pleocyemata>Gebiidea
+81914	Anomura	Anomura	P	Infraorder	106671	1;2367;11517;12846;100016;16622;25824;100036;45043;78372;81914	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Pleocyemata>Anomura
+81915	Achelata	Achelata	P	Infraorder	383017	1;2367;11517;12846;100016;16622;25824;100036;45043;78372;81915	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Pleocyemata>Achelata
+81916	Brachyura	Brachyura	P	Infraorder	106673	1;2367;11517;12846;100016;16622;25824;100036;45043;78372;81916	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Pleocyemata>Brachyura
+81940	Podon	Podon	P	Genus	106269	1;2367;11517;12846;100012;16625;100053;25817;100052;78391;81940	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Branchiopoda>Phyllopoda>Diplostraca>Onychopoda>Podonidae>Podon
+81941	Evadne	Evadne	P	Genus	106267	1;2367;11517;12846;100012;16625;100053;25817;100052;78391;81941	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Branchiopoda>Phyllopoda>Diplostraca>Onychopoda>Podonidae>Evadne
+81977	Copilia	Copilia	P	Genus	128721	1;2367;11517;12846;100016;25828;94879;92249;45072;94885;78412;81977	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Podoplea>Cyclopoida>Ergasilida>Sapphirinidae>Copilia
+82020	Spirorbis	Spirorbis	P	Genus	129642	1;2367;11518;12838;16612;30804;43756;78485;82021;100799;82020	Biota>Animalia>Annelida>Polychaeta>Sedentaria>Canalipalpata>Sabellida>Serpulidae>Spirorbinae>Spirorbini>Spirorbis
+82021	Spirorbinae	Spirorbinae	P	Subfamily	989	1;2367;11518;12838;16612;30804;43756;78485;82021	Biota>Animalia>Annelida>Polychaeta>Sedentaria>Canalipalpata>Sabellida>Serpulidae>Spirorbinae
+82138	Oxycephalidae	Oxycephalidae	P	Family	196118	1;2367;11517;12846;100016;16622;25824;100028;45054;78159;100117;100116;100364;82138	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Amphipoda>Hyperiidea>Physocephalata>Physocephalatidira>Platysceloidea>Oxycephalidae
+82147	Phronimidae	Phronimidae	P	Family	101420	1;2367;11517;12846;100016;16622;25824;100028;45054;78159;100117;100116;100115;82147	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Amphipoda>Hyperiidea>Physocephalata>Physocephalatidira>Phronimoidea>Phronimidae
+82166	Caprelloidea	Caprelloidea	P	Superfamily	196121	1;2367;11517;12846;100016;16622;25824;100028;45054;78158;100051;100056;82166	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Amphipoda>Senticaudata>Corophiida>Caprellidira>Caprelloidea
+82515	Calocalanus pavo	Calocalanus pavo	P	Species	104669	1;2367;11517;12846;100016;25828;94879;100015;45074;61981;80164;82515	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Paracalanidae>Calocalanus>Calocalanus pavo
+82530	Pontellina plumata	Pontellina plumata	P	Species	104743	1;2367;11517;12846;100016;25828;94879;100015;45074;61980;80167;82530	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea>Calanoida>Pontellidae>Pontellina>Pontellina plumata
+83278	Abylopsis tetragona	Abylopsis tetragona	P	Species	135403	1;2367;11512;93496;12865;16675;25990;51383;72398;100684;81813;83278	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Abylidae>Abylopsinae>Abylopsis>Abylopsis tetragona
+83501	Porcellanidae	Porcellanidae	P	Family	106734	1;2367;11517;12846;100016;16622;25824;100036;45043;78372;81914;100429;83501	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Pleocyemata>Anomura>Galatheoidea>Porcellanidae
+83502	Galatheidae	Galatheidae	P	Family	106733	1;2367;11517;12846;100016;16622;25824;100036;45043;78372;81914;100429;83502	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Pleocyemata>Anomura>Galatheoidea>Galatheidae
+83671	Laomediidae	Laomediidae	P	Family	106802	1;2367;11517;12846;100016;16622;25824;100036;45043;78372;81910;83671	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Pleocyemata>Gebiidea>Laomediidae
+83681	Phronima	Phronima	P	Genus	101804	1;2367;11517;12846;100016;16622;25824;100028;45054;78159;100117;100116;100115;82147;83681	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Amphipoda>Hyperiidea>Physocephalata>Physocephalatidira>Phronimoidea>Phronimidae>Phronima
+83760	Caprellidae	Caprellidae	P	Family	101361	1;2367;11517;12846;100016;16622;25824;100028;45054;78158;100051;100056;82166;83760	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Amphipoda>Senticaudata>Corophiida>Caprellidira>Caprelloidea>Caprellidae
+84959	temporary	temporary<	M			84959	temporary
+84960	not-living	not-living	M			84960	not-living
+84961	duplicate	duplicate	M			1;84961	Biota>duplicate
+84963	detritus	detritus<not-living	M			84960;84963	not-living>detritus
+84965	larvae	larvae<Annelida	M			1;2367;11518;84965	Biota>Animalia>Annelida>larvae
+84966	part	part<Annelida	M			1;2367;11518;84966	Biota>Animalia>Annelida>part
+84967	cyphonautes	cyphonautes	M			1;2367;11515;84967	Biota>Animalia>Bryozoa>cyphonautes
+84968	tail	tail<Chaetognatha	M			1;2367;11514;84968	Biota>Animalia>Chaetognatha>tail
+84970	part	part<Cnidaria	M			1;2367;11512;84970	Biota>Animalia>Cnidaria>part
+84974	nectophore	nectophore<Abylopsis tetragona	M			1;2367;11512;93496;12865;16675;25990;51383;72398;100684;81813;83278;84974	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Abylidae>Abylopsinae>Abylopsis>Abylopsis tetragona>nectophore
+84975	eudoxid	eudoxid<Abylopsis tetragona	M			1;2367;11512;93496;12865;16675;25990;51383;72398;100684;81813;83278;84975	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Abylidae>Abylopsinae>Abylopsis>Abylopsis tetragona>eudoxid
+84976	nectophore	nectophore<Diphyidae	M			1;2367;11512;93496;12865;16675;25990;51383;72396;84976	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Diphyidae>nectophore
+84977	eudoxid	eudoxid<Diphyidae	M			1;2367;11512;93496;12865;16675;25990;51383;72396;84977	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Diphyidae>eudoxid
+84979	nectophore	nectophore<Hippopodiidae	M			1;2367;11512;93496;12865;16675;25990;51383;72395;84979	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Hippopodiidae>nectophore
+84980	nectophore	nectophore<Physonectae	M			1;2367;11512;93496;12865;16675;25990;51381;84980	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Physonectae>nectophore
+84983	metanauplii	metanauplii<Crustacea	M			1;2367;11517;12846;84983	Biota>Animalia>Arthropoda>Crustacea>metanauplii
+84987	protozoea	protozoea<Penaeidae	M			1;2367;11517;12846;100016;16622;25824;100036;45043;78373;92080;81904;84987	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Dendrobranchiata>Penaeoidea>Penaeidae>protozoea
+84988	phyllosoma	phyllosoma	M			1;2367;11517;12846;100016;16622;25824;100036;45043;78372;81915;84988	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Pleocyemata>Achelata>phyllosoma
+84989	zoea	zoea<Galatheidae	M			1;2367;11517;12846;100016;16622;25824;100036;45043;78372;81914;100429;83502;84989	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Pleocyemata>Anomura>Galatheoidea>Galatheidae>zoea
+84991	megalopa	megalopa<Brachyura	M			1;2367;11517;12846;100016;16622;25824;100036;45043;78372;81916;84991	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Pleocyemata>Brachyura>megalopa
+84992	like	like<Laomediidae	M			1;2367;11517;12846;100016;16622;25824;100036;45043;78372;81910;83671;84992	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Pleocyemata>Gebiidea>Laomediidae>like
+84993	calyptopsis	calyptopsis	M			1;2367;11517;12846;100016;16622;25824;100036;45041;84993	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Euphausiacea>calyptopsis
+84994	protozoea	protozoea<Sergestidae	M			1;2367;11517;12846;100016;16622;25824;100036;45043;78373;92079;81905;84994	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Dendrobranchiata>Sergestoidea>Sergestidae>protozoea
+84995	protozoea	protozoea<Mysida	M			1;2367;11517;12846;100016;16622;25824;100028;45048;84995	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Mysida>protozoea
+84996	larvae	larvae<Squillidae	M			1;2367;11517;12846;100016;16622;25823;92093;100173;100172;45064;84996	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Hoplocarida>Stomatopoda>Unipeltata>Squilloidea>Squillidae>larvae
+84997	nauplii	nauplii<Cirripedia	M			1;2367;11517;12846;100016;25825;45079;84997	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Thecostraca>Cirripedia>nauplii
+84998	cypris	cypris<Cirripedia	M			1;2367;11517;12846;100016;25825;45079;84998	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Thecostraca>Cirripedia>cypris
+84999	pluteus	pluteus<Ophiuroidea	M			1;2367;11509;100640;12873;84999	Biota>Animalia>Echinodermata>Asterozoa>Ophiuroidea>pluteus
+85000	pluteus	pluteus<Echinoidea	M			1;2367;11509;100418;12875;85000	Biota>Animalia>Echinodermata>Echinozoa>Echinoidea>pluteus
+85003	part	part<Mollusca	M			1;2367;11498;85003	Biota>Animalia>Mollusca>part
+85004	tail	tail<Appendicularia	M			1;2367;11513;12860;85123;85004	Biota>Animalia>Chordata>Tunicata>Appendicularia>tail
+85005	juvenile	juvenile<Salpida	M			1;2367;11513;12860;16659;25942;85005	Biota>Animalia>Chordata>Tunicata>Thaliacea>Salpida>juvenile
+85006	chain	chain<Salpida	M			1;2367;11513;12860;16659;25942;85006	Biota>Animalia>Chordata>Tunicata>Thaliacea>Salpida>chain
+85007	wing	wing	M			1;2367;11517;12846;100012;12845;16627;85007	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Hexapoda>Insecta>wing
+85008	artefact	artefact	M			84960;85008	not-living>artefact
+85009	centric	centric	M			1;100002;11816;85009	Biota>Chromista>Bacillariophyta>centric
+85010	pennate	pennate<Bacillariophyta	M			1;100002;11816;85010	Biota>Chromista>Bacillariophyta>pennate
+85011	other	other<Biota	M			1;85011	Biota>other
+85012	t001	t001	M			84959;85012	temporary>t001
+85013	t002	t002	M			84959;85013	temporary>t002
+85014	t003	t003	M			84959;85014	temporary>t003
+85015	t004	t004	M			84959;85015	temporary>t004
+85016	t005	t005	M			84959;85016	temporary>t005
+85017	t006	t006	M			84959;85017	temporary>t006
+85018	t007	t007	M			84959;85018	temporary>t007
+85019	t008	t008	M			84959;85019	temporary>t008
+85022	larvae	larvae<Porpitidae	M			1;2367;11512;93496;12865;16675;25992;93098;51338;85022	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Anthoathecata>Capitata>Porpitidae>larvae
+85023	plastic	plastic	M			84960;85023	not-living>plastic
+85026	feces	feces	M			84960;85026	not-living>feces
+85044	multiple	multiple<Copepoda	M			1;2367;11517;12846;100016;25828;85044	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>multiple
+85054	dark	dark<detritus	M			84960;84963;85054	not-living>detritus>dark
+85055	light	light<detritus	M			84960;84963;85055	not-living>detritus>light
+85057	fiber	fiber<plastic	M			84960;85023;85057	not-living>plastic>fiber
+85058	other	other<plastic	M			84960;85023;85058	not-living>plastic>other
+85060	bubble	bubble	M			84960;85008;85060	not-living>artefact>bubble
+85061	badfocus	badfocus<artefact	M			84960;85008;85061	not-living>artefact>badfocus
+85066	unicellular	unicellular	M			1;85011;85066	Biota>other>unicellular
+85067	seaweed	seaweed	M			1;85011;85067	Biota>other>seaweed
+85068	part	part<other	M			1;85011;85068	Biota>other>part
+85069	othertocheck	othertocheck	M			1;85011;85069	Biota>other>othertocheck
+85070	gelatinous	gelatinous	M			1;85011;85070	Biota>other>gelatinous
+85071	filament	filament<plastic	M			84960;85023;85071	not-living>plastic>filament
+85072	film	film	M			84960;85023;85072	not-living>plastic>film
+85073	fragment	fragment	M			84960;85023;85073	not-living>plastic>fragment
+85074	pellet	pellet	M			84960;85023;85074	not-living>plastic>pellet
+85075	multiple	multiple<plastic	M			84960;85023;85075	not-living>plastic>multiple
+85076	fiber	fiber<detritus	M			84960;84963;85076	not-living>detritus>fiber
+85078	egg	egg<other	M			1;85011;85078	Biota>other>egg
+85079	multiple	multiple<other	M			1;85011;85079	Biota>other>multiple
+85091	pollen	pollen	M			84960;84963;85091	not-living>detritus>pollen
+85096	cyst	cyst<unicellular	M			1;85011;85066;85096	Biota>other>unicellular>cyst
+85114	larvae	larvae<Crustacea	M			1;2367;11517;12846;85114	Biota>Animalia>Arthropoda>Crustacea>larvae
+85115	part	part<Crustacea	M			1;2367;11517;12846;85115	Biota>Animalia>Arthropoda>Crustacea>part
+85116	nauplii	nauplii<Crustacea	M			1;2367;11517;12846;85116	Biota>Animalia>Arthropoda>Crustacea>nauplii
+85117	egg	egg<Actinopterygii	M			1;2367;11513;16656;25928;100042;56693;85117	Biota>Animalia>Chordata>Vertebrata>Gnathostomata>Osteichthyes>Actinopterygii>egg
+85118	scale	scale	M			1;2367;11513;16656;25928;100042;56693;85118	Biota>Animalia>Chordata>Vertebrata>Gnathostomata>Osteichthyes>Actinopterygii>scale
+85123	Appendicularia	Appendicularia<Tunicata	P	Class	146421	1;2367;11513;12860;85123	Biota>Animalia>Chordata>Tunicata>Appendicularia
+85124	t010	t010	M			84959;85124	temporary>t010
+85126	gonophore	gonophore<Abylidae	M			1;2367;11512;93496;12865;16675;25990;51383;72398;85126	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Abylidae>gonophore
+85128	veliger	veliger<Mollusca	M			1;2367;11498;85128	Biota>Animalia>Mollusca>veliger
+85136	t011	t011	M			84959;85136	temporary>t011
+85137	t012	t012	M			84959;85137	temporary>t012
+85138	t013	t013	M			84959;85138	temporary>t013
+85139	t014	t014	M			84959;85139	temporary>t014
+85140	t015	t015	M			84959;85140	temporary>t015
+85141	t016	t016	M			84959;85141	temporary>t016
+85142	t017	t017	M			84959;85142	temporary>t017
+85185	gonophore	gonophore<Diphyidae	M			1;2367;11512;93496;12865;16675;25990;51383;72396;85185	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Diphyidae>gonophore
+85187	part	part<Ctenophora	M			1;2367;11511;85187	Biota>Animalia>Ctenophora>part
+85188	ephyra	ephyra<Scyphozoa	M			1;2367;11512;93496;12863;85188	Biota>Animalia>Cnidaria>Medusozoa>Scyphozoa>ephyra
+85193	egg	egg<Mollusca	M			1;2367;11498;85193	Biota>Animalia>Mollusca>egg
+85198	Pseudo-Nitzschia chain	Pseudo-Nitzschia chain	M			1;100002;100021;13461;17519;100020;100120;94613;94614;28138;85198	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Bacillariophycidae>Bacillariophycanae>Bacillariales>Bacillariaceae>Pseudo-nitzschia>Pseudo-Nitzschia chain
+85217	dark	dark<sphere	M		0	1;85011;85069;94147;85217	Biota>other>othertocheck>sphere>dark
+85352	chainthin	chainthin	M			1;100002;100021;13461;17519;100040;95917;94763;94764;28189;85352	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae>Fragilariophycanae>Fragilariales>Fragilariaceae>Diatoma>chainthin
+85353	chainlarge	chainlarge	M			1;100002;100021;13461;17519;100040;95917;94763;94764;28189;85353	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae>Fragilariophycanae>Fragilariales>Fragilariaceae>Diatoma>chainlarge
+85355	spines	spines<Acantharia	M			1;100002;5;342;92677;93382;85355	Biota>Chromista>Harosa>Rhizaria>Radiozoa>Acantharia>spines
+85519	Amphitetras	Amphitetras	P	Genus	578002	1;100002;100021;13461;17519;92144;94575;100075;100074;85519	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Biddulphianae>Triceratiales>Triceratiaceae>Amphitetras
+85674	Oxytoxum	Oxytoxum	P	Genus	109528	1;100002;5;343;2248;96576;96577;11921;31819;13944;31816;85674	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Peridiniales>Oxytoxaceae>Oxytoxum
+87824	Bassia	Bassia	P	Genus	135353	1;2367;11512;93496;12865;16675;25990;51383;72398;100684;87824	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Abylidae>Abylopsinae>Bassia
+87827	Eudoxoides	Eudoxoides	P	Genus	135364	1;2367;11512;93496;12865;16675;25990;51383;72396;100066;87827	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Diphyidae>Diphyinae>Eudoxoides
+88136	Euthyneura	Euthyneura	P	Infraclass	1057247	1;2367;11498;12905;16799;88136	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura
+90386	Bassia bassensis	Bassia bassensis	P	Species	135404	1;2367;11512;93496;12865;16675;25990;51383;72398;100684;87824;90386	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Abylidae>Abylopsinae>Bassia>Bassia bassensis
+90388	Eudoxoides spiralis	Eudoxoides spiralis	P	Species	135424	1;2367;11512;93496;12865;16675;25990;51383;72396;100066;87827;90388	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Diphyidae>Diphyinae>Eudoxoides>Eudoxoides spiralis
+90517	Nudipleura	Nudipleura	P	Superorder	411966	1;2367;11498;12905;16799;88136;100007;90517	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Ringipleura>Nudipleura
+91869	Euthecosomata	Euthecosomata	P	Suborder	23020	1;2367;11498;12905;16799;88136;100014;92976;91869	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda>Euthecosomata
+92008	rods	rods<other	M			84960;85023;85058;92008	not-living>plastic>other>rods
+92012	gonophore	gonophore<Abylopsis tetragona	M			1;2367;11512;93496;12865;16675;25990;51383;72398;100684;81813;83278;92012	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Abylidae>Abylopsinae>Abylopsis>Abylopsis tetragona>gonophore
+92039	part	part<Siphonophorae	M			1;2367;11512;93496;12865;16675;25990;92039	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>part
+92040	cirrus	cirrus	M			1;2367;11517;12846;100016;25825;45079;92040	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Thecostraca>Cirripedia>cirrus
+92042	badfocus	badfocus<Copepoda	M			1;2367;11517;12846;100016;25828;92042	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>badfocus
+92068	head	head<Chaetognatha	M			1;2367;11514;92068	Biota>Animalia>Chaetognatha>head
+92069	part	part<Copepoda	M			1;2367;11517;12846;100016;25828;92069	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>part
+92077	polystyrene	polystyrene	M			84960;85023;92077	not-living>plastic>polystyrene
+92079	Sergestoidea	Sergestoidea	P	Superfamily	106684	1;2367;11517;12846;100016;16622;25824;100036;45043;78373;92079	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Dendrobranchiata>Sergestoidea
+92080	Penaeoidea	Penaeoidea	P	Superfamily	106683	1;2367;11517;12846;100016;16622;25824;100036;45043;78373;92080	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Dendrobranchiata>Penaeoidea
+92093	Stomatopoda	Stomatopoda	P	Order	14355	1;2367;11517;12846;100016;16622;25823;92093	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Hoplocarida>Stomatopoda
+92108	gonophore	gonophore<Bassia bassensis	M			1;2367;11512;93496;12865;16675;25990;51383;72398;100684;87824;90386;92108	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Abylidae>Abylopsinae>Bassia>Bassia bassensis>gonophore
+92109	nectophore	nectophore<Bassia bassensis	M			1;2367;11512;93496;12865;16675;25990;51383;72398;100684;87824;90386;92109	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Abylidae>Abylopsinae>Bassia>Bassia bassensis>nectophore
+92112	trunk	trunk<Appendicularia	M			1;2367;11513;12860;85123;92112	Biota>Animalia>Chordata>Tunicata>Appendicularia>trunk
+92124	Pterotrachea	Pterotrachea	P	Genus	138009	1;2367;11498;12905;16803;93222;93223;93227;92124	Biota>Animalia>Mollusca>Gastropoda>Caenogastropoda>Littorinimorpha>Pterotracheoidea>Pterotracheidae>Pterotrachea
+92138	Halobates	Halobates	P	Genus	204105	1;2367;11517;12846;100012;12845;16627;25849;100011;49933;100102;47562;100786;100785;92138	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Hexapoda>Insecta>Pterygota>Hemiptera>Heteroptera>Gerromorpha>Gerridae>Halobatinae>Halobatini>Halobates
+92139	Atlanta	Atlanta	P	Genus	137687	1;2367;11498;12905;16803;93222;93223;94805;92139	Biota>Animalia>Mollusca>Gastropoda>Caenogastropoda>Littorinimorpha>Pterotracheoidea>Atlantidae>Atlanta
+92144	Coscinodiscophycidae	Coscinodiscophycidae	P	Subclass	148971	1;100002;100021;13461;17519;92144	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae
+92151	Asterolamprales	Asterolamprales	P	Order	162250	1;100002;100021;13461;17519;92144;100090;92151	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Coscinodiscanae>Asterolamprales
+92160	Coscinodiscales	Coscinodiscales	P	Order	148915	1;100002;100021;13461;17519;92144;100090;92160	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Coscinodiscanae>Coscinodiscales
+92166	Chaetocerotanae	Chaetocerotanae	P	Superorder	591197	1;100002;100021;13461;17519;92144;92166	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Chaetocerotanae
+92203	Chaetoceros protuberans	Chaetoceros protuberans	P	Species	163055	1;100002;100021;13461;17519;92144;92166;100153;100152;28257;92203	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Chaetocerotanae>Chaetocerotanae incertae sedis>Chaetocerotaceae>Chaetoceros>Chaetoceros protuberans
+92213	Hemiaulales	Hemiaulales	P	Order	149234	1;100002;100021;13461;17519;92144;94575;92213	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Biddulphianae>Hemiaulales
+92214	Climacodium	Climacodium	P	Genus	196803	1;100002;100021;13461;17519;92144;94575;92213;100130;92214	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Biddulphianae>Hemiaulales>Hemiaulaceae>Climacodium
+92230	bract	bract<Diphyidae	M			1;2367;11512;93496;12865;16675;25990;51383;72396;92230	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Diphyidae>bract
+92231	bract	bract<Abylopsis tetragona	M			1;2367;11512;93496;12865;16675;25990;51383;72398;100684;81813;83278;92231	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Abylidae>Abylopsinae>Abylopsis>Abylopsis tetragona>bract
+92232	bract	bract<Abylidae	M			1;2367;11512;93496;12865;16675;25990;51383;72398;92232	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Abylidae>bract
+92235	part	part<Thaliacea	M			1;2367;11513;12860;16659;92235	Biota>Animalia>Chordata>Tunicata>Thaliacea>part
+92236	nucleus	nucleus<Salpidae	M			1;2367;11513;12860;16659;25942;51236;92236	Biota>Animalia>Chordata>Tunicata>Thaliacea>Salpida>Salpidae>nucleus
+92238	larvae	larvae<Porcellanidae	M			1;2367;11517;12846;100016;16622;25824;100036;45043;78372;81914;100429;83501;92238	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Pleocyemata>Anomura>Galatheoidea>Porcellanidae>larvae
+92239	zoea	zoea<Brachyura<Pleocyemata<Decapoda	M			1;2367;11517;12846;100016;16622;25824;100036;45043;78372;81916;92239	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Pleocyemata>Brachyura>zoea
+92240	Nostocales	Nostocales	P	Order	146547	1;3;100089;233;1680;100088;92240	Biota>Bacteria>Negibacteria>Cyanobacteria>Cyanophyceae>Nostocophycidae>Nostocales
+92249	Podoplea	Podoplea	P	Superorder	155879	1;2367;11517;12846;100016;25828;94879;92249	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Podoplea
+92311	nectophore	nectophore<Abylidae	M			1;2367;11512;93496;12865;16675;25990;51383;72398;92311	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Abylidae>nectophore
+92343	Hemidiscus cuneiformis	Hemidiscus cuneiformis	P	Species	180367	1;100002;100021;13461;17519;92144;100090;92160;94060;94061;92343	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Coscinodiscanae>Coscinodiscales>Hemidiscaceae>Hemidiscus>Hemidiscus cuneiformis
+92501	Cladopyxis quadrispina	Cladopyxis quadrispina	P	Species	233346	1;100002;5;343;2248;96576;96577;11921;31819;13948;92752;92753;92501	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Cladopyxidaceae>Cladopyxis>Cladopyxis quadrispina
+92505	Ornithocercus steinii	Ornithocercus steinii	P	Species	109696	1;100002;5;343;2248;96576;96577;11921;13949;18790;31663;92505	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Dinophysales>Dinophysaceae>Ornithocercus>Ornithocercus steinii
+92677	Radiozoa	Radiozoa	P	Phylum	582421	1;100002;5;342;92677	Biota>Chromista>Harosa>Rhizaria>Radiozoa
+92691	Rhizosolenia inter. Richelia	Rhizosolenia inter. Richelia	P			1;100002;100021;13461;17519;92144;100239;93849;95487;28296;92691	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Rhizosolenianae>Rhizosoleniales>Rhizosoleniaceae>Rhizosolenia>Rhizosolenia inter. Richelia
+92692	Chaetoceros inter. Calothrix	Chaetoceros inter. Calothrix	P			1;100002;100021;13461;17519;92144;92166;100153;100152;28257;92692	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Chaetocerotanae>Chaetocerotanae incertae sedis>Chaetocerotaceae>Chaetoceros>Chaetoceros inter. Calothrix
+92693	Climacodium inter. Crocosphaera	Climacodium inter. Crocosphaera	P			1;100002;100021;13461;17519;92144;94575;92213;100130;92214;92693	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Biddulphianae>Hemiaulales>Hemiaulaceae>Climacodium>Climacodium inter. Crocosphaera
+92706	Poroecus	Poroecus	P	Genus	415852	1;100002;5;343;2250;11221;100030;13897;100043;18599;18611;92706	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Codonellidae>Poroecus
+92750	multiple	multiple<Diatoma	M			1;100002;100021;13461;17519;100040;95917;94763;94764;28189;92750	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae>Fragilariophycanae>Fragilariales>Fragilariaceae>Diatoma>multiple
+92752	Cladopyxidaceae	Cladopyxidaceae	P	Family	109425	1;100002;5;343;2248;96576;96577;11921;31819;13948;92752	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Cladopyxidaceae
+92753	Cladopyxis	Cladopyxis	P	Genus	109509	1;100002;5;343;2248;96576;96577;11921;31819;13948;92752;92753	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Cladopyxidaceae>Cladopyxis
+92759	Lubbockiidae	Lubbockiidae	P	Family	128578	1;2367;11517;12846;100016;25828;94879;92249;45072;94885;92759	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Podoplea>Cyclopoida>Ergasilida>Lubbockiidae
+92769	Richelia	Richelia	P	Genus	370179	1;3;100089;233;1680;100088;92240;100200;92769	Biota>Bacteria>Negibacteria>Cyanobacteria>Cyanophyceae>Nostocophycidae>Nostocales>Rivulariaceae>Richelia
+92772	multiple	multiple<Pyrocystaceae	M			1;100002;5;343;2248;96576;96577;11921;31819;13948;31874;92772	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Pyrocystaceae>multiple
+92773	Rhabdonellopsis	Rhabdonellopsis	P	Genus	183550	1;100002;5;343;2250;11221;100030;13897;100043;18599;18604;92773	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Rhabdonellidae>Rhabdonellopsis
+92774	polype	polype<Leptothecata	M			1;2367;11512;93496;12865;16675;25991;92774	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Leptothecata>polype
+92775	polype	polype<Anthozoa	M			1;2367;11512;12868;92775	Biota>Animalia>Cnidaria>Anthozoa>polype
+92801	larvae	larvae<Echinodermata	M			1;2367;11509;92801	Biota>Animalia>Echinodermata>larvae
+92831	Thalassionematales	Thalassionematales	P	Order	149090	1;100002;100021;13461;17519;100040;95917;92831	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae>Fragilariophycanae>Thalassionematales
+92838	trochozoa	trochozoa	M			1;2367;92838	Biota>Animalia>trochozoa
+92842	crumple sphere	crumple sphere	M			1;85011;85069;92842	Biota>other>othertocheck>crumple sphere
+92843	egg sac	egg sac<egg	M			1;85011;85078;92843	Biota>other>egg>egg sac
+92860	Miraciidae	Miraciidae	P	Family	115163	1;2367;11517;12846;100016;25828;94879;92249;45071;92860	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Podoplea>Harpacticoida>Miraciidae
+92872	larvae	larvae<Polychaeta	M			1;2367;11518;12838;92872	Biota>Animalia>Annelida>Polychaeta>larvae
+92873	bract	bract<Bassia bassensis	M			1;2367;11512;93496;12865;16675;25990;51383;72398;100684;87824;90386;92873	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Abylidae>Abylopsinae>Bassia>Bassia bassensis>bract
+92945	nectophore	nectophore<Eudoxoides spiralis	M			1;2367;11512;93496;12865;16675;25990;51383;72396;100066;87827;90388;92945	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Diphyidae>Diphyinae>Eudoxoides>Eudoxoides spiralis>nectophore
+92946	eudoxid	eudoxid<Eudoxoides spiralis	M			1;2367;11512;93496;12865;16675;25990;51383;72396;100066;87827;90388;92946	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Diphyidae>Diphyinae>Eudoxoides>Eudoxoides spiralis>eudoxid
+92947	gonophore	gonophore<Eudoxoides spiralis	M			1;2367;11512;93496;12865;16675;25990;51383;72396;100066;87827;90388;92947	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Diphyidae>Diphyinae>Eudoxoides>Eudoxoides spiralis>gonophore
+92967	rhizosolenia inter richelia tmp i	rhizosolenia inter richelia tmp i	M			1;100002;100021;13461;17519;92144;100239;93849;95487;28296;92967	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Rhizosolenianae>Rhizosoleniales>Rhizosoleniaceae>Rhizosolenia>rhizosolenia inter richelia tmp i
+92970	rhizosolenia tmp i	rhizosolenia tmp i	M			1;100002;100021;13461;17519;92144;100239;93849;95487;28296;92970	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Rhizosolenianae>Rhizosoleniales>Rhizosoleniaceae>Rhizosolenia>rhizosolenia tmp i
+92976	Pteropoda	Pteropoda	P	Order	325345	1;2367;11498;12905;16799;88136;100014;92976	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda
+92980	empty	empty<Ostracoda	M			1;2367;11517;12846;16619;30815;92980	Biota>Animalia>Arthropoda>Crustacea>Oligostraca>Ostracoda>empty
+93052	cyano a	cyano a	M			1;3;100089;233;93052	Biota>Bacteria>Negibacteria>Cyanobacteria>cyano a
+93053	cyano b	cyano b	M			1;3;100089;233;93053	Biota>Bacteria>Negibacteria>Cyanobacteria>cyano b
+93061	Lubbockia	Lubbockia	P	Genus	128672	1;2367;11517;12846;100016;25828;94879;92249;45072;94885;92759;93061	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Podoplea>Cyclopoida>Ergasilida>Lubbockiidae>Lubbockia
+93068	Neoceratium geniculatum	Neoceratium geniculatum	P			1;100002;5;343;2248;96576;96577;11921;31819;13948;18806;18758;93068	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Ceratiaceae>Neoceratium>Neoceratium geniculatum
+93073	Epiplocylididae	Epiplocylididae	P	Family	183560	1;100002;5;343;2250;11221;100030;13897;100043;18599;93073	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Epiplocylididae
+93098	Capitata	Capitata	P	Suborder	16351	1;2367;11512;93496;12865;16675;25992;93098	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Anthoathecata>Capitata
+93222	Littorinimorpha	Littorinimorpha	P	Order	382213	1;2367;11498;12905;16803;93222	Biota>Animalia>Mollusca>Gastropoda>Caenogastropoda>Littorinimorpha
+93223	Pterotracheoidea	Pterotracheoidea	P	Superfamily	387338	1;2367;11498;12905;16803;93222;93223	Biota>Animalia>Mollusca>Gastropoda>Caenogastropoda>Littorinimorpha>Pterotracheoidea
+93227	Pterotracheidae	Pterotracheidae	P	Family	225072	1;2367;11498;12905;16803;93222;93223;93227	Biota>Animalia>Mollusca>Gastropoda>Caenogastropoda>Littorinimorpha>Pterotracheoidea>Pterotracheidae
+93380	Globorotalidae	Globorotalidae	P			1;100002;5;342;11758;93380	Biota>Chromista>Harosa>Rhizaria>Foraminifera>Globorotalidae
+93381	part	part<Actinopterygii	M			1;2367;11513;16656;25928;100042;56693;93381	Biota>Animalia>Chordata>Vertebrata>Gnathostomata>Osteichthyes>Actinopterygii>part
+93382	Acantharia	Acantharia	P	Class	586732	1;100002;5;342;92677;93382	Biota>Chromista>Harosa>Rhizaria>Radiozoa>Acantharia
+93387	Amplectella	Amplectella	P	Genus	425636	1;100002;5;343;2250;11221;100030;13897;100043;18599;18597;93387	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Undellidae>Amplectella
+93388	light	light<sphere	M			1;85011;85069;94147;93388	Biota>other>othertocheck>sphere>light
+93389	lightrods	lightrods<rods	M			84960;85023;85058;92008;93389	not-living>plastic>other>rods>lightrods
+93390	darkrods	darkrods<rods	M			84960;85023;85058;92008;93390	not-living>plastic>other>rods>darkrods
+93496	Medusozoa	Medusozoa	P	Subphylum	1740301	1;2367;11512;93496	Biota>Animalia>Cnidaria>Medusozoa
+93547	trochophore	trochophore	M			1;2367;11518;84965;93547	Biota>Animalia>Annelida>larvae>trochophore
+93596	Chaetoceros inter ciliate	Chaetoceros inter ciliate	P			1;100002;100021;13461;17519;92144;92166;100153;100152;28257;93596	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Chaetocerotanae>Chaetocerotanae incertae sedis>Chaetocerotaceae>Chaetoceros>Chaetoceros inter ciliate
+93615	part	part<Ciliophora	M			1;100002;5;343;2250;93615	Biota>Chromista>Harosa>Alveolata>Ciliophora>part
+93636	Striatellales	Striatellales	P	Order	149174	1;100002;100021;13461;17519;100040;95917;93636	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae>Fragilariophycanae>Striatellales
+93637	attached	attached	M			1;3;93637	Biota>Bacteria>attached
+93661	borax	borax	M			84960;84963;93661	not-living>detritus>borax
+93666	spines	spines<Rhizaria	M			1;100002;5;342;93666	Biota>Chromista>Harosa>Rhizaria>spines
+93687	larvae	larvae<Biota	M			1;93687	Biota>larvae
+93714	aggregates	aggregates	M			84960;84963;93714	not-living>detritus>aggregates
+93849	Rhizosoleniales	Rhizosoleniales	P	Order	149067	1;100002;100021;13461;17519;92144;100239;93849	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Rhizosolenianae>Rhizosoleniales
+94026	part diatom	part diatom	M			1;94026	Biota>part diatom
+94045	Phyllodocida	Phyllodocida	P	Order	892	1;2367;11518;12838;16613;94045	Biota>Animalia>Annelida>Polychaeta>Errantia>Phyllodocida
+94057	polar view	polar view	M			1;100002;5;343;2248;96576;96577;11921;94057	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>polar view
+94060	Hemidiscaceae	Hemidiscaceae	P	Family	148943	1;100002;100021;13461;17519;92144;100090;92160;94060	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Coscinodiscanae>Coscinodiscales>Hemidiscaceae
+94061	Hemidiscus	Hemidiscus	P	Genus	180366	1;100002;100021;13461;17519;92144;100090;92160;94060;94061	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Coscinodiscanae>Coscinodiscales>Hemidiscaceae>Hemidiscus
+94071	lightrods	lightrods<othertocheck	M			1;85011;85069;94071	Biota>other>othertocheck>lightrods
+94072	darkrods	darkrods<othertocheck	M			1;85011;85069;94072	Biota>other>othertocheck>darkrods
+94106	Globigerinidae	Globigerinidae	P	Family	111929	1;100002;5;342;11758;13377;100147;17309;100146;100145;94106	Biota>Chromista>Harosa>Rhizaria>Foraminifera>Globothalamea>Rotaliana>Rotaliida>Globigerinina>Globigerinoidea>Globigerinidae
+94133	damaged	damaged<Copepoda	M			1;2367;11517;12846;100016;25828;94133	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>damaged
+94147	sphere	sphere<othertocheck	M			1;85011;85069;94147	Biota>other>othertocheck>sphere
+94199	echinopluteus	echinopluteus	M			1;2367;11509;100418;12875;94199	Biota>Animalia>Echinodermata>Echinozoa>Echinoidea>echinopluteus
+94201	ophiopluteus	ophiopluteus	M			1;2367;11509;100640;12873;94201	Biota>Animalia>Echinodermata>Asterozoa>Ophiuroidea>ophiopluteus
+94482	othersphere	othersphere	M			1;85011;85069;94482	Biota>other>othertocheck>othersphere
+94575	Biddulphianae	Biddulphianae	P	Superorder	591192	1;100002;100021;13461;17519;92144;94575	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Biddulphianae
+94603	Tripos	Tripos	P	Genus	494057	1;100002;5;343;2248;96576;96577;11921;31819;13948;18806;94603	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata>Dinophyceae>Peridiniphycidae>Gonyaulacales>Ceratiaceae>Tripos
+94613	Bacillariales	Bacillariales	P	Order	149001	1;100002;100021;13461;17519;100020;100120;94613	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Bacillariophycidae>Bacillariophycanae>Bacillariales
+94614	Bacillariaceae	Bacillariaceae	P	Family	149002	1;100002;100021;13461;17519;100020;100120;94613;94614	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Bacillariophycidae>Bacillariophycanae>Bacillariales>Bacillariaceae
+94763	Fragilariales	Fragilariales	P	Order	148951	1;100002;100021;13461;17519;100040;95917;94763	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae>Fragilariophycanae>Fragilariales
+94764	Fragilariaceae	Fragilariaceae	P	Family	148952	1;100002;100021;13461;17519;100040;95917;94763;94764	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae>Fragilariophycanae>Fragilariales>Fragilariaceae
+94805	Atlantidae	Atlantidae	P	Family	22990	1;2367;11498;12905;16803;93222;93223;94805	Biota>Animalia>Mollusca>Gastropoda>Caenogastropoda>Littorinimorpha>Pterotracheoidea>Atlantidae
+94879	Neocopepoda	Neocopepoda	P	Infraclass	155876	1;2367;11517;12846;100016;25828;94879	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda
+94885	Ergasilida	Ergasilida	P	Suborder	1381349	1;2367;11517;12846;100016;25828;94879;92249;45072;94885	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Podoplea>Cyclopoida>Ergasilida
+94996	Thalassiosirales	Thalassiosirales	P	Order	148903	1;100002;100021;13461;17519;92144;100086;94996	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Thalassiosiranae>Thalassiosirales
+95487	Rhizosoleniaceae	Rhizosoleniaceae	P	Family	149068	1;100002;100021;13461;17519;92144;100239;93849;95487	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Rhizosolenianae>Rhizosoleniales>Rhizosoleniaceae
+95494	Microcoleaceae	Microcoleaceae	P	Family	836366	1;3;100089;233;1680;100111;119;95494	Biota>Bacteria>Negibacteria>Cyanobacteria>Cyanophyceae>Oscillatoriophycidae>Oscillatoriales>Microcoleaceae
+95917	Fragilariophycanae	Fragilariophycanae	P	Superorder	591199	1;100002;100021;13461;17519;100040;95917	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae>Fragilariophycanae
+96576	Dinozoa	Dinozoa	P	Subphylum	562620	1;100002;5;343;2248;96576	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa
+96577	Dinoflagellata	Dinoflagellata<Dinozoa	P	Infraphylum	146203	1;100002;5;343;2248;96576;96577	Biota>Chromista>Harosa>Alveolata>Myzozoa>Dinozoa>Dinoflagellata
+100001	Ventrata	Ventrata	P	Infraphylum	582434	1;100002;5;343;2250;11221;100001	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Ventrata
+100002	Chromista	Chromista	P	Kingdom	7	1;100002	Biota>Chromista
+100007	Ringipleura	Ringipleura	P	Subterclass	1057249	1;2367;11498;12905;16799;88136;100007	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Ringipleura
+100011	Hemiptera	Hemiptera	P	Order	118089	1;2367;11517;12846;100012;12845;16627;25849;100011	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Hexapoda>Insecta>Pterygota>Hemiptera
+100012	Allotriocarida	Allotriocarida	P	Superclass	1598172	1;2367;11517;12846;100012	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida
+100014	Tectipleura	Tectipleura	P	Subterclass	1057250	1;2367;11498;12905;16799;88136;100014	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura
+100015	Gymnoplea	Gymnoplea	P	Superorder	155877	1;2367;11517;12846;100016;25828;94879;100015	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Gymnoplea
+100016	Multicrustacea	Multicrustacea	P	Superclass	845959	1;2367;11517;12846;100016	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea
+100020	Bacillariophycidae	Bacillariophycidae	P	Subclass	148902	1;100002;100021;13461;17519;100020	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Bacillariophycidae
+100021	Heterokontophyta	Heterokontophyta	P	Phylum	370437	1;100002;100021	Biota>Chromista>Heterokontophyta
+100024	Biddulphiaceae	Biddulphiaceae	P	Family	148966	1;100002;100021;13461;17519;92144;94575;100025;100024	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Biddulphianae>Biddulphiales>Biddulphiaceae
+100025	Biddulphiales	Biddulphiales	P	Order	148965	1;100002;100021;13461;17519;92144;94575;100025	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Biddulphianae>Biddulphiales
+100026	Dictyochaceae	Dictyochaceae<Dictyochales	P	Family	157257	1;100002;5;100027;2237;11812;13688;100026	Biota>Chromista>Harosa>Heterokonta>Ochrophyta>Dictyochophyceae>Dictyochales>Dictyochaceae
+100027	Heterokonta	Heterokonta	P	Infrakingdom	368898	1;100002;5;100027	Biota>Chromista>Harosa>Heterokonta
+100028	Peracarida	Peracarida	P	Superorder	1090	1;2367;11517;12846;100016;16622;25824;100028	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida
+100030	Oligotrichea	Oligotrichea<Intramacronucleata	P	Class	732974	1;100002;5;343;2250;11221;100030	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea
+100036	Eucarida	Eucarida	P	Superorder	1089	1;2367;11517;12846;100016;16622;25824;100036	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida
+100040	Fragilariophycidae	Fragilariophycidae	P	Subclass	148978	1;100002;100021;13461;17519;100040	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae
+100042	Osteichthyes	Osteichthyes	P	Parvphylum	152352	1;2367;11513;16656;25928;100042	Biota>Animalia>Chordata>Vertebrata>Gnathostomata>Osteichthyes
+100043	Choreotrichida	Choreotrichida<Oligotrichia	P	Order	341353	1;100002;5;343;2250;11221;100030;13897;100043	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida
+100051	Corophiida	Corophiida	P	Infraorder	719474	1;2367;11517;12846;100016;16622;25824;100028;45054;78158;100051	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Amphipoda>Senticaudata>Corophiida
+100052	Onychopoda	Onychopoda	P	Order	106261	1;2367;11517;12846;100012;16625;100053;25817;100052	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Branchiopoda>Phyllopoda>Diplostraca>Onychopoda
+100053	Phyllopoda	Phyllopoda	P	Subclass	155668	1;2367;11517;12846;100012;16625;100053	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Branchiopoda>Phyllopoda
+100056	Caprellidira	Caprellidira	P	Parvorder	719478	1;2367;11517;12846;100016;16622;25824;100028;45054;78158;100051;100056	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Amphipoda>Senticaudata>Corophiida>Caprellidira
+100059	Plantae	Plantae	P	Kingdom	3	1;100059	Biota>Plantae
+100066	Diphyinae	Diphyinae	P	Subfamily	151532	1;2367;11512;93496;12865;16675;25990;51383;72396;100066	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Diphyidae>Diphyinae
+100073	Oithonida	Oithonida	P	Suborder	1381346	1;2367;11517;12846;100016;25828;94879;92249;45072;100073	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Copepoda>Neocopepoda>Podoplea>Cyclopoida>Oithonida
+100074	Triceratiaceae	Triceratiaceae	P	Family	149049	1;100002;100021;13461;17519;92144;94575;100075;100074	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Biddulphianae>Triceratiales>Triceratiaceae
+100075	Triceratiales	Triceratiales	P	Order	149048	1;100002;100021;13461;17519;92144;94575;100075	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Biddulphianae>Triceratiales
+100086	Thalassiosiranae	Thalassiosiranae	P	Superorder	591189	1;100002;100021;13461;17519;92144;100086	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Thalassiosiranae
+100088	Nostocophycidae	Nostocophycidae	P	Subclass	368681	1;3;100089;233;1680;100088	Biota>Bacteria>Negibacteria>Cyanobacteria>Cyanophyceae>Nostocophycidae
+100089	Negibacteria	Negibacteria	P	Subkingdom	1741194	1;3;100089	Biota>Bacteria>Negibacteria
+100090	Coscinodiscanae	Coscinodiscanae	P	Superorder	591190	1;100002;100021;13461;17519;92144;100090	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Coscinodiscanae
+100102	Gerromorpha	Gerromorpha	P	Infraorder	869434	1;2367;11517;12846;100012;12845;16627;25849;100011;49933;100102	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Hexapoda>Insecta>Pterygota>Hemiptera>Heteroptera>Gerromorpha
+100111	Oscillatoriophycidae	Oscillatoriophycidae	P	Subclass	368682	1;3;100089;233;1680;100111	Biota>Bacteria>Negibacteria>Cyanobacteria>Cyanophyceae>Oscillatoriophycidae
+100115	Phronimoidea	Phronimoidea	P	Superfamily	155696	1;2367;11517;12846;100016;16622;25824;100028;45054;78159;100117;100116;100115	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Amphipoda>Hyperiidea>Physocephalata>Physocephalatidira>Phronimoidea
+100116	Physocephalatidira	Physocephalatidira	P	Parvorder	1055272	1;2367;11517;12846;100016;16622;25824;100028;45054;78159;100117;100116	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Amphipoda>Hyperiidea>Physocephalata>Physocephalatidira
+100117	Physocephalata	Physocephalata	P	Infraorder	155692	1;2367;11517;12846;100016;16622;25824;100028;45054;78159;100117	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Amphipoda>Hyperiidea>Physocephalata
+100118	Limacinoidea	Limacinoidea	P	Superfamily	411902	1;2367;11498;12905;16799;88136;100014;92976;91869;100118	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda>Euthecosomata>Limacinoidea
+100120	Bacillariophycanae	Bacillariophycanae<Bacillariophycidae	P	Superorder	591186	1;100002;100021;13461;17519;100020;100120	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Bacillariophycidae>Bacillariophycanae
+100130	Hemiaulaceae	Hemiaulaceae	P	Family	149235	1;100002;100021;13461;17519;92144;94575;92213;100130	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Biddulphianae>Hemiaulales>Hemiaulaceae
+100145	Globigerinoidea	Globigerinoidea	P	Superfamily	465811	1;100002;5;342;11758;13377;100147;17309;100146;100145	Biota>Chromista>Harosa>Rhizaria>Foraminifera>Globothalamea>Rotaliana>Rotaliida>Globigerinina>Globigerinoidea
+100146	Globigerinina	Globigerinina	P	Suborder	414700	1;100002;5;342;11758;13377;100147;17309;100146	Biota>Chromista>Harosa>Rhizaria>Foraminifera>Globothalamea>Rotaliana>Rotaliida>Globigerinina
+100147	Rotaliana	Rotaliana	P	Subclass	1381553	1;100002;5;342;11758;13377;100147	Biota>Chromista>Harosa>Rhizaria>Foraminifera>Globothalamea>Rotaliana
+100148	Thalassiosiraceae	Thalassiosiraceae	P	Family	148904	1;100002;100021;13461;17519;92144;100086;94996;100148	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Thalassiosiranae>Thalassiosirales>Thalassiosiraceae
+100152	Chaetocerotaceae	Chaetocerotaceae<Chaetocerotanae incertae sedis	P	Family	148984	1;100002;100021;13461;17519;92144;92166;100153;100152	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Chaetocerotanae>Chaetocerotanae incertae sedis>Chaetocerotaceae
+100153	Chaetocerotanae incertae sedis	Chaetocerotanae incertae sedis	P	Order	593505	1;100002;100021;13461;17519;92144;92166;100153	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Chaetocerotanae>Chaetocerotanae incertae sedis
+100166	Lithodesmiaceae	Lithodesmiaceae	P	Family	149021	1;100002;100021;13461;17519;92144;100168;100167;100166	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Lithodesmiophycanae>Lithodesmiales>Lithodesmiaceae
+100167	Lithodesmiales	Lithodesmiales	P	Order	149020	1;100002;100021;13461;17519;92144;100168;100167	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Lithodesmiophycanae>Lithodesmiales
+100168	Lithodesmiophycanae	Lithodesmiophycanae	P	Superorder	591193	1;100002;100021;13461;17519;92144;100168	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Lithodesmiophycanae
+100172	Squilloidea	Squilloidea	P	Superfamily	148541	1;2367;11517;12846;100016;16622;25823;92093;100173;100172	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Hoplocarida>Stomatopoda>Unipeltata>Squilloidea
+100173	Unipeltata	Unipeltata	P	Suborder	148540	1;2367;11517;12846;100016;16622;25823;92093;100173	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Hoplocarida>Stomatopoda>Unipeltata
+100197	Polycystina	Polycystina	P	Class	235740	1;100002;5;342;92677;100197	Biota>Chromista>Harosa>Rhizaria>Radiozoa>Polycystina
+100200	Rivulariaceae	Rivulariaceae	P	Family	146651	1;3;100089;233;1680;100088;92240;100200	Biota>Bacteria>Negibacteria>Cyanobacteria>Cyanophyceae>Nostocophycidae>Nostocales>Rivulariaceae
+100216	Copelata	Copelata	P	Order	103353	1;2367;11513;12860;85123;100216	Biota>Animalia>Chordata>Tunicata>Appendicularia>Copelata
+100239	Rhizosolenianae	Rhizosolenianae	P	Superorder	591196	1;100002;100021;13461;17519;92144;100239	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Rhizosolenianae
+100245	Cavolinioidea	Cavolinioidea	P	Superfamily	411903	1;2367;11498;12905;16799;88136;100014;92976;91869;100245	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda>Euthecosomata>Cavolinioidea
+100276	Rhabdophora	Rhabdophora	P	Infraphylum	582432	1;100002;5;343;2250;11221;100276	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Rhabdophora
+100308	Striatellaceae	Striatellaceae	P	Family	149175	1;100002;100021;13461;17519;100040;95917;93636;100308	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae>Fragilariophycanae>Striatellales>Striatellaceae
+100339	Pyramimonadophyceae	Pyramimonadophyceae	P	Class	886274	1;100059;391;2385;100340;100339	Biota>Plantae>Viridiplantae>Chlorophyta>Prasinophytina>Pyramimonadophyceae
+100340	Prasinophytina	Prasinophytina	P	Subphylum (Subdivision)	1648767	1;100059;391;2385;100340	Biota>Plantae>Viridiplantae>Chlorophyta>Prasinophytina
+100352	Orbulininae	Orbulininae	P	Subfamily	721002	1;100002;5;342;11758;13377;100147;17309;100146;100145;94106;100352	Biota>Chromista>Harosa>Rhizaria>Foraminifera>Globothalamea>Rotaliana>Rotaliida>Globigerinina>Globigerinoidea>Globigerinidae>Orbulininae
+100364	Platysceloidea	Platysceloidea	P	Superfamily	155698	1;2367;11517;12846;100016;16622;25824;100028;45054;78159;100117;100116;100364	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Peracarida>Amphipoda>Hyperiidea>Physocephalata>Physocephalatidira>Platysceloidea
+100410	Phyllodociformia	Phyllodociformia	P	Suborder	926	1;2367;11518;12838;16613;94045;100410	Biota>Animalia>Annelida>Polychaeta>Errantia>Phyllodocida>Phyllodociformia
+100418	Echinozoa	Echinozoa	P	Subphylum	148744	1;2367;11509;100418	Biota>Animalia>Echinodermata>Echinozoa
+100429	Galatheoidea	Galatheoidea	P	Superfamily	106685	1;2367;11517;12846;100016;16622;25824;100036;45043;78372;81914;100429	Biota>Animalia>Arthropoda>Crustacea>Multicrustacea>Malacostraca>Eumalacostraca>Eucarida>Decapoda>Pleocyemata>Anomura>Galatheoidea
+100467	Amphilithidae	Amphilithidae	P	Family	367349	1;100002;5;342;92677;93382;27704;100467	Biota>Chromista>Harosa>Rhizaria>Radiozoa>Acantharia>Symphyacanthida>Amphilithidae
+100557	Corethraceae	Corethraceae	P	Family	149108	1;100002;100021;13461;17519;92144;100559;100558;100557	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Corethranae>Corethrales>Corethraceae
+100558	Corethrales	Corethrales	P	Order	149107	1;100002;100021;13461;17519;92144;100559;100558	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Corethranae>Corethrales
+100559	Corethranae	Corethranae	P	Superorder	591194	1;100002;100021;13461;17519;92144;100559	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Coscinodiscophycidae>Corethranae
+100568	Eutintinnidae	Eutintinnidae	P	Family	1650972	1;100002;5;343;2250;11221;100030;13897;100043;18599;100568	Biota>Chromista>Harosa>Alveolata>Ciliophora>Intramacronucleata>Oligotrichea>Oligotrichia>Choreotrichida>Tintinnina>Eutintinnidae
+100611	Eteoninae	Eteoninae	P	Subfamily	152229	1;2367;11518;12838;16613;94045;100410;25634;100611	Biota>Animalia>Annelida>Polychaeta>Errantia>Phyllodocida>Phyllodociformia>Phyllodocidae>Eteoninae
+100624	Phyllodocida incertae sedis	Phyllodocida incertae sedis	P	Suborder	930	1;2367;11518;12838;16613;94045;100624	Biota>Animalia>Annelida>Polychaeta>Errantia>Phyllodocida>Phyllodocida incertae sedis
+100627	Licmophoraceae	Licmophoraceae	P	Family	149341	1;100002;100021;13461;17519;100040;95917;100628;100627	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae>Fragilariophycanae>Licmophorales>Licmophoraceae
+100628	Licmophorales	Licmophorales	P	Order	149620	1;100002;100021;13461;17519;100040;95917;100628	Biota>Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae>Fragilariophycidae>Fragilariophycanae>Licmophorales
+100640	Asterozoa	Asterozoa	P	Subphylum	148743	1;2367;11509;100640	Biota>Animalia>Echinodermata>Asterozoa
+100684	Abylopsinae	Abylopsinae	P	Subfamily	709061	1;2367;11512;93496;12865;16675;25990;51383;72398;100684	Biota>Animalia>Cnidaria>Medusozoa>Hydrozoa>Hydroidolina>Siphonophorae>Calycophorae>Abylidae>Abylopsinae
+100739	Cavoliniinae	Cavoliniinae	P	Subfamily	1419962	1;2367;11498;12905;16799;88136;100014;92976;91869;100245;26480;100739	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda>Euthecosomata>Cavolinioidea>Cavoliniidae>Cavoliniinae
+100743	Terebelliformia	Terebelliformia	P	Suborder	152292	1;2367;11518;12838;16612;30804;43757;100743	Biota>Animalia>Annelida>Polychaeta>Sedentaria>Canalipalpata>Terebellida>Terebelliformia
+100746	Diacriinae	Diacriinae	P	Subfamily	1419963	1;2367;11498;12905;16799;88136;100014;92976;91869;100245;26480;100746	Biota>Animalia>Mollusca>Gastropoda>Heterobranchia>Euthyneura>Tectipleura>Pteropoda>Euthecosomata>Cavolinioidea>Cavoliniidae>Diacriinae
+100785	Halobatini	Halobatini	P	Tribe	1342533	1;2367;11517;12846;100012;12845;16627;25849;100011;49933;100102;47562;100786;100785	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Hexapoda>Insecta>Pterygota>Hemiptera>Heteroptera>Gerromorpha>Gerridae>Halobatinae>Halobatini
+100786	Halobatinae	Halobatinae	P	Subfamily	493939	1;2367;11517;12846;100012;12845;16627;25849;100011;49933;100102;47562;100786	Biota>Animalia>Arthropoda>Crustacea>Allotriocarida>Hexapoda>Insecta>Pterygota>Hemiptera>Heteroptera>Gerromorpha>Gerridae>Halobatinae
+100799	Spirorbini	Spirorbini	P	Tribe	719188	1;2367;11518;12838;16612;30804;43756;78485;82021;100799	Biota>Animalia>Annelida>Polychaeta>Sedentaria>Canalipalpata>Sabellida>Serpulidae>Spirorbinae>Spirorbini
+100844	Leptocardii	Leptocardii	P	Class	104897	1;2367;11513;12862;100844	Biota>Animalia>Chordata>Cephalochordata>Leptocardii
+100914	Pterospermataceae	Pterospermataceae	P	Family	172813	1;100059;391;2385;100340;100339;11341;100914	Biota>Plantae>Viridiplantae>Chlorophyta>Prasinophytina>Pyramimonadophyceae>Pyramimonadales>Pterospermataceae

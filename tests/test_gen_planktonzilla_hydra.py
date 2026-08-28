@@ -32,6 +32,7 @@ root = pyrootutils.setup_root(
 )
 
 
+import os
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -70,9 +71,16 @@ EXPECTED_TABLE = [
     # Appended 2026-08-25 (v1.2), so every source above keeps its index. Its redefiner
     # joins md5-pinned sidecar tables the importer fetches before the first import.
     ("frepj", "frepj", False, "frepj"),
-    # Appended 2026-08-27, LAST, for the same index-preserving reason. Like sykezooscan2024
+    # Appended 2026-08-27 for the same index-preserving reason. Like sykezooscan2024
     # it resolves its archive through the Fairdata Download API rather than a direct URL.
     ("daplankton", "daplankton", False, "none"),
+    # Appended 2026-08-26 (v1.2), LAST, same reason. The four Tara Pacific deposits have no
+    # archive at all: their redefiner joins the per-object EcoTaxa manifests their importer
+    # fetches as sidecars before the first import.
+    ("tara_pacific_bongo", "tara_pacific_bongo", False, "tara_pacific"),
+    ("tara_pacific_decknet", "tara_pacific_decknet", False, "tara_pacific"),
+    ("tara_pacific_hsn", "tara_pacific_hsn", False, "tara_pacific"),
+    ("tara_pacific_manta", "tara_pacific_manta", False, "tara_pacific"),
 ]
 
 
@@ -221,6 +229,7 @@ def test_datasets_and_repo_id_pinned_in_config():
         "ecotaxa": gp.EcoTaxaRedefiner,
         "jedi": gp.JediRedefiner,
         "frepj": gp.FrepjRedefiner,
+        "tara_pacific": gp.TaraPacificRedefiner,
     }
     for key, klass in expected_classes.items():
         assert gp.REDEFINERS[key] is klass
@@ -264,9 +273,11 @@ def test_main_pins_override_blocks_and_redefiners(monkeypatch, tmp_path):
         "ecotaxa": gp.EcoTaxaRedefiner,
         "jedi": gp.JediRedefiner,
         "frepj": gp.FrepjRedefiner,
+        "tara_pacific": gp.TaraPacificRedefiner,
     }
 
-    # Exactly the EXPECTED_TABLE entries (15 published + frepj), in this order.
+    # Exactly the EXPECTED_TABLE entries (15 published + frepj + the four Tara Pacific
+    # deposits), in this order.
     assert list(captured_redefiners.keys()) == [t[0] for t in EXPECTED_TABLE]
     assert len(captured_overrides) == len(EXPECTED_TABLE)
 
@@ -369,11 +380,21 @@ _SEAM_ENTRY = {"name": "src", "import_name": "src", "cleanup": False, "redefiner
 class _FakeImporter:
     """Records the order of ensure_sidecars / import_dataset; import creates one class dir."""
 
-    def __init__(self, imagefolder, sidecars):
+    def __init__(self, imagefolder, sidecars, complete=None):
         self.imagefolder_dir = imagefolder
         self.sidecars = sidecars
         self.calls = []
         self.folder_existed_at_ensure = None
+        # None -> answer like DatasetImporter's default (non-empty == complete). A bool
+        # forces the answer, which is how a source with an incrementally-built imagefolder
+        # reports a PARTIAL one.
+        self._complete = complete
+
+    def imagefolder_is_complete(self):
+        if self._complete is not None:
+            return self._complete
+        folder = Path(self.imagefolder_dir)
+        return folder.exists() and bool(os.listdir(folder))
 
     def ensure_sidecars(self):
         self.calls.append("ensure_sidecars")
@@ -433,6 +454,36 @@ def test_import_and_redefine_source_ensures_sidecars_before_the_archive_and_the_
     _seam(monkeypatch, tmp_path, importer, refresh="redownload")
     assert importer.calls == ["ensure_sidecars", "import_dataset"]
     assert importer.folder_existed_at_ensure is True, "the folder is removed only after the sidecars are in hand"
+
+
+def test_import_and_redefine_source_rebuilds_a_partial_imagefolder(monkeypatch, tmp_path):
+    """A NON-EMPTY imagefolder is not automatically a finished one.
+
+    The reuse decision asks the importer instead of testing `os.listdir` inline. A source
+    whose imagefolder is filled one network fetch at a time (Tara Pacific) can be left
+    genuinely half-built by an interruption; reusing that would carry a fraction of the
+    source into the consolidated dataset as though it were the whole deposit.
+    """
+    imagefolder = tmp_path / "src_imagefolder"
+    (imagefolder / "cls").mkdir(parents=True)
+    (imagefolder / "cls" / "img.png").write_bytes(b"x")
+
+    importer = _FakeImporter(imagefolder, {}, complete=False)
+    _seam(monkeypatch, tmp_path, importer)
+
+    assert importer.calls == ["ensure_sidecars", "import_dataset"]
+
+
+def test_import_and_redefine_source_reuses_a_complete_imagefolder(monkeypatch, tmp_path):
+    """...and a source that reports itself complete is still reused, import untouched."""
+    imagefolder = tmp_path / "src_imagefolder"
+    (imagefolder / "cls").mkdir(parents=True)
+    (imagefolder / "cls" / "img.png").write_bytes(b"x")
+
+    importer = _FakeImporter(imagefolder, {}, complete=True)
+    _seam(monkeypatch, tmp_path, importer)
+
+    assert importer.calls == ["ensure_sidecars"]
 
 
 def test_import_and_redefine_source_accepts_an_instantiated_importer(monkeypatch, tmp_path):
