@@ -141,7 +141,9 @@ class TaraPacificDatasetImporter(DatasetImporter):
                         session=session,
                         user_agent=self.http_user_agent,
                         window_size=self.ecotaxa_window_size,
-                        timeout=self.http_timeout,
+                        # NOT http_timeout: that is 3600, for streaming whole archives.
+                        # See ecotaxa_manifest_timeout on the dataclass.
+                        timeout=self.ecotaxa_manifest_timeout,
                         retries=self.max_download_retries,
                         show_progress=self.show_progress,
                     )
@@ -310,7 +312,9 @@ class TaraPacificDatasetImporter(DatasetImporter):
                 session=session,
                 user_agent=self.http_user_agent,
                 workers=self.ecotaxa_image_workers,
-                timeout=self.http_timeout,
+                # NOT http_timeout: at 3600 a hung connection parked one of the 8 workers
+                # for an hour. See ecotaxa_image_timeout on the dataclass.
+                timeout=self.ecotaxa_image_timeout,
                 retries=self.max_download_retries,
                 show_progress=self.show_progress,
                 desc=f"{self.SOURCE_NAME} vignettes",

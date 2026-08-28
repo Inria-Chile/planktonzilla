@@ -50,8 +50,17 @@ KI-16..25 are **code behavior**, KI-12..13 are the two **data** defects still op
 taxonomy CSV (of twelve documented by the 2026-07-13 and 2026-08-26 audits — the other ten
 were repaired 2026-08-27 and live in `RESOLVED_ISSUES.md`),
 KI-14..15 are **source-license** questions, and KI-26 is a **data** defect in a source's own
-sidecar tables; KI-27, KI-28 and KI-29 are decision logs like KI-24. Numbers are never reused or renumbered — commits,
+sidecar tables; KI-27, KI-28, KI-36 and KI-37 are decision logs like KI-24. Numbers are never reused or renumbered — commits,
 code comments and tests cite them.
+
+**Numbering.** One number, one entry, forever — across BOTH this file and
+`RESOLVED_ISSUES.md`, which together are the registry. Commits, code comments and test
+function names cite these numbers, so an entry may move between the two files but must
+never change number, and a new entry takes the next free one rather than the next one
+that *looks* free in whichever file you happen to be reading.
+The next free KI number is **KI-38**.
+`tests/test_known_issue_numbering.py` enforces all of this, so a collision fails in the
+branch that creates it instead of at merge.
 
 **This file lists only what is still open.** Nine resolved entries — KI-11, KI-17..KI-23 and
 KI-25 — were moved verbatim to [`RESOLVED_ISSUES.md`](RESOLVED_ISSUES.md) on 2026-08-04; ten
@@ -77,15 +86,20 @@ pass. A number missing from the table below is *resolved*, not withdrawn; look f
 | KI-27 | decision log | MEDIUM (rebuild) | `frepj` joined the registry (16th); sidecar inputs became an importer protocol |
 | KI-28 | decision log | MEDIUM (rebuild) | the four Tara Pacific deposits joined (18th–21st, last); the first sources with **no archive** |
 | KI-36 | decision log | MEDIUM (rebuild) | `daplankton` joined the registry (17th); Fairdata-resolved, doubly-nested archive, 44 merged classes |
+| KI-37 | decision log | none (same rows) | `planktonset1.0` is fetched from a mirror we keep; NCEI's on-demand generator cannot resume or be size-checked |
 
-Three obligations belong to archived entries but are **still open**, and are restated here so
+Two obligations belong to archived entries but are **still open**, and are restated here so
 archiving cannot bury them:
 
 | from | open obligation |
 | --- | --- |
-| KI-17 | MedPlanktonSet's first real run must report **139** classes, matching its CSV rows — the importer was written against an unverifiable archive layout |
 | KI-21 / KI-24 | `zoolake` and `jedioceans` are verified for reachability and archive shape only; **no full import has completed** |
 | KI-23 | deriving the two licence columns is safe; **re-pushing** the published artifact from that schema is still gated |
+
+*KI-17's obligation is **discharged** (2026-08-28): MedPlanktonSet has now had a real run, and
+its imagefolder holds exactly **139** class directories, matching the 139 `medplanktonset` rows
+in `planktonzilla_taxonomy.csv`. `find_class_root` picked the right level on the archive layout
+that could not be verified when the importer was written.*
 
 **The three that want action, in order:** KI-14 (largest open legal exposure), the missing
 golden-diff harness (blocks every HIGH item above), and KI-16's discarded split provenance
@@ -587,6 +601,57 @@ and repaired, together with KI-8..KI-10, by the maintainer-directed pass of 2026
 
 ---
 
+## KI-37 — `planktonset1.0` is fetched from a mirror we keep, not from NCEI's on-demand generator
+
+*Numbered KI-37, not KI-30.* KI-29..KI-35 were taken by the 2026-08-26 full-table audit and are
+cited by name in `RESOLVED_ISSUES.md`, in `tests/test_taxonomy_known_issues.py`'s function names
+and in commit messages, so they cannot move; KI-36 is the daplankton join for the same reason.
+This entry takes the next free number. See *Numbering* at the top of the Index.
+
+**Where:** `configs/dataset_import/planktonset1.yaml`; `PlanktonSet1DatasetImporter` and
+`DatasetImporter._fetch_archive_verified` in `planktonzilla/dataset_import/dataset_importer.py`;
+`scripts/mirror_planktonset1.py`. Output rows are **unchanged** — same 60,736 images.
+
+**Change (2026-08-28).** `download_uris` never named a stored file. It names NCEI's Archive
+Management System *download* endpoint, which tars accession 0127422 **on demand**. Measured against
+the live service 2026-08-27: ~22 s to first byte, then ~0.6 MB/s (≈1 h for the archive), `Range`
+**ignored** (a ranged GET answers `200`, not `206`), `Transfer-Encoding: chunked` with **no
+`Content-Length`**, and a sustained `503` that was still returning `503` a full day later.
+
+So every run was an hour-long transfer that could not resume and could not be size-checked, and any
+interruption lost all of it. Two things hid this: `datasets` 5.0.1 declares but never reads
+`resume_download` or the `DownloadConfig` `max_retries` the project was passing (so the promised
+resume and five retries did not exist), and `datasets` + fsspec probe HEAD-then-GET, making the
+server build the tarball two or three times per attempt.
+
+Three consequences, recorded because they change how this source behaves:
+
+- The archive is fetched by `_fetch_archive_verified`, not `DownloadManager`: one request per
+  attempt, real retries, and a **gzip-framing check fed from the chunks as they arrive** — the only
+  truncation signal available when the server discloses no size.
+- The class tree is **located** (`FINAL_Plankton_Segments*`, then `find_class_root`) instead of
+  walked to via `0127422/2.3/data/0-data/FINAL_Plankton_Segments_12082014`. That path pinned the
+  accession **version**, and upstream already publishes 1.1, 2.2 and 2.3; `Path.glob` on a missing
+  path yields nothing rather than raising, so a 2.4 re-release would have silently produced an empty
+  imagefolder — the KI-22 / WHOI failure mode, latent here.
+- The data is **121 classes / 60,736 JPEGs / 108,723,866 bytes and immutable since 2015**, so it is
+  now mirrored once (`scripts/mirror_planktonset1.py`, over FTP) and imported from that archive via
+  `manual_download_local_file_names`. NCEI's uptime leaves the critical path entirely.
+
+FTP, not the HTTPS form of the same mirror: `ncei.noaa.gov/robots.txt` says `Disallow: /data*`,
+which covers the HTTPS mirror path, while the FTP tree is the bulk route the accession landing page
+itself advertises. Mirroring is ~4.3 h at 4 workers (~4 files/s) and resumable; it is slower than
+the archive whenever the archive is up, which is why the generator stays the default route.
+
+*Verified 2026-08-28 end to end: mirrored 60,736 files / 108,723,866 bytes with 0 failures, packaged
+to a 91,292,764-byte `.tar.gz`, imported through `pz_import_dataset action=import`, and the built
+imagefolder holds 121 classes / 60,736 images / 108,723,866 bytes whose names match the 121
+`planktonset1.0` rows of the taxonomy CSV exactly, in both directions. Unrelated to
+[KI-15](#ki-15--planktonset10-is-recorded-as-other-which-states-nothing), which concerns this same
+source's `license: other`.*
+
+---
+
 ## Data inconsistencies in `planktonzilla_taxonomy.csv` (KI-12 – KI-13, the two still open)
 
 Until 2026-08-27 this section documented twelve data defects — KI-8..KI-13 from the
@@ -712,6 +777,8 @@ is the authoritative record for the actual terms.
 
 **Risk: downstream-legal, bounded.** The smallest ambiguity in the table, but it is the one
 value a license filter cannot act on: `other` can be neither included nor excluded on merit.
+
+---
 
 ---
 

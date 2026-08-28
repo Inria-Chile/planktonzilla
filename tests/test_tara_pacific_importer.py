@@ -166,6 +166,40 @@ def test_ensure_sidecars_refetches_under_force_download(tmp_path, monkeypatch):
     assert [row["objid"] for row in importer.load_manifest()] == [2]
 
 
+def test_ecotaxa_never_inherits_the_archive_timeout(tmp_path, monkeypatch):
+    """The 3600s archive timeout must not reach EcoTaxa — it made hangs unrecoverable.
+
+    Both call sites used to pass ``http_timeout``, which defaults to 3600 because it sizes
+    a streaming download of a multi-gigabyte archive (whoi's 36 GB). A vignette is a few kB
+    and latency-bound, and the walk is ~2.35M of them through 8 workers, so a hung
+    connection is certain and repeated: at 3600 each one parked a worker for an hour (up to
+    ``max_download_retries`` x 3600 for one image) with no progress and no error. The retry
+    logic underneath was always correct — it simply could not run until the timeout fired.
+    """
+    importer = _importer(tmp_path)
+    importer.http_timeout = 3600  # the archive default, explicit so the test states it
+
+    seen = {}
+
+    def _manifest(project_id, **kwargs):
+        seen["manifest"] = kwargs["timeout"]
+        return [_manifest_row(1, 5, "Harosa", "a/1.jpg")]
+
+    def _images(jobs, **kwargs):
+        seen["images"] = kwargs["timeout"]
+        return 0, 0, []
+
+    monkeypatch.setattr(ecotaxa_client, "fetch_project_manifest", _manifest)
+    importer.ensure_sidecars()
+
+    monkeypatch.setattr(ecotaxa_client, "download_vault_images", _images)
+    importer._prepare_imagefolder()
+
+    assert seen["manifest"] == importer.ecotaxa_manifest_timeout == 120
+    assert seen["images"] == importer.ecotaxa_image_timeout == 60
+    assert 3600 not in seen.values(), "the archive timeout must never reach EcoTaxa"
+
+
 def test_ensure_sidecars_fetches_what_is_missing(tmp_path, monkeypatch):
     importer = _importer(tmp_path, projects=(1344, 1345), cls=TaraPacificMantaDatasetImporter)
     monkeypatch.setattr(

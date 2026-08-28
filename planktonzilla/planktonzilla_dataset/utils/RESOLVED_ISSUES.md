@@ -13,13 +13,14 @@ than in `KNOWN_ISSUES.md` means *resolved*, not *withdrawn*.
 
 ## Live follow-ups that survived their entry
 
-Three obligations outlived the fixes they belong to. They are **open**, and are listed in
+Two obligations outlived the fixes they belong to. They are **open**, and are listed in
 `KNOWN_ISSUES.md`'s index so they are not lost by being archived here:
 
-- **KI-17** — MedPlanktonSet's importer was written against an unverifiable archive layout
-  (Zenodo was unreachable). Its first real run must be checked: the reported class count
-  should equal the **139** `medplanktonset` rows in `planktonzilla_taxonomy.csv`. A mismatch
-  means `find_class_root` picked the wrong level.
+- ~~**KI-17**~~ — **discharged 2026-08-28.** MedPlanktonSet's importer was written against an
+  unverifiable archive layout (Zenodo was unreachable), so its first real run had to be
+  checked. It has now run: the imagefolder holds exactly **139** class directories, matching
+  the 139 `medplanktonset` rows in `planktonzilla_taxonomy.csv`. `find_class_root` picked the
+  right level.
 - **KI-21 / KI-24** — `zoolake` and `jedioceans` are verified for **reachability and archive
   shape only**; neither has completed a full import. KI-25 removed one known blocker on that
   path, which is not the same as having run it.
@@ -77,6 +78,12 @@ do), it locates them with `find_class_root`, which scans for the directory whose
 hold images. That is layout-independent and covered by tests, but **the first real run should
 still be checked**: its reported class count should match the 139 `medplanktonset` rows in
 `planktonzilla_taxonomy.csv`. A mismatch means the scan picked the wrong level.
+
+**Checked, and it holds (2026-08-28).** MedPlanktonSet has since had a real run against the
+live Zenodo archive, and `medplanktonsetdatasetimporter_imagefolder` holds exactly **139**
+class directories — equal to the 139 `medplanktonset` rows in the taxonomy CSV. The guessed
+layout was never relied on, and `find_class_root` resolved the real one correctly. This
+caveat is discharged.
 
 ## KI-18 — A Hub push that never succeeded reported success
 
