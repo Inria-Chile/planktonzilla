@@ -48,7 +48,15 @@ RANKS = constants.TAXONOMY_RANKS
 NORMALIZED_COLUMNS = (*RANKS, "proposed_label", "root_class", "qualifier")
 ID_COLUMNS = ("wikidata_ID", "aphia_ID", "NCBI_ID", "BOLD_ID", "ecotaxa_ID")
 EXPECTED_COLUMNS = (
-    "Dataset", "Raw_Labels", *RANKS, "proposed_label", "plankton", "living", "root_class", "qualifier", *ID_COLUMNS,
+    "Dataset",
+    "Raw_Labels",
+    *RANKS,
+    "proposed_label",
+    "plankton",
+    "living",
+    "root_class",
+    "qualifier",
+    *ID_COLUMNS,
 )
 ROOT_CLASSES = ("living", "detritus", "artefact", "inert")
 

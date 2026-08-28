@@ -90,19 +90,66 @@ ACCEPTED_CONTRADICTIONS: dict[tuple[str, str], str] = {
 # name match (`rhinomonas nottbeckii`, whose genus lineage GBIF confirms exactly).
 GBIF_UNMATCHED_LABELS = frozenset(
     {
-        "achelata", "actinosphaerium nucleofilum", "anabaenopsis", "animalia", "arthropoda",
-        "asteromphalus", "biddulphia", "bosmina", "camptocercus", "centropyxis discoides",
-        "ceratoperidinium margalefii", "ceriantharia", "chaetoceros inter ciliate",
-        "chaetoceros inter. calothrix", "chroococcus", "chydorus", "cirripedia",
-        "cladopyxis quadrispina", "climacodium crocosphaera", "coscinodiscids", "coscinodiscus",
-        "cyanophyceae", "diacyclops biscuspidatus", "diaphanosoma nipponica", "diatoma",
-        "dictyocysta", "dinobryon coalescens", "echidnophaga", "eucyclops", "eutintinnus",
-        "fragilaria", "gymnodinium", "haslea silbo", "helix", "hemiaulus", "hexapoda", "hydra",
-        "leydigia cliata", "macrothrix", "melosira", "microstellaria", "neobrightwellia alternans",
-        "nodularia", "obelia", "odontella sp.", "oltmannsiellopsis viridis", "pennales",
-        "phyllodocidae", "rhinomonas nottbeckii", "rotifera", "spirorbis", "synedra",
-        "teleostei", "thecofilosea",
-        "thecosomata", "thecostraca", "trichodesmium", "tripos geniculatus", "volvox", "vorticella",
+        "achelata",
+        "actinosphaerium nucleofilum",
+        "anabaenopsis",
+        "animalia",
+        "arthropoda",
+        "asteromphalus",
+        "biddulphia",
+        "bosmina",
+        "camptocercus",
+        "centropyxis discoides",
+        "ceratoperidinium margalefii",
+        "ceriantharia",
+        "chaetoceros inter ciliate",
+        "chaetoceros inter. calothrix",
+        "chroococcus",
+        "chydorus",
+        "cirripedia",
+        "cladopyxis quadrispina",
+        "climacodium crocosphaera",
+        "coscinodiscids",
+        "coscinodiscus",
+        "cyanophyceae",
+        "diacyclops biscuspidatus",
+        "diaphanosoma nipponica",
+        "diatoma",
+        "dictyocysta",
+        "dinobryon coalescens",
+        "echidnophaga",
+        "eucyclops",
+        "eutintinnus",
+        "fragilaria",
+        "gymnodinium",
+        "haslea silbo",
+        "helix",
+        "hemiaulus",
+        "hexapoda",
+        "hydra",
+        "leydigia cliata",
+        "macrothrix",
+        "melosira",
+        "microstellaria",
+        "neobrightwellia alternans",
+        "nodularia",
+        "obelia",
+        "odontella sp.",
+        "oltmannsiellopsis viridis",
+        "pennales",
+        "phyllodocidae",
+        "rhinomonas nottbeckii",
+        "rotifera",
+        "spirorbis",
+        "synedra",
+        "teleostei",
+        "thecofilosea",
+        "thecosomata",
+        "thecostraca",
+        "trichodesmium",
+        "tripos geniculatus",
+        "volvox",
+        "vorticella",
     }
 )
 
@@ -153,10 +200,12 @@ def test_every_identifier_in_the_table_has_a_snapshot_entry(rows, snapshot):
 
 def test_the_snapshot_has_no_stale_entries(rows, snapshot):
     """Every snapshot row still corresponds to something the table uses."""
-    live = {(source, verifier.snapshot_key(column, row[column]))
-            for row in rows
-            for column, source in verifier.SOURCE_FOR_COLUMN.items()
-            if row[column].strip()}
+    live = {
+        (source, verifier.snapshot_key(column, row[column]))
+        for row in rows
+        for column, source in verifier.SOURCE_FOR_COLUMN.items()
+        if row[column].strip()
+    }
     live |= {(verifier.GBIF_SOURCE, row["proposed_label"].strip().lower()) for row in rows}
     stale = sorted(key for key in snapshot if key not in live)
     assert stale == [], f"{len(stale)} snapshot entry/entries no longer used by the table: {stale[:5]}"
@@ -253,9 +302,16 @@ def test_name_similarity_separates_variants_from_different_names(left, right, ex
 def test_scoring_recognizes_the_documented_relationships():
     """The four non-defect verdicts, each on a case the table actually contains."""
     species_row = {
-        "Dataset": "frepj", "Raw_Labels": "x", "Kingdom": "animalia", "Phylum": "arthropoda",
-        "Class": "branchiopoda", "Order": "anomopoda", "Family": "daphniidae", "Genus": "daphnia",
-        "Species": "pulex", "proposed_label": "daphnia pulex",
+        "Dataset": "frepj",
+        "Raw_Labels": "x",
+        "Kingdom": "animalia",
+        "Phylum": "arthropoda",
+        "Class": "branchiopoda",
+        "Order": "anomopoda",
+        "Family": "daphniidae",
+        "Genus": "daphnia",
+        "Species": "pulex",
+        "proposed_label": "daphnia pulex",
     }
     exact = verifier.score_row_against_record(
         species_row, {"status": "ok", "name": "daphnia pulex", "rank": "species", "lineage": set()}
@@ -287,8 +343,16 @@ def test_scoring_recognizes_the_documented_relationships():
 def test_a_bare_name_mismatch_never_manufactures_a_contradiction():
     """Without a lineage there is no evidence of a different organism — only a report."""
     row = {
-        "Dataset": "d", "Raw_Labels": "x", "Kingdom": "animalia", "Phylum": "cnidaria", "Class": "", "Order": "",
-        "Family": "", "Genus": "", "Species": "", "proposed_label": "ctenophora",
+        "Dataset": "d",
+        "Raw_Labels": "x",
+        "Kingdom": "animalia",
+        "Phylum": "cnidaria",
+        "Class": "",
+        "Order": "",
+        "Family": "",
+        "Genus": "",
+        "Species": "",
+        "proposed_label": "ctenophora",
     }
     verdict = verifier.score_row_against_record(row, {"status": "ok", "name": "something else", "rank": "", "lineage": set()})
     assert verdict.verdict == verifier.VERDICT_NAME_MISMATCH

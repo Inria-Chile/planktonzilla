@@ -235,8 +235,7 @@ def score_row_against_record(row: dict, record: dict) -> Verdict:
     if species and normalized_registry.split(" ")[-1] == species and " " in normalized_registry:
         return Verdict(
             VERDICT_RECOMBINATION,
-            f"{registry_name!r} shares the epithet {species!r} under a different genus "
-            f"(the row says {row['Genus'] or '∅'})",
+            f"{registry_name!r} shares the epithet {species!r} under a different genus (the row says {row['Genus'] or '∅'})",
         )
 
     # A rank-less bucket row (`artefact`, `other`, `egg`) asserts no organism, so there
@@ -366,10 +365,7 @@ def fetch_worms(session, aphia_id: str) -> dict:
     except Exception as error:
         logger.warning(f"[worms] {aphia_id}: {error}")
         return _record(STATUS_ERROR)
-    lineage = {
-        str(data.get(rank) or "").strip().lower()
-        for rank in ("kingdom", "phylum", "class", "order", "family", "genus")
-    }
+    lineage = {str(data.get(rank) or "").strip().lower() for rank in ("kingdom", "phylum", "class", "order", "family", "genus")}
     # `valid_name` is the ACCEPTED name; an unaccepted id keeps its own name too, so a
     # synonym in the table still scores as a name match rather than a contradiction.
     for key in ("scientificname", "valid_name"):
@@ -423,8 +419,7 @@ def fetch_ncbi_batch(session, taxids: list[str]) -> dict:
                     continue
                 names = {part.strip().lower() for part in (node.findtext("Lineage") or "").split(";")}
                 names |= {
-                    (entry.findtext("ScientificName") or "").strip().lower()
-                    for entry in node.findall("./LineageEx/Taxon")
+                    (entry.findtext("ScientificName") or "").strip().lower() for entry in node.findall("./LineageEx/Taxon")
                 }
                 results[taxid]["lineage"] = {name for name in names if name}
         except Exception as error:
