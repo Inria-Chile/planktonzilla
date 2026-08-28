@@ -499,8 +499,9 @@ asserted to be the only one). See `RESOLVED_ISSUES.md`.
 emits twenty sources, the four appended last. The first 1,715 lines of the taxonomy CSV are still
 byte-frozen, and the fifteen archive-only sources still declare no sidecars.
 
-*2026-08-27:* the byte-frozen claim above ended with the taxonomy repair pass — 38 base and 32
-frepj rows inside those lines were edited in place, and the frepj baseline hash
+*2026-08-27:* the byte-frozen claim above ended with the taxonomy repair pass — 40 base and 32
+frepj rows inside those lines were edited in place (38 base by the repair pass, then two more
+when the external-ID checker found a retired NCBI taxid), and the frepj baseline hash
 (`tests/fixtures/frepj/pre_frepj_taxonomy.sha256`) was re-baselined with them.
 
 ---
@@ -571,6 +572,32 @@ backward (e.g. *Daphnia pulex* ships the genus taxid 6668.0, not its own well-kn
 Per-row provenance is in [`FREPJ_DRAFTED_IDS.md`](FREPJ_DRAFTED_IDS.md) (`reused:<source>` and
 the KI-6 rank-drift caveat); the forward direction is still clean. The counts above are kept
 as the 2026-07-13 base-table measurement.
+
+*2026-08-27 — this entry is now measured, not estimated.*
+`utils/verify_taxon_ids.py` resolves every identifier in the table against WoRMS, NCBI
+Taxonomy and Wikidata (and every label against the GBIF backbone) and scores it against
+the row it sits on; `tests/test_taxonomy_external_ids.py` fails when an id names a
+different organism. Over all 5,671 row-identifier pairs the result is **9 contradictions,
+all of them this entry's subject or adjacent to it**, each allowlisted in that test with
+its reason:
+
+- **7 rows** — `radiozoa` carries NCBI 543769, the clade *Rhizaria*, which CONTAINS
+  Radiozoa. NCBI has no Radiozoa node and no Chromista kingdom, so this is the
+  coarse-propagation bucket seen across two classification systems.
+- **1 row** — `kapelodinium vestifici` carries `Q25364681`, which Wikidata names
+  *Torodinium*: the single genuine wikidata collision this entry already records, found
+  again independently.
+- **1 row** — `odontella sinensis` carries NCBI 1514140, *Trieres chinensis*; the same
+  organism after the Odontella/Trieres split, with the epithet corrected in the same
+  revision. Two sibling rows (*Odontella mobiliensis*, *Leptocylindrus mediterraneus*)
+  are reported as `recombination` rather than contradictions — a shared epithet under a
+  different genus. Adopting the current combinations is a taxonomic-currency decision,
+  not an id repair.
+
+One genuine defect was found and **fixed**: NCBI taxid `941245` on the four
+`asterolamprales` rows had been retired upstream with no replacement node (a name search
+lands on *Coscinodiscales*, a different order), so the cell was blanked rather than
+left pointing nowhere. No identifier in the table now fails to resolve.
 
 ---
 

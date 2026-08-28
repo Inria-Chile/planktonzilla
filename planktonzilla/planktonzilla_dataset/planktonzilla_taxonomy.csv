@@ -135,8 +135,8 @@ medplanktonset,Asterionellopsis_cf._glacialis,chromista,heterokontophyta,bacilla
 planktoscope,bipinnaria,animalia,echinodermata,asteroidea,,,,,asteroidea,True,True,living,full_body,Q25349,123080.0,7588.0,30.0,290
 planktonset1.0,echinoderm_larva_seastar_bipinnaria,animalia,echinodermata,asteroidea,,,,,asteroidea,True,True,living,larvae,Q25349,123080.0,7588.0,30.0,290
 planktonset1.0,echinoderm_larva_seastar_brachiolaria,animalia,echinodermata,asteroidea,,,,,asteroidea,True,True,living,larvae,Q25349,123080.0,7588.0,30.0,290
-flowcamnet,Asterolamprales,chromista,heterokontophyta,bacillariophyceae,asterolamprales,,,,asterolamprales,True,True,living,full_body,Q2868420,162250.0,941245.0,393182.0,711
-planktoscope,Asterolamprales,chromista,heterokontophyta,bacillariophyceae,asterolamprales,,,,asterolamprales,True,True,living,full_body,Q2868420,162250.0,941245.0,393182.0,711
+flowcamnet,Asterolamprales,chromista,heterokontophyta,bacillariophyceae,asterolamprales,,,,asterolamprales,True,True,living,full_body,Q2868420,162250.0,,393182.0,711
+planktoscope,Asterolamprales,chromista,heterokontophyta,bacillariophyceae,asterolamprales,,,,asterolamprales,True,True,living,full_body,Q2868420,162250.0,,393182.0,711
 medplanktonset,Asteromphalus_spp,chromista,heterokontophyta,bacillariophyceae,asterolamprales,asterolampraceae,asteromphalus,,asteromphalus,True,True,living,full_body,Q2868422,162254.0,1529359.0,678265.0,706
 medplanktonset,Asteromphalus_sarcophagus,chromista,heterokontophyta,bacillariophyceae,asterolamprales,asterolampraceae,asteromphalus,sarcophagus,asteromphalus sarcophagus,True,True,living,full_body,Q67892724,394598.0,1529359.0,678265.0,706
 zooscan,Atlanta,animalia,mollusca,gastropoda,littorinimorpha,atlantidae,,,atlantidae,True,True,living,full_body,Q756491,22990.0,649145.0,85053.0,156
@@ -1820,7 +1820,7 @@ tara_pacific_bongo,Amphitetras,chromista,heterokontophyta,bacillariophyceae,tric
 tara_pacific_bongo,Oxytoxum,chromista,myzozoa,dinophyceae,peridiniales,oxytoxaceae,oxytoxum,,oxytoxum,True,True,living,full_body,Q25364849,109528.0,2950224.0,317139.0,549
 tara_pacific_bongo,part<Copepoda,animalia,arthropoda,copepoda,,,,,copepoda,False,False,detritus,part,Q189973,1080.0,6830.0,979181.0,175;255;563;575
 tara_pacific_bongo,Coscinodiscophycidae,chromista,heterokontophyta,bacillariophyceae,,,,,bacillariophyceae,True,True,living,full_body,Q2878349,148899.0,33849.0,74456.0,711
-tara_pacific_bongo,Asterolamprales,chromista,heterokontophyta,bacillariophyceae,asterolamprales,,,,asterolamprales,True,True,living,full_body,Q2868420,162250.0,941245.0,393182.0,711
+tara_pacific_bongo,Asterolamprales,chromista,heterokontophyta,bacillariophyceae,asterolamprales,,,,asterolamprales,True,True,living,full_body,Q2868420,162250.0,,393182.0,711
 tara_pacific_bongo,Hemidiscus cuneiformis,chromista,heterokontophyta,bacillariophyceae,coscinodiscales,hemidiscaceae,hemidiscus,cuneiformis,hemidiscus cuneiformis,True,True,living,full_body,,180367.0,,,
 tara_pacific_bongo,Cladopyxis quadrispina,chromista,myzozoa,dinophyceae,gonyaulacales,cladopyxidaceae,cladopyxis,quadrispina,cladopyxis quadrispina,True,True,living,full_body,,233346.0,,,
 tara_pacific_bongo,Ornithocercus steinii,chromista,myzozoa,dinophyceae,dinophysales,dinophysaceae,ornithocercus,steinii,ornithocercus steinii,True,True,living,full_body,Q68420324,109696.0,630347.0,317119.0,488;749;751;753
@@ -1952,7 +1952,7 @@ tara_pacific_decknet,chainthin,chromista,heterokontophyta,bacillariophyceae,frag
 tara_pacific_decknet,chainlarge,chromista,heterokontophyta,bacillariophyceae,fragilariales,fragilariaceae,diatoma,,diatoma,True,True,living,full_body,Q14552177,149013.0,2862.0,603667.0,711
 tara_pacific_decknet,spines<Acantharia,chromista,radiozoa,acantharia,,,,,acantharia,False,False,detritus,part,Q135584,586732.0,65574.0,714957.0,625;640
 tara_pacific_decknet,Oxytoxum,chromista,myzozoa,dinophyceae,peridiniales,oxytoxaceae,oxytoxum,,oxytoxum,True,True,living,full_body,Q25364849,109528.0,2950224.0,317139.0,549
-tara_pacific_decknet,Asterolamprales,chromista,heterokontophyta,bacillariophyceae,asterolamprales,,,,asterolamprales,True,True,living,full_body,Q2868420,162250.0,941245.0,393182.0,711
+tara_pacific_decknet,Asterolamprales,chromista,heterokontophyta,bacillariophyceae,asterolamprales,,,,asterolamprales,True,True,living,full_body,Q2868420,162250.0,,393182.0,711
 tara_pacific_decknet,Chaetoceros protuberans,chromista,heterokontophyta,bacillariophyceae,chaetocerotanae,chaetocerotaceae,chaetoceros,protuberans,chaetoceros protuberans,True,True,living,full_body,,163055.0,,,
 tara_pacific_decknet,Climacodium,chromista,heterokontophyta,bacillariophyceae,hemiaulales,hemiaulaceae,climacodium,,climacodium,True,True,living,full_body,Q25366289,196803.0,2022333.0,1350166.0,732
 tara_pacific_decknet,Hemidiscus cuneiformis,chromista,heterokontophyta,bacillariophyceae,coscinodiscales,hemidiscaceae,hemidiscus,cuneiformis,hemidiscus cuneiformis,True,True,living,full_body,,180367.0,,,
