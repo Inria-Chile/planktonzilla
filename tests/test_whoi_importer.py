@@ -93,6 +93,34 @@ def test_whoi_copes_with_a_release_without_the_year_wrapper(tmp_path, monkeypatc
     assert [path.name for path in (imp.imagefolder_dir / "Ciliate").glob("*.png")] == ["img_0.png"]
 
 
+def test_import_dataset_accepts_an_imagefolder_that_holds_images(tmp_path, monkeypatch):
+    """The zero-images guard must not fire on a hook that did its job.
+
+    The split layout specifically: LenslessDatasetImporter (train/ + test/) and
+    ZooLakeDatasetImporter nest images one level deeper than the flat sources, so a guard
+    that only looked one level down would reject them.
+    """
+
+    class _NestsTwoDeep(dataset_importer.DatasetImporter):
+        def _download_and_extract(self):
+            self.extracted_dirs = "somewhere"
+
+        def _prepare_imagefolder(self):
+            _write_rgb_png(self.imagefolder_dir / "train" / "classA" / "0.png")
+
+    imp = _NestsTwoDeep(
+        data_dir=tmp_path,
+        hf_dataset_name="nested",
+        push_to_hub=False,
+        show_progress=False,
+    )
+    monkeypatch.setattr(dataset_importer, "load_dataset", lambda *args, **kwargs: "FAKE_DATASET")
+
+    imp.import_dataset()
+
+    assert imp.hf_dataset == "FAKE_DATASET"
+
+
 def test_import_dataset_creates_the_imagefolder_root_before_the_subclass_hook(tmp_path, monkeypatch):
     """The root guarantee is the BASE class's, so every _prepare_imagefolder may rely on it."""
     seen = {}
@@ -119,7 +147,7 @@ def test_import_dataset_creates_the_imagefolder_root_before_the_subclass_hook(tm
 
 
 def test_a_preparation_that_copies_nothing_raises_at_the_point_of_failure(tmp_path, monkeypatch):
-    """Zero files is never a valid result of preparation: without this the run died
+    """Zero images is never a valid result of preparation: without this the run died
     later inside the HF loader, and the hollow tree poisoned every later run."""
 
     class _HollowImporter(dataset_importer.DatasetImporter):
@@ -137,7 +165,39 @@ def test_a_preparation_that_copies_nothing_raises_at_the_point_of_failure(tmp_pa
     )
     monkeypatch.setattr(dataset_importer, "load_dataset", lambda *args, **kwargs: "FAKE_DATASET")
 
-    with pytest.raises(RuntimeError, match="holds no files at all"):
+    with pytest.raises(RuntimeError) as excinfo:
+        imp.import_dataset()
+
+    message = str(excinfo.value)
+    assert "no image files" in message
+    assert "_HollowImporter._prepare_imagefolder" in message, "name the hook that produced nothing"
+    assert str(imp.imagefolder_dir) in message, "and where to look"
+
+
+def test_a_preparation_that_copies_only_junk_also_raises(tmp_path, monkeypatch):
+    """Files alone are not enough — copytree_filtered can carry a stray .DS_Store across.
+
+    A tree of nothing but junk is as broken as an empty one, and would pass the cheaper
+    "any file" test that imagefolder_is_complete() uses on the reuse path.
+    """
+
+    class _JunkOnlyImporter(dataset_importer.DatasetImporter):
+        def _download_and_extract(self):
+            self.extracted_dirs = "unused"
+
+        def _prepare_imagefolder(self):
+            (self.imagefolder_dir / "Ciliate").mkdir()
+            (self.imagefolder_dir / "Ciliate" / ".DS_Store").write_bytes(b"junk")
+
+    imp = _JunkOnlyImporter(
+        data_dir=tmp_path,
+        hf_dataset_name="junk",
+        push_to_hub=False,
+        show_progress=False,
+    )
+    monkeypatch.setattr(dataset_importer, "load_dataset", lambda *args, **kwargs: "FAKE_DATASET")
+
+    with pytest.raises(RuntimeError, match="no image files"):
         imp.import_dataset()
 
 
