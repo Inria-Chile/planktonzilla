@@ -109,7 +109,7 @@ def select_sources(cfg) -> list:
     Raises:
         ValueError: On an unknown source name, or a name in both ``sources`` and
             ``drop``. An ``import_name`` passed by mistake is called out by name,
-            since 5 of the 16 entries have an ``import_name`` that differs from their
+            since 5 of the 17 entries have an ``import_name`` that differs from their
             ``name``.
     """
     registry = list(cfg.datasets)
@@ -906,7 +906,7 @@ def check_source_downloads(importers, fetch_names, *, scope, timeout, session=No
             return e
 
     if targets:
-        # Concurrent because 16 sources spread over 9 hosts are ~26 mostly-idle requests;
+        # Concurrent because 17 sources spread over 9 hosts are ~28 mostly-idle requests;
         # sequentially that is a minute of waiting for a check meant to be instant.
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(targets))) as executor:
             probed = list(executor.map(_probe, targets))
@@ -944,8 +944,8 @@ def check_source_downloads(importers, fetch_names, *, scope, timeout, session=No
         )
 
     if skipped:
-        # Named rather than counted: a probe that silently covered 3 of 16 sources reads
-        # like a clean bill of health for all 16.
+        # Named rather than counted: a probe that silently covered 3 of 17 sources reads
+        # like a clean bill of health for all 17.
         checks.append(
             Check("downloads-skipped", True, f"imagefolder already built, not probed: {', '.join(skipped)}", blocking=False)
         )

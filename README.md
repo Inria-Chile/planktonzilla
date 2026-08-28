@@ -24,7 +24,7 @@ Multimodal deep learning framework, datasets, and models for plankton identifica
 
 ## Online Resources
 
-- `planktonzilla-17M` dataset: 17.4 million plankton images drawn from 15 source datasets, all standardized and preprocessed for deep learning applications: [`project-oceania/planktonzilla-17M`](https://huggingface.co/datasets/project-oceania/planktonzilla-17m). To explore how those source labels map onto one taxonomy, build the Sankey locally with [`pz_sankey`](#explore-the-label-space-sankey).
+- `planktonzilla-17M` dataset: 17.4 million plankton images drawn from 15 source datasets (two more are in the build registry, awaiting their first publication), all standardized and preprocessed for deep learning applications: [`project-oceania/planktonzilla-17M`](https://huggingface.co/datasets/project-oceania/planktonzilla-17m). To explore how those source labels map onto one taxonomy, build the Sankey locally with [`pz_sankey`](#explore-the-label-space-sankey).
 - Models trained on [`project-oceania/planktonzilla-17M`](https://huggingface.co/datasets/project-oceania/planktonzilla-17m):
   - [`project-oceania/CLIP-ViT-B-16.openai-pt.planktonzilla-pt`](https://huggingface.co/project-oceania/CLIP-ViT-B-16.openai-pt.planktonzilla-pt)
   - [`project-oceania/CLIP-ViT-B-16.bioclip-pt.planktonzilla-pt`](https://huggingface.co/project-oceania/CLIP-ViT-B-16.bioclip-pt.planktonzilla-pt)
@@ -193,7 +193,7 @@ There is no mode switch. The run is described by three orthogonal parameters:
 | `sync_taxonomy` | re-apply the CSV to carried-over rows | `true` · `false` |
 
 ```bash
-# Create the whole dataset from scratch (all 16 sources) — the default
+# Create the whole dataset from scratch (all 17 sources) — the default
 uv run pz_planktonzilla
 
 # The taxonomy CSV changed: re-sync every row, rebuild nothing
@@ -247,8 +247,8 @@ proceed. What it verifies:
   archive are opened, so a *truncated* one is caught here instead of hours later.
   A `403` or a dropped connection is reported as client filtering, with the manual-archive
   fallback spelled out; a `200` that returns HTML is flagged as the login wall it usually is.
-  `sykezooscan2024` is checked through the Fairdata API **read-only** — the pre-flight never
-  asks the service to package anything.
+  `sykezooscan2024` and `daplankton` are checked through the Fairdata API **read-only** — the
+  pre-flight never asks the service to package anything.
 - **Sidecars** — inputs a source needs on *every* run outside its archive (FREPJ's three
   md5-pinned geodata tables and its committed site crosswalk), reported as `sidecars:<source>`:
   on disk with their pin, or *would be fetched* — the run obtains them itself, md5-verified,
@@ -339,7 +339,7 @@ to republish the taxonomy too.
 
 The same holds for `custom_metadata` (added for v1.2): one JSON object per image holding what
 only its source knows and no consolidated column covers — FREPJ's `magnification` and raw `site`
-token; the literal `{}` for the fifteen existing sources. A base that predates the column is
+token; the literal `{}` for every other source. A base that predates the column is
 filled with `{}` on its next `pz_planktonzilla base=…` run (logged loudly), so that run too
 belongs on a new `push_revision`, not over the frozen one.
 
@@ -515,11 +515,11 @@ flowchart TB
 
 ### Source datasets
 
-Fifteen public plankton-imaging sources are assembled into `planktonzilla-17M`. A sixteenth,
-**FREPJ-Z**, is in the build registry since v1.2 and enters the composite with the v1.2
-release; until then it is published on its own as
-[`project-oceania/planktonzilla-frepj`](https://huggingface.co/datasets/project-oceania/planktonzilla-frepj).
-Each has an importer config in `configs/dataset_import/`:
+Fifteen public plankton-imaging sources are assembled into `planktonzilla-17M`. Two more are in
+the build registry but not yet in the published composite: **FREPJ-Z** (since v1.2, which it
+enters with the v1.2 release; until then published on its own as
+[`project-oceania/planktonzilla-frepj`](https://huggingface.co/datasets/project-oceania/planktonzilla-frepj))
+and **DAPlankton**. Each has an importer config in `configs/dataset_import/`:
 
 | Source | `dataset` value | Images | Description | License |
 | --- | --- | ---: | --- | --- |
@@ -539,10 +539,21 @@ Each has an importer config in `configs/dataset_import/`:
 | **ZooLake** | `zoolake` | 17,942 | Lake Greifensee (Switzerland) zooplankton | `cc-by-4.0` |
 | **Lensless** | `lensless` | 6,400 | Lensless plankton microscopy (lab culture) | `cc-by-4.0` |
 | **FREPJ-Z** (v1.2) | `frepj` | 88,686 | Freshwater zooplankton of Japanese lakes and reservoirs, 40×/100× microscopy — registry only, not in the published 17M yet | `cc-by-4.0` |
+| **DAPlankton** | `daplankton` | 111,924 | Multi-instrument benchmark: 15 cultured classes imaged by IFCB, CytoSense and FlowCam, plus 31 Baltic field classes by IFCB and CytoSense — registry only, not in the published 17M yet | `cc-by-4.0` |
 
 Note that the `dataset` column value does not always match the importer config stem (`whoi` vs
 `whoi-plankton.yaml`, `zooscan` vs `zooscannet.yaml`, and three more). The mapping is recorded in
 `constants.DATASET_IMPORT_CONFIGS`.
+
+**DAPlankton**, like FREPJ-Z, does not copy its class dirs across unchanged. It is laid out as
+`<subset>/<instrument>/<class>/`, over two subsets (15 cultured species; 31 Baltic Sea field
+classes) and three instruments — FlowCam imaged the cultures only, so there is no `DAPlankton_sea/FC`
+and the tree has five roots, not six. That is 46 class slots which are really 44 taxa, since
+*Aphanizomenon flos-aquae* and *Pseudopedinella* sp. appear in both subsets. The importer merges the
+five subset/instrument roots into one class dir per taxon — the same merge FREPJ-Z applies to its two
+magnifications — and preserves the provenance as a filename prefix (`lab_cs_`, `sea_ifcb_`, …) that
+stays readable in the `original_path` column. Its 31 sea classes are a strict subset of the 50 in
+SYKE IFCB 2022, whose label scheme it follows.
 
 For training, `configs/dataset/` selects either the composite `planktonzilla` dataset or a single
 source; **CIFAR-10** is also configured there as a generic sanity-check/smoke-test target.
@@ -563,8 +574,8 @@ are mutually incompatible. Every image therefore carries its source's terms in t
 terms are stated).
 
 The shares below describe the **published** dataset. The registry covers all 15 of its
-sources plus `frepj` (v1.2), so a from-scratch rebuild reproduces the same mix of terms —
-`frepj` adds `cc-by-4.0` images only.
+sources plus the two joining them — `frepj` (v1.2) and `daplankton` — so a from-scratch
+rebuild reproduces the same mix of terms: both add `cc-by-4.0` images only.
 
 | License | Images | Share | Reuse |
 | --- | ---: | ---: | --- |
