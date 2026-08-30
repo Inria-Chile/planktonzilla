@@ -1,11 +1,16 @@
 """
 (c) Inria
 
-Regression tests for the step-1 training-pipeline prerequisites.
+Regression tests for the training pipeline's correctness prerequisites and its metrics.
 
-Each test below pins one defect that made a training run silently measure something
-other than what it claimed, so that any architecture experiment run on top of this
-pipeline is comparing what it thinks it is comparing.
+The first sections pin defects that made a training run silently measure something other
+than what it claimed — augmentation ordering, per-class counts, head freezing, and
+gradient-accumulation normalisation — so that any architecture experiment run on top of
+this pipeline compares what it thinks it is comparing.
+
+The last section covers the evaluation instrument itself: bounded-memory logit handling
+and the long-tail shot-group metrics, without which a change that trades head accuracy
+for tail accuracy is indistinguishable from noise.
 """
 
 import logging
@@ -20,7 +25,13 @@ from transformers.modeling_outputs import ImageClassifierOutputWithNoAttention
 
 from planktonzilla.clip_model import ClipClassifier
 from planktonzilla.dataset import DatasetWrapper, augment_and_transform_batch
-from planktonzilla.train import build_compute_loss_func, freeze_backbone_except_head
+from planktonzilla.train import (
+    build_compute_loss_func,
+    build_compute_metrics,
+    build_preprocess_logits_for_metrics,
+    freeze_backbone_except_head,
+    shot_group_recall,
+)
 
 # --------------------------------------------------------------------------------------
 # Augmentation ordering
@@ -316,3 +327,118 @@ def test_custom_loss_tolerates_a_missing_item_count():
     labels = torch.zeros(8, dtype=torch.long)
 
     torch.testing.assert_close(loss_fn(_out(8), labels, num_items_in_batch=None), _MeanLoss()(_out(8), labels))
+
+
+# --------------------------------------------------------------------------------------
+# Evaluation metrics
+# --------------------------------------------------------------------------------------
+
+
+class _EvalPred:
+    def __init__(self, predictions, label_ids):
+        self.predictions = predictions
+        self.label_ids = label_ids
+
+
+def test_preprocess_logits_keeps_only_top_k_indices():
+    """Evaluation must not accumulate an (n_eval, n_classes) float matrix."""
+    torch.manual_seed(0)
+    logits = torch.randn(32, 2000)
+
+    reduced = build_preprocess_logits_for_metrics(top_k=5)(logits, torch.zeros(32, dtype=torch.long))
+
+    assert reduced.shape == (32, 5)
+    assert reduced.dtype == torch.int64
+    # What the accumulation actually costs, per eval example.
+    assert reduced.numel() < logits.numel() / 100, (
+        f"expected a large reduction, got {logits.numel()} -> {reduced.numel()} elements"
+    )
+    torch.testing.assert_close(reduced[:, 0], logits.argmax(dim=-1))
+
+
+def test_preprocess_logits_handles_a_tuple_output_and_a_small_class_space():
+    fn = build_preprocess_logits_for_metrics(top_k=5)
+    logits = torch.randn(4, 3)
+
+    from_tuple = fn((logits, None), torch.zeros(4, dtype=torch.long))
+    assert from_tuple.shape == (4, 3), "k must be capped at the number of classes"
+
+
+def test_top1_metrics_are_identical_with_and_without_the_preprocessor():
+    """The memory fix must not move any number."""
+    torch.manual_seed(0)
+    logits = torch.randn(64, 12)
+    labels = torch.randint(0, 12, (64,))
+
+    reduced = build_preprocess_logits_for_metrics(top_k=5)(logits, labels)
+
+    metrics_fn = build_compute_metrics()
+    from_logits = metrics_fn(_EvalPred(logits.numpy(), labels.numpy()))
+    from_indices = metrics_fn(_EvalPred(reduced.numpy(), labels.numpy()))
+
+    for key in ("accuracy", "f1", "precision", "recall", "top5_accuracy"):
+        assert from_logits[key] == pytest.approx(from_indices[key]), key
+
+
+def test_topk_accuracy_counts_a_hit_anywhere_in_the_ranking():
+    # Row 0's true class is ranked 3rd, row 1's is ranked 1st, row 2's is not in the top-3.
+    ranked = np.array([[5, 7, 1], [2, 9, 4], [0, 3, 6]])
+    labels = np.array([1, 2, 8])
+
+    metrics = build_compute_metrics(top_k=3)(_EvalPred(ranked, labels))
+
+    assert metrics["accuracy"] == pytest.approx(1 / 3)
+    assert metrics["top3_accuracy"] == pytest.approx(2 / 3)
+
+
+def test_shot_group_recall_separates_head_from_tail():
+    """A change that helps the tail and costs the head must be visible, not averaged away."""
+    # class 0 is many-shot (500 train images), class 1 medium (50), class 2 few (3).
+    cls_num_list = np.array([500, 50, 3])
+    labels = np.array([0, 0, 0, 0, 1, 1, 2, 2])
+    # head 3/4 right, medium 1/2, tail 2/2.
+    predictions = np.array([0, 0, 0, 1, 1, 0, 2, 2])
+
+    metrics = shot_group_recall(labels, predictions, cls_num_list, few_shot_max=20, many_shot_min=100)
+
+    assert metrics["recall_many_shot"] == pytest.approx(0.75)
+    assert metrics["recall_medium_shot"] == pytest.approx(0.5)
+    assert metrics["recall_few_shot"] == pytest.approx(1.0)
+    assert metrics["n_classes_many_shot"] == 1
+    assert metrics["n_classes_medium_shot"] == 1
+    assert metrics["n_classes_few_shot"] == 1
+
+
+def test_shot_group_omits_an_empty_bucket_rather_than_reporting_zero():
+    """A bucket with no classes has no recall; 0.0 would read as 'all wrong'."""
+    cls_num_list = np.array([500, 400])
+    labels = np.array([0, 1])
+    predictions = np.array([0, 1])
+
+    metrics = shot_group_recall(labels, predictions, cls_num_list, few_shot_max=20, many_shot_min=100)
+
+    assert "recall_few_shot" not in metrics
+    assert metrics["n_classes_few_shot"] == 0
+    assert metrics["recall_many_shot"] == pytest.approx(1.0)
+
+
+def test_compute_metrics_reports_shot_groups_only_when_counts_are_supplied():
+    ranked = np.array([[0], [1], [2]])
+    labels = np.array([0, 1, 2])
+
+    without = build_compute_metrics()(_EvalPred(ranked, labels))
+    with_counts = build_compute_metrics(cls_num_list=np.array([500, 50, 3]))(_EvalPred(ranked, labels))
+
+    assert not any(key.startswith("recall_") for key in without)
+    assert with_counts["recall_few_shot"] == pytest.approx(1.0)
+
+
+def test_macro_recall_is_balanced_accuracy():
+    """Documents that `recall` already is balanced accuracy, so it is not reported twice."""
+    from sklearn.metrics import balanced_accuracy_score
+
+    ranked = np.array([[0], [0], [1], [2], [2]])
+    labels = np.array([0, 1, 1, 2, 2])
+
+    metrics = build_compute_metrics()(_EvalPred(ranked, labels))
+    assert metrics["recall"] == pytest.approx(balanced_accuracy_score(labels, ranked[:, 0]))

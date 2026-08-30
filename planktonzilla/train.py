@@ -112,26 +112,111 @@ def validate_environment(cfg: DictConfig | None = None):
 #     return {**res, **acc}
 
 
-def compute_metrics(eval_pred):
-    """Compute classification metrics for the Hugging Face ``Trainer``.
+def build_preprocess_logits_for_metrics(top_k: int = 5):
+    """Reduce each eval batch's logits to its top-k class indices before they accumulate.
 
-    Takes the argmax over predicted logits and compares against the reference labels, returning
-    a dict with ``accuracy`` plus macro-averaged ``f1``, ``precision`` and ``recall`` (macro
-    averaging weights every class equally, which matters for the long-tailed plankton classes).
+    `Trainer` concatenates whatever `prediction_step` returns across the whole evaluation
+    set before handing it to `compute_metrics`, so without this hook it holds an
+    ``(n_eval, n_classes)`` float array in memory — for a million validation images over a
+    few thousand plankton classes that is gigabytes, and it grows with the class space
+    every time a source is added. Only the ranking is needed downstream, so keeping the
+    top-k indices bounds the accumulation at ``(n_eval, k)`` int64.
+
+    This does not change any metric: the top-1 index is the same argmax `compute_metrics`
+    used to take itself.
+    """
+
+    def preprocess_logits_for_metrics(logits, labels):
+        if isinstance(logits, (tuple, list)):
+            logits = logits[0]
+        return logits.topk(min(top_k, logits.shape[-1]), dim=-1).indices
+
+    return preprocess_logits_for_metrics
+
+
+def shot_group_recall(labels, predictions, cls_num_list, few_shot_max: int, many_shot_min: int) -> dict:
+    """Per-class recall averaged within each long-tail shot group.
+
+    A single macro-F1 cannot distinguish "helped the tail, cost a little head accuracy"
+    from noise, which is the comparison every imbalance-learning change in this repo is
+    actually trying to make. Classes are bucketed by how many *training* images they have
+    — the standard many/medium/few-shot split from the long-tail literature — and each
+    bucket reports the mean of its per-class recalls.
+
+    Classes absent from the evaluation split contribute nothing (they have no recall to
+    measure), and a bucket with no such classes is omitted rather than reported as 0.0.
+    """
+    counts = np.asarray(cls_num_list)
+    buckets: dict[str, list[float]] = {"many_shot": [], "medium_shot": [], "few_shot": []}
+
+    for class_id in np.unique(labels):
+        mask = labels == class_id
+        recall = float((predictions[mask] == class_id).mean())
+        n_train = int(counts[class_id]) if class_id < len(counts) else 0
+        if n_train < few_shot_max:
+            buckets["few_shot"].append(recall)
+        elif n_train <= many_shot_min:
+            buckets["medium_shot"].append(recall)
+        else:
+            buckets["many_shot"].append(recall)
+
+    metrics = {}
+    for name, recalls in buckets.items():
+        metrics[f"n_classes_{name}"] = len(recalls)
+        if recalls:
+            metrics[f"recall_{name}"] = float(np.mean(recalls))
+    return metrics
+
+
+def build_compute_metrics(cls_num_list=None, top_k: int = 5, shot_thresholds: tuple[int, int] = (20, 100)):
+    """Build the `Trainer`'s `compute_metrics`, optionally with long-tail shot groups.
+
+    Always reports ``accuracy`` plus macro ``f1`` / ``precision`` / ``recall`` (macro recall
+    is balanced accuracy, so it is not reported twice under another name). Adds
+    ``top{k}_accuracy`` and, when `cls_num_list` is supplied, the per-shot-group recalls
+    from :func:`shot_group_recall`.
+
+    Accepts either the top-k index array produced by
+    :func:`build_preprocess_logits_for_metrics` (integer dtype) or raw logits (floating
+    dtype), so the metrics stay computable if that hook is ever unwired.
 
     Note:
         requires training_args.eval_do_concat_batches = True
     """
+    few_shot_max, many_shot_min = shot_thresholds
 
-    predictions = np.argmax(eval_pred.predictions, axis=-1)
-    labels = eval_pred.label_ids
+    def compute_metrics(eval_pred):
+        predictions = np.asarray(eval_pred.predictions)
+        labels = np.asarray(eval_pred.label_ids)
 
-    return {
-        "accuracy": accuracy_score(labels, predictions),
-        "f1": f1_score(labels, predictions, average="macro", zero_division=0),
-        "precision": precision_score(labels, predictions, average="macro", zero_division=0),
-        "recall": recall_score(labels, predictions, average="macro", zero_division=0),
-    }
+        if np.issubdtype(predictions.dtype, np.floating):
+            # Raw logits: rank them here instead. Same result, more memory.
+            ranked = np.argsort(-predictions, axis=-1)[:, :top_k]
+        else:
+            ranked = predictions if predictions.ndim == 2 else predictions[:, None]
+
+        top1 = ranked[:, 0]
+        metrics = {
+            "accuracy": accuracy_score(labels, top1),
+            "f1": f1_score(labels, top1, average="macro", zero_division=0),
+            "precision": precision_score(labels, top1, average="macro", zero_division=0),
+            "recall": recall_score(labels, top1, average="macro", zero_division=0),
+        }
+
+        k = ranked.shape[1]
+        if k > 1:
+            metrics[f"top{k}_accuracy"] = float((ranked == labels[:, None]).any(axis=1).mean())
+
+        if cls_num_list is not None:
+            metrics.update(shot_group_recall(labels, top1, cls_num_list, few_shot_max, many_shot_min))
+
+        return metrics
+
+    return compute_metrics
+
+
+# Module-level default for callers that just want the metric set with no long-tail groups.
+compute_metrics = build_compute_metrics()
 
 
 def freeze_backbone_except_head(model) -> list[str]:
@@ -359,12 +444,23 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
     training_args.run_name = model.name_or_path.replace("/", "_") + "__" + cfg.dataset.name.replace("/", "_")
 
     log.info("Instantiating trainer.")
+    top_k = int(cfg.get("eval_top_k", 5))
+    shot_thresholds = tuple(cfg.get("eval_shot_thresholds", [20, 100]))
+    log.info(
+        f"Evaluating with top-{top_k} accuracy and shot groups "
+        f"few<{shot_thresholds[0]} <=medium<= {shot_thresholds[1]}<many training images per class."
+    )
     trainer: Trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=dataset_wrapper.dataset["train"],
         eval_dataset=dataset_wrapper.dataset[dataset_wrapper.val_split_name],
-        compute_metrics=compute_metrics,
+        compute_metrics=build_compute_metrics(
+            cls_num_list=dataset_wrapper.cls_num_list,
+            top_k=top_k,
+            shot_thresholds=shot_thresholds,
+        ),
+        preprocess_logits_for_metrics=build_preprocess_logits_for_metrics(top_k),
         compute_loss_func=custom_loss,
     )
 

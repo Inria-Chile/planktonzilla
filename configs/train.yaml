@@ -50,6 +50,19 @@ model_push_to_hub_org_name: project-oceania
 model_push_to_hub_repo_name_prefix: pz # names of uploaded models will have this prefix
 model_push_as_private: true
 
+# Evaluation metrics.
+# eval_top_k also bounds what evaluation accumulates in memory: Trainer concatenates the
+# per-batch predictions across the whole eval set, so the top-k indices are kept instead of
+# the full (n_eval, n_classes) logit matrix. Raising it costs memory linearly.
+eval_top_k: 5
+# Long-tail shot-group boundaries, in TRAINING images per class:
+#   few-shot    < 20
+#   medium-shot   20..100
+#   many-shot   > 100
+# Each group reports the mean of its per-class recalls, so a change that helps the tail at
+# a small cost to the head is distinguishable from noise in macro-F1.
+eval_shot_thresholds: [20, 100]
+
 # Seed for random number generators in pytorch, numpy and python.random
 seed: ${dataset.split_seed}
 
