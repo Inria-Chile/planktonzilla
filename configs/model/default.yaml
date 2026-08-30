@@ -12,3 +12,12 @@ model:
 
 img_size: ???
 freeze_backbone: false
+
+# Classification head: linear | cosine.
+# `cosine` L2-normalises the feature and every class weight, so a logit is a pure cosine
+# similarity times one shared temperature. A plain linear head lets class frequency show up
+# as weight norm — head classes get more gradient pushing ||w_c|| up — which biases every
+# imbalance-aware loss underneath. head_scale null uses CLIP's 1/0.07.
+head_type: linear
+head_scale: null
+head_scale_learnable: true

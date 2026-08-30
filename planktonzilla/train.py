@@ -41,6 +41,7 @@ from transformers import AutoModelForImageClassification, Trainer, TrainingArgum
 
 from planktonzilla.clip_model import ClipClassifier
 from planktonzilla.dataset import DatasetWrapper
+from planktonzilla.heads import replace_head_with_cosine
 from planktonzilla.utils import resolvers as _resolvers  # noqa: F401  -- side-effect: registers strip_yaml_suffix
 from planktonzilla.utils.hydra import (
     get_metric_value,
@@ -219,6 +220,68 @@ def build_compute_metrics(cls_num_list=None, top_k: int = 5, shot_thresholds: tu
 compute_metrics = build_compute_metrics()
 
 
+def resolve_precision(precision, training_args) -> str:
+    """Set `training_args.bf16` / `.fp16` from a single `precision` knob, and say what won.
+
+    The shipped default was `fp16: true`. Every loss in `planktonzilla.loss` is built from
+    `log`, `exp` and `pow` — the operations where fp16's narrow exponent range produces inf
+    and NaN — and bf16 keeps fp32's exponent range at the same memory cost, so it is the
+    better choice wherever the hardware has it. But bf16 needs Ampere or newer, and this
+    project also targets V100/T4 boxes, so flipping the default outright would break them.
+
+    `auto` therefore picks bf16 when the GPU supports it, fp16 when it does not, and fp32
+    when there is no GPU at all (mixed precision on CPU buys nothing). An explicit
+    `bf16`/`fp16`/`fp32` forces that choice — `precision=fp16` reproduces the old default
+    exactly — and `null` leaves whatever `training_arguments` set, for full manual control.
+
+    Returns:
+        The resolved mode, for logging.
+    """
+    if precision is None:
+        return "unchanged"
+
+    choice = str(precision).lower()
+    if choice == "auto":
+        if not torch.cuda.is_available():
+            choice = "fp32"
+        else:
+            choice = "bf16" if torch.cuda.is_bf16_supported() else "fp16"
+
+    if choice not in {"bf16", "fp16", "fp32"}:
+        raise ValueError(f"precision must be one of auto/bf16/fp16/fp32 or null, got {precision!r}")
+
+    training_args.bf16 = choice == "bf16"
+    training_args.fp16 = choice == "fp16"
+    return choice
+
+
+def warn_if_label_smoothing_is_ignored(cfg, training_args) -> bool:
+    """Report that `TrainingArguments.label_smoothing_factor` cannot take effect here.
+
+    `Trainer.compute_loss` reads ``if self.compute_loss_func is not None: ... elif labels is
+    not None: <label smoothing>``, so the smoother is skipped outright whenever a custom loss
+    is set — and this project always sets one, because `configs/custom_loss/default.yaml`
+    selects `CrossEntropyLossHF`. Setting the `TrainingArguments` field would therefore be a
+    silent no-op in *every* configuration.
+
+    The working knob is the loss's own: `custom_loss.label_smoothing` on the cross-entropy
+    family, or `custom_loss.eps` on ASL/RAL, which already smooth internally.
+
+    Returns:
+        True when a warning was emitted, so callers (and tests) can assert on it.
+    """
+    factor = getattr(training_args, "label_smoothing_factor", 0.0) or 0.0
+    if factor > 0 and cfg.get("custom_loss"):
+        log.warning(
+            f"⚠️ training_arguments.label_smoothing_factor={factor} has NO effect: the HF Trainer skips its "
+            f"label smoother whenever compute_loss_func is set, and a custom loss is always configured here. "
+            f"Use custom_loss.label_smoothing instead (cross-entropy, LDAM, balanced-meta-softmax, "
+            f"max-margin), or custom_loss.eps for the asymmetric losses, which smooth internally."
+        )
+        return True
+    return False
+
+
 def freeze_backbone_except_head(model) -> list[str]:
     """Freeze every parameter except the classification head's, and say which survived.
 
@@ -369,6 +432,17 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
             f"or configs/model/default_clip.yaml for examples."
         )
 
+    head_type = str(cfg.get("head_type", "linear")).lower()
+    if head_type == "cosine":
+        head = replace_head_with_cosine(
+            model,
+            scale=cfg.get("head_scale", None),
+            learnable_scale=bool(cfg.get("head_scale_learnable", True)),
+        )
+        log.info(f"Replaced the linear classification head with a cosine head: {head}.")
+    elif head_type != "linear":
+        raise ValueError(f"head_type must be 'linear' or 'cosine', got {head_type!r}")
+
     if cfg.get("peft"):
         log.info("Adding LoRA adapter(s).")
         for adapter_name in cfg.peft:
@@ -384,6 +458,10 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
 
     log.info("Instantiating training arguments.")
     training_args: TrainingArguments = hydra.utils.instantiate(cfg.training_arguments, _convert_="all")
+
+    resolved_precision = resolve_precision(cfg.get("precision", None), training_args)
+    log.info(f"Mixed precision: {resolved_precision} (bf16={training_args.bf16}, fp16={training_args.fp16}).")
+    warn_if_label_smoothing_is_ignored(cfg, training_args)
 
     if cfg.model_push_to_hub:
         training_args.push_to_hub = False

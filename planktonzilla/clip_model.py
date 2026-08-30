@@ -114,6 +114,23 @@ class ClipClassifier(nn.Module):
             return self.model[1]
         return self.model.head
 
+    def set_head(self, module: nn.Module) -> None:
+        """Replace the classification head in place, on whichever path built it.
+
+        A plain method rather than a `head` property setter, because `nn.Module` overrides
+        `__setattr__`: assigning a Module goes straight into `self._modules` and never
+        reaches a property setter. `model.head = m` would therefore have registered a dead
+        `head.*` entry in `state_dict()` while `.head` kept returning the original Linear —
+        silently leaving the real head in place.
+
+        Used by `planktonzilla.heads.replace_head_with_cosine` so the caller need not know
+        which backbone dispatch ran.
+        """
+        if isinstance(self.model, nn.Sequential):
+            self.model[1] = module
+        else:
+            self.model.head = module
+
     def forward(self, pixel_values, labels=None, output_attentions=None, output_hidden_states=None, return_dict=True):
         """Run the backbone and head, returning classification logits.
 

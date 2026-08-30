@@ -125,7 +125,7 @@ class LDAMLoss(AbstractHFLoss):
     *Note:* Adapted from from: <https://github.com/kaidic/LDAM-DRW/blob/master/losses.py>.
     """
 
-    def __init__(self, cls_num_list: list[int], max_m: float = 0.5, weight=None, s: int = 30):
+    def __init__(self, cls_num_list: list[int], max_m: float = 0.5, weight=None, s: int = 30, label_smoothing: float = 0.0):
         super().__init__()
         assert cls_num_list is not None
         assert s > 0
@@ -134,6 +134,9 @@ class LDAMLoss(AbstractHFLoss):
         self.max_m = max_m
         self.weight = weight
         self.s = s
+        # See CrossEntropyLossHF.label_smoothing: TrainingArguments.label_smoothing_factor
+        # never reaches a custom loss, so the knob has to live here.
+        self.label_smoothing = label_smoothing
 
         m_list = 1.0 / np.sqrt(np.sqrt(self.cls_num_list))
         m_list = m_list * (self.max_m / np.max(m_list))
@@ -158,7 +161,7 @@ class LDAMLoss(AbstractHFLoss):
         x_m = logits - batch_m
 
         output = torch.where(index, x_m, logits)
-        return F.cross_entropy(self.s * output, target, weight=self.weight)
+        return F.cross_entropy(self.s * output, target, weight=self.weight, label_smoothing=self.label_smoothing)
 
 
 class MaximumMarginLoss(nn.Module):
@@ -188,7 +191,14 @@ class MaximumMarginLoss(nn.Module):
     """
 
     def __init__(
-        self, cls_num_list: list[int], max_m: float = 0.5, weight=None, s: int = 30, gamma: float = 1.1, ldam: bool = False
+        self,
+        cls_num_list: list[int],
+        max_m: float = 0.5,
+        weight=None,
+        s: int = 30,
+        gamma: float = 1.1,
+        ldam: bool = False,
+        label_smoothing: float = 0.0,
     ):
         super().__init__()
 
@@ -202,6 +212,8 @@ class MaximumMarginLoss(nn.Module):
         self.max_m = max_m
         self.gamma = gamma
         self.ldam = ldam
+        # See CrossEntropyLossHF.label_smoothing.
+        self.label_smoothing = label_smoothing
 
     def weight(self, freq_bias, target, args):
         """Compute per-class weights from frequency bias and `args.beta`.
@@ -287,7 +299,7 @@ class MaximumMarginLoss(nn.Module):
         x_m = x - batch_hmm
 
         output = torch.where(index, x_m, x)
-        return F.cross_entropy(self.s * output, target, weight=self.weight)
+        return F.cross_entropy(self.s * output, target, weight=self.weight, label_smoothing=self.label_smoothing)
 
 
 class AsymmetricLoss(AbstractHFLoss):
@@ -490,9 +502,11 @@ class BalancedMetaSoftmaxLoss(AbstractHFLoss):
     <https://arxiv.org/abs/2007.10740>
     """
 
-    def __init__(self, cls_num_list: list[int]):
+    def __init__(self, cls_num_list: list[int], label_smoothing: float = 0.0):
         super().__init__()
         self.cls_num_list = torch.tensor(cls_num_list).float()
+        # See CrossEntropyLossHF.label_smoothing.
+        self.label_smoothing = label_smoothing
 
     def forward(self, output: ImageClassifierOutputWithNoAttention, target, **kwargs):
         """Compute Balanced Meta-Softmax loss.
@@ -501,7 +515,7 @@ class BalancedMetaSoftmaxLoss(AbstractHFLoss):
         """
         logits = output.logits
         adjusted_logits = logits + self.cls_num_list.log().to(logits.device)
-        loss = F.cross_entropy(adjusted_logits, target)
+        loss = F.cross_entropy(adjusted_logits, target, label_smoothing=self.label_smoothing)
         return loss
 
 
@@ -514,12 +528,17 @@ class CrossEntropyLossHF(AbstractHFLoss):
 
     Args:
         weight: Optional per-class rescaling weights passed to ``cross_entropy``.
+        label_smoothing: Passed straight to ``F.cross_entropy``. Set here rather than via
+            ``TrainingArguments.label_smoothing_factor``, which the HF ``Trainer`` skips
+            entirely whenever ``compute_loss_func`` is set — and this project always sets
+            one, since ``configs/custom_loss/default.yaml`` selects this class.
     """
 
-    def __init__(self, weight=None):
+    def __init__(self, weight=None, label_smoothing: float = 0.0):
         super().__init__()
         self.weight = weight
+        self.label_smoothing = label_smoothing
 
     def forward(self, output, target, **kwargs):
         """Compute weighted cross-entropy over ``output.logits`` against ``target``."""
-        return F.cross_entropy(output.logits, target, weight=self.weight)
+        return F.cross_entropy(output.logits, target, weight=self.weight, label_smoothing=self.label_smoothing)

@@ -50,6 +50,15 @@ model_push_to_hub_org_name: project-oceania
 model_push_to_hub_repo_name_prefix: pz # names of uploaded models will have this prefix
 model_push_as_private: true
 
+# Mixed-precision mode: auto | bf16 | fp16 | fp32 | null.
+#   auto  -> bf16 where the GPU supports it (Ampere+), fp16 where it does not, fp32 on CPU.
+#   fp16  -> reproduces the previous default exactly.
+#   null  -> leave training_arguments.bf16/fp16 untouched, for full manual control.
+# bf16 keeps fp32's exponent range at fp16's memory cost, which matters because every loss in
+# planktonzilla.loss is built from log/exp/pow — where fp16 overflows to inf and underflows to
+# NaN. It needs Ampere or newer, hence `auto` rather than a hard flip.
+precision: auto
+
 # Evaluation metrics.
 # eval_top_k also bounds what evaluation accumulates in memory: Trainer concatenates the
 # per-batch predictions across the whole eval set, so the top-k indices are kept instead of
