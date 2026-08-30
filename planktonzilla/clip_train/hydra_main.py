@@ -88,7 +88,7 @@ def render_argv(params: DictConfig) -> list[str]:
     if missing:
         raise ValueError(
             f"clip_pretrain has {len(missing)} mandatory value(s) still unset: {sorted(missing)}. "
-            f"Supply them on the command line, e.g. clip_pretrain.{sorted(missing)[0]}=..."
+            f"Supply them on the command line, e.g. clip_pretrain.{min(missing)}=..."
         )
 
     argv: list[str] = []
