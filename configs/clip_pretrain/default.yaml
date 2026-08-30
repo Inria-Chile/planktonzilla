@@ -1,0 +1,46 @@
+# Contrastive CLIP pretraining parameters.
+#
+# Every key here is rendered into the matching upstream `open_clip_train` CLI flag by
+# planktonzilla/clip_train/hydra_main.py: snake_case -> --kebab-case. A `true` bool renders
+# as a bare flag (upstream's arguments are all `store_true`), and `false` / `null` omit the
+# flag so upstream's own default stands. The rendered argv is validated against upstream's
+# real parser before anything launches, so a misspelled key fails immediately rather than
+# after a 16-node job has been scheduled.
+#
+# `report_to` is deliberately NOT settable here — metric logging is owned by the `tracking`
+# group so that pz_train and pz_train_clip share one switch. Setting it raises.
+#
+# Defaults mirror scripts/train_clip.sh.
+
+model: EVA02-L-14
+
+# Mandatory: the webdataset shard pattern. Supply on the command line as
+#   "clip_pretrain.train_data='/path/shards/train/shard_{00000..01771}.tar'"
+# The INNER single quotes are required: Hydra's override grammar rejects a bare `{` and
+# `..`, which every webdataset shard pattern contains, so the value must reach Hydra
+# already quoted (the outer quotes are consumed by the shell). Setting it in a local
+# config or here needs no quoting — this only applies to command-line overrides.
+train_data: ???
+val_data: null
+train_num_samples: null
+dataset_type: webdataset
+
+lr: 1e-4
+wd: 0.2
+batch_size: 256
+accum_freq: 1
+epochs: 100
+warmup: 1000
+workers: 4
+seed: 0
+
+save_frequency: 5
+log_every_n_steps: 100
+
+# Distributed contrastive-loss options.
+local_loss: true
+gather_with_grad: true
+grad_checkpointing: true
+
+# Upstream derives the run directory name when this is null.
+name: null

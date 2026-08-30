@@ -55,6 +55,10 @@ repository = "https://github.com/Inria-Chile/planktonzilla"
 [project.scripts]
 pz_import_dataset = 'planktonzilla.dataset_import.import_dataset:main'
 pz_train = 'planktonzilla.train:main'
+# Hydra front-end for the contrastive CLIP pretraining path: composes configs/train_clip.yaml,
+# renders it to upstream open_clip_train CLI args, and launches. Under torchrun invoke the
+# module (`torchrun ... -m planktonzilla.clip_train.hydra_main`) rather than this script.
+pz_train_clip = 'planktonzilla.clip_train.hydra_main:main'
 pz_planktonzilla = 'planktonzilla.planktonzilla_dataset.make_planktonzilla:main'
 # DEPRECATED, removed in the next minor release: both are subsumed by pz_planktonzilla
 # (full build == the bare command; taxonomy re-sync == base=hub sources=[]).

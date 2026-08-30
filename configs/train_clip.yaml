@@ -1,0 +1,22 @@
+# @package _global_
+
+# Root config for `pz_train_clip` — the contrastive CLIP pretraining path
+# (planktonzilla/clip_train/hydra_main.py), which renders this into upstream
+# open_clip_train CLI arguments.
+#
+# Note this is composed with `initialize_config_dir` + `compose`, not `@hydra.main`: the
+# path runs under torchrun across many ranks, and hydra's timestamped run directory would
+# be evaluated per-process. So the `hydra` group is deliberately absent here, and
+# ${hydra:...} interpolations (paths.output_dir, paths.work_dir) must not be read on this
+# path — only paths.log_dir is.
+
+defaults:
+  - _self_
+  - clip_pretrain: default.yaml
+  - tracking: default.yaml
+  - paths: default.yaml
+
+  # optional local config for machine/user specific settings
+  - optional local: default.yaml
+
+task_name: "train_clip"

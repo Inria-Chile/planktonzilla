@@ -1,5 +1,9 @@
 # wandb config
 use_wandb: false
+# tensorboard config
+# Consumed only by pz_train_clip (upstream open_clip_train reports to wandb and/or
+# tensorboard). pz_train's HF Trainer path ignores it.
+use_tensorboard: false
 wandb_project: planktonzilla-turbo
 wandb_entity: oceania-plankton
 wandb_log_model: "false" # options: false, checkpoint, end
