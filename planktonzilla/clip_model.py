@@ -95,6 +95,25 @@ class ClipClassifier(nn.Module):
             visual.head = nn.Linear(num_features, num_labels)
             self.model = visual
 
+    @property
+    def head(self) -> nn.Linear:
+        """The linear classification head, whichever backbone dispatch built it.
+
+        Exposed so callers can select the head by identity rather than by matching
+        substrings against parameter names. On the ViT path the head is
+        `nn.Sequential(visual, nn.Linear(...))[1]`, whose parameters are named
+        `1.weight` / `1.bias` — neither contains "classifier" nor "head", so a
+        name-based match silently selects nothing and freezes the head along with the
+        backbone.
+
+        This is a property, not an attribute, so it does not register a second
+        submodule: `state_dict()` keys are unchanged and existing checkpoints keep
+        loading.
+        """
+        if isinstance(self.model, nn.Sequential):
+            return self.model[1]
+        return self.model.head
+
     def forward(self, pixel_values, labels=None, output_attentions=None, output_hidden_states=None, return_dict=True):
         """Run the backbone and head, returning classification logits.
 

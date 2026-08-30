@@ -25,7 +25,6 @@ import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
 
 import os
-from functools import partial
 
 import hydra
 import numpy as np
@@ -135,6 +134,83 @@ def compute_metrics(eval_pred):
     }
 
 
+def freeze_backbone_except_head(model) -> list[str]:
+    """Freeze every parameter except the classification head's, and say which survived.
+
+    The head is resolved by identity where the model exposes one (`ClipClassifier.head`),
+    falling back to the name match that is correct for Hugging Face image-classification
+    models, whose head is named `classifier`. The previous name-only version matched
+    `"classifier" in name or "head" in name` against *every* model: on `ClipClassifier`'s
+    ViT path the head is `nn.Sequential(visual, nn.Linear(...))`, so its parameters are
+    named `1.weight` / `1.bias`, nothing matched, and `freeze_backbone=true` froze the
+    freshly-initialised head along with the backbone — leaving no trainable parameter at
+    all. `freeze_backbone` is set true in five shipped model configs.
+
+    Raises:
+        ValueError: if the selection leaves nothing trainable, which is never a usable
+            training run and is exactly how the previous defect stayed silent.
+
+    Returns:
+        The names of the parameters left trainable.
+    """
+    head = getattr(model, "head", None)
+    if isinstance(head, torch.nn.Module):
+        keep = {id(param) for param in head.parameters()}
+        selected = [name for name, param in model.named_parameters() if id(param) in keep]
+    else:
+        selected = [name for name, _ in model.named_parameters() if "classifier" in name or "head" in name]
+
+    # Checked before anything is mutated, so a caller that handles the error is not left
+    # holding a fully-frozen model.
+    if not selected:
+        raise ValueError(
+            f"freeze_backbone=true left no trainable parameters on {type(model).__name__}: no "
+            f"classification head could be identified. Expose a `head` module on the model, or "
+            f"name the head's parameters so they contain 'classifier' or 'head'."
+        )
+
+    selected_set = set(selected)
+    for name, param in model.named_parameters():
+        param.requires_grad = name in selected_set
+
+    return selected
+
+
+def build_compute_loss_func(loss_module):
+    """Adapt one of the `planktonzilla.loss` modules to the `Trainer.compute_loss_func` contract.
+
+    Hugging Face hands a custom loss function `(outputs, labels, num_items_in_batch=...)`
+    and, when one is set, *skips* its own gradient-accumulation normalisation —
+    `Trainer.training_step` divides by `current_gradient_accumulation_steps` only
+    `if (not self.model_accepts_loss_kwargs or num_items_in_batch is None) and
+    self.compute_loss_func is None`. The loss is expected to normalise by
+    `num_items_in_batch` itself, which counts items across the whole accumulation group.
+
+    Every loss in `planktonzilla.loss` takes `**kwargs` and ignores `num_items_in_batch`,
+    returning a mean over the micro-batch. With `gradient_accumulation_steps > 1` the
+    micro-batch losses were therefore summed without being divided by the number of
+    accumulation steps, inflating the gradient — and so the effective learning rate — by
+    that factor, silently. The default config uses 1 step, so this only bites when
+    someone raises it to fit a larger backbone.
+
+    Rescaling `mean * micro_batch_size / num_items_in_batch` yields
+    `sum / num_items_in_batch`, which is exactly the mean again when accumulation is 1,
+    so single-step runs are bit-for-bit unchanged.
+    """
+
+    def compute_loss(outputs, labels, num_items_in_batch=None, **kwargs):
+        loss = loss_module(outputs, labels)
+        if labels is not None and num_items_in_batch is not None:
+            total = num_items_in_batch
+            if torch.is_tensor(total):
+                total = total.to(loss.device, dtype=loss.dtype)
+            if total > 0:
+                loss = loss * labels.numel() / total
+        return loss
+
+    return compute_loss
+
+
 @task_wrapper
 def train(cfg: DictConfig) -> tuple[dict, dict]:
     """Trains the model. Can additionally evaluate on a testset, using best weights obtained during
@@ -218,11 +294,8 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
     # freeze backbone
     if cfg.freeze_backbone:
         log.info("Model backbone will not be trained.")
-        for name, param in model.named_parameters():
-            if "classifier" in name or "head" in name:
-                param.requires_grad = True
-            else:
-                param.requires_grad = False
+        trainable = freeze_backbone_except_head(model)
+        log.info(f"Trainable head parameters: {trainable}.")
 
     log.info("Instantiating training arguments.")
     training_args: TrainingArguments = hydra.utils.instantiate(cfg.training_arguments, _convert_="all")
@@ -255,7 +328,7 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
             loss_instance = hydra.utils.instantiate(cfg_loss, _convert_="all")
         except Exception:
             loss_instance = hydra.utils.instantiate(cfg_loss, cls_num_list=dataset_wrapper.cls_num_list, _convert_="all")
-        custom_loss = partial(loss_instance.forward)
+        custom_loss = build_compute_loss_func(loss_instance)
     else:
         log.info("Using default loss function.")
 

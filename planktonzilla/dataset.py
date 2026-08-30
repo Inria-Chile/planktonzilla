@@ -24,16 +24,26 @@ logger = get_pylogger(__name__)
 def augment_and_transform_batch(examples, transform, augmentation, input_column_name, label_column_name):
     """Apply the base transform (and optional augmentation) to a batch of examples.
 
-    Each input image is converted to RGB, passed through `transform`, then through
-    `augmentation` when one is supplied (training) and skipped otherwise (eval/predict).
+    Each input image is converted to RGB, passed through `augmentation` when one is
+    supplied (training) and skipped otherwise (eval/predict), then through `transform`.
     The resulting per-image tensors are stacked into a single `pixel_values` tensor.
+
+    Augmentation runs BEFORE `transform`, i.e. on the PIL image, matching
+    `open_clip_ext.transform.image_transform`, which inserts `TrivialAugmentWide`
+    "before MaybeToTensor so it operates on PIL images". The previous order ran the
+    augmentation on the already-normalized tensor, where torchvision's photometric
+    ops (RandAugment, AutoAugment, TrivialAugmentWide, ColorJitter) either clamp the
+    tensor back into [0, 1] — silently discarding `Normalize` — or operate on values
+    outside their assumed domain. A tensor-space augmentation that genuinely belongs
+    after normalization (e.g. `RandomErasing`) should be appended to the dataset's
+    own `transform` instead of being passed here.
 
     Args:
         examples: Batch dict mapping column names to lists, as delivered by
             `datasets.Dataset.with_transform`.
         transform: Callable applied to each RGB PIL image (e.g. resize/normalize).
-        augmentation: Optional callable applied after `transform`; pass `None` to skip
-            (used for the validation/test pipelines).
+        augmentation: Optional callable applied to the PIL image before `transform`;
+            pass `None` to skip (used for the validation/test pipelines).
         input_column_name: Column holding the PIL images.
         label_column_name: Column holding the integer labels.
 
@@ -47,8 +57,9 @@ def augment_and_transform_batch(examples, transform, augmentation, input_column_
         # res = transform(images=[np.array(image.convert("RGB"))], category=[label])
         # images += res["images"]
         # annotations += res["category"]
-        res = transform(image.convert("RGB"))
-        res = augmentation(res) if augmentation else res
+        rgb = image.convert("RGB")
+        rgb = augmentation(rgb) if augmentation else rgb
+        res = transform(rgb)
         images += [res]
         annotations += [label]
 
@@ -175,6 +186,38 @@ class DatasetWrapper:
         self.id2label = self.label2id = None
         self.num_classes = -1
 
+    def _count_per_class(self, labels) -> np.ndarray:
+        """Per-class training counts, indexed by class id over the full label space.
+
+        Uses ``np.bincount(..., minlength=self.num_classes)`` rather than
+        ``np.unique(..., return_counts=True)``. ``np.unique`` returns one count per
+        *observed* label, so a class absent from the train split shifts every later
+        class's count down one slot and shortens the vector — and the imbalance losses
+        index it positionally by class id, silently attaching each margin to the wrong
+        class (`cls_num_list[c]` is only `count(c)` when every class is present).
+
+        Zero counts are clamped to 1, because the margin formulas divide by them:
+        ``LDAM``'s ``1 / sqrt(sqrt(0))`` is ``inf``, and the subsequent
+        ``m_list * (max_m / max(m_list))`` then turns the *whole* vector into zeros and
+        NaN, not just the empty class's entry. A class with no training examples cannot
+        be learned either way; a count of 1 gives it the largest finite margin, which is
+        the intended behaviour for the rarest class.
+        """
+        counts = np.bincount(np.asarray(labels, dtype=np.int64), minlength=self.num_classes)
+
+        empty = np.flatnonzero(counts == 0)
+        if empty.size:
+            names = [self.id2label.get(int(i), str(i)) for i in empty[:10]]
+            logger.warning(
+                f"{empty.size} of {self.num_classes} classes have no examples in the train split "
+                f"(e.g. {names}); their counts are clamped to 1 so the imbalance-loss margins stay "
+                f"finite. Those classes cannot be learned — consider dropping them or rebalancing "
+                f"the split."
+            )
+            counts = np.maximum(counts, 1)
+
+        return counts
+
     def prepare_datasets(self, augmentation) -> None:
         """Load the dataset, derive missing splits and attach transform pipelines.
 
@@ -223,7 +266,7 @@ class DatasetWrapper:
             self.dataset["train"] = split["train"]
             self.dataset[self.val_split_name] = split["test"]
 
-        _, self.cls_num_list = np.unique(self.dataset["train"]["label"], return_counts=True)
+        self.cls_num_list = self._count_per_class(self.dataset["train"][self.label_column_name])
 
         train_transform_batch = partial(
             augment_and_transform_batch,

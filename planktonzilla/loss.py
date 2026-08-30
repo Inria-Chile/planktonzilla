@@ -235,7 +235,15 @@ class MaximumMarginLoss(nn.Module):
         obj_neg_labels = 1.0 - index_float
         obj_neg_dists = rm_obj_dists * obj_neg_labels
 
-        min_pos_prob = rm_obj_dists[:, labels.data.cpu().numpy()[0]].data
+        # Per-row ground-truth score. This previously read
+        # `rm_obj_dists[:, labels.data.cpu().numpy()[0]]`, where the index is a *scalar* —
+        # the label of whichever example the DataLoader shuffled to position 0 — so one
+        # logit column was used as the "positive" score for every row in the batch. The
+        # margin was therefore measured against an arbitrary class, and the loss was not
+        # permutation-invariant (the same batch in a different row order gave a different
+        # value). `index_float` is the caller's one-hot of `labels`, already on the right
+        # device, so this also drops a GPU->CPU sync.
+        min_pos_prob = (rm_obj_dists * index_float).sum(1).data
         max_neg_prob = obj_neg_dists.max(1)[0].data
 
         # estimate the margin between dists and gt labels
@@ -403,11 +411,35 @@ class RobustAsymmetricLoss(AbstractHFLoss):
         log_preds = self.logsoftmax(inputs)
         self.targets_classes = torch.zeros_like(inputs).scatter_(1, target.long().unsqueeze(1), 1)
 
-        # ASL weights
+        # ASL weights.
+        #
+        # KNOWN DEFECT, deliberately NOT "fixed" here — see
+        # `tests/test_loss.py::test_robust_asymmetric_loss_does_not_yet_suppress_easy_negatives`,
+        # which is a strict xfail carrying the measurement. Unlike the sibling
+        # `AsymmetricLoss` (lines 332-333), neither robustness term is masked by its label
+        # indicator, so the focusing base `1 - xs_pos - xs_neg` does not reduce to `1-p` on
+        # the target column and `p` on the negatives. Measured with the shipped defaults,
+        # the weight on a confidently-correct negative (p=1e-6) is ~1.0 where the intended
+        # `p ** gamma_neg` is ~1e-24, and RAL returns ~1870x the loss ASL gives on the same
+        # well-classified batch.
+        #
+        # Masking the two terms the way ASL does does NOT repair it: this negative term
+        # tends to 0 as p -> 0 (`q*log(q)*-(lamb-q)*q**2` with `q = 1-p`), so the base
+        # tends to 1 either way — measured 0.999999 at p=1e-6. The defect is in the terms
+        # themselves, not the mask, so repairing it needs the published RAL formulation
+        # rather than an analogy to ASL. Guessing here would change the objective silently.
+        #
+        # One strictly-local robustness fix IS applied: the trailing `torch.log(xs_pos)`
+        # was unclamped and returns -inf once p underflows to 0 (routine under fp16 softmax
+        # over ~1000 classes), which makes the whole term NaN. It now has a dtype-tiny
+        # floor, chosen instead of `self.eps` (0.1) precisely so it bites only at that
+        # degenerate point rather than for every p < 0.1. Swept over p in (0, 1) the
+        # focusing base stays in [0.64, 1.0], so no clamp is needed before `torch.pow`.
         targets = self.targets_classes
         anti_targets = 1 - targets
         xs_pos = torch.exp(log_preds)
         xs_neg = 1 - xs_pos
+        log_floor = torch.finfo(xs_pos.dtype).tiny
         xs_pos = (
             torch.exp(log_preds)
             * (
@@ -415,7 +447,7 @@ class RobustAsymmetricLoss(AbstractHFLoss):
                 + self.epsilon_pos * (1 - xs_pos.clamp(min=self.eps))
                 + self.epsilon_pos_pow * 0.5 * torch.pow(1 - xs_pos.clamp(min=self.eps), 2)
             )
-            * torch.log(xs_pos)
+            * torch.log(xs_pos.clamp(min=log_floor))
         )
         xs_neg = (
             (1 - xs_pos)
