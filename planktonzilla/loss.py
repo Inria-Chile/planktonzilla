@@ -445,8 +445,9 @@ class RobustAsymmetricLoss(AbstractHFLoss):
         # was unclamped and returns -inf once p underflows to 0 (routine under fp16 softmax
         # over ~1000 classes), which makes the whole term NaN. It now has a dtype-tiny
         # floor, chosen instead of `self.eps` (0.1) precisely so it bites only at that
-        # degenerate point rather than for every p < 0.1. Swept over p in (0, 1) the
-        # focusing base stays in [0.64, 1.0], so no clamp is needed before `torch.pow`.
+        # degenerate point rather than for every p < 0.1. Swept over p in (0, 1) at 200k
+        # points the focusing base stays in [0.409, 1.0] -- minimum 0.409365 at p=0.1348,
+        # never negative -- so no clamp is needed before `torch.pow`.
         targets = self.targets_classes
         anti_targets = 1 - targets
         xs_pos = torch.exp(log_preds)

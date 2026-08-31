@@ -4,6 +4,9 @@
 **Method:** 18 subsystem/cross-cutting reviewers → per-finding adversarial verification (2 independent
 refuters each, majority-refute kills the finding) → completeness sweep → manual re-verification of every
 HIGH finding by the reviewer of record.
+**Status:** the findings below are as first reported against `0df8004` and have **not** been rewritten —
+the reproductions stand as recorded. [Remediation status](#remediation-status) tracks what has since been
+fixed on `claude/code-review-l4k0db`; findings whose status changed carry an inline badge.
 
 132 raw findings → 123 after dedup → **49 refuted outright**, 51 confirmed unanimously, 28 contested.
 A completeness sweep added 10 new candidates, 5 of which survived. **79 findings reported below.**
@@ -30,6 +33,43 @@ re-report them.
 
 **The findings below are therefore not "the codebase is bad".** They are the residue left after a clean
 lint, a green suite, and a curated known-issues ledger — which is exactly where the interesting bugs live.
+
+---
+
+## Remediation status
+
+Five code commits on `claude/code-review-l4k0db` (`0aa18aa..9a31b32`) address the **training-path**
+findings. The data-pipeline findings — the ones that destroy or mislabel *published* data, and which this
+review ranks highest — are **all still open**.
+
+| Finding | Status | Where |
+| --- | --- | --- |
+| 1.4 `MaximumMarginLoss` positive column | **fixed** | `loss.py:258` · `0acf91a` |
+| 1.8 `freeze_backbone` freezes the head too | **fixed** | `train.py:285`, `clip_model.py:99` · `0acf91a` |
+| #72 losses ignore `num_items_in_batch` | **fixed** (promoted from contested) | `train.py:327` · `0acf91a` |
+| 1.5 `RobustAsymmetricLoss` focusing weight | **open — the fix this review proposed does not work** | strict xfail, `tests/test_loss.py:161` |
+| 1.1, 1.2, 1.3, 1.6, 1.7, 1.9, 1.10 | **open** | — |
+| Tier 2 (17 entries), Tier 3 (11 entries) | **open** | — |
+
+So, of the ten Tier 1 findings: **2 closed** (1.4, 1.8), **1 re-diagnosed and left open on purpose**
+(1.5), **7 untouched** — plus contested #72 closed alongside them. The closed ones are those that made a
+*training run* measure something other than what it claimed; nothing here has yet been done about the CSV
+corruption, the data-directory deletion, or the published mislabels.
+
+The same commits also fixed four defects this review **did not find** — see
+[What the review missed](#what-the-review-missed).
+
+Gates on the current head (`9a31b32`), against the `0df8004` baseline above:
+
+| Gate | `0df8004` | `9a31b32` |
+| --- | --- | --- |
+| `ruff check planktonzilla/ tests/ scripts/` | All checks passed | All checks passed |
+| `ruff format --check` | 89 files | 94 files |
+| `pytest` (the CI set) | 675 passed, 2 skipped | **749 passed**, 2 skipped, **1 xfailed** |
+| `pytest tests/test_train.py` (excluded from CI) | — (9 with `test_datasets.py`) | 7 passed |
+
+The xfail is 1.5, recorded `strict=True` so it converts to a failure the moment a real fix lands.
+`tests/test_datasets.py` was not re-run: it is network-bound (Tier 3 #40) and unaffected by these changes.
 
 ---
 
@@ -123,6 +163,12 @@ through `apply_version` + `save_to_disk` instead of hand-writing the info dict.
 
 ### 1.4 `MaximumMarginLoss` uses the first sample's label as the positive class for the entire batch
 
+> **FIXED** in `0acf91a`. `loss.py:258` now gathers per row —
+> `min_pos_prob = (rm_obj_dists * index_float).sum(1).data` — which also removes the GPU→CPU sync. The
+> property test proposed at the end of this finding exists as
+> `tests/test_loss.py::test_every_loss_is_permutation_invariant` and covers all seven losses; it was
+> confirmed to fail against the pre-fix code.
+
 `planktonzilla/loss.py:238`
 
 ```python
@@ -156,6 +202,10 @@ of bug outright.
 
 ### 1.5 `RobustAsymmetricLoss`'s focusing weight is inverted
 
+> **STILL OPEN — and the fix implied below is wrong.** The defect is real and the measurements stand;
+> the *remedy* this finding points at does not work. See
+> [1.5a](#15a-correction-masking-the-terms-does-not-repair-ral) immediately after.
+
 `planktonzilla/loss.py:407-428` — *flagged CONTESTED by the panel; upheld by my own reproduction.*
 
 The sibling `AsymmetricLoss` masks both probability terms by the label indicators before forming the
@@ -182,6 +232,43 @@ returns `1.399` — 1870× larger, dominated by the label-smoothing tail of unsu
 `custom_loss=ral` therefore optimises label-smoothed cross-entropy plus a non-monotonic reweighting, not
 the RAL objective it is selected for. Worth re-deriving against the paper before patching, but something
 is definitely wrong.
+
+### 1.5a Correction: masking the terms does not repair RAL
+
+The finding above frames the defect by contrast with `AsymmetricLoss`, which masks both probability terms
+by their label indicators before forming the focusing weight. The natural reading — the one I acted on — is
+that adding the same masking to RAL fixes it. **It does not.** I wrote that patch, measured it, and threw
+it away.
+
+The focusing base on a **negative** column, shipped code vs. the ASL-style masking, at fp64:
+
+```
+         p     base (shipped)   base (ASL-masked)     intended (~p)
+     1e-06           0.999966            1.000000             1e-06
+     1e-03           0.982825            0.999508             1e-03
+     1e-02           0.884316            0.995535             1e-02
+     1e-01           0.421176            0.977270             1e-01
+     5e-01           0.681837            0.857081             5e-01
+```
+
+The masked base still tends to **1** as p → 0 — so `gamma_neg` still fails to suppress exactly the easy
+negatives it exists to suppress. Worse, the masked column is **closer to 1 than the shipped code at every
+p measured**: masking makes the suppression failure more complete, not less. The reason is that RAL's
+negative robustness term itself tends to 0 as p → 0 (`(1-t_p)·log(q)·-(λ-q)·q²` with `q = 1-p`), so the
+base converges to 1 whether or not the term is masked. The defect lives in the *terms*, not in the
+masking, which means repairing it needs the published RAL formulation rather than an analogy to its
+sibling.
+
+I deliberately did not ship a guess. The state of the art on this finding is recorded as an executable
+`strict=True` xfail (`tests/test_loss.py:161`) carrying the 1870× measurement, so it converts to a hard
+failure the moment someone lands the real fix and can no longer be quietly forgotten.
+
+Two smaller claims from my own working notes, corrected here so they do not propagate. RAL's `torch.pow`
+base never goes negative over `p ∈ (0, 1)` — swept at 200k points it stays in `[0.409, 1.0]`, minimum
+`0.409365` at `p ≈ 0.1348` — so it needs no clamp for domain safety. And `torch.pow(-2.0, 4.0)` returns
+`16.0`, not `NaN`: a negative base is only a problem for *fractional* exponents. (An earlier note of mine
+gave that interval as `[0.64, 1.0]`; that was wrong, and the same wrong figure reached a comment in
+`loss.py`, corrected in the same commit as this document.)
 
 ### 1.6 Two published Tara Pacific taxonomy blocks carry the wrong taxon
 
@@ -222,6 +309,14 @@ generated reconciliation report, and KI-29 all rest on this guard ("asserted to 
 the documented contract is not the one the code enforces.
 
 ### 1.8 `freeze_backbone=true` freezes the classification head too — nothing trains
+
+> **FIXED** in `0acf91a`, as proposed. The head is selected by identity through a new
+> `ClipClassifier.head` property (`clip_model.py:99`) — deliberately a property, not an attribute, so
+> `state_dict()` keys are unchanged and existing checkpoints keep loading — with the name match retained
+> as the fallback that is correct for Hugging Face models. `freeze_backbone_except_head`
+> (`train.py:285`) now **raises** when the selection leaves nothing trainable, which is the condition
+> that let this defect stay silent; it checks before mutating, so a caught exception cannot leave a
+> half-frozen model behind.
 
 `planktonzilla/train.py:218-225`
 
@@ -346,19 +441,94 @@ data rather than argued here — treat them as leads, not conclusions. The two w
 factor) and **#64** (`check_image_file_integrity` deletes vignettes that `imagefolder_is_complete()`
 counts, so one undecodable image can make a source permanently "incomplete").
 
+> **#72 was real, and is FIXED in `0acf91a`.** Confirmed against the `transformers` source:
+> `Trainer.training_step` skips its own division by `gradient_accumulation_steps` whenever
+> `compute_loss_func` is set, and every loss in `planktonzilla.loss` ignored the `num_items_in_batch`
+> it is handed — so `gradient_accumulation_steps=N` multiplied the effective learning rate by N.
+> `build_compute_loss_func` (`train.py:327`) now normalises correctly. At one accumulation step the
+> arithmetic is identical, so existing single-step runs are bit-for-bit unchanged.
+>
+> That a *contested* finding turned out to be a real learning-rate bug is worth noting about the method:
+> the majority-refute rule is tuned to suppress false positives, and it does that at the cost of
+> demoting true ones. Contested findings deserve a pass by hand, not a filing.
+
+---
+
+## What the review missed
+
+Four defects of the same character as the Tier 1 findings — silent, in the training path, changing what a
+run measures — were **not** found by this review. All four surfaced later, from targeted investigation of
+the training architecture rather than from a general sweep, and all four are fixed on the branch. They are
+recorded here because a review's blind spots say as much as its findings.
+
+**1. Augmentation ran after `Normalize`, erasing it** (`dataset.py:60`, fixed in `0acf91a`). The transform
+pipeline applied `augmentation` to the *normalized tensor*. RandAugment and ColorJitter clamp a float
+tensor back into `[0, 1]`, so enabling any of the five shipped augmentation configs silently discarded
+normalization entirely. It now runs on the PIL image — matching `open_clip_ext.transform`, which already
+documents inserting TrivialAugmentWide "before MaybeToTensor so it operates on PIL images". The review
+read `dataset.py` (it produced Tier 2 #17/#33/#36 about `compute_mean_and_std_dev` in the same file) and
+walked past this.
+
+**2. `cls_num_list` was positionally misaligned** (`dataset.py:206`, fixed in `0acf91a`). Built with
+`np.unique(..., return_counts=True)`, which returns counts only for *observed* labels — so a single class
+absent from the train split shifted every later class's count down one slot. The imbalance-aware losses
+index that array by class id, so LDAM, balanced-meta-softmax and max-margin were all computing margins
+from another class's frequency. Now `np.bincount(minlength=num_classes)`, with empty classes clamped to 1
+and warned about, because `0` makes LDAM's `1/⁴√n` infinite and the rescale turns the *entire* margin
+vector into zeros and NaN. This one is arguably worse than 1.4: it is silent on every long-tail config,
+not just `max_margin`.
+
+**3. Evaluation held the full logit matrix** (fixed in `6d6061d`). `Trainer` concatenates per-batch
+predictions across the whole eval set with no `preprocess_logits_for_metrics` hook, so evaluation
+allocated an `(n_eval, n_classes)` float array — **7.45 GiB** for a 1M-image split over 2000 classes, and
+growing with the class space every time a source is added. Reducing each batch to its top-k indices brings
+that to 0.04 GiB, a 200× reduction, with top-1 bit-identical.
+
+**4. CLIP pretraining logged nothing at all** (fixed in `7452196`). `scripts/train_clip.sh` never passed
+`--report-to`, and upstream derives `args.wandb = 'wandb' in args.report_to` from a flag defaulting to
+`''` — so neither the contrastive losses nor the classification metrics the project's own patched
+`evaluate()` computes were ever recorded. `WANDB_MODE=offline` in the script chooses *where* wandb writes;
+it does not enable logging. The review covered `configs/` composition (1.10) but never asked whether the
+`tracking` config group actually reaches the contrastive path. It does not — it is argparse-only upstream.
+
+One further trap, found while fixing rather than reviewing, is worth recording because it is invisible in
+a diff: **`nn.Module.__setattr__` silently defeats property setters.** Assigning a Module to a name backed
+by a property (`model.head = CosineClassifier(...)`) goes straight into `self._modules` and never reaches
+the setter — registering a dead `head.*` entry in `state_dict()` while `.head` keeps returning the
+original `Linear`. Training would have run entirely on the old head while the new one accumulated
+gradients into nothing. `ClipClassifier.set_head` (`clip_model.py:117`) exists for exactly this reason,
+with a post-install identity check so the failure can never be quiet again.
+
+**What this suggests about the method.** The review was organised by *file and subsystem*; every one of
+these four is a defect in a **contract that spans two components** — the ordering between augmentation and
+normalization, the index alignment between a count array and a loss, the memory contract between `Trainer`
+and its metrics hook, the argument contract between a Hydra config group and an argparse entry point. A
+per-file sweep does not have a natural place to stand to see those. Combined with #72 (a real bug the
+majority-refute rule demoted to "contested"), the pattern is that this method is well-tuned for
+*local* defects and blind to *interface* ones.
+
 ---
 
 ## Suggested order of work
 
+Item 3 is done; the rest stands as written. **The highest-ranked items are still open** — the work so far
+went to the training path, not to the data pipeline, because that is what was asked for. Anyone picking
+this up should start at 1, not where the branch left off.
+
 1. **Stop the bleeding on the taxonomy CSV** — 1.1 and its sibling 1.2. Both destroy data on a command
-   the project documents as safe/idempotent. Neither has a test.
-2. **1.3** — every incremental build against a versioned artifact is currently blocked.
-3. **1.4 / 1.5 / 1.8** — three of the seven selectable training configurations are silently wrong. A
-   permutation-invariance property test over `loss.py` and one `freeze_backbone` assertion cover all of it.
+   the project documents as safe/idempotent. Neither has a test. ***Still open — do this first.***
+2. **1.3** — every incremental build against a versioned artifact is currently blocked. ***Still open.***
+3. ~~**1.4 / 1.5 / 1.8**~~ — **done in `0acf91a`**, except 1.5, which is open on purpose: the fix this
+   review proposed does not work (see 1.5a) and guessing would change the objective silently. The
+   permutation-invariance property test suggested here exists and covers all seven losses; the
+   `freeze_backbone` case now raises rather than proceeding. Contested #72 was fixed alongside them.
 4. **1.6 / 1.7** — the mislabels are already in a published artifact, so this needs the golden-diff gate
    that `KNOWN_ISSUES.md` itself flags as not yet built. Fix the *guard* (1.7) first so nothing new lands.
-5. **1.9** — one-line redaction, removes a credential from logs.
+   ***Still open.***
+5. **1.9** — one-line redaction, removes a credential from logs. ***Still open, and the cheapest item on
+   this list.***
 6. **1.10 + Tier 3** — mostly mechanical; a "every config group member composes" test prevents recurrence.
+   ***Still open.***
 
 Two structural gaps deserve naming, because most of Tier 1 traces back to them:
 
@@ -367,6 +537,12 @@ Two structural gaps deserve naming, because most of Tier 1 traces back to them:
   into one fix.
 - **The golden-diff harness still does not exist.** `KNOWN_ISSUES.md` already says so. 1.1 and 1.6 are
   both cases where a diff against the published reference would have caught silent corruption immediately.
+
+A third gap is visible only in hindsight, from the defects listed under
+[What the review missed](#what-the-review-missed): **nothing in the project pins the contracts that span
+two components.** The augmentation/normalization ordering, the `cls_num_list` index alignment, and the
+`tracking` config group's reach into the contrastive path were each wrong for as long as they existed,
+under a green suite, because every test checked one side of the interface at a time.
 
 ---
 
@@ -381,3 +557,13 @@ Two structural gaps deserve naming, because most of Tier 1 traces back to them:
   reproduction was possible, executed. The commands and their outputs are quoted inline above.
 - One finding the panel marked CONTESTED (1.5, RAL) is promoted to Tier 1 on the strength of my own
   measurement.
+
+**Added after the remediation pass**, since they bear on how much weight to give the rest:
+
+- The panel's majority-refute rule is tuned against false positives and demoted at least one true defect
+  to "contested" (#72, a real learning-rate bug under gradient accumulation). Read the contested list by
+  hand rather than filing it.
+- Being reproduced does not make a finding's *proposed fix* right. 1.5 was reproduced correctly and its
+  suggested remedy was still wrong — measurably so. Reproduce the fix, not just the bug.
+- The review's per-file organisation missed four training-path defects of Tier 1 character, every one of
+  them a contract spanning two components. See [What the review missed](#what-the-review-missed).
