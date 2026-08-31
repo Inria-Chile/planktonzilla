@@ -61,6 +61,10 @@ pz_planktonzilla = 'planktonzilla.planktonzilla_dataset.make_planktonzilla:main'
 pz_generate_planktonzilla = 'planktonzilla.planktonzilla_dataset.generate_planktonzilla:main'
 pz_update_planktonzilla = 'planktonzilla.planktonzilla_dataset.update_planktonzilla:main'
 pz_sankey = 'planktonzilla.planktonzilla_dataset.sankey:main'
+# External-authority verification of planktonzilla_taxonomy.csv. --report is network-free and
+# is what CI runs (via tests/test_taxonomy_authority_crosschecks.py); --refresh-snapshot is the
+# occasional network stage that re-harvests WoRMS / NCBI / Wikidata.
+pz_verify_taxonomy = 'planktonzilla.planktonzilla_dataset.utils.verify_taxonomy_ids:main'
 
 [dependency-groups]
 dev = [
