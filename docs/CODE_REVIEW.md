@@ -7,6 +7,9 @@ HIGH finding by the reviewer of record.
 **Status:** the findings below are as first reported against `0df8004` and have **not** been rewritten —
 the reproductions stand as recorded. [Remediation status](#remediation-status) tracks what has since been
 fixed on `claude/code-review-l4k0db`; findings whose status changed carry an inline badge.
+**`main` has since moved** to `e4ebdd4` — see [Changes on `main` since the review](#changes-on-main-since-the-review)
+for what that does and does not affect. Short version: it adds taxonomy verification tooling, changes no
+data, and closes none of the findings.
 
 132 raw findings → 123 after dedup → **49 refuted outright**, 51 confirmed unanimously, 28 contested.
 A completeness sweep added 10 new candidates, 5 of which survived. **79 findings reported below.**
@@ -48,7 +51,7 @@ review ranks highest — are **all still open**.
 | 1.8 `freeze_backbone` freezes the head too | **fixed** | `train.py:285`, `clip_model.py:99` · `0acf91a` |
 | #72 losses ignore `num_items_in_batch` | **fixed** (promoted from contested) | `train.py:327` · `0acf91a` |
 | 1.5 `RobustAsymmetricLoss` focusing weight | **open — the fix this review proposed does not work** | strict xfail, `tests/test_loss.py:161` |
-| 1.1, 1.2, 1.3, 1.6, 1.7, 1.9, 1.10 | **open** | — |
+| 1.1, 1.2, 1.3, 1.6, 1.7, 1.9, 1.10 | **open** | 1.6 / 1.7 re-verified against `main` `e4ebdd4` — still live |
 | Tier 2 (17 entries), Tier 3 (11 entries) | **open** | — |
 
 So, of the ten Tier 1 findings: **2 closed** (1.4, 1.8), **1 re-diagnosed and left open on purpose**
@@ -70,6 +73,91 @@ Gates on the current head (`9a31b32`), against the `0df8004` baseline above:
 
 The xfail is 1.5, recorded `strict=True` so it converts to a failure the moment a real fix lands.
 `tests/test_datasets.py` was not re-run: it is network-bound (Tier 3 #40) and unaffected by these changes.
+
+---
+
+## Changes on `main` since the review
+
+`main` moved from `0df8004` to **`e4ebdd4`** (PR #33, *Automate external-authority verification of
+`planktonzilla_taxonomy.csv`*) after this review was written. It lands squarely on the subject of findings
+1.6 and 1.7, so it deserves an explicit answer rather than an assumption.
+
+**What it adds** — 91.6k lines, all *additions*, no file modified:
+
+| | |
+| --- | --- |
+| `utils/verify_taxonomy_ids.py` | 1487 lines; new `pz_verify_taxonomy` entry point |
+| `utils/authority_snapshot.json` | 86.6k lines — harvested WoRMS / NCBI / Wikidata records |
+| `utils/authority_findings.csv` | 2331 findings: **59 ERROR, 718 WARN, 1554 INFO** |
+| `utils/AUTHORITY_WAIVERS.json`, `AUTHORITY_VERIFICATION.md` | waiver ledger and documentation |
+| `tests/test_taxonomy_authority_crosschecks.py` | 308 lines; the `--report` stage is network-free and runs in CI |
+
+This is a substantial and welcome piece of work, and it is the *kind* of gate this review asked for. It is
+not, however, the gate that catches 1.6.
+
+**It does not close any finding in this review.**
+
+- **`planktonzilla_taxonomy.csv` is byte-identical between `0df8004` and `e4ebdd4`** (2358 data rows
+  both sides, `cmp` clean). The tooling reports; it corrects nothing. Every data finding stands unchanged.
+- **1.6 is still live, verbatim.** On `e4ebdd4`, `tara_pacific_hsn`, `tara_pacific_manta` and `zooscan`
+  still publish `Raw_Labels=Harpacticoida` as `Family=tachidiidae, Genus=euterpina`, aphia **115348**,
+  while `global_uvp5`, `isiisnet`, `planktoscope`, `sykezooscan2024` and `zoocamnet` all carry the correct
+  `harpacticoida`, aphia **1102**. `Creseidae` splits the same way.
+- **1.7 is untouched.** Neither `build_tara_pacific_taxonomy.py` nor
+  `tests/test_tara_pacific_taxonomy.py` is modified by the merge, so the Kingdom-only guard is still the
+  Kingdom-only guard.
+
+**Why the new tooling does not catch it — and this is the useful part.** Of its 23 checks, 22 are
+*vertical*: take a row, read the taxon it claims to be, ask whether NCBI / WoRMS / Wikidata agree. The
+one exception, `id_reused_across_taxa`, is horizontal but on the **identifier** axis — one ID appearing
+under several taxa. Findings are keyed and grouped by `proposed_label`, "the label implied by a row's rank
+columns" (`verify_taxonomy_ids.py:250`); `Raw_Labels` appears exactly once in the whole 1487-line script,
+as part of `KEY_COLS`.
+
+1.6 is horizontal on the **label** axis — two rows sharing a `Raw_Labels` that claim **different taxa**,
+with *different* IDs, so `id_reused_across_taxa` does not see it either. Grouping by
+`proposed_label` puts them in different groups by construction: the good rows land under `harpacticoida`,
+the mislabeled ones under `euterpina`, and nothing ever compares the two. The tool does flag the
+mislabeled rows — `870ef3d38bfa`, WARN, "'tachidiidae' is absent from the authority's classification of
+163465" — but for an unrelated internal inconsistency, at WARN, in a file of 2331 findings. The row is
+*self*-consistent enough to survive: aphia 115348 really is Euterpina. It is simply attached to the wrong
+class directory, and an ID-verification pass has no way to know that.
+
+**The missing check, and its yield.** Grouping the shipped CSV by `Raw_Labels` instead:
+
+- 1627 distinct `Raw_Labels`
+- **20** where rows disagree on the taxon name itself
+- **16** of those are *rank inflation* — some rows claim a strictly deeper taxon than others for the same
+  label, which is exactly 1.6's shape
+
+```
+  Raw_Labels                 depth   deeper taxon        asserted by
+  Annelida                   2->6    poeobius            uvp6net          <- phylum published as a genus
+  other_living               0->4    monstrilloida       zooscan          <- catch-all bucket given a taxon
+  unknown                    0->3    thecofilosea        global_uvp5      <- ditto
+  Foraminifera               2->5    globigerinidae      zooscan
+  Thecosomata                4->7    cavolinia inflexa   uvp6net
+  Acantharia                 3->6    amphibelone         flowcamnet
+  Cladocera                  3->6    cladoceramus        zoocamnet
+  actinula                   3->7    solmundella bitentaculata   zooscan
+  Harpacticoida              4->6    euterpina           tara_pacific_hsn, tara_pacific_manta, zooscan
+  Creseidae                  5->7    clio pyramidata     tara_pacific_hsn, tara_pacific_manta, zooscan
+  … and 6 more (Dinophyceae, Ornithocercus, Penilia, Trachymedusae, filament, nauplii)
+```
+
+Not all 16 are necessarily wrong — `nauplii → copepoda` is defensible, and the remaining 4 of the 20 look
+like genuine synonymy or revision rather than inflation (`Neoceratium`/`tripos`,
+`Heterocapsa triquetra`/`Kryptoperidinium triquetrum`, plus two non-taxonomic buckets). But the list
+contains **both of 1.6's confirmed cases** and several that are worse: a phylum published as a genus, and
+two explicitly non-taxonomic buckets (`other_living`, `unknown`) assigned real taxa.
+
+That is a one-pass, network-free check over a file the project already ships, and it belongs next to the
+authority verification rather than instead of it — the two are orthogonal. It also gives 1.7 its natural
+fix: compare all seven rank columns, not `Kingdom`.
+
+**Merge state.** The branch merges into `e4ebdd4` with **no conflicts**. The only file both sides touch is
+`pyproject.toml`, where each adds an independent console-script entry (`pz_verify_taxonomy` on `main`,
+`pz_train_clip` here).
 
 ---
 
@@ -272,6 +360,12 @@ gave that interval as `[0.64, 1.0]`; that was wrong, and the same wrong figure r
 
 ### 1.6 Two published Tara Pacific taxonomy blocks carry the wrong taxon
 
+> **STILL OPEN on `main` `e4ebdd4`**, re-verified after PR #33. The taxonomy CSV is byte-identical to
+> `0df8004`, and both mislabels are still published. The new authority tooling groups by
+> `proposed_label`, so it cannot see this class of defect; grouping by `Raw_Labels` instead surfaces
+> **16 rank-inflation cases**, these two among them. See
+> [Changes on `main`](#changes-on-main-since-the-review).
+
 `planktonzilla/planktonzilla_dataset/utils/build_tara_pacific_taxonomy.py:455`
 
 `_existing_indexes` builds the verbatim-reuse index with `by_raw.setdefault(row["Raw_Labels"], row)` —
@@ -299,6 +393,9 @@ flowcamnet's `codonellopsis morchella`.
 dir's own EcoTaxa rank, and route ambiguous keys into the reconciliation report for human resolution.
 
 ### 1.7 The guard that is supposed to catch 1.6 compares only one column
+
+> **STILL OPEN on `main` `e4ebdd4`.** PR #33 modifies no existing file, so neither
+> `build_tara_pacific_taxonomy.py` nor this test changed; the `Kingdom`-only predicate stands.
 
 `tests/test_tara_pacific_taxonomy.py:270`
 
