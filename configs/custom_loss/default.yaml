@@ -3,3 +3,8 @@
 custom_loss:
   _target_: planktonzilla.loss.CrossEntropyLossHF
   weight: null
+  # Set label smoothing HERE, not via training_arguments.label_smoothing_factor: the HF
+  # Trainer skips its own smoother whenever compute_loss_func is set, and this project
+  # always sets one. Also available on ldam / balanced_meta_softmax / max_margin; the
+  # asymmetric losses smooth internally via their own `eps`.
+  label_smoothing: 0.0

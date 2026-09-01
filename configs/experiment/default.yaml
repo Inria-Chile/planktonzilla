@@ -1,7 +1,18 @@
 # @package _global_
 
-# to execute this experiment run:
-# python train.py experiment=example
+# Base experiment config. Every `base_*.yaml` in this group inherits it, so the keys here must
+# all resolve — a dead interpolation breaks every experiment at once, which is what happened
+# before: `experiment_metadata` referenced `model.net.model_name`, `model.criterion._target_`
+# and `dataset.sampler_type`, none of which any config defines. They are PyTorch-Lightning-era
+# names that outlived the migration to the Hugging Face `Trainer`, and they took the whole
+# group down with them (see docs/CODE_REVIEW.md finding 1.10).
+#
+# Run one with:
+#   pz_train experiment=base_lensless
+#
+# `experiment_metadata` is live: `planktonzilla.utils.hydra` logs each entry as a tracked
+# hyperparameter, so anything added here shows up beside the run's metrics. Add only keys that
+# some config actually defines — `pz_train experiment=default` is the check.
 
 defaults:
   - override /dataset: default.yaml
@@ -13,25 +24,7 @@ defaults:
 experiment_metadata:
   dataset: ${strip_yaml_suffix:${hydra:runtime.choices.dataset}}
   model_name: ${strip_yaml_suffix:${hydra:runtime.choices.model}}
-  loss: ${model.criterion._target_}
   augmentation_name: ${strip_yaml_suffix:${hydra:runtime.choices.augmentation}}
-  sampler_type: ${dataset.sampler_type}
-
-# all parameters below will be merged with parameters from default configurations set above
-# this allows you to overwrite only specified parameters
-trainer:
-  max_epochs: 200
-
-find_optimal_batch_size: false
-find_optimal_learning_rate: false
-hgfc_hub_base_model_name: inria-chile/${model.net.model_name}_${strip_yaml_suffix:${hydra:runtime.choices.dataset}}
-pytorch_script_filename: ${model.net.model_name}_${strip_yaml_suffix:${hydra:runtime.choices.dataset}}.script.pt
-
-
-logger:
-  wandb:
-    tags: ${tags}
-    project: none # to be set at runtime
-    entity: oceania-plankton # set to name of your wandb team
-    name: ${model.net.model_name}__${strip_yaml_suffix:${hydra:runtime.choices.dataset}}
-    log_model: false
+  loss: ${custom_loss._target_}
+  head_type: ${head_type}
+  precision: ${precision}

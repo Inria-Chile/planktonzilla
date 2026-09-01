@@ -125,7 +125,7 @@ class LDAMLoss(AbstractHFLoss):
     *Note:* Adapted from from: <https://github.com/kaidic/LDAM-DRW/blob/master/losses.py>.
     """
 
-    def __init__(self, cls_num_list: list[int], max_m: float = 0.5, weight=None, s: int = 30):
+    def __init__(self, cls_num_list: list[int], max_m: float = 0.5, weight=None, s: int = 30, label_smoothing: float = 0.0):
         super().__init__()
         assert cls_num_list is not None
         assert s > 0
@@ -134,6 +134,9 @@ class LDAMLoss(AbstractHFLoss):
         self.max_m = max_m
         self.weight = weight
         self.s = s
+        # See CrossEntropyLossHF.label_smoothing: TrainingArguments.label_smoothing_factor
+        # never reaches a custom loss, so the knob has to live here.
+        self.label_smoothing = label_smoothing
 
         m_list = 1.0 / np.sqrt(np.sqrt(self.cls_num_list))
         m_list = m_list * (self.max_m / np.max(m_list))
@@ -158,7 +161,7 @@ class LDAMLoss(AbstractHFLoss):
         x_m = logits - batch_m
 
         output = torch.where(index, x_m, logits)
-        return F.cross_entropy(self.s * output, target, weight=self.weight)
+        return F.cross_entropy(self.s * output, target, weight=self.weight, label_smoothing=self.label_smoothing)
 
 
 class MaximumMarginLoss(nn.Module):
@@ -188,7 +191,14 @@ class MaximumMarginLoss(nn.Module):
     """
 
     def __init__(
-        self, cls_num_list: list[int], max_m: float = 0.5, weight=None, s: int = 30, gamma: float = 1.1, ldam: bool = False
+        self,
+        cls_num_list: list[int],
+        max_m: float = 0.5,
+        weight=None,
+        s: int = 30,
+        gamma: float = 1.1,
+        ldam: bool = False,
+        label_smoothing: float = 0.0,
     ):
         super().__init__()
 
@@ -202,6 +212,8 @@ class MaximumMarginLoss(nn.Module):
         self.max_m = max_m
         self.gamma = gamma
         self.ldam = ldam
+        # See CrossEntropyLossHF.label_smoothing.
+        self.label_smoothing = label_smoothing
 
     def weight(self, freq_bias, target, args):
         """Compute per-class weights from frequency bias and `args.beta`.
@@ -235,7 +247,15 @@ class MaximumMarginLoss(nn.Module):
         obj_neg_labels = 1.0 - index_float
         obj_neg_dists = rm_obj_dists * obj_neg_labels
 
-        min_pos_prob = rm_obj_dists[:, labels.data.cpu().numpy()[0]].data
+        # Per-row ground-truth score. This previously read
+        # `rm_obj_dists[:, labels.data.cpu().numpy()[0]]`, where the index is a *scalar* —
+        # the label of whichever example the DataLoader shuffled to position 0 — so one
+        # logit column was used as the "positive" score for every row in the batch. The
+        # margin was therefore measured against an arbitrary class, and the loss was not
+        # permutation-invariant (the same batch in a different row order gave a different
+        # value). `index_float` is the caller's one-hot of `labels`, already on the right
+        # device, so this also drops a GPU->CPU sync.
+        min_pos_prob = (rm_obj_dists * index_float).sum(1).data
         max_neg_prob = obj_neg_dists.max(1)[0].data
 
         # estimate the margin between dists and gt labels
@@ -279,7 +299,7 @@ class MaximumMarginLoss(nn.Module):
         x_m = x - batch_hmm
 
         output = torch.where(index, x_m, x)
-        return F.cross_entropy(self.s * output, target, weight=self.weight)
+        return F.cross_entropy(self.s * output, target, weight=self.weight, label_smoothing=self.label_smoothing)
 
 
 class AsymmetricLoss(AbstractHFLoss):
@@ -403,11 +423,36 @@ class RobustAsymmetricLoss(AbstractHFLoss):
         log_preds = self.logsoftmax(inputs)
         self.targets_classes = torch.zeros_like(inputs).scatter_(1, target.long().unsqueeze(1), 1)
 
-        # ASL weights
+        # ASL weights.
+        #
+        # KNOWN DEFECT, deliberately NOT "fixed" here — see
+        # `tests/test_loss.py::test_robust_asymmetric_loss_does_not_yet_suppress_easy_negatives`,
+        # which is a strict xfail carrying the measurement. Unlike the sibling
+        # `AsymmetricLoss` (lines 332-333), neither robustness term is masked by its label
+        # indicator, so the focusing base `1 - xs_pos - xs_neg` does not reduce to `1-p` on
+        # the target column and `p` on the negatives. Measured with the shipped defaults,
+        # the weight on a confidently-correct negative (p=1e-6) is ~1.0 where the intended
+        # `p ** gamma_neg` is ~1e-24, and RAL returns ~1870x the loss ASL gives on the same
+        # well-classified batch.
+        #
+        # Masking the two terms the way ASL does does NOT repair it: this negative term
+        # tends to 0 as p -> 0 (`q*log(q)*-(lamb-q)*q**2` with `q = 1-p`), so the base
+        # tends to 1 either way — measured 0.999999 at p=1e-6. The defect is in the terms
+        # themselves, not the mask, so repairing it needs the published RAL formulation
+        # rather than an analogy to ASL. Guessing here would change the objective silently.
+        #
+        # One strictly-local robustness fix IS applied: the trailing `torch.log(xs_pos)`
+        # was unclamped and returns -inf once p underflows to 0 (routine under fp16 softmax
+        # over ~1000 classes), which makes the whole term NaN. It now has a dtype-tiny
+        # floor, chosen instead of `self.eps` (0.1) precisely so it bites only at that
+        # degenerate point rather than for every p < 0.1. Swept over p in (0, 1) at 200k
+        # points the focusing base stays in [0.409, 1.0] -- minimum 0.409365 at p=0.1348,
+        # never negative -- so no clamp is needed before `torch.pow`.
         targets = self.targets_classes
         anti_targets = 1 - targets
         xs_pos = torch.exp(log_preds)
         xs_neg = 1 - xs_pos
+        log_floor = torch.finfo(xs_pos.dtype).tiny
         xs_pos = (
             torch.exp(log_preds)
             * (
@@ -415,7 +460,7 @@ class RobustAsymmetricLoss(AbstractHFLoss):
                 + self.epsilon_pos * (1 - xs_pos.clamp(min=self.eps))
                 + self.epsilon_pos_pow * 0.5 * torch.pow(1 - xs_pos.clamp(min=self.eps), 2)
             )
-            * torch.log(xs_pos)
+            * torch.log(xs_pos.clamp(min=log_floor))
         )
         xs_neg = (
             (1 - xs_pos)
@@ -458,9 +503,11 @@ class BalancedMetaSoftmaxLoss(AbstractHFLoss):
     <https://arxiv.org/abs/2007.10740>
     """
 
-    def __init__(self, cls_num_list: list[int]):
+    def __init__(self, cls_num_list: list[int], label_smoothing: float = 0.0):
         super().__init__()
         self.cls_num_list = torch.tensor(cls_num_list).float()
+        # See CrossEntropyLossHF.label_smoothing.
+        self.label_smoothing = label_smoothing
 
     def forward(self, output: ImageClassifierOutputWithNoAttention, target, **kwargs):
         """Compute Balanced Meta-Softmax loss.
@@ -469,7 +516,7 @@ class BalancedMetaSoftmaxLoss(AbstractHFLoss):
         """
         logits = output.logits
         adjusted_logits = logits + self.cls_num_list.log().to(logits.device)
-        loss = F.cross_entropy(adjusted_logits, target)
+        loss = F.cross_entropy(adjusted_logits, target, label_smoothing=self.label_smoothing)
         return loss
 
 
@@ -482,12 +529,17 @@ class CrossEntropyLossHF(AbstractHFLoss):
 
     Args:
         weight: Optional per-class rescaling weights passed to ``cross_entropy``.
+        label_smoothing: Passed straight to ``F.cross_entropy``. Set here rather than via
+            ``TrainingArguments.label_smoothing_factor``, which the HF ``Trainer`` skips
+            entirely whenever ``compute_loss_func`` is set — and this project always sets
+            one, since ``configs/custom_loss/default.yaml`` selects this class.
     """
 
-    def __init__(self, weight=None):
+    def __init__(self, weight=None, label_smoothing: float = 0.0):
         super().__init__()
         self.weight = weight
+        self.label_smoothing = label_smoothing
 
     def forward(self, output, target, **kwargs):
         """Compute weighted cross-entropy over ``output.logits`` against ``target``."""
-        return F.cross_entropy(output.logits, target, weight=self.weight)
+        return F.cross_entropy(output.logits, target, weight=self.weight, label_smoothing=self.label_smoothing)

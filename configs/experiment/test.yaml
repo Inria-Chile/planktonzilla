@@ -1,41 +1,23 @@
 # @package _global_
 
-# to execute this experiment run:
-# python train.py experiment=example
+# Fast smoke run — a single short epoch over CIFAR-10, for checking that the training path
+# executes end to end. Not a plankton experiment and not a benchmark.
+#
+#   pz_train experiment=test
+#
+# Previously this referenced `model/timm-resnet18`, `augmentation/none` and
+# `tracking/many_loggers` (none of which exist) and carried a PyTorch-Lightning-era body —
+# `trainer.max_epochs`, `datamodule.dataset_size`, `model.criterion` — that the Hugging Face
+# `Trainer` path does not read. Epoch count now goes through `training_arguments`, which is
+# where this project's trainer actually looks.
 
 defaults:
+  - default.yaml
   - override /dataset: cifar10.yaml
-  - override /model: timm-resnet18.yaml
-  - override /augmentation: none.yaml
+  - override /model: resnet18.yaml
+  - override /augmentation: default.yaml
   - override /training_arguments: default.yaml
-  - override /tracking: many_loggers.yaml
+  - override /tracking: default.yaml
 
-experiment_metadata:
-  dataset: ${strip_yaml_suffix:${hydra:runtime.choices.dataset}}
-  model_name: ${strip_yaml_suffix:${hydra:runtime.choices.model}}
-  loss: ${model.criterion._target_}
-  aumentation_name: ${strip_yaml_suffix:${hydra:runtime.choices.augmentation}}
-  weighted_random_sampling: ${dataset.weighted_random_sampling}
-  imbalanced_dataset_sampler: ${dataset.imbalanced_dataset_sampler}
-  experimental_augmentation_sampler: ${dataset.experimental_augmentation_sampler}
-
-# all parameters below will be merged with parameters from default configurations set above
-# this allows you to overwrite only specified parameters
-trainer:
-  max_epochs: 1
-
-datamodule:
-  dataset_size: 100
-
-#find_optimal_batch_size: false
-#find_optimal_learning_rate: true
-#hgfc_hub_base_model_name: inria-chile/${model.net.model_name}_${strip_yaml_suffix:${hydra:runtime.choices.datamodule}}
-# pytorch_script_filename: ${model.net.model_name}_${strip_yaml_suffix:${hydra:runtime.choices.datamodule}}.script.pt
-
-
-# logger:
-#   wandb:
-#     tags: ${tags}
-#     project: planktonzilla # to be set at runtime
-#     entity: oceania-plankton # set to name of your wandb team
-#     name: ${model.net.model_name}_${strip_yaml_suffix:${hydra:runtime.choices.datamodule}}_${now:%Y%m%d_%H%M%S}
+training_arguments:
+  num_train_epochs: 1

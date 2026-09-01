@@ -25,7 +25,6 @@ import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
 
 import os
-from functools import partial
 
 import hydra
 import numpy as np
@@ -42,6 +41,7 @@ from transformers import AutoModelForImageClassification, Trainer, TrainingArgum
 
 from planktonzilla.clip_model import ClipClassifier
 from planktonzilla.dataset import DatasetWrapper
+from planktonzilla.heads import replace_head_with_cosine
 from planktonzilla.utils import resolvers as _resolvers  # noqa: F401  -- side-effect: registers strip_yaml_suffix
 from planktonzilla.utils.hydra import (
     get_metric_value,
@@ -113,26 +113,269 @@ def validate_environment(cfg: DictConfig | None = None):
 #     return {**res, **acc}
 
 
-def compute_metrics(eval_pred):
-    """Compute classification metrics for the Hugging Face ``Trainer``.
+def build_preprocess_logits_for_metrics(top_k: int = 5):
+    """Reduce each eval batch's logits to its top-k class indices before they accumulate.
 
-    Takes the argmax over predicted logits and compares against the reference labels, returning
-    a dict with ``accuracy`` plus macro-averaged ``f1``, ``precision`` and ``recall`` (macro
-    averaging weights every class equally, which matters for the long-tailed plankton classes).
+    `Trainer` concatenates whatever `prediction_step` returns across the whole evaluation
+    set before handing it to `compute_metrics`, so without this hook it holds an
+    ``(n_eval, n_classes)`` float array in memory — for a million validation images over a
+    few thousand plankton classes that is gigabytes, and it grows with the class space
+    every time a source is added. Only the ranking is needed downstream, so keeping the
+    top-k indices bounds the accumulation at ``(n_eval, k)`` int64.
+
+    This does not change any metric: the top-1 index is the same argmax `compute_metrics`
+    used to take itself.
+    """
+
+    def preprocess_logits_for_metrics(logits, labels):
+        if isinstance(logits, (tuple, list)):
+            logits = logits[0]
+        return logits.topk(min(top_k, logits.shape[-1]), dim=-1).indices
+
+    return preprocess_logits_for_metrics
+
+
+def shot_group_recall(labels, predictions, cls_num_list, few_shot_max: int, many_shot_min: int) -> dict:
+    """Per-class recall averaged within each long-tail shot group.
+
+    A single macro-F1 cannot distinguish "helped the tail, cost a little head accuracy"
+    from noise, which is the comparison every imbalance-learning change in this repo is
+    actually trying to make. Classes are bucketed by how many *training* images they have
+    — the standard many/medium/few-shot split from the long-tail literature — and each
+    bucket reports the mean of its per-class recalls.
+
+    Classes absent from the evaluation split contribute nothing (they have no recall to
+    measure), and a bucket with no such classes is omitted rather than reported as 0.0.
+    """
+    counts = np.asarray(cls_num_list)
+    buckets: dict[str, list[float]] = {"many_shot": [], "medium_shot": [], "few_shot": []}
+
+    for class_id in np.unique(labels):
+        mask = labels == class_id
+        recall = float((predictions[mask] == class_id).mean())
+        n_train = int(counts[class_id]) if class_id < len(counts) else 0
+        if n_train < few_shot_max:
+            buckets["few_shot"].append(recall)
+        elif n_train <= many_shot_min:
+            buckets["medium_shot"].append(recall)
+        else:
+            buckets["many_shot"].append(recall)
+
+    metrics = {}
+    for name, recalls in buckets.items():
+        metrics[f"n_classes_{name}"] = len(recalls)
+        if recalls:
+            metrics[f"recall_{name}"] = float(np.mean(recalls))
+    return metrics
+
+
+def build_compute_metrics(cls_num_list=None, top_k: int = 5, shot_thresholds: tuple[int, int] = (20, 100)):
+    """Build the `Trainer`'s `compute_metrics`, optionally with long-tail shot groups.
+
+    Always reports ``accuracy`` plus macro ``f1`` / ``precision`` / ``recall`` (macro recall
+    is balanced accuracy, so it is not reported twice under another name). Adds
+    ``top{k}_accuracy`` and, when `cls_num_list` is supplied, the per-shot-group recalls
+    from :func:`shot_group_recall`.
+
+    Accepts either the top-k index array produced by
+    :func:`build_preprocess_logits_for_metrics` (integer dtype) or raw logits (floating
+    dtype), so the metrics stay computable if that hook is ever unwired.
 
     Note:
         requires training_args.eval_do_concat_batches = True
     """
+    few_shot_max, many_shot_min = shot_thresholds
 
-    predictions = np.argmax(eval_pred.predictions, axis=-1)
-    labels = eval_pred.label_ids
+    def compute_metrics(eval_pred):
+        predictions = np.asarray(eval_pred.predictions)
+        labels = np.asarray(eval_pred.label_ids)
 
-    return {
-        "accuracy": accuracy_score(labels, predictions),
-        "f1": f1_score(labels, predictions, average="macro", zero_division=0),
-        "precision": precision_score(labels, predictions, average="macro", zero_division=0),
-        "recall": recall_score(labels, predictions, average="macro", zero_division=0),
-    }
+        if np.issubdtype(predictions.dtype, np.floating):
+            # Raw logits: rank them here instead. Same result, more memory.
+            ranked = np.argsort(-predictions, axis=-1)[:, :top_k]
+        else:
+            ranked = predictions if predictions.ndim == 2 else predictions[:, None]
+
+        top1 = ranked[:, 0]
+        metrics = {
+            "accuracy": accuracy_score(labels, top1),
+            "f1": f1_score(labels, top1, average="macro", zero_division=0),
+            "precision": precision_score(labels, top1, average="macro", zero_division=0),
+            "recall": recall_score(labels, top1, average="macro", zero_division=0),
+        }
+
+        k = ranked.shape[1]
+        if k > 1:
+            metrics[f"top{k}_accuracy"] = float((ranked == labels[:, None]).any(axis=1).mean())
+
+        if cls_num_list is not None:
+            metrics.update(shot_group_recall(labels, top1, cls_num_list, few_shot_max, many_shot_min))
+
+        return metrics
+
+    return compute_metrics
+
+
+# Module-level default for callers that just want the metric set with no long-tail groups.
+compute_metrics = build_compute_metrics()
+
+
+def resolve_precision(precision, training_args) -> str:
+    """Set `training_args.bf16` / `.fp16` from a single `precision` knob, and say what won.
+
+    The shipped default was `fp16: true`. Every loss in `planktonzilla.loss` is built from
+    `log`, `exp` and `pow` — the operations where fp16's narrow exponent range produces inf
+    and NaN — and bf16 keeps fp32's exponent range at the same memory cost, so it is the
+    better choice wherever the hardware has it. But bf16 needs Ampere or newer, and this
+    project also targets V100/T4 boxes, so flipping the default outright would break them.
+
+    `auto` therefore picks bf16 when the GPU supports it, fp16 when it does not, and fp32
+    when there is no GPU at all (mixed precision on CPU buys nothing). An explicit
+    `bf16`/`fp16`/`fp32` forces that choice — `precision=fp16` reproduces the old default
+    exactly — and `null` leaves whatever `training_arguments` set, for full manual control.
+
+    Returns:
+        The resolved mode, for logging.
+    """
+    if precision is None:
+        return "unchanged"
+
+    choice = str(precision).lower()
+    if choice == "auto":
+        if not torch.cuda.is_available():
+            choice = "fp32"
+        else:
+            choice = "bf16" if torch.cuda.is_bf16_supported() else "fp16"
+
+    if choice not in {"bf16", "fp16", "fp32"}:
+        raise ValueError(f"precision must be one of auto/bf16/fp16/fp32 or null, got {precision!r}")
+
+    training_args.bf16 = choice == "bf16"
+    training_args.fp16 = choice == "fp16"
+    return choice
+
+
+def warn_if_label_smoothing_is_ignored(cfg, training_args) -> bool:
+    """Report that `TrainingArguments.label_smoothing_factor` cannot take effect here.
+
+    `Trainer.compute_loss` reads ``if self.compute_loss_func is not None: ... elif labels is
+    not None: <label smoothing>``, so the smoother is skipped outright whenever a custom loss
+    is set — and this project always sets one, because `configs/custom_loss/default.yaml`
+    selects `CrossEntropyLossHF`. Setting the `TrainingArguments` field would therefore be a
+    silent no-op in *every* configuration.
+
+    The working knob is the loss's own: `custom_loss.label_smoothing` on the cross-entropy
+    family, or `custom_loss.eps` on ASL/RAL, which already smooth internally.
+
+    Returns:
+        True when a warning was emitted, so callers (and tests) can assert on it.
+    """
+    factor = getattr(training_args, "label_smoothing_factor", 0.0) or 0.0
+    if factor > 0 and cfg.get("custom_loss"):
+        log.warning(
+            f"⚠️ training_arguments.label_smoothing_factor={factor} has NO effect: the HF Trainer skips its "
+            f"label smoother whenever compute_loss_func is set, and a custom loss is always configured here. "
+            f"Use custom_loss.label_smoothing instead (cross-entropy, LDAM, balanced-meta-softmax, "
+            f"max-margin), or custom_loss.eps for the asymmetric losses, which smooth internally."
+        )
+        return True
+    return False
+
+
+def should_evaluate_test_split(cfg, training_args) -> bool:
+    """Whether this run may read the TEST split. Defaults to False.
+
+    The test split used to share `do_eval` with the validation pass, so every run — every
+    hyperparameter sweep, every debugging iteration — read it. A split read on every iteration
+    is not held out: the number it reports stops being an unbiased estimate of generalisation
+    the moment anyone tunes against it.
+
+    So `do_eval` still governs validation, which is what you tune on, and the test split needs
+    `eval_test=true` asked for deliberately, once, on a final configuration. `eval_test` lives on
+    `cfg` rather than in the `training_arguments` group precisely so it does not read as one of
+    Hugging Face's own `do_*` flags — `TrainingArguments` has no such field.
+
+    Returns:
+        True only when evaluation is on *and* the test split was explicitly requested.
+    """
+    return bool(training_args.do_eval) and bool(cfg.get("eval_test", False))
+
+
+def freeze_backbone_except_head(model) -> list[str]:
+    """Freeze every parameter except the classification head's, and say which survived.
+
+    The head is resolved by identity where the model exposes one (`ClipClassifier.head`),
+    falling back to the name match that is correct for Hugging Face image-classification
+    models, whose head is named `classifier`. The previous name-only version matched
+    `"classifier" in name or "head" in name` against *every* model: on `ClipClassifier`'s
+    ViT path the head is `nn.Sequential(visual, nn.Linear(...))`, so its parameters are
+    named `1.weight` / `1.bias`, nothing matched, and `freeze_backbone=true` froze the
+    freshly-initialised head along with the backbone — leaving no trainable parameter at
+    all. `freeze_backbone` is set true in five shipped model configs.
+
+    Raises:
+        ValueError: if the selection leaves nothing trainable, which is never a usable
+            training run and is exactly how the previous defect stayed silent.
+
+    Returns:
+        The names of the parameters left trainable.
+    """
+    head = getattr(model, "head", None)
+    if isinstance(head, torch.nn.Module):
+        keep = {id(param) for param in head.parameters()}
+        selected = [name for name, param in model.named_parameters() if id(param) in keep]
+    else:
+        selected = [name for name, _ in model.named_parameters() if "classifier" in name or "head" in name]
+
+    # Checked before anything is mutated, so a caller that handles the error is not left
+    # holding a fully-frozen model.
+    if not selected:
+        raise ValueError(
+            f"freeze_backbone=true left no trainable parameters on {type(model).__name__}: no "
+            f"classification head could be identified. Expose a `head` module on the model, or "
+            f"name the head's parameters so they contain 'classifier' or 'head'."
+        )
+
+    selected_set = set(selected)
+    for name, param in model.named_parameters():
+        param.requires_grad = name in selected_set
+
+    return selected
+
+
+def build_compute_loss_func(loss_module):
+    """Adapt one of the `planktonzilla.loss` modules to the `Trainer.compute_loss_func` contract.
+
+    Hugging Face hands a custom loss function `(outputs, labels, num_items_in_batch=...)`
+    and, when one is set, *skips* its own gradient-accumulation normalisation —
+    `Trainer.training_step` divides by `current_gradient_accumulation_steps` only
+    `if (not self.model_accepts_loss_kwargs or num_items_in_batch is None) and
+    self.compute_loss_func is None`. The loss is expected to normalise by
+    `num_items_in_batch` itself, which counts items across the whole accumulation group.
+
+    Every loss in `planktonzilla.loss` takes `**kwargs` and ignores `num_items_in_batch`,
+    returning a mean over the micro-batch. With `gradient_accumulation_steps > 1` the
+    micro-batch losses were therefore summed without being divided by the number of
+    accumulation steps, inflating the gradient — and so the effective learning rate — by
+    that factor, silently. The default config uses 1 step, so this only bites when
+    someone raises it to fit a larger backbone.
+
+    Rescaling `mean * micro_batch_size / num_items_in_batch` yields
+    `sum / num_items_in_batch`, which is exactly the mean again when accumulation is 1,
+    so single-step runs are bit-for-bit unchanged.
+    """
+
+    def compute_loss(outputs, labels, num_items_in_batch=None, **kwargs):
+        loss = loss_module(outputs, labels)
+        if labels is not None and num_items_in_batch is not None:
+            total = num_items_in_batch
+            if torch.is_tensor(total):
+                total = total.to(loss.device, dtype=loss.dtype)
+            if total > 0:
+                loss = loss * labels.numel() / total
+        return loss
+
+    return compute_loss
 
 
 @task_wrapper
@@ -208,6 +451,17 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
             f"or configs/model/default_clip.yaml for examples."
         )
 
+    head_type = str(cfg.get("head_type", "linear")).lower()
+    if head_type == "cosine":
+        head = replace_head_with_cosine(
+            model,
+            scale=cfg.get("head_scale", None),
+            learnable_scale=bool(cfg.get("head_scale_learnable", True)),
+        )
+        log.info(f"Replaced the linear classification head with a cosine head: {head}.")
+    elif head_type != "linear":
+        raise ValueError(f"head_type must be 'linear' or 'cosine', got {head_type!r}")
+
     if cfg.get("peft"):
         log.info("Adding LoRA adapter(s).")
         for adapter_name in cfg.peft:
@@ -218,14 +472,15 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
     # freeze backbone
     if cfg.freeze_backbone:
         log.info("Model backbone will not be trained.")
-        for name, param in model.named_parameters():
-            if "classifier" in name or "head" in name:
-                param.requires_grad = True
-            else:
-                param.requires_grad = False
+        trainable = freeze_backbone_except_head(model)
+        log.info(f"Trainable head parameters: {trainable}.")
 
     log.info("Instantiating training arguments.")
     training_args: TrainingArguments = hydra.utils.instantiate(cfg.training_arguments, _convert_="all")
+
+    resolved_precision = resolve_precision(cfg.get("precision", None), training_args)
+    log.info(f"Mixed precision: {resolved_precision} (bf16={training_args.bf16}, fp16={training_args.fp16}).")
+    warn_if_label_smoothing_is_ignored(cfg, training_args)
 
     if cfg.model_push_to_hub:
         training_args.push_to_hub = False
@@ -255,7 +510,7 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
             loss_instance = hydra.utils.instantiate(cfg_loss, _convert_="all")
         except Exception:
             loss_instance = hydra.utils.instantiate(cfg_loss, cls_num_list=dataset_wrapper.cls_num_list, _convert_="all")
-        custom_loss = partial(loss_instance.forward)
+        custom_loss = build_compute_loss_func(loss_instance)
     else:
         log.info("Using default loss function.")
 
@@ -286,12 +541,23 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
     training_args.run_name = model.name_or_path.replace("/", "_") + "__" + cfg.dataset.name.replace("/", "_")
 
     log.info("Instantiating trainer.")
+    top_k = int(cfg.get("eval_top_k", 5))
+    shot_thresholds = tuple(cfg.get("eval_shot_thresholds", [20, 100]))
+    log.info(
+        f"Evaluating with top-{top_k} accuracy and shot groups "
+        f"few<{shot_thresholds[0]} <=medium<= {shot_thresholds[1]}<many training images per class."
+    )
     trainer: Trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=dataset_wrapper.dataset["train"],
         eval_dataset=dataset_wrapper.dataset[dataset_wrapper.val_split_name],
-        compute_metrics=compute_metrics,
+        compute_metrics=build_compute_metrics(
+            cls_num_list=dataset_wrapper.cls_num_list,
+            top_k=top_k,
+            shot_thresholds=shot_thresholds,
+        ),
+        preprocess_logits_for_metrics=build_preprocess_logits_for_metrics(top_k),
         compute_loss_func=custom_loss,
     )
 
@@ -317,11 +583,18 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
     else:
         log.info("Training skipped as per training arguments, set training_arguments.do_train=true to change this.")
 
-    if training_args.do_eval:
-        log.info("Evaluating on test set.")
+    # Validation is gated by do_eval; the TEST split needs eval_test as well, and defaults to
+    # off. See should_evaluate_test_split for why.
+    if not training_args.do_eval:
+        log.info("Evaluation skipped as per training arguments, set training_arguments.do_eval=true to change this.")
+    elif should_evaluate_test_split(cfg, training_args):
+        log.warning(
+            "⚠️ Evaluating on the TEST set. Do this once, on a final configuration — tuning against "
+            "these numbers is what makes them stop meaning anything. Use the validation split to iterate."
+        )
         test_metrics = trainer.evaluate(dataset_wrapper.dataset[dataset_wrapper.test_split_name], metric_key_prefix="test")
     else:
-        log.info("Evaluation skipped as per training arguments, set training_arguments.do_eval=true to change this.")
+        log.info("Test-set evaluation skipped (eval_test=false). Set eval_test=true for a final run.")
 
     if cfg.model_push_to_hub:
         log.info(f"Pushing trained model to HuggingFace hub as «{training_args.hub_model_id}».")

@@ -1,14 +1,14 @@
 # @package _global_
 
-# to execute this experiment run:
-# python train.py experiment=base_zoolake model=...
+# Run with:
+#   pz_train experiment=base_lensless
+#
+# Inherits configs/experiment/default.yaml.
+# Dropped a `model.optimizer` block: `cfg.model` is splatted into the model constructor by
+# hydra.utils.instantiate, so a stray key there is passed as a kwarg, not ignored. Optimizer
+# settings belong in the `training_arguments` group.
+
 defaults:
   - default.yaml
   - override /dataset: lensless.yaml
   - override /augmentation: default.yaml
-
-model:
-  optimizer:
-    _target_: torch.optim.Adam
-    _partial_: true
-    weight_decay: 0.0

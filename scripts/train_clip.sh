@@ -23,6 +23,11 @@ export TORCH_NCCL_BLOCKING_WAIT=1
 export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
 
 export SLURM_JOB_ID=${SLURM_JOB_ID:-local}
+# WANDB_MODE=offline only chooses where wandb writes; it does NOT enable logging. Upstream
+# derives its sinks from --report-to (default ''), so without the flag below args.wandb is
+# False and no metrics are recorded at all — neither train_one_epoch's losses nor the
+# classification metrics our patched evaluate() computes. Remember to `wandb sync` the
+# offline runs afterwards.
 export WANDB_MODE=offline
 export HF_HUB_OFFLINE=1
 
@@ -51,6 +56,8 @@ srun torchrun \
   --workers 4 \
   --model EVA02-L-14 \
   --seed 0 \
+  --report-to wandb \
+  --wandb-project-name planktonzilla-turbo \
   --local-loss \
   --gather-with-grad \
   --grad-checkpointing \

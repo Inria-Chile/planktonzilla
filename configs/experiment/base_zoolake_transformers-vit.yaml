@@ -1,9 +1,15 @@
 # @package _global_
 
-# to execute this experiment run:
-# python train.py experiment=base_zoolake model=...
+# Run with:
+#   pz_train experiment=base_zoolake_transformers-vit
+#
+# Inherits configs/experiment/default.yaml.
+# This was byte-identical to base_zoolake despite the name, so it selected resnet18 like
+# every other config. It now selects the ViT its name promises. augmentation was
+# `zoolake.yaml` — no such member, so `default.yaml` (no augmentation).
+
 defaults:
   - default.yaml
   - override /dataset: zoolake.yaml
-  - override /augmentation: zoolake.yaml
-
+  - override /model: vit-base.yaml
+  - override /augmentation: default.yaml
