@@ -202,3 +202,129 @@ def test_main_delegates_through_clip_train_main_so_the_patches_still_apply(monke
     assert "argv" in seen, "hydra_main.main must delegate to planktonzilla.clip_train.main.main"
     assert "--report-to" in seen["argv"]
     assert seen["argv"][seen["argv"].index("--train-data") + 1] == SHARDS
+
+
+# --------------------------------------------------------------------------------------
+# The csv corpus path — a smoke-testable alternative to terabytes of webdataset shards
+# --------------------------------------------------------------------------------------
+#
+# The shipped `train_data` is a webdataset brace pattern over shards nobody has locally, so
+# "does the contrastive path still consume data" has no cheap answer. Upstream's
+# `--dataset-type synthetic` only half-covers that: it reuses ONE blank image for every
+# sample, so it never opens a file, never decodes an image, and its loss is pinned at exactly
+# ln(batch_size) — chance, because every pair is identical. It proves the wiring and nothing
+# about the data path.
+#
+# So these build a real corpus, in-process, using the column names upstream's csv loader
+# already defaults to, and push it through upstream's own `CsvDataset`. Asserting against a
+# hand-rolled reader would prove nothing — it would pass while the real loader choked, which
+# is the exact class of interface defect this file exists to catch.
+
+TOY_IMAGE_SIZE = 96
+TOY_TAXA = ("copepod", "diatom chain", "radiolarian", "appendicularian")
+TOY_COLOURS = ((200, 80, 80), (80, 160, 200), (120, 200, 120), (200, 180, 90))
+
+
+def _csv_defaults():
+    """Upstream's own --csv-* defaults, read from its parser rather than restated here."""
+    from open_clip_train.params import parse_args
+
+    args = parse_args(["--train-data", "x", "--dataset-type", "csv"])
+    return args.csv_img_key, args.csv_caption_key, args.csv_separator
+
+
+def _build_toy_corpus(destination, count=8):
+    """Write `count` image/caption pairs and return the index path.
+
+    Deliberately not blank or random: alternating shapes and cycling colours paired with
+    matching captions mean the contrastive objective has something to latch onto, so a run
+    over this can answer "can the loss move at all", not only "did the process survive".
+    Paths are absolute so a run launched from any directory resolves them.
+    """
+    from PIL import Image, ImageDraw
+
+    img_key, caption_key, separator = _csv_defaults()
+    images = destination / "images"
+    images.mkdir(parents=True, exist_ok=True)
+
+    rows = [f"{img_key}{separator}{caption_key}"]
+    for i in range(count):
+        image = Image.new("RGB", (TOY_IMAGE_SIZE, TOY_IMAGE_SIZE), (20, 24, 32))
+        draw = ImageDraw.Draw(image)
+        inset = 12 + (i % 3) * 6
+        box = [inset, inset, TOY_IMAGE_SIZE - inset, TOY_IMAGE_SIZE - inset]
+        colour = TOY_COLOURS[i % len(TOY_COLOURS)]
+        (draw.ellipse if i % 2 else draw.rectangle)(box, fill=colour)
+
+        path = (images / f"{i:04d}.png").resolve()
+        image.save(path)
+        rows.append(f"{path}{separator}a microscopy image of a {TOY_TAXA[i % len(TOY_TAXA)]}")
+
+    index = destination / "train.tsv"
+    index.write_text("\n".join(rows) + "\n")
+    return index
+
+
+def test_upstream_csv_loader_reads_a_toy_corpus_with_its_own_defaults(tmp_path):
+    """Load through the real `CsvDataset`: __getitem__ opens the file and runs the transform.
+
+    Fails on a bad path, an undecodable image, or a column name upstream does not recognise —
+    so it pins the whole no-flags-needed contract, not just the file's shape.
+    """
+    from open_clip_train.data import CsvDataset
+
+    index = _build_toy_corpus(tmp_path / "toy", count=8)
+    img_key, caption_key, separator = _csv_defaults()
+
+    dataset = CsvDataset(
+        input_filename=str(index),
+        transforms=lambda image: image.convert("RGB"),
+        img_key=img_key,
+        caption_key=caption_key,
+        sep=separator,
+        tokenizer=lambda texts: texts,
+    )
+
+    assert len(dataset) == 8
+    seen = set()
+    for i in range(len(dataset)):
+        image, texts = dataset[i]
+        assert image.size == (TOY_IMAGE_SIZE, TOY_IMAGE_SIZE)
+        assert texts[0].strip()
+        seen.add(image.tobytes())
+
+    assert len(seen) > 1, "every image decoded identically — the corpus cannot drive a loss"
+
+
+def test_a_csv_corpus_renders_argv_upstream_accepts(tmp_path):
+    """The other half: the Hydra front-end must render a csv run upstream really parses.
+
+    `dataset_type=csv` is the smoke-test route into this path, and it goes through the same
+    render-and-validate seam as a 64-rank webdataset job.
+    """
+    from open_clip_train.params import parse_args
+
+    index = _build_toy_corpus(tmp_path / "toy", count=4)
+    cfg = _compose([f"clip_pretrain.train_data={index}", "clip_pretrain.dataset_type=csv"])
+    argv = build_argv(cfg)
+
+    validate_argv(argv)  # raises / SystemExit if upstream rejects any flag
+
+    args = parse_args(argv)
+    assert args.dataset_type == "csv"
+    assert args.train_data == str(index)
+
+
+def test_forcing_an_upstream_flag_absent_from_the_group_needs_the_add_prefix():
+    """`+clip_pretrain.force_image_size=64` — the `+` is not optional, and it is easy to miss.
+
+    The group composes in struct mode, so overriding a key it does not define raises rather
+    than adding it. Pinning this keeps the documented smoke-test command honest.
+    """
+    with pytest.raises(Exception, match="force_image_size"):
+        _compose([f"clip_pretrain.train_data='{SHARDS}'", "clip_pretrain.force_image_size=64"])
+
+    cfg = _compose([f"clip_pretrain.train_data='{SHARDS}'", "+clip_pretrain.force_image_size=64"])
+    argv = build_argv(cfg)
+    validate_argv(argv)
+    assert _flag_value(argv, "--force-image-size") == "64"
