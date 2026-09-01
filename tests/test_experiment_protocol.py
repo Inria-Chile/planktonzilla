@@ -15,7 +15,8 @@ from hydra import compose, initialize_config_dir
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import OmegaConf
 
-import planktonzilla.utils.resolvers  # noqa: F401  -- side-effect: registers strip_yaml_suffix
+# Importing `train` also registers the `strip_yaml_suffix` OmegaConf resolver that
+# `experiment_metadata` interpolates, via planktonzilla.utils.resolvers.
 from planktonzilla.train import should_evaluate_test_split
 
 CONFIG_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "configs"))
