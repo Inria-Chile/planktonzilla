@@ -69,6 +69,9 @@ pz_sankey = 'planktonzilla.planktonzilla_dataset.sankey:main'
 # is what CI runs (via tests/test_taxonomy_authority_crosschecks.py); --refresh-snapshot is the
 # occasional network stage that re-harvests WoRMS / NCBI / Wikidata.
 pz_verify_taxonomy = 'planktonzilla.planktonzilla_dataset.utils.verify_taxonomy_ids:main'
+# Horizontal verification of the same table: rows sharing a Raw_Labels value must publish the
+# same taxon (KI-31). Network-free -- one pass over the committed CSV, no snapshot.
+pz_verify_labels = 'planktonzilla.planktonzilla_dataset.utils.verify_label_consistency:main'
 
 [dependency-groups]
 dev = [
