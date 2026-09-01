@@ -1,10 +1,12 @@
 # @package _global_
 
-# to execute this experiment run:
-# python train.py experiment=base_zoolake model=...
+# Run with:
+#   pz_train experiment=base_zoolake
+#
+# Inherits configs/experiment/default.yaml.
+# augmentation was `zoolake.yaml` — no such member, so `default.yaml` (no augmentation).
+
 defaults:
   - default.yaml
   - override /dataset: zoolake.yaml
-  - override /augmentation: zoolake.yaml
-
-
+  - override /augmentation: default.yaml

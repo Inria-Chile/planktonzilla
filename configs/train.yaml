@@ -59,6 +59,15 @@ model_push_as_private: true
 # NaN. It needs Ampere or newer, hence `auto` rather than a hard flip.
 precision: auto
 
+# Hold the TEST split out by default.
+# `training_arguments.do_eval` governs the VALIDATION pass, which is what you tune on. The test
+# split is gated separately, and off, because it used to share do_eval — so every run, including
+# every hyperparameter iteration, read it. A test split read on every iteration is not held out:
+# its number stops being an unbiased estimate of generalisation as soon as anyone tunes against
+# it. Set eval_test=true deliberately, once, on a final configuration:
+#   pz_train experiment=... eval_test=true
+eval_test: false
+
 # Evaluation metrics.
 # eval_top_k also bounds what evaluation accumulates in memory: Trainer concatenates the
 # per-batch predictions across the whole eval set, so the top-k indices are kept instead of

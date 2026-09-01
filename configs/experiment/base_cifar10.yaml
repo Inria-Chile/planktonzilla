@@ -1,14 +1,14 @@
 # @package _global_
 
-# to execute this experiment run:
-# python train.py experiment=base_zoolake model=...
+# Run with:
+#   pz_train experiment=base_cifar10
+#
+# Inherits configs/experiment/default.yaml.
+# Smoke-test corpus, not plankton. augmentation was `none.yaml`, which does not exist;
+# `default.yaml` is the no-augmentation member (it sets `augmentation: null`), so this is
+# the same intent under the name that exists.
+
 defaults:
   - default.yaml
   - override /dataset: cifar10.yaml
-  - override /augmentation: none.yaml
-
-model:
-  optimizer:
-    _target_: torch.optim.Adam
-    _partial_: true
-    weight_decay: 0.0
+  - override /augmentation: default.yaml

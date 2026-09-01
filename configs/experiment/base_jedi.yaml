@@ -1,10 +1,13 @@
 # @package _global_
 
-# to execute this experiment run:
-# python train.py experiment=base_zoolake model=...
+# Run with:
+#   pz_train experiment=base_jedi
+#
+# Inherits configs/experiment/default.yaml.
+# augmentation was `jedi.yaml` — no such member; there are no per-dataset augmentation
+# configs in this repo. Falls back to `default.yaml` (no augmentation).
+
 defaults:
   - default.yaml
   - override /dataset: jedi_oceans.yaml
-  - override /augmentation: jedi.yaml
-
-
+  - override /augmentation: default.yaml

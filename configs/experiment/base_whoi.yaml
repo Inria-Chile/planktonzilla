@@ -1,11 +1,13 @@
 # @package _global_
 
-# to execute this experiment run:
-# python train.py experiment=base_zoolake model=...
+# Run with:
+#   pz_train experiment=base_whoi
+#
+# Inherits configs/experiment/default.yaml.
+# dataset was `whoi.yaml`; the member is named `whoi-plankton.yaml`. augmentation was
+# `whoi.yaml` — no such member, so `default.yaml` (no augmentation).
+
 defaults:
   - default.yaml
-  - override /dataset: whoi.yaml
-  - override /augmentation: whoi.yaml
-
-pytorch_script_filename: null
-
+  - override /dataset: whoi-plankton.yaml
+  - override /augmentation: default.yaml

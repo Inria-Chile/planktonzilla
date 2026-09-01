@@ -282,6 +282,25 @@ def warn_if_label_smoothing_is_ignored(cfg, training_args) -> bool:
     return False
 
 
+def should_evaluate_test_split(cfg, training_args) -> bool:
+    """Whether this run may read the TEST split. Defaults to False.
+
+    The test split used to share `do_eval` with the validation pass, so every run — every
+    hyperparameter sweep, every debugging iteration — read it. A split read on every iteration
+    is not held out: the number it reports stops being an unbiased estimate of generalisation
+    the moment anyone tunes against it.
+
+    So `do_eval` still governs validation, which is what you tune on, and the test split needs
+    `eval_test=true` asked for deliberately, once, on a final configuration. `eval_test` lives on
+    `cfg` rather than in the `training_arguments` group precisely so it does not read as one of
+    Hugging Face's own `do_*` flags — `TrainingArguments` has no such field.
+
+    Returns:
+        True only when evaluation is on *and* the test split was explicitly requested.
+    """
+    return bool(training_args.do_eval) and bool(cfg.get("eval_test", False))
+
+
 def freeze_backbone_except_head(model) -> list[str]:
     """Freeze every parameter except the classification head's, and say which survived.
 
@@ -564,11 +583,18 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
     else:
         log.info("Training skipped as per training arguments, set training_arguments.do_train=true to change this.")
 
-    if training_args.do_eval:
-        log.info("Evaluating on test set.")
+    # Validation is gated by do_eval; the TEST split needs eval_test as well, and defaults to
+    # off. See should_evaluate_test_split for why.
+    if not training_args.do_eval:
+        log.info("Evaluation skipped as per training arguments, set training_arguments.do_eval=true to change this.")
+    elif should_evaluate_test_split(cfg, training_args):
+        log.warning(
+            "⚠️ Evaluating on the TEST set. Do this once, on a final configuration — tuning against "
+            "these numbers is what makes them stop meaning anything. Use the validation split to iterate."
+        )
         test_metrics = trainer.evaluate(dataset_wrapper.dataset[dataset_wrapper.test_split_name], metric_key_prefix="test")
     else:
-        log.info("Evaluation skipped as per training arguments, set training_arguments.do_eval=true to change this.")
+        log.info("Test-set evaluation skipped (eval_test=false). Set eval_test=true for a final run.")
 
     if cfg.model_push_to_hub:
         log.info(f"Pushing trained model to HuggingFace hub as «{training_args.hub_model_id}».")
