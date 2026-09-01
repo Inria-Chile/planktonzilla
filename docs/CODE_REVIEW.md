@@ -51,15 +51,17 @@ review ranks highest — are **all still open**.
 | 1.8 `freeze_backbone` freezes the head too | **fixed** | `train.py:285`, `clip_model.py:99` · `0acf91a` |
 | #72 losses ignore `num_items_in_batch` | **fixed** (promoted from contested) | `train.py:327` · `0acf91a` |
 | 1.5 `RobustAsymmetricLoss` focusing weight | **open — the fix this review proposed does not work** | strict xfail, `tests/test_loss.py:161` |
-| 1.1, 1.2, 1.3, 1.6, 1.7, 1.9, 1.10 | **open** | 1.6 / 1.7 re-verified against `main` `e4ebdd4` — still live |
+| 1.10 experiment configs do not compose | **fixed** (9 of 11; 2 irreparable) | `configs/experiment/` · `7a7b709` |
+| Test split read on every run | **fixed** — not a review finding; found later | `train.py:285` (`eval_test`) · `7a7b709` |
+| 1.1, 1.2, 1.3, 1.6, 1.7, 1.9 | **open** | 1.6 / 1.7 re-verified against `main` `e4ebdd4` — still live |
 | Tier 2 (17 entries), Tier 3 (11 entries) | **open** | — |
 
-So, of the ten Tier 1 findings: **2 closed** (1.4, 1.8), **1 re-diagnosed and left open on purpose**
-(1.5), **7 untouched** — plus contested #72 closed alongside them. The closed ones are those that made a
+So, of the ten Tier 1 findings: **3 closed** (1.4, 1.8, 1.10), **1 re-diagnosed and left open on
+purpose** (1.5), **6 untouched** — plus contested #72 closed alongside them. The closed ones are those that made a
 *training run* measure something other than what it claimed; nothing here has yet been done about the CSV
 corruption, the data-directory deletion, or the published mislabels.
 
-The same commits also fixed four defects this review **did not find** — see
+These commits also fixed five defects this review **did not find** — see
 [What the review missed](#what-the-review-missed).
 
 Gates on the current head (`9a31b32`), against the `0df8004` baseline above:
@@ -68,10 +70,11 @@ Gates on the current head (`9a31b32`), against the `0df8004` baseline above:
 | --- | --- | --- |
 | `ruff check planktonzilla/ tests/ scripts/` | All checks passed | All checks passed |
 | `ruff format --check` | 89 files | 94 files |
-| `pytest` (the CI set) | 675 passed, 2 skipped | **749 passed**, 2 skipped, **1 xfailed** |
-| `pytest tests/test_train.py` (excluded from CI) | — (9 with `test_datasets.py`) | 7 passed |
+| `pytest` (the CI set) | 675 passed, 2 skipped | **773 passed**, 2 skipped, **3 xfailed** |
+| `pytest tests/test_train.py` (excluded from CI) | — (9 with `test_datasets.py`) | 9 passed |
 
-The xfail is 1.5, recorded `strict=True` so it converts to a failure the moment a real fix lands.
+The three xfails are all `strict=True`, so each converts to a failure the moment a real fix lands: 1.5
+(RAL), and `base_cifar100` / `base_inaturalist` (see 1.10).
 `tests/test_datasets.py` was not re-run: it is network-bound (Tier 3 #40) and unaffected by these changes.
 
 ---
@@ -459,6 +462,22 @@ rendering, or drop `hf_token` from the printed tree.
 
 ### 1.10 Nine of eleven `configs/experiment/*.yaml` cannot compose
 
+> **FIXED** in `7a7b709` — and the finding understated it. *All eleven* were unusable, not nine: the
+> two that composed died on **resolution**, at `model.net.model_name`. Hydra resolves lazily, so a
+> config referencing a key no config defines composes cleanly and fails later, at access — which is
+> why a composition-only check missed them. Nine now compose *and* resolve.
+> `base_cifar100` / `base_inaturalist` are irreparable rather than broken: between them they need five
+> config files that do not exist plus `deep_plankton`, a predecessor package that is not a dependency
+> and is not importable, so they are recorded as `strict=True` xfails naming exactly what each needs.
+> `tests/test_experiment_protocol.py` gates the group on resolution, which is the "every config group
+> member composes" test this finding asked for — checking the stronger property.
+>
+> Two things the finding did not reach. The dead keys were **not inert**: `train()` calls
+> `hydra.utils.instantiate(cfg.model, ...)`, which passes every key under `model` as a kwarg, so the
+> Lightning-era `model.optimizer` / `criterion` / `scheduler` blocks would have been instantiated and
+> handed to `from_pretrained`. And `base_zoolake_transformers-vit` was byte-identical to
+> `base_zoolake` despite its name; it now selects the ViT it advertises.
+
 `configs/experiment/` — verified by composing each against `train.yaml`:
 
 ```
@@ -553,9 +572,9 @@ counts, so one undecodable image can make a source permanently "incomplete").
 
 ## What the review missed
 
-Four defects of the same character as the Tier 1 findings — silent, in the training path, changing what a
+Five defects of the same character as the Tier 1 findings — silent, in the training path, changing what a
 run measures — were **not** found by this review. All four surfaced later, from targeted investigation of
-the training architecture rather than from a general sweep, and all four are fixed on the branch. They are
+the training architecture rather than from a general sweep, and all five are fixed on the branch. They are
 recorded here because a review's blind spots say as much as its findings.
 
 **1. Augmentation ran after `Normalize`, erasing it** (`dataset.py:60`, fixed in `0acf91a`). The transform
@@ -588,6 +607,14 @@ that to 0.04 GiB, a 200× reduction, with top-1 bit-identical.
 it does not enable logging. The review covered `configs/` composition (1.10) but never asked whether the
 `tracking` config group actually reaches the contrastive path. It does not — it is argparse-only upstream.
 
+**5. Every run read the test split** (fixed in `7a7b709`). Test evaluation shared
+`training_args.do_eval` with the validation pass, so there was no way to run training without reading
+the held-out split — every hyperparameter sweep, every debugging iteration. A split read on every
+iteration is not held out, and its number stops being an unbiased estimate of generalisation as soon as
+anyone tunes against it. This is the same shape as the four above: one flag spanning two decisions that
+belong to different parties, so neither side looks wrong on its own. It is now `eval_test`, default
+false, asked for once on a final configuration.
+
 One further trap, found while fixing rather than reviewing, is worth recording because it is invisible in
 a diff: **`nn.Module.__setattr__` silently defeats property setters.** Assigning a Module to a name backed
 by a property (`model.head = CosineClassifier(...)`) goes straight into `self._modules` and never reaches
@@ -597,7 +624,7 @@ gradients into nothing. `ClipClassifier.set_head` (`clip_model.py:117`) exists f
 with a post-install identity check so the failure can never be quiet again.
 
 **What this suggests about the method.** The review was organised by *file and subsystem*; every one of
-these four is a defect in a **contract that spans two components** — the ordering between augmentation and
+these five is a defect in a **contract that spans two components** — the ordering between augmentation and
 normalization, the index alignment between a count array and a loss, the memory contract between `Trainer`
 and its metrics hook, the argument contract between a Hydra config group and an argparse entry point. A
 per-file sweep does not have a natural place to stand to see those. Combined with #72 (a real bug the
@@ -624,8 +651,8 @@ this up should start at 1, not where the branch left off.
    ***Still open.***
 5. **1.9** — one-line redaction, removes a credential from logs. ***Still open, and the cheapest item on
    this list.***
-6. **1.10 + Tier 3** — mostly mechanical; a "every config group member composes" test prevents recurrence.
-   ***Still open.***
+6. ~~**1.10**~~ — **done in `7a7b709`**; the gate checks *resolution*, not just composition, because
+   composition alone is what let two of them hide. **Tier 3 still open**, mostly mechanical.
 
 Two structural gaps deserve naming, because most of Tier 1 traces back to them:
 
