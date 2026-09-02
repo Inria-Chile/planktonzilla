@@ -356,6 +356,70 @@ HOMONYM_NOTES = {
     "part<Ctenophora": "Same inherited `ctenophora` homonym as `Ctenophora<Animalia` above.",
 }
 
+# A rank NAME this table spells differently from EcoTaxa, wherever that name appears.
+#
+# `HOMONYM_NOTES` above records rows whose WHOLE lineage diverges. This records the other
+# kind: the lineage agrees except at one rank, because `_inherit_higher_ranks` and the
+# `anchor` / `verbatim` rules take the spelling the master CSV already uses — which is the
+# one-lineage-per-label rule doing its job. Keyed by the ``(rank, EcoTaxa name, this
+# table's name)`` triple rather than by class dir, because one such decision covers however
+# many rows inherit it: the seven `chaetocerotanae` rows are one call, not seven.
+#
+# tests/test_tara_pacific_taxonomy.py asserts these are the only rank names that differ, and
+# that every entry here is still exercised. Before it compared all seven rank columns it
+# compared `Kingdom` alone, saw 3 departures and reported them as the whole story; there are
+# 19 (docs/CODE_REVIEW.md finding 1.7). Row counts below are of the table as it stood before
+# this block was appended.
+RANK_DEPARTURES = {
+    ("Order", "chaetocerotanae incertae sedis", "chaetocerotanae"): (
+        "EcoTaxa's order node carries the *incertae sedis* uncertainty marker inside its name. All 33 "
+        "pre-existing rows that name this order spell it without the marker, and none spell it with. "
+        "Same taxon, this table's spelling."
+    ),
+    ("Phylum", "bacillariophyta", "heterokontophyta"): (
+        "This table's diatom phylum is Heterokontophyta — 233 pre-existing rows name it, none name "
+        "Bacillariophyta — with `bacillariophyceae` as the class below it. Same lineage, one rank "
+        "renamed; see the `Odontella sp.` note above, which relies on the same convention."
+    ),
+    ("Phylum", "proteobacteria", "cyanobacteria"): (
+        "A repair of an upstream misplacement, not a spelling. EcoTaxa hangs its `Cyanobacteria` node "
+        "under `Bacteria > Proteobacteria`, which is not where cyanobacteria sit; the table records "
+        "Cyanobacteria as the phylum in all 48 pre-existing rows that name it, and none name "
+        "Proteobacteria."
+    ),
+    ("Family", "tintinnidiidae", "codonellopsidae"): (
+        "EcoTaxa hangs the genus `Codonellopsis` directly under Tintinnidiidae. All three pre-existing "
+        "rows carrying this genus place it in Codonellopsidae; the single Tintinnidiidae row is a "
+        "different genus (`leprotintinnus`). Following the table keeps one lineage per label."
+    ),
+    ("Order", "sessilida", "peritrichida"): (
+        "A rank-slot difference of the KI-8 shape, not a different organism. EcoTaxa puts Sessilida in "
+        "the Order slot beneath a subclass it calls Peritrichia; the donor row — `frepj`, whose own "
+        "source label path reads `Oligophymenophorea,Peritrichida,Vorticellidae,Vorticella` — records "
+        "the ordinal spelling of that higher group instead. Sessilida sits inside it. The table is "
+        "evenly split (one row each), so this follows the donor rather than a house majority."
+    ),
+    ("Genus", "neoceratium", "tripos"): (
+        "The table records this genus as Tripos in 51 pre-existing rows and as EcoTaxa's Neoceratium in "
+        "5. Worth reading with KI-31: this leaves a seam INSIDE the appended block, because the five "
+        "`Neoceratium <species>` folders find a `tripos <epithet>` donor and publish Tripos while the "
+        "bare `Neoceratium` folder finds the `neoceratium` donor and publishes Neoceratium. Which name "
+        "is correct is not settled here — the committed authority snapshot has both as accepted WoRMS "
+        "records with distinct NCBI taxids."
+    ),
+    ("Family", "creseidae", "cliidae"): (
+        "**A defect, and the only one in this table — inherited, not introduced here.** It is the second "
+        "case of docs/CODE_REVIEW.md finding 1.6, and KI-31 reports it from the other side. EcoTaxa "
+        "places the `Creseidae` folder in the family Creseidae, and so do three pre-existing rows "
+        "(`global_uvp5/Creseidae`, `uvp6net/Creseis acicula`, `zooscan/Creseidae acicula`). The one row "
+        "that does not is `zooscan/Creseidae`, which maps the folder to `clio pyramidata` — family "
+        "Cliidae — and the `verbatim` rule copies it here because it shares the class-dir name. zooscan "
+        "is therefore inconsistent with itself, and the copy carries that inconsistency into this block. "
+        "Recorded rather than corrected: fixing it changes published lineages, so it is gated on a "
+        "golden diff like every KNOWN_ISSUES data item."
+    ),
+}
+
 # A rank the frozen EcoTaxa lineage leaves blank while asserting DEEPER ones, filled by
 # hand. The master CSV has no such hole in any of its 1714 pre-existing rows, and
 # tests/test_sankey.py enforces that: a ribbon that stops must not resume, or a rank is
@@ -796,7 +860,14 @@ _B2_INTRO = (
 _B3_INTRO = (
     "All three take the lineage the master CSV already records for their `proposed_label`, because "
     "the table's invariant is one lineage per label. Two of them repair an upstream misplacement; "
-    "one inherits an issue the table already had. A test asserts these are the only three."
+    "one inherits an issue the table already had. A test asserts these are the only three rows whose "
+    "WHOLE lineage diverges; rows that differ at a single rank are B4 below."
+)
+_B4_INTRO = (
+    "The lineage agrees with EcoTaxa except at one rank, because the row takes the spelling the master "
+    "CSV already uses. Keyed by the rank and the two names, since one decision covers every row that "
+    "inherits it — 16 rows across the seven entries here. A test asserts these are the only rank names "
+    "that differ and that every entry is still exercised."
 )
 
 _B5_NOTE = (
@@ -867,7 +938,18 @@ def write_reconciliation(decisions, path=DEFAULT_RECONCILIATION_MD) -> Path:
     lines.extend(
         [
             "",
-            f"### B4. Ranks filled by hand to close a ladder gap ({len(RANK_GAP_FILLS)})",
+            f"### B4. Rank names where this table's spelling wins over EcoTaxa's ({len(RANK_DEPARTURES)})",
+            "",
+            _B4_INTRO,
+            "",
+        ]
+    )
+    for (rank, ecotaxa_name, table_name), note in sorted(RANK_DEPARTURES.items()):
+        lines.append(f"- **{rank}** — EcoTaxa `{ecotaxa_name}`, this table `{table_name}`. {note}")
+    lines.extend(
+        [
+            "",
+            f"### B5. Ranks filled by hand to close a ladder gap ({len(RANK_GAP_FILLS)})",
             "",
         ]
     )
@@ -876,7 +958,7 @@ def write_reconciliation(decisions, path=DEFAULT_RECONCILIATION_MD) -> Path:
     lines.extend(
         [
             "",
-            "### B5. EcoTaxa's two diatom lineages",
+            "### B6. EcoTaxa's two diatom lineages",
             "",
             _B5_NOTE,
             "",

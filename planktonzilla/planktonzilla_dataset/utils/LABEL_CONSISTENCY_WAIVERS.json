@@ -27,7 +27,7 @@
    ],
    "n_rows": 4,
    "category": "mislabel_defect",
-   "reason": "global_uvp5 publishes Family=creseidae (aphia 411905, accepted, rank Family). The three other rows publish Species=clio pyramidata (aphia 139033) with Family=cliidae. A folder named Creseidae is therefore published under a different family by three of the four datasets carrying it. This is one of the two cases in CODE_REVIEW finding 1.6; the other is `harpacticoida`."
+   "reason": "global_uvp5 publishes Family=creseidae (aphia 411905, accepted, rank Family). The three other rows publish Species=clio pyramidata (aphia 139033) with Family=cliidae. Root cause, established 2026-09-02 by widening the finding-1.7 guard: zooscan carries both readings -- its `Creseidae` folder maps to clio pyramidata while its `Creseidae acicula` folder maps to creseis acicula (family Creseidae) -- and build_tara_pacific_taxonomy.py's `verbatim` rule copied the wrong one into tara_pacific_hsn and tara_pacific_manta on a class-dir name match. One wrong row propagated three times, not three independent judgements. This is one of the two cases in CODE_REVIEW finding 1.6; the other is `harpacticoida`."
   },
   {
    "finding_id": "95d0c4ebc2b9",
@@ -53,7 +53,7 @@
    ],
    "n_rows": 7,
    "category": "needs_taxonomic_adjudication",
-   "reason": "Six datasets publish Genus=neoceratium (aphia 494056), zooscan publishes Genus=tripos (aphia 494057). The snapshot has BOTH as accepted WoRMS records with distinct NCBI taxids (665866 vs 2126447) and distinct Qcodes, so on the committed evidence they are not interchangeable and this cannot be closed as nomenclature drift the way `heterocapsa_triquetra` can -- even though the Neoceratium/Tripos history is the obvious candidate explanation. Left as a finding rather than dismissed: resolving it needs a taxonomist, or a snapshot refresh that shows one of the two as unaccepted."
+   "reason": "Six datasets publish Genus=neoceratium (aphia 494056), zooscan publishes Genus=tripos (aphia 494057). The snapshot has BOTH as accepted WoRMS records with distinct NCBI taxids (665866 vs 2126447) and distinct Qcodes, so on the committed evidence they are not interchangeable and this cannot be closed as nomenclature drift the way `heterocapsa_triquetra` can -- even though the Neoceratium/Tripos history is the obvious candidate explanation. The seam runs inside the Tara Pacific block too: its five `Neoceratium <species>` folders find a `tripos <epithet>` donor and publish Tripos, while its bare `Neoceratium` folder finds the `neoceratium` donor and publishes Neoceratium (see RANK_DEPARTURES in build_tara_pacific_taxonomy.py). The table at large prefers Tripos, 51 rows to 5. Left as a finding rather than dismissed: resolving it needs a taxonomist, or a snapshot refresh that shows one of the two as unaccepted."
   },
   {
    "finding_id": "4992357fb82e",

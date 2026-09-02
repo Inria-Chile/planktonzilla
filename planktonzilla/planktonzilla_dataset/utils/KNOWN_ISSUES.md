@@ -723,6 +723,16 @@ they publish different taxa:
   (`darkrods` → `other` / `shape`), with no rank cell on either side. No image gets a taxon it
   should not have; vocabulary drift, not a taxonomy defect.
 
+**Where the `creseidae` case comes from** (found 2026-09-02, by widening the finding-1.7 guard to all
+seven rank columns). `zooscan` carries *both* readings: its `Creseidae` folder maps to `clio pyramidata`
+(family Cliidae) while its `Creseidae acicula` folder maps to `creseis acicula` (family Creseidae). Three
+pre-existing rows and EcoTaxa itself put the folder in Creseidae; only that one zooscan row does not, and
+`build_tara_pacific_taxonomy.py`'s `verbatim` rule copied it into `tara_pacific_hsn` and
+`tara_pacific_manta` because the class-dir name matched. So the disagreement is one wrong row propagated
+three times, not three independent judgements — which makes it the cheapest of the mislabels to correct
+once the golden-diff gate exists. Recorded in `RANK_DEPARTURES` in the builder, and rendered as section
+B4 of `TARA_PACIFIC_TAXONOMY_RECONCILIATION.md`.
+
 Three of the twenty are **not** defects and are recorded as such: `heterocapsa triquetra` /
 `kryptoperidinium triquetrum` is one organism under two names (the snapshot has aphia 110153 as
 `unaccepted` with that valid name, and all three rows share NCBI taxid 66468), and the two

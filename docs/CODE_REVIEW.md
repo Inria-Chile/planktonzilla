@@ -53,11 +53,13 @@ review ranks highest — are **all still open**.
 | 1.5 `RobustAsymmetricLoss` focusing weight | **open — the fix this review proposed does not work** | strict xfail, `tests/test_loss.py:161` |
 | 1.10 experiment configs do not compose | **fixed** (9 of 11; 2 irreparable) | `configs/experiment/` · `7a7b709` |
 | Test split read on every run | **fixed** — not a review finding; found later | `train.py:285` (`eval_test`) · `7a7b709` |
-| 1.1, 1.2, 1.3, 1.6, 1.7, 1.9 | **open** | 1.6 / 1.7 re-verified against `main` `e4ebdd4` — still live |
+| 1.7 guard compares only `Kingdom` | **fixed** | all 7 ranks; `RANK_DEPARTURES` in `build_tara_pacific_taxonomy.py`, `tests/test_tara_pacific_taxonomy.py` |
+| `Raw_Labels` → one taxon never checked | **fixed** — not a review finding; the gap 1.6 sits in | `utils/verify_label_consistency.py` (KI-31) |
+| 1.1, 1.2, 1.3, 1.6, 1.9 | **open** | 1.6 re-verified against `main` `e4ebdd4` — still live; its root cause is now recorded (see 1.7) |
 | Tier 2 (17 entries), Tier 3 (11 entries) | **open** | — |
 
-So, of the ten Tier 1 findings: **3 closed** (1.4, 1.8, 1.10), **1 re-diagnosed and left open on
-purpose** (1.5), **6 untouched** — plus contested #72 closed alongside them. The closed ones are those that made a
+So, of the ten Tier 1 findings: **4 closed** (1.4, 1.7, 1.8, 1.10), **1 re-diagnosed and left open on
+purpose** (1.5), **5 untouched** — plus contested #72 closed alongside them. The closed ones are those that made a
 *training run* measure something other than what it claimed; nothing here has yet been done about the CSV
 corruption, the data-directory deletion, or the published mislabels.
 
@@ -397,8 +399,21 @@ dir's own EcoTaxa rank, and route ambiguous keys into the reconciliation report 
 
 ### 1.7 The guard that is supposed to catch 1.6 compares only one column
 
-> **STILL OPEN on `main` `e4ebdd4`.** PR #33 modifies no existing file, so neither
-> `build_tara_pacific_taxonomy.py` nor this test changed; the `Kingdom`-only predicate stands.
+> **FIXED.** The guard now compares all seven rank columns, and the 19 departures it can finally see
+> are recorded rather than merely counted. Two records, because there are two kinds: `HOMONYM_NOTES`
+> keeps the 3 rows whose *whole* lineage diverges, and a new `RANK_DEPARTURES` holds the 7
+> `(rank, EcoTaxa name, table name)` decisions the other 16 rows inherit — keyed by the name pair, not
+> the class dir, because the seven `chaetocerotanae` rows are one curation call and not seven. A second
+> test fails on a stale entry in either record, so neither can rot into decoration.
+>
+> All 16 turned out to be the one-lineage-per-label rule working as designed — the `anchor` / `verbatim`
+> / inherit-higher-ranks paths taking the spelling the master CSV already carries — with **one exception
+> that is a real defect**: `Creseidae`. Widening the guard found its root cause, which the review had
+> not. See 1.6 below.
+>
+> The gap is demonstrated, not argued: a one-letter typo in a donor row's `Genus` leaves the
+> `Kingdom`-only predicate reporting exactly `HOMONYM_NOTES` and passing, while the widened guard names
+> the row and the rank.
 
 `tests/test_tara_pacific_taxonomy.py:270`
 
@@ -646,8 +661,9 @@ this up should start at 1, not where the branch left off.
    review proposed does not work (see 1.5a) and guessing would change the objective silently. The
    permutation-invariance property test suggested here exists and covers all seven losses; the
    `freeze_backbone` case now raises rather than proceeding. Contested #72 was fixed alongside them.
-4. **1.6 / 1.7** — the mislabels are already in a published artifact, so this needs the golden-diff gate
-   that `KNOWN_ISSUES.md` itself flags as not yet built. Fix the *guard* (1.7) first so nothing new lands.
+4. **1.6** — the mislabels are already in a published artifact, so this needs the golden-diff gate
+   that `KNOWN_ISSUES.md` itself flags as not yet built. The *guard* (1.7) is now fixed, so nothing new
+   lands unremarked while the data waits; `Creseidae`'s root cause is recorded in `RANK_DEPARTURES`.
    ***Still open.***
 5. **1.9** — one-line redaction, removes a credential from logs. ***Still open, and the cheapest item on
    this list.***
