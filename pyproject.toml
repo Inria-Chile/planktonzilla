@@ -75,6 +75,21 @@ pz_verify_labels = 'planktonzilla.planktonzilla_dataset.utils.verify_label_consi
 
 [dependency-groups]
 dev = [
+    # Pinned EXACTLY, and deliberately so: lint gates every push, so which ruff runs
+    # decides whether a diff lands, and CI and a contributor have to agree.
+    #
+    # It used to be decided by the calendar. ruff was declared nowhere, so `uv run ruff`
+    # resolved it ephemerally to whatever was newest then, while CI's own
+    # `uv tool install ruff` resolved it again, separately. FURB192 is a *preview* rule in
+    # 0.15.8 and stable later, so a tree that was clean locally failed CI on an unrelated
+    # diff. The reverse is worse: a real finding invisible locally until some other PR
+    # happens to pick up a newer ruff.
+    #
+    # `==` rather than a `>=` floor because `uv.lock` is gitignored here (.gitignore:279)
+    # and so never reaches CI — a floor plus an absent lockfile is not a pin. This line is
+    # the whole pin, and it is reviewable in a diff. Bump it deliberately, in a commit that
+    # also carries whatever reformatting the new version wants.
+    "ruff==0.16.5",
     "pytest",
     "notebook",
     "ipywidgets",

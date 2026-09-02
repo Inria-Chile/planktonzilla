@@ -37,11 +37,17 @@ jobs:
           # uv will resolve to 3.12 (the current devcontainer + HPC runtime).
           python-version: "3.13"
 
-      - name: Installing ruff
-        run: uv tool install ruff
-
+      # No `uv tool install ruff` here on purpose. ruff is a `dev` dependency pinned by
+      # uv.lock, so `uv sync` below installs the SAME version a contributor gets from
+      # `uv run ruff`. Installing it separately re-resolved it to whatever was newest at
+      # that moment, which made lint depend on the date rather than on the diff: FURB192
+      # is a preview rule in 0.15.8 and stable later, so a tree that was clean locally
+      # failed here. Bump deliberately with `uv lock --upgrade-package ruff`.
       - name: Install project deps (uv sync)
         run: uv sync
+
+      - name: Ruff version (the one uv.lock pins)
+        run: uv run ruff --version
 
       - name: Ruff format --check (planktonzilla/, tests/)
         run: uv run ruff format --check planktonzilla/ tests/
