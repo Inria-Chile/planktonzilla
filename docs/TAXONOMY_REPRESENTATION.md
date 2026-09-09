@@ -10,9 +10,10 @@ independent angles (data model, curation workflow, consumers and migration surfa
 labels and downstream artifacts), producing 53 findings. Four external surveys covered biodiversity data
 standards, schema and validation tooling, how other ML datasets and the plankton-imaging community represent
 label spaces, and ontology and graph tooling (49 candidates). The findings were distilled into a numbered
-requirement list. Six representation designs were then written independently from fixed angles, each scored
-by three judges with different lenses and attacked by an adversarial refuter; this document is the synthesis. Every number below was measured on the committed file (2,358 rows, sha256
-`95de6c49…`) or reproduced from the code, and is cited as `path:line` where it comes from code.
+requirement list. Six representation designs were then written independently from fixed angles, each scored by
+judges with different lenses and attacked by an adversarial refuter; this document is the synthesis. Every
+number below was measured on the committed file (2,358 rows, sha256 `95de6c49…`) or reproduced from the code,
+and is cited as `path:line` where it comes from code.
 
 ---
 
@@ -38,7 +39,8 @@ wikidata_ID, aphia_ID, NCBI_ID, BOLD_ID, ecotaxa_ID
 | five `*_ID` columns | crosswalks to Wikidata, WoRMS, NCBI, BOLD and a legacy EcoTaxa id space | the three numeric ids are float-serialised in every non-empty cell (`135336.0`); `ecotaxa_ID` holds `;`-joined lists in 598 cells |
 
 The single reader of record is `generate_planktonzilla.build_taxonomy_lookup`
-(`planktonzilla/planktonzilla_dataset/generate_planktonzilla.py:122-172`). It returns
+(`planktonzilla/planktonzilla_dataset/generate_planktonzilla.py:154-172`, over the cached implementation
+at `:122` and the column tuple at `:105`). It returns
 `{(Dataset, Raw_Labels): {16 columns}}` with blanks as `None`, numeric ids cast to decimal-free strings, and a
 duplicate key warned about and resolved last-wins. `RedefineDataset._taxonomy_row` then LEFT-joins every one of
 the 17.4 M published image rows onto it (`:305-334`); a key that is absent yields sixteen `None`s silently.
@@ -50,9 +52,10 @@ the training label of the released models is `" ".join(non-empty ranks)` over th
 Seven other modules parse the file on their own rather than through that reader: `frepj_validate.py:113-131`
 (a near-verbatim copy), `sankey.py:575-579`, `utils/verify_taxonomy_ids.py:522-535`,
 `utils/build_frepj_taxonomy.py:151-209`, `utils/build_tara_pacific_taxonomy.py:435-459`,
-`utils/resolve_frepj_ids.py:116-119`, `utils/extract_taxon_ids.py:256-277`, and nine test files read it directly.
+`utils/resolve_frepj_ids.py:116-119`, `utils/extract_taxon_ids.py:256-277`, and fifteen test files reference it
+directly, ten of which write their own taxonomy-CSV fixtures.
 Three of those modules also *write* it, by locating their own block in the byte stream: one of them
-(`build_frepj_taxonomy.write_csv`, `:434-454`) discards every block after its own on a no-op re-run and blanks
+(`build_frepj_taxonomy.write_csv`, `:435-454`) discards every block after its own on a no-op re-run and blanks
 208 backfilled id cells, exiting 0 (reproduced; `docs/CODE_REVIEW.md` finding 1.1).
 
 ---
@@ -65,8 +68,9 @@ curation mistake, which is why fixing rows one at a time cannot resolve them.
 ### 2.1 Facts about a taxon are stored once per source label, not once per taxon
 
 `proposed_label` determines the seven rank columns with zero exceptions, yet the lineage is written out
-2,358 times: 10,157 redundant rank cells. Re-parenting `bacillariophyceae` means editing 300 rows;
-`copepoda` is spelled out on 40 rows across 15 sources. The three id-curation commits in the file's history
+2,358 times: of the 10,290 non-empty rank cells, 5,155 repeat a lineage an earlier row already wrote.
+Re-parenting `bacillariophyceae` means editing 300 rows; `copepoda` is spelled out on 40 rows across 15
+sources. The three id-curation commits in the file's history
 rewrote 229, 12 and 85 whole 19-field lines to change only id cells, and a reviewer cannot tell an id change from
 a lineage change in the diff. Partial application of such edits is the documented origin of the one place where
 the dependency *does* break: 10 labels (97 rows, all FREPJ) carry a different id tuple from the same label in
@@ -89,7 +93,7 @@ are parts of organisms and the lineage names the organism the part belongs to.
 
 There is no identifier for a taxon other than its lowercase name. Consequences, all present in the file:
 
-- **Homonyms resolve to the wrong organism.** Every comb-jelly class directory in 9 sources (12 rows) is
+- **Homonyms resolve to the wrong organism.** Every comb-jelly class directory in 8 sources (12 rows) is
   published under the *diatom* genus *Ctenophora* (`chromista > heterokontophyta > bacillariophyceae >
   fragilariales`, aphia 163921), and the CLIP caption for those images reads accordingly. `LClass_siphonophora`
   maps to a millipede genus; `Cladocera` in zoocamnet to the bivalve genus *Cladoceramus* (6,669 images). The
@@ -110,20 +114,22 @@ There is no identifier for a taxon other than its lowercase name. Consequences, 
 
 ### 2.4 Seven fixed rank columns lose precision
 
-Subphylum *Crustacea* (15 rows) collapses to *Arthropoda*; *Rhizaria*, *Retaria* and *SAR* collapse to
-*Chromista* at Kingdom depth; `Eukaryota` has no slot at all and is stored with every rank blank (KI-9). Six taxa
-whose own rank lies outside the seven are pushed into the nearest slot (infraorders *Brachyura* / *Achelata* as
-Orders, tribe *Alciopini* as a Family, subclass *Cirripedia* as a Class), which is why 12 curated labels are not
-the deepest node of their own lineage and 10 training-label strings silently absorb 12 finer labels
-(`animalia arthropoda malacostraca decapoda` ← *decapoda*, *brachyura*, *achelata*). The training vocabulary
-built from these columns has 849 classes where the curated table has 861.
+Subphylum *Crustacea* (31 rows across 12 sources) collapses to *Arthropoda*; *Rhizaria*, *Retaria* and *SAR*
+collapse to *Chromista* at Kingdom depth; `Eukaryota` has no slot at all and is stored with every rank blank
+(KI-9). Six taxa whose own rank lies outside the seven are pushed into the nearest slot (infraorders *Brachyura*
+/ *Achelata* as Orders, tribe *Alciopini* as a Family, subclass *Cirripedia* as a Class), which is why 12
+curated labels are not the deepest node of their own lineage and 10 training-label strings silently absorb 12
+finer labels (`animalia arthropoda malacostraca decapoda` ← *decapoda*, *brachyura*, *achelata*). The training
+vocabulary built from these columns has 849 non-empty class strings, 850 once §2.6's empty-string class is
+counted, where the curated table has 861 concepts.
 
 ### 2.5 The process, not the format, provides the safety
 
 "Append-only, first 1,486 lines byte-frozen" is enforced by a sha256 over physical line offsets
 (`tests/test_frepj_taxonomy_coverage.py:169-177`), by hard-coded row sums in three tests, and by each builder
 re-deriving "where my block starts" from the byte stream. The first 1,485 rows are sorted by `proposed_label`
-with 15 sources interleaved in 1,071 runs; the rows after them are six contiguous blocks appended at EOF, which
+(with two collation exceptions: the capitalised `Eukaryota` and the hyphen in `pseudo-nitzschia`) with 15
+sources interleaved in 1,065 runs; the rows after them are six contiguous blocks appended at EOF, which
 is why the last two source additions produced a hand-resolved merge conflict on the same hunk. Adding a source
 has had three precedents with three different methods (a 937-line builder with rule tables in Python; a
 builder plus a Markdown-embedded provenance table; 44 hand-typed lines whose only provenance is a test
@@ -135,11 +141,11 @@ and an 86,618-line JSON diff in the same PR.
 ### 2.6 Downstream label vocabularies are an emergent side-effect
 
 Class ids of the released models are alphabetical positions of `" ".join(ranks)`; landing the six pending
-sources would move the integer id of 591 of the 598 existing classes with no crosswalk. The `Kingdom != ""` filter
-admits `None`, so five `plankton=True` rows with no Kingdom (516 images in v1.0) form an empty-string class at
-index 0. Life stage and morphology (87,031 images with a non-`full_body` qualifier) never reach the caption.
-The Sankey, the training label and the caption are three separate code-defined derivations of the same seven
-columns.
+sources would move the integer id of 591 of the 599 existing class names with no crosswalk. The
+`Kingdom != ""` filter admits `None`, so the five `plankton=True` rows with no Kingdom form an empty-string
+class at index 0; four are in v1.0 (516 images) and the fifth is in the pending `tara_pacific_bongo`. Life
+stage and morphology (87,031 images with a non-`full_body` qualifier) never reach the caption. The Sankey,
+the training label and the caption are three separate code-defined derivations of the same seven columns.
 
 ---
 
@@ -158,9 +164,9 @@ achievable. Concretely, the contract is:
   (`tests/test_taxonomy_lookup_equivalence.py` already pins this against a frozen pandas implementation);
 - the published projection in `constants.CONSOLIDATED_COLUMNS` order (note the id order there is wikidata,
   ecotaxa, aphia, NCBI, BOLD, unlike the CSV header), `plankton` as `bool`, `living` excluded;
-- the label-string projection: 849 distinct `" ".join(non-empty ranks)` strings over the 21 sources, 598 over
-  the 15 v1.0 sources, in `sorted(set())` order, including the six repeated-token strings caused by KI-8 and
-  the empty-string class;
+- the label-string projection: 850 distinct `ClassLabel` names over the 21 sources and 599 over the 15 v1.0
+  sources, in `sorted(set())` order — 849 and 598 non-empty `" ".join(non-empty ranks)` strings plus the
+  empty-string class in each — including the six repeated-token strings caused by KI-8;
 - the 13 rows whose id tuple diverges from their label's canonical tuple, the Harpacticoida / Creseidae /
   Cladocera mislabels, the *Ctenophora* homonym, the `Eukaryota` casing: all reproduced unchanged until a
   deliberate, versioned data release corrects them.
@@ -197,7 +203,8 @@ taxonomy, ML labels).
   sankey, the verifiers and the builders; `render_wide_csv() -> bytes`; the published projection; the
   label-string projection; the legacy CSV still accepted as *input* so the ten fixture-writing test files and
   the Hydra key `taxonomy_csv_path` keep working; new files under the package directory so they ship in the
-  wheel. Published-dataset path changes by fewer than 30 lines. [CM]
+  wheel. The published-dataset path keeps every call site and column expression; its only edit is the 68-line
+  loader block (`generate_planktonzilla.py:105-172`) becoming a delegating alias. [CM]
 - **M5 Safe, isolated, idempotent writers.** Per-source partition or key-addressed rows so a builder for source
   X is physically unable to touch source Y; one write API, dry-run by default, never blanking an id without an
   explicit flag, printing a cell-level change list; canonical serialisation so hand edits and tool output
@@ -210,10 +217,10 @@ taxonomy, ML labels).
   shared by two concepts; the horizontal `Raw_Labels → one concept` check across sources as a waivable lint
   (PR #35, KI-31); donor rank ≤ label rank; bucket labels never mapped to taxa; a missing published column
   raises instead of nulling 17.4 M rows. [DM, CW, ST, CM]
-- **M7 Deterministic label strings and vocabularies as data.** A pure projection reproduces today's 849 / 598
-  strings in order; label vocabularies (`v1_taxpath`, `proposed_label`, taxpath+qualifier, rank cuts,
-  `root_class`, `living`) are versioned data files read by the `ClassLabel` builder, never emergent from code.
-  [ML, CM]
+- **M7 Deterministic label strings and vocabularies as data.** A pure projection reproduces today's 850 / 599
+  `ClassLabel` names in order (849 / 598 non-empty plus the empty-string class); label vocabularies
+  (`v1_taxpath`, `proposed_label`, taxpath+qualifier, rank cuts, `root_class`, `living`) are versioned data
+  files read by the `ClassLabel` builder, never emergent from code. [ML, CM]
 
 **SHOULD**
 
@@ -298,17 +305,17 @@ and standards used as export targets.
 **Schema and validation tooling** (measured on a seven-defect fixture: dangling parent, duplicate id,
 float-serialised id, dangling mapping FK, bad vocabulary value, duplicate mapping key, `living ≠ root_class`).
 Pure polars + pytest catches 7/7 with zero new dependencies in ~15 lines; `pandera[polars]` 7/7 (10 packages,
-FKs as `isin` closures); Frictionless Table Schema 6/7 declaratively plus a 6-line check (37 transitive
-packages, but the descriptor doubles as documentation and is what ColDP ships); `dataframely` 4/7 declaratively
+FKs as `isin` closures); Frictionless Table Schema 6/7 declaratively plus a 6-line check (11 new packages, 37
+resolved, and the descriptor doubles as documentation and is what ColDP ships); `dataframely` 4/7 declaratively
 (1 package); DuckDB catches 7/7 row-by-row but cannot bulk-load a self-referential FK and has no deferred
-constraints; `linkml-validate` on CSV found neither the dangling parent nor the duplicate id (83 packages);
-Great Expectations has no polars backend. The KI-12 float ids are a CSV-typing artefact of pandas/HF-datasets
-inference, not of the data model (the same column via Parquet or a declared string type is clean). CSV/TSV must
-stay the git-canonical form: it is the only format that is line-diffable, spreadsheet-editable and read natively
-by polars, HF `datasets` and DuckDB; YAML multiplies the diff surface ~7× (16,512 lines for the mappings) and has
-no HF loader; Parquet is a fine *derived* artifact but shows as binary in git. `daff` keyed on
-`(Dataset, Raw_Labels)` turned the real 229-row id-backfill commit's 458 changed lines into 232 with cell-level
-markers and merged two branches that each appended a source block without conflict.
+constraints; `linkml-validate` on CSV found neither the dangling parent nor the duplicate id (47 new packages,
+85 resolved); Great Expectations has no polars backend. The KI-12 float ids are a CSV-typing artefact of
+pandas/HF-datasets inference, not of the data model (the same column via Parquet or a declared string type is
+clean). CSV/TSV must stay the git-canonical form: it is the only format that is line-diffable,
+spreadsheet-editable and read natively by polars, HF `datasets` and DuckDB; YAML multiplies the diff surface ~7×
+(16,512 lines for the mappings) and has no HF loader; Parquet is a fine *derived* artifact but shows as binary
+in git. `daff` keyed on `(Dataset, Raw_Labels)` turned the real 229-row id-backfill commit's 458 changed lines
+into 232 with cell-level markers and merged two branches that each appended a source block without conflict.
 
 **ML datasets and the plankton community.** Every mature multi-source effort keeps two layers and publishes the
 link between them: verbatim source category and harmonised concept (Nocera et al. 2025's global UVP5 database,
@@ -346,8 +353,10 @@ lenses (lossless reproduction and migration risk; curator ergonomics and flexibi
 fit) and attacked by a refuter instructed to disprove its load-bearing claims. Judges and refuters did not
 take claims on trust: they re-ran the prototypes against the committed CSV, injected defects into the packages,
 merged concurrent add-source branches in git, saved files through a spreadsheet round trip, and measured load
-and validation times in the project's own virtual environment. Twenty-five evaluations ran in all: three judges
-and a refuter per design, plus a second, independent refutation of the design this report recommends.
+and validation times in the project's own virtual environment. Thirty-one evaluations ran in all: three judges
+and a refuter per design; six further scorecards on designs A and C, whose judging run was interrupted by a
+usage limit and re-ran on resume; and a second, independent refutation of the design this report recommends.
+A completeness critic then fact-checked this document against the repository and its findings are folded in.
 
 | | Container | Concept identity | Schema of record | New runtime deps | Effort (self-estimate) |
 | --- | --- | --- | --- | --- | ---: |
@@ -358,22 +367,29 @@ and a refuter per design, plus a second, independent refutation of the design th
 | E. Embedded SQLite | `schema.sql` (20 STRICT tables, 10 triggers, 6 views) as the model; per-table TSV dumps in git; every reader builds an in-memory database | readable `rank:name` ids | SQL DDL | none (stdlib `sqlite3`) | 19 d |
 | F. Hardened wide CSV (baseline) | one 20-column CSV, canonical order, integer ids, exceptions file, legacy-order manifest | the `proposed_label` string | Table Schema JSON executed by a hand-written validator | none | 11.5 d |
 
-Mean judge scores, three judges per design, 1–5 per criterion:
+Mean judge scores over every scorecard the panel produced, 1–5 per criterion. Four designs were judged once
+per lens; designs A and C were judged twice per lens, because the run scoring them was interrupted by a usage
+limit and the resumed run re-ran those agents instead of replaying them. Their means are therefore over six
+scorecards, which the table states rather than discarding the extra evidence.
 
-| | lossless | impossible by constr. | flexibility | curator ergonomics | toolchain fit | migration cost | standards | ML enablement | mean | verdicts |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| B. Darwin Core / ColDP | 5.0 | 3.7 | 3.7 | 3.3 | 3.7 | 3.0 | **4.3** | 4.0 | **3.83** | viable ×3 |
-| E. Embedded SQLite | 5.0 | **4.3** | 3.7 | 3.3 | **4.7** | 3.0 | 3.0 | 3.7 | **3.83** | recommend ×2, viable |
-| A. Normalised table package | 5.0 | 3.3 | 3.7 | 3.3 | 4.0 | 3.0 | 3.7 | 4.0 | **3.75** | recommend ×2, viable |
-| C. Hierarchical YAML | 4.3 | 4.0 | **4.0** | 3.0 | 4.0 | 2.7 | 3.0 | 4.0 | **3.62** | recommend, viable ×2 |
-| D. LinkML + SKOS | 5.0 | 3.7 | 3.7 | 3.0 | 3.0 | 2.3 | 4.0 | 4.0 | **3.58** | viable ×3 |
-| F. Hardened wide CSV | 5.0 | 2.0 | 2.0 | 3.3 | **4.7** | **4.3** | 2.0 | 2.7 | **3.25** | viable ×3 |
+| | judges | lossless | impossible by constr. | flexibility | curator ergonomics | toolchain fit | migration cost | standards | ML enablement | mean | verdicts |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| B. Darwin Core / ColDP | 3 | 5.0 | 3.7 | 3.7 | 3.3 | 3.7 | 3.0 | **4.3** | 4.0 | **3.83** | viable ×3 |
+| E. Embedded SQLite | 3 | 5.0 | **4.3** | 3.7 | 3.3 | **4.7** | 3.0 | 3.0 | 3.7 | **3.83** | recommend ×2, viable |
+| A. Normalised table package | 6 | 5.0 | 3.3 | 3.7 | **3.5** | 4.0 | 3.0 | 3.7 | 4.0 | **3.77** | recommend ×5, viable |
+| C. Hierarchical YAML | 6 | 4.5 | 4.0 | **4.0** | 3.0 | 4.0 | 2.7 | 3.2 | 4.0 | **3.67** | viable ×4, recommend ×2 |
+| D. LinkML + SKOS | 3 | 5.0 | 3.7 | 3.7 | 3.0 | 3.0 | 2.3 | 4.0 | 4.0 | **3.58** | viable ×3 |
+| F. Hardened wide CSV | 3 | 5.0 | 2.0 | 2.0 | 3.3 | **4.7** | **4.3** | 2.0 | 2.7 | **3.25** | viable ×3 |
+
+Design A is at once the most-scrutinised entry, with six scorecards and two independent refutations, and the
+only one carrying a near-unanimous recommendation. That, not the means, is the part of this table with weight.
 
 The top three sit inside scoring noise of one another, so the ranking decides nothing on its own; the
 qualitative findings below do. Two columns are worth reading in isolation. The baseline is the cheapest to
 migrate and among the best toolchain fits, and it comes last overall because it scores 2.0 on exactly the three
 things the research question asks for: making anomalies impossible, flexibility, and interoperability. The
-SQLite design wins both robustness columns and loses on being unreviewable in git.
+SQLite design wins the impossible-by-construction column outright, ties the baseline for the best toolchain
+fit, and loses on being unreviewable in git.
 
 All six reproduce the committed CSV byte-for-byte from their own store, and I re-executed five of the six
 prototypes myself, obtaining sha256 `95de6c49…` in each case: design A's package exporter, design B's
@@ -416,9 +432,10 @@ exporter. Both are three-line polars checks.
 **Concurrent add-source PRs conflict in git on any shared append-only ledger.** Two branches each appending
 a new concept, a new identifier and a new source stanza conflicted on `concepts.csv`, `identifiers.csv` and the
 descriptor in design A; on `source.tsv` in design B; on `taxonomy.yaml` and `taxa/animalia.yaml` in design C;
-on `concepts.tsv` and `taxa.tsv` in design D even with disjoint id ranges. Only the per-source mapping file is
-conflict-free by construction. A committed `.gitattributes` with `merge=union` on the append-only ledgers plus
-a duplicate-id rule in the validator resolves it, but no design can honestly say "never conflicts".
+on `concepts.tsv`, `taxa.tsv` and `external_ids.tsv` in design D even with disjoint id ranges. Only the
+per-source mapping file is conflict-free by construction. A committed `.gitattributes` with `merge=union` on
+the append-only ledgers plus a duplicate-id rule in the validator resolves it, but no design can honestly say
+"never conflicts".
 
 **Migration id minting must be idempotent.** Design A's script mints ids in sorted-path order; re-running it
 after inserting one row changed the meaning of 1,342 of 1,351 ids while every foreign key still resolved. The
@@ -473,20 +490,21 @@ LinkML at all. Its third judge added a failure class the design creates rather t
 so a spreadsheet save silently inverts the only boolean the published dataset carries, with no integrity finding
 and no golden-test failure once the curator re-renders.
 
-**SQLite is the strongest semantic model and the weakest git model, and its own machinery has bugs.**
-Design E scored highest on making anomalies impossible (4.3) and on toolchain fit (4.7), and two of its three
-judges said "recommend": its triggers make rank monotonicity, closure maintenance, cycle prevention and "a name
-never repeats in its own lineage" fail at insert time, and its views prove the legacy CSV, the lookup and the
-label strings as SQL. But the constraints hold only for what is *loaded*: the TSV dumps in git can be invalid
-until `build()` rejects them, so on the commit path it is a validator like the others, with a 291-line schema
-that biologists cannot review, GLOB instead of regular expressions, and parent-first import ordering for the
-desktop-editor path. Three demonstrated defects matter more than the design's score. Its reparent trigger
-deletes the rows its own insert then reads, so moving a node that has descendants silently wipes their ancestor
-closure. Its migration picks a taxon's canonical id tuple by frequency, which ties on real data: reordering two
-`branchiopoda` rows of the committed CSV made that taxon lose all four authority ids while every hash, the
-lookup equivalence, the label strings and all twelve lints stayed green. And its frozen-id override stores a
-full five-cell snapshot instead of a blank-this-cell mask, so correcting an id at the concept left one FREPJ row
-rendering the stale value with no warning — the very duplication the design exists to abolish.
+**SQLite is the strongest semantic model and the weakest git model, and its own machinery has bugs.** Design E
+scored highest on making anomalies impossible (4.3) and tied the baseline for the best toolchain fit (4.7), and
+two of its three judges said "recommend": its triggers make rank monotonicity, closure maintenance, cycle
+prevention and "a name never repeats in its own lineage" fail at insert time, and its views prove the legacy
+CSV, the lookup and the label strings as SQL. But the constraints hold only for what is *loaded*: the TSV dumps
+in git can be invalid until `build()` rejects them, so on the commit path it is a validator like the others,
+with a 291-line schema that biologists cannot review, GLOB instead of regular expressions, and parent-first
+import ordering for the desktop-editor path. Three demonstrated defects matter more than the design's score. Its
+reparent trigger deletes the rows its own insert then reads, so moving a node that has descendants silently
+wipes their ancestor closure. Its migration picks a taxon's canonical id tuple by frequency, which ties on real
+data: reordering two `branchiopoda` rows of the committed CSV made that taxon lose all four authority ids while
+every hash, the lookup equivalence, the label strings and all twelve lints stayed green. And its frozen-id
+override stores a full five-cell snapshot instead of a blank-this-cell mask, so correcting an id at the concept
+left one FREPJ row rendering the stale value with no warning — the very duplication the design exists to
+abolish.
 
 **The baseline is cheap, honest, and fails the blocking requirements — and its detection layer can be
 defeated.** Design F costs 11.5 days and zero dependencies, turns every audited anomaly into a detected one, and
@@ -535,8 +553,8 @@ and the wrong destination; its validator rule set and its exceptions-file idea a
 ## 8. Recommendation
 
 **Adopt a normalised plain-text table package (design A), with Darwin Core and SSSOM column names and the
-category split from design B, the strictness and pin-layer lessons from designs C and D, and the refuters'
-corrections applied.** Concretely:
+versioned release ledger from design B, the strictness and pin-layer lessons from designs C and D, and the
+refuters' corrections applied.** Concretely:
 
 ```
 planktonzilla/planktonzilla_dataset/taxonomy/
@@ -566,14 +584,14 @@ Why this and not the alternatives, in one line each. TSV/CSV is the only contain
 spreadsheet-editable and read natively by polars, HF `datasets` and DuckDB; design C's YAML is eight times the
 lines with no table view, and design E's SQL model is invisible in git — E tied for the highest score and was
 still not chosen, because the constraints its score rests on apply only after `build()` and its own reparent
-trigger, migration tie-break and id-override snapshot were each shown to corrupt data silently. A normalised store is required by M2,
-M3, S1, S2, S3, S7 and S13, which design F cannot meet. Darwin Core and SSSOM *names* cost nothing and make the
-concept table publishable and familiar, while a Darwin Core *format* would exclude 303 mappings and 44
-categories by design B's own admission. LinkML's generators are attractive, but its validator missed structural
-defects, its closed schema forced wrong data, and it brings 47 packages. Frictionless is kept as a dev-only
-descriptor validator because its row-numbered messages and PK/FK/enum/pattern coverage came free in every
-measurement, but the polars rule module is the enforcer and must re-implement the descriptor's constraints so
-that pre-flight on a laptop without Frictionless gives the same verdict as CI.
+trigger, migration tie-break and id-override snapshot were each shown to corrupt data silently. A normalised
+store is required by M2, M3, S1, S2, S3, S7 and S13, which design F cannot meet. Darwin Core and SSSOM *names*
+cost nothing and make the concept table publishable and familiar, while a Darwin Core *format* would exclude 303
+mappings and 44 categories by design B's own admission. LinkML's generators are attractive, but its validator
+missed structural defects, its closed schema forced wrong data, and it brings 47 packages. Frictionless is kept
+as a dev-only descriptor validator because its row-numbered messages and PK/FK/enum/pattern coverage came free
+in every measurement, but the polars rule module is the enforcer and must re-implement the descriptor's
+constraints so that pre-flight on a laptop without Frictionless gives the same verdict as CI.
 
 Decisions taken in the recommendation (each maps to an open decision in §10):
 
@@ -582,6 +600,10 @@ Decisions taken in the recommendation (each maps to an open decision in §10):
   rejected because a rename invites "fixing" the id.
 - `plankton` on the mapping row; `living` derived; `unqualified` explicit; `kind` includes a value for living
   classes without a lineage.
+- Design B's separate table for non-taxon classes (`category.tsv`, reached by a `taxonID` xor `categoryID`
+  pair on the mapping row) is **not** adopted: buckets, morphotypes and artefacts stay rows of `taxon.tsv`
+  carrying `kind`, so one foreign key resolves every mapping and no exporter has to branch. The cost is that
+  `taxon.tsv` holds rows a checklist export must not publish, which the `kind` filter handles.
 - The four parent conflicts stay as two nodes each with `nameAccordingTo` recording the classification
   followed; a backbone switch is a later versioned re-parenting release, not a flag flip.
 - Legacy `ecotaxa_ID` is the authority `ecotaxa_legacy`, never backfilled; modern EcoTaxa ids are `ecotaxa`.
@@ -652,7 +674,7 @@ resolver are being replaced), so treat the total as four to six weeks of one eng
    package from the committed CSV, and land the loader, model and legacy renderer with tests that assert:
    rendered bytes equal the committed CSV; the first 1,486 lines equal the sha pin; the 16-column lookup built
    from the *model* (not from the rendered bytes) equals `build_taxonomy_lookup` in value and Python type on all
-   2,358 keys; the 849 / 598 label strings in order; the reproject fixed point. Disable the three builders'
+   2,358 keys; the 850 / 599 label vocabulary in order; the reproject fixed point. Disable the three builders'
    write paths in the same commit. Nothing else changes.
 2. **Schema of record and validation (≈3 days).** Commit the descriptor, the polars rule module including the
    refuters' additions, the seven-defect fixture package, a Frictionless CI step in the dev group, and
@@ -669,9 +691,9 @@ resolver are being replaced), so treat the total as four to six weeks of one eng
 5. **Provenance and waivers as data (≈2 days).** Backfill `method` / `donor` for all 600 Tara Pacific and 229
    FREPJ decisions from the existing reports; seed `broadMatch` rows from the authority findings; derive the
    Markdown reports from the ledger.
-6. **Label vocabularies as data (≈1.5 days).** Write the frozen `v1.0_taxpath` snapshot (598 classes plus the
-   empty class) and the 21-source `v1.2_taxpath`; `gen_planktonzilla_only_plankton` reads the file; a test
-   proves it equals today's `sorted(set())` expression.
+6. **Label vocabularies as data (≈1.5 days).** Write the frozen `v1.0_taxpath` snapshot (599 names: 598
+   classes plus the empty class) and the 21-source `v1.2_taxpath`; `gen_planktonzilla_only_plankton` reads
+   the file; a test proves it equals today's `sorted(set())` expression.
 7. **Authority snapshot re-keyed to the id set (≈1.5 days; needs the maintainers' HARDEN decision).**
 8. **Review tooling, docs, retirement switch (≈1.5 days).** The CI semantic-diff comment, the generated
    curation runbook, README and KNOWN_ISSUES updates, and the documented switch that stops committing the wide
@@ -699,9 +721,9 @@ Each with the default the recommendation assumes.
 7. **Write-side actor**: both paths supported (default: flat TSV for biologists, `upsert_source` for
    builders); if only engineers write, the display-name column and the spreadsheet normalisation can be
    dropped.
-8. **Next training vocabulary**: keep the rank-string rule (default, 849 classes) or move to concept identity
-   (861 classes, keeping brachyura / achelata / gammaridea / cirripedia distinct) in a versioned release with a
-   crosswalk.
+8. **Next training vocabulary**: keep the rank-string rule (default, 849 classes plus the empty-string class)
+   or move to concept identity (861 classes, keeping brachyura / achelata / gammaridea / cirripedia distinct)
+   in a versioned release with a crosswalk.
 9. **Parent conflicts**: keep both placements with `nameAccordingTo` (default) or resolve to WoRMS now
    (changes about 50 projected rows).
 10. **Life-stage vocabulary** for the `lifeStage` facet: Darwin Core / BODC S11 terms (default) vs EcoTaxa's
