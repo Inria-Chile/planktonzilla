@@ -346,24 +346,50 @@ lenses (lossless reproduction and migration risk; curator ergonomics and flexibi
 fit) and attacked by a refuter instructed to disprove its load-bearing claims. Judges and refuters did not
 take claims on trust: they re-ran the prototypes against the committed CSV, injected defects into the packages,
 merged concurrent add-source branches in git, saved files through a spreadsheet round trip, and measured load
-and validation times in the project's own virtual environment. Six of the thirty evaluation agents were still
-running when this section was written; their results will be folded in when they land, and nothing below
-depends on them.
+and validation times in the project's own virtual environment. Twenty-five evaluations ran in all: three judges
+and a refuter per design, plus a second, independent refutation of the design this report recommends.
 
-| | Container | Concept identity | Schema of record | New runtime deps | Effort (self-estimate) | Judge mean (n) | Refuted on a load-bearing claim? |
-| --- | --- | --- | --- | --- | ---: | ---: | --- |
-| A. Normalised table package | 31 CSV/TSV files: concepts adjacency list, identifiers, one mapping file per source, vocabularies, legacy pins; Frictionless `datapackage.yaml` | opaque `pz:NNNNNN` + display-name column | Frictionless descriptor (dev) + polars rule module | none | 20 d | 3.79 (3), all three "recommend" | no |
-| B. Darwin Core / ColDP checklist | 35 TSV files with DwC term names, SSSOM crosswalk, DwC-Identification-shaped mapping files, `category.tsv`, `release/v1.0/` ledger | readable slug `pzt:abylopsis-tetragona` | Frictionless `datapackage.json` (dev) + polars rule module | none | 18 d | 3.83 (3), "viable" | yes, on workflow guarantees (see below) |
-| C. Hierarchical YAML documents | one taxon tree per kingdom + one YAML document per source; pydantic v2 models | readable slug | pydantic (strict) | none | 25 d | 3.71 (3), viable / viable / recommend | yes |
-| D. LinkML schema + SKOS/SSSOM | LinkML schema → generated pydantic, JSON Schema, docs; five TSV tables + legacy layer | opaque `PZC:` / `PZT:` numbers | LinkML (dev, +47 packages) + polars integrity module | none | 12.5 d | 3.56 (2), "viable" | pending |
-| E. Embedded SQLite | `schema.sql` (20 STRICT tables, 10 triggers, 6 views) as the model; per-table TSV dumps in git; every reader builds an in-memory database | readable `rank:name` ids | SQL DDL | none (stdlib `sqlite3`) | 19 d | pending | pending |
-| F. Hardened wide CSV (baseline) | one 20-column CSV, canonical order, integer ids, exceptions file, legacy-order manifest | the `proposed_label` string | Table Schema JSON executed by a hand-written validator | none | 11.5 d | pending | pending |
+| | Container | Concept identity | Schema of record | New runtime deps | Effort (self-estimate) |
+| --- | --- | --- | --- | --- | ---: |
+| A. Normalised table package | 31 CSV/TSV files: concepts adjacency list, identifiers, one mapping file per source, vocabularies, legacy pins; Frictionless `datapackage.yaml` | opaque `pz:NNNNNN` + display-name column | Frictionless descriptor (dev) + polars rule module | none | 20 d |
+| B. Darwin Core / ColDP checklist | 35 TSV files with DwC term names, SSSOM crosswalk, DwC-Identification-shaped mapping files, `category.tsv`, `release/v1.0/` ledger | readable slug `pzt:abylopsis-tetragona` | Frictionless `datapackage.json` (dev) + polars rule module | none | 18 d |
+| C. Hierarchical YAML documents | one taxon tree per kingdom + one YAML document per source; pydantic v2 models | readable slug | pydantic (strict) | none | 25 d |
+| D. LinkML schema + SKOS/SSSOM | LinkML schema → generated pydantic, JSON Schema, docs; five TSV tables + legacy layer | opaque `PZC:` / `PZT:` numbers | LinkML (dev, +47 packages) + polars integrity module | none | 12.5 d |
+| E. Embedded SQLite | `schema.sql` (20 STRICT tables, 10 triggers, 6 views) as the model; per-table TSV dumps in git; every reader builds an in-memory database | readable `rank:name` ids | SQL DDL | none (stdlib `sqlite3`) | 19 d |
+| F. Hardened wide CSV (baseline) | one 20-column CSV, canonical order, integer ids, exceptions file, legacy-order manifest | the `proposed_label` string | Table Schema JSON executed by a hand-written validator | none | 11.5 d |
 
-All six reproduce the committed CSV byte-for-byte from their own store. I re-executed the prototypes of A, B
-and D myself (identical sha256); C's converter was not left on disk but its derivation was re-implemented from
-the design text by two judges and the refuter, all three obtaining the committed bytes; E and F report the
-same result and their judges are still running. The lossless requirement M1 therefore does not discriminate
-between designs. Everything else does.
+Mean judge scores, three judges per design, 1–5 per criterion:
+
+| | lossless | impossible by constr. | flexibility | curator ergonomics | toolchain fit | migration cost | standards | ML enablement | mean | verdicts |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| B. Darwin Core / ColDP | 5.0 | 3.7 | 3.7 | 3.3 | 3.7 | 3.0 | **4.3** | 4.0 | **3.83** | viable ×3 |
+| E. Embedded SQLite | 5.0 | **4.3** | 3.7 | 3.3 | **4.7** | 3.0 | 3.0 | 3.7 | **3.83** | recommend ×2, viable |
+| A. Normalised table package | 5.0 | 3.3 | 3.7 | 3.3 | 4.0 | 3.0 | 3.7 | 4.0 | **3.75** | recommend ×2, viable |
+| C. Hierarchical YAML | 4.3 | 4.0 | **4.0** | 3.0 | 4.0 | 2.7 | 3.0 | 4.0 | **3.62** | recommend, viable ×2 |
+| D. LinkML + SKOS | 5.0 | 3.7 | 3.7 | 3.0 | 3.0 | 2.3 | 4.0 | 4.0 | **3.58** | viable ×3 |
+| F. Hardened wide CSV | 5.0 | 2.0 | 2.0 | 3.3 | **4.7** | **4.3** | 2.0 | 2.7 | **3.25** | viable ×3 |
+
+The top three sit inside scoring noise of one another, so the ranking decides nothing on its own; the
+qualitative findings below do. Two columns are worth reading in isolation. The baseline is the cheapest to
+migrate and among the best toolchain fits, and it comes last overall because it scores 2.0 on exactly the three
+things the research question asks for: making anomalies impossible, flexibility, and interoperability. The
+SQLite design wins both robustness columns and loses on being unreviewable in git.
+
+All six reproduce the committed CSV byte-for-byte from their own store, and I re-executed five of the six
+prototypes myself, obtaining sha256 `95de6c49…` in each case: design A's package exporter, design B's
+`render_wide_csv`, design D's `load_taxonomy(...).render_wide_csv()`, design E's build-from-TSV-dumps followed
+by render, and design F's render from its curated 20-column file (a real render, not a copy of the target).
+Design C left no prototype on disk, but its derivation was re-implemented from the design text by two judges
+and its refuter independently, all three obtaining the committed bytes. The lossless requirement M1 therefore
+does not discriminate between designs. Everything else does.
+
+**Every design was refuted on at least one load-bearing claim, including the one recommended here.** The
+lossless cores all held; the surrounding claims did not. A second, independent refutation of design A found
+nine of its fourteen load-bearing claims unsound, and the same pattern repeats across the panel: "impossible by
+construction" labels that are really "detected in CI", workflow guarantees that fail a real git merge, effort
+estimates no measurement supports, and schema declarations the named tool does not implement. That is a finding
+about design documents rather than about this data model — every correction is small, and they are folded into
+§8 rather than counted against the shape.
 
 ### 7.1 What the evaluation established
 
@@ -442,21 +468,36 @@ closed enums and classes also made the most common biologist extensions (a new l
 confidence, a new authority prefix) engineer-only acts requiring schema regeneration from a 47-package dev
 group, and its validator missed a dangling parent and a duplicate id on CSV data. The parts of D that carry
 value at runtime (per-source TSVs, SSSOM columns, the polars integrity module, the legacy renderer) do not need
-LinkML at all.
+LinkML at all. Its third judge added a failure class the design creates rather than inherits: the renderer tests
+`plankton == 'true'` literally while the LinkML and pydantic layer coerces `True`, `TRUE`, `yes` and `1` to true,
+so a spreadsheet save silently inverts the only boolean the published dataset carries, with no integrity finding
+and no golden-test failure once the curator re-renders.
 
-**SQLite is the strongest semantic model and the weakest git model.** Design E's triggers make rank
-monotonicity, closure maintenance, cycle prevention and "a name never repeats in its own lineage" fail at insert
-time, and its views prove the legacy CSV, the lookup and the label strings as SQL. But the constraints hold only
-for what is loaded: the TSV dumps in git can be invalid until `build()` rejects them, so on the commit path it
-is a validator like the others, with a 291-line DDL that biologists cannot review, GLOB instead of regular
-expressions, and parent-first import ordering for the GUI path.
+**SQLite is the strongest semantic model and the weakest git model, and its own machinery has bugs.**
+Design E scored highest on making anomalies impossible (4.3) and on toolchain fit (4.7), and two of its three
+judges said "recommend": its triggers make rank monotonicity, closure maintenance, cycle prevention and "a name
+never repeats in its own lineage" fail at insert time, and its views prove the legacy CSV, the lookup and the
+label strings as SQL. But the constraints hold only for what is *loaded*: the TSV dumps in git can be invalid
+until `build()` rejects them, so on the commit path it is a validator like the others, with a 291-line schema
+that biologists cannot review, GLOB instead of regular expressions, and parent-first import ordering for the
+desktop-editor path. Three demonstrated defects matter more than the design's score. Its reparent trigger
+deletes the rows its own insert then reads, so moving a node that has descendants silently wipes their ancestor
+closure. Its migration picks a taxon's canonical id tuple by frequency, which ties on real data: reordering two
+`branchiopoda` rows of the committed CSV made that taxon lose all four authority ids while every hash, the
+lookup equivalence, the label strings and all twelve lints stayed green. And its frozen-id override stores a
+full five-cell snapshot instead of a blank-this-cell mask, so correcting an id at the concept left one FREPJ row
+rendering the stale value with no warning — the very duplication the design exists to abolish.
 
-**The baseline is cheap, honest, and fails the blocking requirements.** Design F costs 11.5 days and zero
-dependencies, turns every audited anomaly into a detected one, and keeps one spreadsheet. By its own coverage
-table it cannot meet M2, M3, S1, S2, S3, S6, S7, S8 or S13: lineage stays 2.6× redundant, the name stays the
-identity, a new id on `calanoida` is still a 20-row diff, and homonyms still cannot coexist. It is the right
-comparison point and the wrong destination; its validator rule set and its exceptions-file idea are worth
-keeping.
+**The baseline is cheap, honest, and fails the blocking requirements — and its detection layer can be
+defeated.** Design F costs 11.5 days and zero dependencies, turns every audited anomaly into a detected one, and
+keeps one spreadsheet; it is the cheapest to migrate of the six. By its own coverage table it cannot meet M2,
+M3, S1, S2, S3, S6, S7, S8 or S13: lineage stays 2.6× redundant, the name stays the identity, a new id on
+`calanoida` is still a 20-row diff, and homonyms still cannot coexist. Nine of the eighteen SHOULD and MAY
+requirements are self-marked not covered, and they are precisely the flexibility half of the research question.
+Its judges then showed that detection is not a substitute: because waivers are keyed by row rather than by the
+value being waived, the exceptions file goes blind on exactly the rows it covers — appending one new row that
+copies a waived row's fields verbatim passes validation with no finding at all. It is the right comparison point
+and the wrong destination; its validator rule set and its exceptions-file idea are worth keeping.
 
 ### 7.2 Ideas judged worth keeping regardless of container
 
@@ -523,7 +564,9 @@ planktonzilla/planktonzilla_dataset/planktonzilla_taxonomy.csv   GENERATED until
 
 Why this and not the alternatives, in one line each. TSV/CSV is the only container that is line-diffable,
 spreadsheet-editable and read natively by polars, HF `datasets` and DuckDB; design C's YAML is eight times the
-lines with no table view, and design E's SQL model is invisible in git. A normalised store is required by M2,
+lines with no table view, and design E's SQL model is invisible in git — E tied for the highest score and was
+still not chosen, because the constraints its score rests on apply only after `build()` and its own reparent
+trigger, migration tie-break and id-override snapshot were each shown to corrupt data silently. A normalised store is required by M2,
 M3, S1, S2, S3, S7 and S13, which design F cannot meet. Darwin Core and SSSOM *names* cost nothing and make the
 concept table publishable and familiar, while a Darwin Core *format* would exclude 303 mappings and 44
 categories by design B's own admission. LinkML's generators are attractive, but its validator missed structural
@@ -568,6 +611,28 @@ Corrections from the refuters that are part of the recommendation, not optional:
   descriptor stanza may still need a one-line manual resolution when two sources land at once;
 - the golden gate as "render equals the committed generated CSV" plus the first-1,486-line pin plus a
   per-release sha over the release's own row-order keys, never a whole-file hash that a new source invalidates.
+
+A second, independent refutation of this design added six more, all confirmed by execution:
+
+- **A `dataset == file stem` rule.** A row for one source dropped into another source's mapping file passes
+  Frictionless (the primary key is per file) and the exporter silently keeps whichever file the glob visits
+  last. Cross-source duplicate keys are detected, not impossible.
+- **Exactly one `exact` id per (concept, published authority).** A second WoRMS id on one concept either
+  changes the exported value or vanishes from it, decided by numeric sort order rather than by the model, with
+  no pin and no failing check.
+- **The absence row must actually validate.** The design's own identifier pattern and relation enumeration
+  reject the `none` / `absent` row it offers as the way to record "not in this register"; the pattern and the
+  enumeration have to be widened, or the claim dropped.
+- **Per-source descriptor fragments, or sorted stanzas.** `merge=union` resolves the two shared ledgers under
+  concurrent add-source PRs, but both branches still insert their source stanza at the same position in the
+  descriptor and conflict there.
+- **Step 1 must write a real migration script.** The prototype package was hand-finished after its generator
+  ran: re-running that generator produces a different concept table, no descriptor and no pin files, and the
+  exporter cannot run on its output. Budget the migration as new code, not as a port, and expect roughly 1,200
+  lines across the model, validator and write side rather than the 900 the design estimates.
+- **Adding a source touches `constants.py` too.** `validate_license_coverage` raises for a dataset with no
+  entry in `DATASET_LICENSES`, so the "one new file plus appends" diff shape is true of the taxonomy directory
+  only.
 
 What the recommendation does not deliver, on purpose: orthogonal facets beyond `lifeStage` and `bodyPart`
 columns defaulted from the qualifier vocabulary (S6 is a follow-up once the vocabulary is agreed); a name-usage
