@@ -49,11 +49,16 @@ dataset, the paper and the four released CLIP models know about taxonomy comes t
 the training label of the released models is `" ".join(non-empty ranks)` over the published columns
 (`gen_planktonzilla_only_plankton.py:81-96`), which is also the CLIP caption (`save_planktonzilla_for_clip.py:107`).
 
-Seven other modules parse the file on their own rather than through that reader: `frepj_validate.py:113-131`
+Eight other modules parse the file on their own rather than through that reader: `frepj_validate.py:113-132`
 (a near-verbatim copy), `sankey.py:575-579`, `utils/verify_taxonomy_ids.py:522-535`,
-`utils/build_frepj_taxonomy.py:151-209`, `utils/build_tara_pacific_taxonomy.py:435-459`,
-`utils/resolve_frepj_ids.py:116-119`, `utils/extract_taxon_ids.py:256-277`, and fifteen test files reference it
-directly, ten of which write their own taxonomy-CSV fixtures.
+`utils/build_frepj_taxonomy.py:151-209`, `utils/build_tara_pacific_taxonomy.py:499-523`,
+`utils/resolve_frepj_ids.py:116-119`, `utils/extract_taxon_ids.py:256-277`, and
+`utils/verify_label_consistency.py:135-138`, which PR #35 added in September 2026 and which also ships as the
+`pz_verify_labels` console script (`pyproject.toml:74`). A ninth reads the file only in part:
+`make_planktonzilla.check_taxonomy_csv:519-567` opens it to check the header with a bare `csv.reader` (`:536-537`)
+before handing the rows to the reader of record (`:547`). On the test side the count depends entirely on what
+one counts, so state the predicate: 23 test files depend on the table, 16 naming the committed file or its path
+constant, 16 building their own `Raw_Labels` fixtures, and 9 doing both.
 Three of those modules also *write* it, by locating their own block in the byte stream: one of them
 (`build_frepj_taxonomy.write_csv`, `:435-454`) discards every block after its own on a no-op re-run and blanks
 208 backfilled id cells, exiting 0 (reproduced; `docs/CODE_REVIEW.md` finding 1.1).
@@ -126,17 +131,30 @@ counted, where the curated table has 861 concepts.
 ### 2.5 The process, not the format, provides the safety
 
 "Append-only, first 1,486 lines byte-frozen" is enforced by a sha256 over physical line offsets
-(`tests/test_frepj_taxonomy_coverage.py:169-177`), by hard-coded row sums in three tests, and by each builder
-re-deriving "where my block starts" from the byte stream. The first 1,485 rows are sorted by `proposed_label`
+(`tests/test_frepj_taxonomy_coverage.py:169-177`), by hard-coded whole-table row sums in three tests
+(`test_taxonomy_known_issues.py:64`, `test_taxonomy_lookup_equivalence.py:100`, and since PR #35
+`test_taxonomy_label_consistency.py:288`), and by each builder re-deriving "where my block starts" from the
+byte stream. The first 1,485 rows are sorted by `proposed_label`
 (with two collation exceptions: the capitalised `Eukaryota` and the hyphen in `pseudo-nitzschia`) with 15
 sources interleaved in 1,065 runs; the rows after them are six contiguous blocks appended at EOF, which
 is why the last two source additions produced a hand-resolved merge conflict on the same hunk. Adding a source
-has had three precedents with three different methods (a 937-line builder with rule tables in Python; a
+has had three precedents with three different methods (a 1,019-line builder with rule tables in Python; a
 builder plus a Markdown-embedded provenance table; 44 hand-typed lines whose only provenance is a test
 docstring). Provenance of *why a row says what it says* exists for 229 of 2,358 rows, inside a Markdown file;
-the Tara Pacific builder computes it for all 600 of its rows and writes out 95. The authority snapshot is
-keyed to the sha256 of the whole CSV, so correcting a spelling that involves no id forces a network re-harvest
+the Tara Pacific builder computes it for all 600 of its rows and writes out 95. PR #35 then widened that
+report rather than the data: seven rank-name decisions now live as English prose inside a `RANK_DEPARTURES`
+dict (`build_tara_pacific_taxonomy.py:373-421`) that the builder string-concatenates into Markdown, which is
+the same pattern one level further from the rows it explains. The authority snapshot is keyed to the sha256 of
+the whole CSV, so correcting a spelling that involves no id forces a network re-harvest
 and an 86,618-line JSON diff in the same PR.
+
+The horizontal ledger PR #35 landed shows the alternative already working in this repository, and is worth
+copying rather than replacing. Its twenty adjudications are keyed by a hash of the finding's own values,
+`sha256(check|raw_label|labels)` (`utils/verify_label_consistency.py:106-113`), explicitly not by row count or
+row position. A waiver therefore survives a new source adopting a label whose taxon is already known, and
+lapses exactly when a new taxon appears under that label. The `csv_rows: 2358` field in the ledger is a dated
+stamp that no code reads. That is the identity discipline §8 asks for, applied to findings instead of to the
+file, and it is the one place in the repository where adding a source does not invalidate a curated judgement.
 
 ### 2.6 Downstream label vocabularies are an emergent side-effect
 
@@ -152,9 +170,11 @@ the training label and the caption are three separate code-defined derivations o
 ## 3. What has to survive: the frozen contract
 
 `planktonzilla-17M` v1.0, the paper and the four released models are pinned to today's column values, defects
-included, under the repository's zero-behavioural-drift rule (KNOWN_ISSUES KI-8..KI-13 are pinned as-is by
-`tests/test_taxonomy_known_issues.py`). Any new representation is therefore judged first on whether it can
-*regenerate* the old one exactly, and only then on what else it can do. The prototype in §5 shows this is
+included, under the repository's zero-behavioural-drift rule (KNOWN_ISSUES KI-8, KI-9, KI-10, KI-12 and KI-13
+are pinned as-is by `tests/test_taxonomy_known_issues.py`, joined since PR #35 by KI-31 in
+`tests/test_taxonomy_label_consistency.py`; KI-11, inside that range, was resolved in July 2026 and is not a
+pinned defect). Any new representation is therefore judged first on whether it can *regenerate* the old one
+exactly, and only then on what else it can do. The prototype in §5 shows this is
 achievable. Concretely, the contract is:
 
 - the 19-column CSV, byte-for-byte: LF line endings, `csv.QUOTE_MINIMAL`, the header order above, today's
@@ -167,6 +187,11 @@ achievable. Concretely, the contract is:
 - the label-string projection: 850 distinct `ClassLabel` names over the 21 sources and 599 over the 15 v1.0
   sources, in `sorted(set())` order — 849 and 598 non-empty `" ".join(non-empty ranks)` strings plus the
   empty-string class in each — including the six repeated-token strings caused by KI-8;
+- the 20 `Raw_Labels` disagreements of KI-31 (`open, wontfix`): 20 of the 1,622 distinct labels publish two
+  different taxa across sources, touching 80 rows, with the inventory itself pinned — 18 ERROR / 2 WARN, 13
+  rank inflations, 5 lineage contradictions, 2 bucket namings — by
+  `tests/test_taxonomy_label_consistency.py:286-296`, and each adjudicated by finding id in
+  `utils/LABEL_CONSISTENCY_WAIVERS.json`;
 - the 13 rows whose id tuple diverges from their label's canonical tuple, the Harpacticoida / Creseidae /
   Cladocera mislabels, the *Ctenophora* homonym, the `Eukaryota` casing: all reproduced unchanged until a
   deliberate, versioned data release corrects them.
@@ -214,8 +239,10 @@ taxonomy, ML labels).
   without a concept; a rank without its ancestors; a repeating-group id cell; a float-serialised integer; one
   name in two rank slots; a duplicate `(source, raw_label)`. And *detected*: vocabularies; lowercase canonical
   names; coverage of every registered source's frozen class-dir list with no hard-coded row counts; exact ids
-  shared by two concepts; the horizontal `Raw_Labels → one concept` check across sources as a waivable lint
-  (PR #35, KI-31); donor rank ≤ label rank; bucket labels never mapped to taxa; a missing published column
+  shared by two concepts; the horizontal `Raw_Labels → one concept` check across sources as a waivable lint —
+  no longer a thing to build but one to **preserve**, since `utils/verify_label_consistency.py` (PR #35, KI-31)
+  already reports it network-free, gates it in `tests/test_taxonomy_label_consistency.py` and ships it as
+  `pz_verify_labels`; donor rank ≤ label rank; bucket labels never mapped to taxa; a missing published column
   raises instead of nulling 17.4 M rows. [DM, CW, ST, CM]
 - **M7 Deterministic label strings and vocabularies as data.** A pure projection reproduces today's 850 / 599
   `ClassLabel` names in order (849 / 598 non-empty plus the empty-string class); label vocabularies
@@ -573,7 +600,10 @@ planktonzilla/planktonzilla_dataset/taxonomy/
 ├── vocab/root_class.tsv       living / detritus / artefact / inert + the derived living flag
 ├── vocab/authority.tsv        scope, id pattern, url template, multi-valued flag, legacy column
 ├── merged.tsv                 retired ids → replacement, date, reason
-├── waivers/*.tsv              tree, horizontal (KI-31), authority: the current JSON ledgers re-keyed by id
+├── waivers/*.tsv              `horizontal.tsv` (the 20 entries of `utils/LABEL_CONSISTENCY_WAIVERS.json`,
+│                              KI-31) and `authority.tsv` (the 59 of `utils/AUTHORITY_WAIVERS.json`), both
+│                              re-keyed from a hash of names onto stable concept ids; a `tree.tsv` is new,
+│                              since no tree ledger exists today
 └── release/v1.0/              legacy_row_order.tsv (2,358 keys), legacy_overrides.tsv (13 id rows + 5 concept
                                pins, with root_class / qualifier / plankton columns), sha256 over those keys
 planktonzilla/planktonzilla_dataset/planktonzilla_taxonomy.csv   GENERATED until the sha pins are retired
@@ -667,8 +697,9 @@ NameUsage shape, so each is one polars write later); and any change to the publi
 ## 9. Migration plan
 
 Ordered so that the golden gate exists before any consumer moves and the published path never changes. Effort
-figures are the panel's own; the refuters judged every estimate a floor (a 937-line builder and a 1,042-line
-resolver are being replaced), so treat the total as four to six weeks of one engineer.
+figures are the panel's own; the refuters judged every estimate a floor (a 1,019-line builder and a 1,042-line
+resolver are being replaced, and that builder gained 82 lines of rule table during this report's own review),
+so treat the total as four to six weeks of one engineer.
 
 1. **Golden gate and one-shot migration (≈4 days).** Write the id-preserving migration script, generate the
    package from the committed CSV, and land the loader, model and legacy renderer with tests that assert:
@@ -678,15 +709,17 @@ resolver are being replaced), so treat the total as four to six weeks of one eng
    write paths in the same commit. Nothing else changes.
 2. **Schema of record and validation (≈3 days).** Commit the descriptor, the polars rule module including the
    refuters' additions, the seven-defect fixture package, a Frictionless CI step in the dev group, and
-   adjudicate the day-one lint volume (about 168 coarse-id and 20 horizontal findings) into the waiver tables
-   re-keyed by stable ids.
+   port the adjudications that already exist — the 59 authority waivers and the 20 horizontal ones PR #35
+   landed, each carrying a category and a written reason — into the waiver tables, re-keyed from their
+   name-derived finding ids onto stable concept ids; only the 270 coarse-id findings (120 NCBI, 80 Wikidata,
+   70 WoRMS) still need adjudicating from scratch.
 3. **Switch every reader to the loader (≈2 days).** `build_taxonomy_lookup` becomes an alias
    (`generate_planktonzilla.py:105-172` deleted), the copy in `frepj_validate.py` is deleted,
    `check_taxonomy_csv` is rewritten on the loader's pre-flight helpers, and `sankey`, `verify_taxonomy_ids`
-   and PR #35's checker read `rows()`. The wide CSV stays committed with a staleness test.
+   and `verify_label_consistency` read `rows()`. The wide CSV stays committed with a staleness test.
 4. **Write side and CLI (≈5 days, the risky step).** `upsert_source`, `set-mapping`, `add-taxon`, `add-id`,
    `rename` / `merge` / `split` with tombstones and automatic pins, `fmt`, `diff`, `release`; port the three
-   builders (2,646 lines) onto it; retire `extract_taxon_ids.py`; end-to-end test on a synthetic 50-class
+   builders (2,728 lines) onto it; retire `extract_taxon_ids.py`; end-to-end test on a synthetic 50-class
    source; re-express the Tara Pacific "rebuild equals committed block" test on records.
 5. **Provenance and waivers as data (≈2 days).** Backfill `method` / `donor` for all 600 Tara Pacific and 229
    FREPJ decisions from the existing reports; seed `broadMatch` rows from the authority findings; derive the
@@ -729,5 +762,6 @@ Each with the default the recommendation assumes.
 10. **Life-stage vocabulary** for the `lifeStage` facet: Darwin Core / BODC S11 terms (default) vs EcoTaxa's
     tokens vs a project list.
 11. **Wikidata**: keep as a crosswalk authority row (default) or demote to a derived link.
-12. **Retire `extract_taxon_ids.py`** (default: retire; its output is `identifier.tsv`), and rebase PR #35's
-    checker onto the loader after it merges (default) rather than before.
+12. **Retire `extract_taxon_ids.py`** (default: retire; its output is `identifier.tsv`). The second half of
+    this decision is spent: PR #35 merged on 2026-09-10, so rebasing `utils/verify_label_consistency.py` onto
+    the loader is simply part of step 3 rather than an open choice.
