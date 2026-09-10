@@ -57,8 +57,8 @@ Eight other modules parse the file on their own rather than through that reader:
 `pz_verify_labels` console script (`pyproject.toml:74`). A ninth reads the file only in part:
 `make_planktonzilla.check_taxonomy_csv:519-567` opens it to check the header with a bare `csv.reader` (`:536-537`)
 before handing the rows to the reader of record (`:547`). On the test side the count depends entirely on what
-one counts, so state the predicate: 23 test files depend on the table, 16 naming the committed file or its path
-constant, 16 building their own `Raw_Labels` fixtures, and 9 doing both.
+one counts, so state the predicate: 23 test files depend on the table — 13 name the committed file or its
+path constant, 21 carry a `Raw_Labels` fixture or assertion, and 11 do both.
 Three of those modules also *write* it, by locating their own block in the byte stream: one of them
 (`build_frepj_taxonomy.write_csv`, `:435-454`) discards every block after its own on a no-op re-run and blanks
 208 backfilled id cells, exiting 0 (reproduced; `docs/CODE_REVIEW.md` finding 1.1).
@@ -103,7 +103,7 @@ There is no identifier for a taxon other than its lowercase name. Consequences, 
   fragilariales`, aphia 163921), and the CLIP caption for those images reads accordingly. `LClass_siphonophora`
   maps to a millipede genus; `Cladocera` in zoocamnet to the bivalve genus *Cladoceramus* (6,669 images). The
   one-name-one-lineage invariant that keeps the file consistent is exactly what forbids a second *Ctenophora*
-  node; `build_tara_pacific_taxonomy.py:340-356` propagates the diatom lineage knowingly for that reason.
+  node; `build_tara_pacific_taxonomy.py:340-357` propagates the diatom lineage knowingly for that reason.
 - **Synonyms become two classes.** `Heterocapsa_triquetra` maps to *heterocapsa triquetra* in two sources and to
   its accepted name *kryptoperidinium triquetrum* in a third, with two different families; *Neoceratium* /
   *Tripos* likewise (104,887 images), where 61 rows spell the genus `tripos` against 8 `neoceratium` and PR
@@ -145,13 +145,15 @@ docstring). Provenance of *why a row says what it says* exists for 229 of 2,358 
 the Tara Pacific builder computes it for all 600 of its rows and writes out 95. PR #35 then widened that
 report rather than the data: seven rank-name decisions now live as English prose inside a `RANK_DEPARTURES`
 dict (`build_tara_pacific_taxonomy.py:373-421`) that the builder string-concatenates into Markdown, which is
-the same pattern one level further from the rows it explains. The authority snapshot is keyed to the sha256 of
+the same pattern one level further from the rows it explains. The guard that had failed to see those decisions
+was widened in the same PR, and the fix is the same shape as the defect: a Kingdom-only comparison that saw
+three departures now compares all seven ranks and sees seven. The authority snapshot is keyed to the sha256 of
 the whole CSV, so correcting a spelling that involves no id forces a network re-harvest
 and an 86,618-line JSON diff in the same PR.
 
 The horizontal ledger PR #35 landed shows the alternative already working in this repository, and is worth
 copying rather than replacing. Its twenty adjudications are keyed by a hash of the finding's own values,
-`sha256(check|raw_label|labels)` (`utils/verify_label_consistency.py:106-113`), explicitly not by row count or
+`sha256(check|raw_label|labels)` (`utils/verify_label_consistency.py:106-115`), explicitly not by row count or
 row position. A waiver therefore survives a new source adopting a label whose taxon is already known, and
 lapses exactly when a new taxon appears under that label. The `csv_rows: 2358` field in the ledger is a dated
 stamp that no code reads. That is the identity discipline §8 asks for, applied to findings instead of to the
@@ -190,7 +192,7 @@ achievable. Concretely, the contract is:
   empty-string class in each — including the six repeated-token strings caused by KI-8;
 - the 20 `Raw_Labels` disagreements of KI-31 (`open, wontfix`): 20 of the 1,622 distinct labels publish two
   different taxa across sources, touching 80 rows, with the inventory itself pinned — 18 ERROR / 2 WARN, 13
-  rank inflations, 5 lineage contradictions, 2 bucket namings — by
+  rank inflations, 5 lineage contradictions, 2 label disagreements (both bucket namings) — by
   `tests/test_taxonomy_label_consistency.py:286-296`, and each adjudicated by finding id in
   `utils/LABEL_CONSISTENCY_WAIVERS.json`;
 - the 13 rows whose id tuple diverges from their label's canonical tuple, the Harpacticoida / Creseidae /
@@ -709,7 +711,9 @@ so treat the total as four to six weeks of one engineer.
    2,358 keys; the 850 / 599 label vocabulary in order; the reproject fixed point. Disable the three builders'
    write paths in the same commit. Nothing else changes.
 2. **Schema of record and validation (≈3 days).** Commit the descriptor, the polars rule module including the
-   refuters' additions, the seven-defect fixture package, a Frictionless CI step in the dev group, and
+   refuters' additions, the seven-defect fixture package, a Frictionless CI step pinned exactly in the dev
+   group (`uv.lock` is gitignored at `.gitignore:279`, so a `>=` floor is not a pin in CI at all — the drift
+   PR #35 had just fixed for ruff), and
    port the adjudications that already exist — the 59 authority waivers and the 20 horizontal ones PR #35
    landed, each carrying a category and a written reason — into the waiver tables, re-keyed from their
    name-derived finding ids onto stable concept ids; only the 270 coarse-id findings (120 NCBI, 80 Wikidata,
@@ -746,11 +750,15 @@ Each with the default the recommendation assumes.
 2. **Frozen-defect policy**: keep the pin layer until a golden diff against the Hub artefact exists (default),
    or correct the 12-row *Ctenophora* homonym, Harpacticoida / Creseidae and KI-10 now as a v1.1 data release.
 3. **Unpublished blocks**: reproduce the Tara Pacific Harpacticoida / Creseidae copies verbatim (default) or
-   correct them before their first publication, since nothing pins them yet.
+   correct them before their first publication, since nothing pins them yet. PR #35 diagnosed the Creseidae
+   case, which narrows the choice: `zooscan/Creseidae` maps the folder to *clio pyramidata* in family Cliidae
+   while three pre-existing rows keep family Creseidae, so zooscan disagrees with itself and the verbatim rule
+   copied the outlier forward.
 4. **Authority snapshot key**: re-key to the id set with incremental harvest (default) or keep the whole-file
    sha under HARDEN-01/02.
-5. **Frictionless in the dev group** (default; 11 packages on top of today's environment, CI +2 s) or the
-   polars module alone with the descriptor as documentation.
+5. **Frictionless in the dev group** (default; 11 packages on top of today's environment, CI +2 s, and an
+   exact `==` pin rather than a floor, since the lockfile is not committed) or the polars module alone with
+   the descriptor as documentation.
 6. **Row order for post-freeze sources**: registry order then raw-label bytes (default) vs append order.
 7. **Write-side actor**: both paths supported (default: flat TSV for biologists, `upsert_source` for
    builders); if only engineers write, the display-name column and the spreadsheet normalisation can be
