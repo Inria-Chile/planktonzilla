@@ -1,0 +1,267 @@
+{
+ "_comment": "Adjudicated horizontal findings for planktonzilla_taxonomy.csv -- rows that share a Raw_Labels value but publish different taxa, as reported by verify_label_consistency.py (KI-31). Categories: mislabel_defect (the two sides denote different organisms; images under at least one are wrong), rank_inflation_defect (one dataset publishes finer than the source label supports), nomenclature_drift (one organism under two names -- no image is mislabelled), rank_treatment (a difference in how a taxon is slotted, the KI-8 shape), needs_taxonomic_adjudication (the committed evidence does not settle it), bucket_naming (two non-taxonomic buckets named differently). The CSV is NOT edited: the table and the datasets derived from it are published and frozen on HuggingFace Hub under the zero-behavioural-drift rule, so a genuine defect is recorded here and gated on a golden diff (HARDEN-01). Adding an entry is a reviewed act -- a NEW disagreement arrives unwaived and turns tests/test_taxonomy_label_consistency.py red.",
+ "adjudicated_utc": "2026-09-01T13:47:39+00:00",
+ "csv_rows": 2358,
+ "waivers": [
+  {
+   "finding_id": "0b858f2dd465",
+   "check": "lineage_contradiction",
+   "severity": "ERROR",
+   "raw_label": "cladocera",
+   "labels": [
+    "branchiopoda",
+    "cladoceramus"
+   ],
+   "n_rows": 2,
+   "category": "mislabel_defect",
+   "reason": "`cladocera` names the crustacean group (Branchiopoda, Arthropoda), which is what global_uvp5 publishes. zoocamnet publishes Genus=cladoceramus, Class=bivalvia, Phylum=mollusca, carrying aphia_ID 105 -- which the committed authority snapshot resolves to the class Bivalvia, not to any genus. Cladoceramus is a bivalve genus whose name merely resembles the label. zoocamnet's images under this folder are published as a mollusc. The most likely wrong side is zoocamnet's; deciding it needs the source's own class list, not this table."
+  },
+  {
+   "finding_id": "dbb020ae3b2e",
+   "check": "lineage_contradiction",
+   "severity": "ERROR",
+   "raw_label": "creseidae",
+   "labels": [
+    "clio pyramidata",
+    "creseidae"
+   ],
+   "n_rows": 4,
+   "category": "mislabel_defect",
+   "reason": "global_uvp5 publishes Family=creseidae (aphia 411905, accepted, rank Family). The three other rows publish Species=clio pyramidata (aphia 139033) with Family=cliidae. Root cause, established 2026-09-02 by widening the finding-1.7 guard: zooscan carries both readings -- its `Creseidae` folder maps to clio pyramidata while its `Creseidae acicula` folder maps to creseis acicula (family Creseidae) -- and build_tara_pacific_taxonomy.py's `verbatim` rule copied the wrong one into tara_pacific_hsn and tara_pacific_manta on a class-dir name match. One wrong row propagated three times, not three independent judgements. This is one of the two cases in CODE_REVIEW finding 1.6; the other is `harpacticoida`."
+  },
+  {
+   "finding_id": "95d0c4ebc2b9",
+   "check": "lineage_contradiction",
+   "severity": "ERROR",
+   "raw_label": "heterocapsa_triquetra",
+   "labels": [
+    "heterocapsa triquetra",
+    "kryptoperidinium triquetrum"
+   ],
+   "n_rows": 3,
+   "category": "nomenclature_drift",
+   "reason": "Not a mislabel: the committed authority snapshot has aphia 110153 (`Heterocapsa triquetra`, used by daplankton and syke_ifcb_2022) as status=unaccepted with valid_name `Kryptoperidinium triquetrum`, which is what whoi publishes (aphia 1346683, accepted). All three rows also share NCBI taxid 66468. Same organism, two names; the table is simply not normalized onto the accepted one."
+  },
+  {
+   "finding_id": "27e2c4048677",
+   "check": "lineage_contradiction",
+   "severity": "ERROR",
+   "raw_label": "neoceratium",
+   "labels": [
+    "neoceratium",
+    "tripos"
+   ],
+   "n_rows": 7,
+   "category": "needs_taxonomic_adjudication",
+   "reason": "Six datasets publish Genus=neoceratium (aphia 494056), zooscan publishes Genus=tripos (aphia 494057). The snapshot has BOTH as accepted WoRMS records with distinct NCBI taxids (665866 vs 2126447) and distinct Qcodes, so on the committed evidence they are not interchangeable and this cannot be closed as nomenclature drift the way `heterocapsa_triquetra` can -- even though the Neoceratium/Tripos history is the obvious candidate explanation. The seam runs inside the Tara Pacific block too: its five `Neoceratium <species>` folders find a `tripos <epithet>` donor and publish Tripos, while its bare `Neoceratium` folder finds the `neoceratium` donor and publishes Neoceratium (see RANK_DEPARTURES in build_tara_pacific_taxonomy.py). The table at large prefers Tripos, 51 rows to 5. Left as a finding rather than dismissed: resolving it needs a taxonomist, or a snapshot refresh that shows one of the two as unaccepted."
+  },
+  {
+   "finding_id": "4992357fb82e",
+   "check": "lineage_contradiction",
+   "severity": "ERROR",
+   "raw_label": "thecosomata",
+   "labels": [
+    "cavolinia inflexa",
+    "thecosomata"
+   ],
+   "n_rows": 2,
+   "category": "rank_treatment",
+   "reason": "The clash is at Order: global_uvp5 puts `thecosomata` there, uvp6net's Cavolinia inflexa row puts `pteropoda` there. Thecosomata is treated as a suborder of Pteropoda by NCBI (the snapshot gives aphia 13703 rank Order but status=unaccepted with no valid_name, and NCBI 158030 rank suborder), so this is the KI-8 rank-slotting shape rather than two different organisms -- compounded by the inflation from Order to Species."
+  },
+  {
+   "finding_id": "c374b16ac230",
+   "check": "rank_inflation",
+   "severity": "ERROR",
+   "raw_label": "acantharia",
+   "labels": [
+    "acantharia",
+    "amphibelone"
+   ],
+   "n_rows": 4,
+   "category": "rank_inflation_defect",
+   "reason": "Three datasets publish Class=acantharia; flowcamnet publishes Genus=amphibelone under the same folder name. Amphibelone is within Acantharia, so nothing contradicts -- flowcamnet's images simply claim a genus their folder name does not support."
+  },
+  {
+   "finding_id": "43cdaf7614a2",
+   "check": "rank_inflation",
+   "severity": "ERROR",
+   "raw_label": "actinula",
+   "labels": [
+    "hydrozoa",
+    "solmundella bitentaculata"
+   ],
+   "n_rows": 2,
+   "category": "rank_inflation_defect",
+   "reason": "`actinula` is a hydrozoan LARVAL STAGE, not a taxon: global_uvp5 publishes it as Class=hydrozoa, which is as far as the label goes. zooscan publishes Species=solmundella bitentaculata under it. Those images claim a species from a folder that names a life stage."
+  },
+  {
+   "finding_id": "028643083f05",
+   "check": "rank_inflation",
+   "severity": "ERROR",
+   "raw_label": "annelida",
+   "labels": [
+    "annelida",
+    "poeobius"
+   ],
+   "n_rows": 7,
+   "category": "rank_inflation_defect",
+   "reason": "Six datasets publish Phylum=annelida; uvp6net publishes Genus=poeobius. A phylum-level folder name published as a genus -- four ranks of precision the label never had."
+  },
+  {
+   "finding_id": "840e9e2cbdb6",
+   "check": "rank_inflation",
+   "severity": "ERROR",
+   "raw_label": "dinophyceae",
+   "labels": [
+    "dinophyceae",
+    "gonyaulacales"
+   ],
+   "n_rows": 6,
+   "category": "rank_inflation_defect",
+   "reason": "Five datasets publish Class=dinophyceae; flowcamnet publishes Order=gonyaulacales. Gonyaulacales is within Dinophyceae, so this is over-specification by one rank, not a contradiction."
+  },
+  {
+   "finding_id": "6ad526d90972",
+   "check": "rank_inflation",
+   "severity": "ERROR",
+   "raw_label": "filament",
+   "labels": [
+    "cyanophyceae",
+    "filament"
+   ],
+   "n_rows": 3,
+   "category": "rank_inflation_defect",
+   "reason": "`filament` is a morphology, and global_uvp5 and uvp6net publish it with no rank cell populated at all. zoolake publishes Class=cyanophyceae under the same folder name -- a real taxon assigned to a shape bucket. Filamentous morphology is not exclusive to cyanobacteria."
+  },
+  {
+   "finding_id": "c6b00c6e94b7",
+   "check": "rank_inflation",
+   "severity": "ERROR",
+   "raw_label": "foraminifera",
+   "labels": [
+    "foraminifera",
+    "globigerinidae"
+   ],
+   "n_rows": 9,
+   "category": "rank_inflation_defect",
+   "reason": "Eight datasets publish Phylum=foraminifera; zooscan publishes Family=globigerinidae. Globigerinidae is within Foraminifera, so this is over-specification by three ranks."
+  },
+  {
+   "finding_id": "6fae3cfbcfdc",
+   "check": "rank_inflation",
+   "severity": "ERROR",
+   "raw_label": "harpacticoida",
+   "labels": [
+    "euterpina",
+    "harpacticoida"
+   ],
+   "n_rows": 8,
+   "category": "mislabel_defect",
+   "reason": "The case that motivated this check, and CODE_REVIEW finding 1.6. Five datasets publish Order=harpacticoida (aphia 1102); tara_pacific_hsn, tara_pacific_manta and zooscan publish Genus=euterpina (aphia 115348). Euterpina is a harpacticoid, so the lineages do not contradict -- which is exactly why every vertical authority check passes on both sides. The three rows still publish a genus for a folder that names an order."
+  },
+  {
+   "finding_id": "b6d1288658d3",
+   "check": "rank_inflation",
+   "severity": "ERROR",
+   "raw_label": "nauplii",
+   "labels": [
+    "arthropoda",
+    "copepoda"
+   ],
+   "n_rows": 2,
+   "category": "rank_inflation_defect",
+   "reason": "`nauplii` is a larval stage shared across crustaceans. flowcamnet publishes Phylum=arthropoda, global_uvp5 publishes Class=copepoda. Copepoda is within Arthropoda, so no contradiction -- but the two datasets' images are not interchangeable at the class level."
+  },
+  {
+   "finding_id": "5f24a36e4560",
+   "check": "rank_inflation",
+   "severity": "ERROR",
+   "raw_label": "ornithocercus",
+   "labels": [
+    "ornithocercus",
+    "ornithocercus magnificus"
+   ],
+   "n_rows": 4,
+   "category": "rank_inflation_defect",
+   "reason": "Three datasets publish Genus=ornithocercus; flowcamnet publishes Species=ornithocercus magnificus. A genus folder published as one of its species."
+  },
+  {
+   "finding_id": "b46e560d92dc",
+   "check": "rank_inflation",
+   "severity": "ERROR",
+   "raw_label": "other_living",
+   "labels": [
+    "monstrilloida",
+    "other"
+   ],
+   "n_rows": 5,
+   "category": "rank_inflation_defect",
+   "reason": "`other_living` is an explicit catch-all: four datasets publish it with no rank cell populated. zooscan publishes Order=monstrilloida under it. A residual bucket cannot be a taxon, so those images assert a copepod order the folder never claimed."
+  },
+  {
+   "finding_id": "79c2d1f90fba",
+   "check": "rank_inflation",
+   "severity": "ERROR",
+   "raw_label": "penilia",
+   "labels": [
+    "penilia",
+    "penilia avirostris"
+   ],
+   "n_rows": 3,
+   "category": "rank_inflation_defect",
+   "reason": "Two datasets publish Genus=penilia; zooscan publishes Species=penilia avirostris. Penilia avirostris is the only widely reported species of the genus, which makes the inflation defensible -- but it is still the source label being read as more specific than it is."
+  },
+  {
+   "finding_id": "50e6bd5edce8",
+   "check": "rank_inflation",
+   "severity": "ERROR",
+   "raw_label": "trachymedusae",
+   "labels": [
+    "botrynema",
+    "trachymedusae"
+   ],
+   "n_rows": 3,
+   "category": "rank_inflation_defect",
+   "reason": "Two datasets publish Order=trachymedusae; uvp6net publishes Genus=botrynema. Botrynema is within Trachymedusae, so over-specification by two ranks."
+  },
+  {
+   "finding_id": "ac84b590998f",
+   "check": "rank_inflation",
+   "severity": "ERROR",
+   "raw_label": "unknown",
+   "labels": [
+    "thecofilosea",
+    "unknown"
+   ],
+   "n_rows": 2,
+   "category": "rank_inflation_defect",
+   "reason": "`unknown` is the most explicit non-taxonomic bucket in the table: zoolake publishes it with no rank cell populated, which is the only defensible reading. global_uvp5 publishes Class=thecofilosea under it. Whatever those images are, the folder name asserts that nobody knew."
+  },
+  {
+   "finding_id": "43dd1797431e",
+   "check": "label_disagreement",
+   "severity": "WARN",
+   "raw_label": "darkrods",
+   "labels": [
+    "other",
+    "shape"
+   ],
+   "n_rows": 2,
+   "category": "bucket_naming",
+   "reason": "Neither row populates any rank cell, so no image is given a taxon it does not have. flowcamnet calls the bucket `shape`, global_uvp5 calls it `other`. A curation inconsistency in the non-taxonomic vocabulary, reported at WARN and not a taxonomy defect."
+  },
+  {
+   "finding_id": "289227701332",
+   "check": "label_disagreement",
+   "severity": "WARN",
+   "raw_label": "fiber_detritus",
+   "labels": [
+    "detritus",
+    "fiber"
+   ],
+   "n_rows": 2,
+   "category": "bucket_naming",
+   "reason": "Neither row populates any rank cell. planktoscope calls the bucket `detritus`, zoocamnet calls it `fiber`. `fiber` is the more specific of the two and both are non-taxonomic, so this is vocabulary drift rather than a mislabel."
+  }
+ ]
+}

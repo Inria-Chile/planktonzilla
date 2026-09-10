@@ -48,17 +48,29 @@ These fell through to the artefact default. A non-empty list means `MORPH_RULES`
 
 ### B3. Rows whose lineage departs from EcoTaxa's tree (3)
 
-All three take the lineage the master CSV already records for their `proposed_label`, because the table's invariant is one lineage per label. Two of them repair an upstream misplacement; one inherits an issue the table already had. A test asserts these are the only three.
+All three take the lineage the master CSV already records for their `proposed_label`, because the table's invariant is one lineage per label. Two of them repair an upstream misplacement; one inherits an issue the table already had. A test asserts these are the only three rows whose WHOLE lineage diverges; rows that differ at a single rank are B4 below.
 
 - `Ctenophora<Animalia` — INHERITED ISSUE, not introduced here. EcoTaxa says Animalia > Ctenophora (the comb jellies), but the master CSV has mapped `ctenophora` to the DIATOM genus Ctenophora (aphia 163921) since long before this milestone — nine rows across zooscan, uvp6net, zoocamnet, isiisnet, global_uvp5 and planktoscope, all of them zooplankton imagers where the comb jelly is the only plausible reading. These rows follow the table rather than contradict it: a second `ctenophora` lineage would break the one-label-one-lineage invariant across all of them. Correcting the homonym is a separate change to those nine rows, gated on a golden-output diff like every other KNOWN_ISSUES data item.
 - `Odontella sp.` — EcoTaxa hangs this node under `Hexapoda>Collembola>Odontella` — the springtail genus, not the diatom. `Odontella` is a homonym (WoRMS 148963 the diatom, ITIS the collembolan), and a FlowCam micro-plankton sample cannot contain a springtail. Taking the existing `odontella` row (Chromista > Heterokontophyta > Bacillariophyceae) is the correct reading AND the consistent one.
 - `part<Ctenophora` — Same inherited `ctenophora` homonym as `Ctenophora<Animalia` above.
 
-### B4. Ranks filled by hand to close a ladder gap (1)
+### B4. Rank names where this table's spelling wins over EcoTaxa's (7)
+
+The lineage agrees with EcoTaxa except at one rank, because the row takes the spelling the master CSV already uses. Keyed by the rank and the two names, since one decision covers every row that inherits it — 16 rows across the seven entries here. A test asserts these are the only rank names that differ and that every entry is still exercised.
+
+- **Family** — EcoTaxa `creseidae`, this table `cliidae`. **A defect, and the only one in this table — inherited, not introduced here.** It is the second case of docs/CODE_REVIEW.md finding 1.6, and KI-31 reports it from the other side. EcoTaxa places the `Creseidae` folder in the family Creseidae, and so do three pre-existing rows (`global_uvp5/Creseidae`, `uvp6net/Creseis acicula`, `zooscan/Creseidae acicula`). The one row that does not is `zooscan/Creseidae`, which maps the folder to `clio pyramidata` — family Cliidae — and the `verbatim` rule copies it here because it shares the class-dir name. zooscan is therefore inconsistent with itself, and the copy carries that inconsistency into this block. Recorded rather than corrected: fixing it changes published lineages, so it is gated on a golden diff like every KNOWN_ISSUES data item.
+- **Family** — EcoTaxa `tintinnidiidae`, this table `codonellopsidae`. EcoTaxa hangs the genus `Codonellopsis` directly under Tintinnidiidae. All three pre-existing rows carrying this genus place it in Codonellopsidae; the single Tintinnidiidae row is a different genus (`leprotintinnus`). Following the table keeps one lineage per label.
+- **Genus** — EcoTaxa `neoceratium`, this table `tripos`. The table records this genus as Tripos in 51 pre-existing rows and as EcoTaxa's Neoceratium in 5. Worth reading with KI-31: this leaves a seam INSIDE the appended block, because the five `Neoceratium <species>` folders find a `tripos <epithet>` donor and publish Tripos while the bare `Neoceratium` folder finds the `neoceratium` donor and publishes Neoceratium. Which name is correct is not settled here — the committed authority snapshot has both as accepted WoRMS records with distinct NCBI taxids.
+- **Order** — EcoTaxa `chaetocerotanae incertae sedis`, this table `chaetocerotanae`. EcoTaxa's order node carries the *incertae sedis* uncertainty marker inside its name. All 33 pre-existing rows that name this order spell it without the marker, and none spell it with. Same taxon, this table's spelling.
+- **Order** — EcoTaxa `sessilida`, this table `peritrichida`. A rank-slot difference of the KI-8 shape, not a different organism. EcoTaxa puts Sessilida in the Order slot beneath a subclass it calls Peritrichia; the donor row — `frepj`, whose own source label path reads `Oligophymenophorea,Peritrichida,Vorticellidae,Vorticella` — records the ordinal spelling of that higher group instead. Sessilida sits inside it. The table is evenly split (one row each), so this follows the donor rather than a house majority.
+- **Phylum** — EcoTaxa `bacillariophyta`, this table `heterokontophyta`. This table's diatom phylum is Heterokontophyta — 233 pre-existing rows name it, none name Bacillariophyta — with `bacillariophyceae` as the class below it. Same lineage, one rank renamed; see the `Odontella sp.` note above, which relies on the same convention.
+- **Phylum** — EcoTaxa `proteobacteria`, this table `cyanobacteria`. A repair of an upstream misplacement, not a spelling. EcoTaxa hangs its `Cyanobacteria` node under `Bacteria > Proteobacteria`, which is not where cyanobacteria sit; the table records Cyanobacteria as the phylum in all 48 pre-existing rows that name it, and none name Proteobacteria.
+
+### B5. Ranks filled by hand to close a ladder gap (1)
 
 - `branchiostoma lanceolatum` — Order = amphioxiformes
 
-### B5. EcoTaxa's two diatom lineages
+### B6. EcoTaxa's two diatom lineages
 
 EcoTaxa carries diatoms under BOTH `Chromista>Bacillariophyta` and `Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae`. Rows anchored on the first (`centric`, `pennate<Bacillariophyta`, `Coscinodiscids`, `Rhizosolenids`) therefore carry `Phylum=bacillariophyta`, while every diatom row with a genus carries the `heterokontophyta`/`bacillariophyceae` spelling the rest of the CSV uses. Both spellings are kept as upstream states them; no row was rewritten to hide the duality.
 

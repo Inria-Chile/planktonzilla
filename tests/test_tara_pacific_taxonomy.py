@@ -251,23 +251,92 @@ def test_the_reconciliation_report_is_committed_and_current():
         assert class_dir in text
     for label in builder.RANK_GAP_FILLS:
         assert label in text
+    # ...including the rank-name decisions, which cover 16 rows between them (finding 1.7).
+    for rank, ecotaxa_name, table_name in builder.RANK_DEPARTURES:
+        assert f"**{rank}** — EcoTaxa `{ecotaxa_name}`, this table `{table_name}`" in text
 
 
-def test_only_the_documented_row_departs_from_the_ecotaxa_lineage():
-    """The higher-rank reconciliation may repair an upstream misplacement — but exactly
-    the ones HOMONYM_NOTES records, so a NEW one cannot slip in unremarked."""
+def _lineage_departures():
+    """Every built row that disagrees with EcoTaxa's tree, at any of the seven ranks.
+
+    Returns ``{class_dir: [(rank, ecotaxa_name, table_name), ...]}``. Only ranks BOTH sides
+    populate are compared: EcoTaxa leaving a rank blank is a gap, not a disagreement, and
+    the deeper ranks a row carries beyond its anchor are covered by the rank-gap guard.
+    """
     taxa = builder.read_taxa()
     rows, _ = builder.build_rows(builder.read_class_map(), taxa, builder.read_master_csv())
-    by_label = {row["Raw_Labels"]: row for row in rows}
 
-    departures = []
-    for class_dir, row in by_label.items():
+    departures = {}
+    for row in rows:
+        class_dir = row["Raw_Labels"]
         matches = [taxon for taxon in taxa.values() if taxon["display_name"] == class_dir]
         if not matches:
             continue
-        anchor = builder.anchor_taxon(matches[0], taxa)
-        derived = builder._derived_ranks(anchor, taxa)
-        if derived["Kingdom"] and row["Kingdom"] and derived["Kingdom"] != row["Kingdom"]:
-            departures.append(class_dir)
+        derived = builder._derived_ranks(builder.anchor_taxon(matches[0], taxa), taxa)
+        diffs = [
+            (rank, derived[rank], row[rank])
+            for rank in RANKS
+            if derived.get(rank) and row.get(rank) and derived[rank] != row[rank]
+        ]
+        if diffs:
+            departures[class_dir] = diffs
+    return departures
 
-    assert sorted(set(departures)) == sorted(builder.HOMONYM_NOTES)
+
+def test_every_departure_from_the_ecotaxa_lineage_is_documented():
+    """A row may depart from EcoTaxa's tree — but only in a way that is written down.
+
+    This compares all seven rank columns. It used to compare `Kingdom` alone, which saw 3
+    departures and asserted they were the whole story; there are 19 (docs/CODE_REVIEW.md
+    finding 1.7). The 16 it could not see are the one-lineage-per-label rule working as
+    designed — the `anchor` / `verbatim` / inherit-higher-ranks paths take the spelling the
+    master CSV already uses — but with no record of that, a NEW disagreement anywhere below
+    Kingdom was indistinguishable from a deliberate one.
+
+    Two records, because there are two kinds of departure:
+
+      * ``HOMONYM_NOTES`` — this row's WHOLE lineage diverges, a homonym resolved differently.
+        Such a row may differ at any rank; the note covers the row.
+      * ``RANK_DEPARTURES`` — one rank NAME is spelled differently in this table, wherever it
+        appears, keyed by the ``(rank, EcoTaxa name, table name)`` triple so that one decision
+        covers however many rows inherit it.
+    """
+    undocumented = {
+        class_dir: [triple for triple in diffs if triple not in builder.RANK_DEPARTURES]
+        for class_dir, diffs in _lineage_departures().items()
+        if class_dir not in builder.HOMONYM_NOTES
+    }
+    undocumented = {class_dir: diffs for class_dir, diffs in undocumented.items() if diffs}
+    assert not undocumented, (
+        "rank(s) departing from EcoTaxa with no entry in RANK_DEPARTURES — document the "
+        f"decision or fix the lineage: {undocumented}"
+    )
+
+
+def test_no_documented_departure_has_gone_stale():
+    """Both records must still describe the data, or they are decoration.
+
+    A `HOMONYM_NOTES` row that no longer departs, or a `RANK_DEPARTURES` triple nothing
+    exercises, means the lineage changed and the note outlived it.
+    """
+    departures = _lineage_departures()
+
+    silent_homonyms = sorted(set(builder.HOMONYM_NOTES) - set(departures))
+    assert not silent_homonyms, f"HOMONYM_NOTES entries that no longer depart: {silent_homonyms}"
+
+    exercised = {triple for diffs in departures.values() for triple in diffs}
+    stale = sorted(set(builder.RANK_DEPARTURES) - exercised)
+    assert not stale, f"RANK_DEPARTURES entries matching no current departure — delete them: {stale}"
+
+
+def test_the_shipped_departures_are_exactly_what_was_reviewed():
+    """Pins the measured state, so a change in the count cannot pass unnoticed.
+
+    19 rows depart, not the 3 the Kingdom-only comparison reported: 3 whole-lineage homonyms
+    plus 16 rows across the 7 rank-name decisions.
+    """
+    departures = _lineage_departures()
+    assert len(departures) == 19
+    assert sorted(class_dir for class_dir in departures if class_dir in builder.HOMONYM_NOTES) == sorted(builder.HOMONYM_NOTES)
+    assert len([class_dir for class_dir in departures if class_dir not in builder.HOMONYM_NOTES]) == 16
+    assert len(builder.RANK_DEPARTURES) == 7

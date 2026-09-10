@@ -37,7 +37,7 @@ Phase 4, so these failures are no longer silent — only their *handling* is unc
 ## Index
 
 Entries are numbered in the order they were found, not the order they are read: KI-1..7 and
-KI-16..25 are **code behavior**, KI-8..13 are **data** defects in the frozen taxonomy CSV,
+KI-16..25 are **code behavior**, KI-8..13 and KI-31 are **data** defects in the frozen taxonomy CSV,
 KI-14..15 are **source-license** questions, and KI-26 is a **data** defect in a source's own
 sidecar tables; KI-27 through KI-30 are decision logs like KI-24. Numbers are never reused or renumbered — commits,
 code comments and tests cite them.
@@ -69,6 +69,7 @@ number missing from the table below is *resolved*, not withdrawn; look for it th
 | KI-28 | decision log | MEDIUM (rebuild) | `daplankton` joined the registry (17th); Fairdata-resolved, doubly-nested archive, 44 merged classes |
 | KI-29 | decision log | MEDIUM (rebuild) | the four Tara Pacific deposits joined (18th–21st, last); the first sources with **no archive** |
 | KI-30 | decision log | none (same rows) | `planktonset1.0` is fetched from a mirror we keep; NCEI's on-demand generator cannot resume or be size-checked |
+| KI-31 | open, wontfix | data-side | 20 source labels publish two different taxa across datasets |
 
 Two obligations belong to archived entries but are **still open**, and are restated here so
 archiving cannot bury them:
@@ -610,7 +611,7 @@ source's `license: other`.*
 
 ---
 
-## Data inconsistencies in `planktonzilla_taxonomy.csv` (KI-8 – KI-13)
+## Data inconsistencies in `planktonzilla_taxonomy.csv` (KI-8 – KI-13, KI-31)
 
 KI-1..KI-7, KI-16 and KI-24 above concern **code behavior**. KI-8..KI-13 below concern **data**
 defects in the frozen `planktonzilla_taxonomy.csv` itself, found by a two-method audit on
@@ -697,6 +698,69 @@ Document only.
 
 ---
 
+## KI-31 — One source label, two different taxa: `Raw_Labels` disagreements across datasets
+
+**Where:** 20 of the 1,622 distinct `Raw_Labels` values, touching 80 rows. Enumerated with their
+adjudication in [`LABEL_CONSISTENCY_WAIVERS.json`](LABEL_CONSISTENCY_WAIVERS.json); reported by
+`utils/verify_label_consistency.py` and gated by `tests/test_taxonomy_label_consistency.py`.
+
+**Today:** `Raw_Labels` is the key `build_taxonomy_lookup` joins on, so two rows sharing one are
+describing the same imagefolder class directory in two different source datasets. For 20 labels
+they publish different taxa:
+
+- **5 `lineage_contradiction`** — the two lineages name different taxa at a rank both populate.
+  `Creseidae` is published as the family `creseidae` by `global_uvp5` and as `clio pyramidata`
+  (family `cliidae`) by three others. `cladocera` — the crustacean group — is published by
+  `zoocamnet` as the genus `cladoceramus`, `Class=bivalvia`, `Phylum=mollusca`, carrying an
+  `aphia_ID` the authority snapshot resolves to the class *Bivalvia*.
+- **13 `rank_inflation`** — one side extends the other with nothing contradicting, so the label is
+  published finer than it supports. `Harpacticoida` is the order `harpacticoida` (aphia 1102) in
+  five datasets and the genus `euterpina` (aphia 115348) in three. The starkest are the buckets:
+  `unknown` carries `Class=thecofilosea` in `global_uvp5`, `other_living` carries
+  `Order=monstrilloida` in `zooscan`, and `filament` — a morphology — carries
+  `Class=cyanophyceae` in `zoolake`.
+- **2 `label_disagreement`** (WARN) — two non-taxonomic buckets named differently
+  (`darkrods` → `other` / `shape`), with no rank cell on either side. No image gets a taxon it
+  should not have; vocabulary drift, not a taxonomy defect.
+
+**Where the `creseidae` case comes from** (found 2026-09-02, by widening the finding-1.7 guard to all
+seven rank columns). `zooscan` carries *both* readings: its `Creseidae` folder maps to `clio pyramidata`
+(family Cliidae) while its `Creseidae acicula` folder maps to `creseis acicula` (family Creseidae). Three
+pre-existing rows and EcoTaxa itself put the folder in Creseidae; only that one zooscan row does not, and
+`build_tara_pacific_taxonomy.py`'s `verbatim` rule copied it into `tara_pacific_hsn` and
+`tara_pacific_manta` because the class-dir name matched. So the disagreement is one wrong row propagated
+three times, not three independent judgements — which makes it the cheapest of the mislabels to correct
+once the golden-diff gate exists. Recorded in `RANK_DEPARTURES` in the builder, and rendered as section
+B4 of `TARA_PACIFIC_TAXONOMY_RECONCILIATION.md`.
+
+Three of the twenty are **not** defects and are recorded as such: `heterocapsa triquetra` /
+`kryptoperidinium triquetrum` is one organism under two names (the snapshot has aphia 110153 as
+`unaccepted` with that valid name, and all three rows share NCBI taxid 66468), and the two
+bucket-naming cases above.
+
+**Why the existing checks do not catch it.** `verify_taxonomy_ids.py` works *vertically* — it takes
+the taxon a row claims and asks WoRMS / NCBI / Wikidata whether the identifiers agree — and groups
+its findings by `proposed_label`, which files the two disagreeing rows under *different* taxa and
+so never puts them side by side. Both `Harpacticoida` rows pass all 23 of its checks, because aphia
+115348 genuinely *is* Euterpina; it is simply attached to a class directory that says
+Harpacticoida. The 2026-07-13 audit's two clean results are on adjacent axes and both still hold:
+a `(Dataset, Raw_Labels)` pair never maps two ways (0 duplicates), and each `proposed_label` has
+exactly one lineage (0 conflicts). The direction nothing tested is `Raw_Labels` → one taxon
+*across* datasets.
+
+**Consequence:** this is a ceiling on measured accuracy, not only a tidiness problem. Images in the
+80 affected rows carry a taxon their folder name does not support, so a classifier is trained and
+scored against partly-wrong ground truth — and the affected labels are coarse, high-count ones
+(`foraminifera` spans 9 rows, `annelida` and `neoceratium` 7 each).
+
+**Frozen-output risk: data-side.** Correcting a row changes its published lineage. Document only,
+and gate a data fix on a golden diff (`HARDEN-01`). The check itself is network-free — one pass
+over the committed CSV — so it runs on every push, and a NEW disagreement (a CSV edit, or a new
+source dataset reusing an existing label for a different taxon) arrives unwaived and turns the
+suite red.
+
+---
+
 ## Source-license transcription (KI-14 – KI-15)
 
 The `license` / `license_url` columns are transcribed verbatim from the `license:` field of
@@ -753,6 +817,8 @@ The audit tested and *rejected* these as legitimate conventions, not defects:
 
 - `living` ⇔ `root_class == 'living'`: **0 mismatches** (1,276/1,276).
 - **0** conflicting source mappings (a `(Dataset, Raw_Labels)` pair never maps two ways);
+  *(still true, and a different axis from **KI-31**, which is one `Raw_Labels` mapping two ways
+  across DIFFERENT datasets — untested until 2026-09-01);*
   **0** duplicate rows.
 - Each `proposed_label` has exactly **one** lineage.
 - Shared **species epithets** (`socialis`, `caudatum`, …) are normal — the `Species` column
