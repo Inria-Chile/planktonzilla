@@ -106,7 +106,8 @@ There is no identifier for a taxon other than its lowercase name. Consequences, 
   node; `build_tara_pacific_taxonomy.py:340-356` propagates the diatom lineage knowingly for that reason.
 - **Synonyms become two classes.** `Heterocapsa_triquetra` maps to *heterocapsa triquetra* in two sources and to
   its accepted name *kryptoperidinium triquetrum* in a third, with two different families; *Neoceratium* /
-  *Tripos* likewise (104,887 images).
+  *Tripos* likewise (104,887 images), where 61 rows spell the genus `tripos` against 8 `neoceratium` and PR
+  #35 recorded the split as one of seven `RANK_DEPARTURES` entries rather than resolving it.
 - **Rank-slot contamination cannot be prevented.** The same name sits in two or three rank slots of one row in 4
   rows (KI-8); the authority tooling finds 23 such (name, slot) combinations across 117 taxa.
 - **The epithet-only `Species` column is not a node identity.** 19 epithets occur under more than one genus;
