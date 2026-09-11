@@ -37,7 +37,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from planktonzilla.planktonzilla_dataset.taxonomy.model import EXACT_MATCH, TaxonomyError, read_tsv
+from planktonzilla.planktonzilla_dataset.taxonomy.model import BROAD_MATCH, EXACT_MATCH, TaxonomyError, read_tsv
 
 SEVERITY_ERROR = "ERROR"
 SEVERITY_WARN = "WARN"
@@ -181,9 +181,15 @@ def check_descriptor(package_dir: Path, descriptor: dict) -> list:
                     findings.append(
                         Finding("pattern", SEVERITY_ERROR, name, locator, f"{value!r} does not match {constraints['pattern']}")
                     )
-                if allowed is not None and value not in allowed:
+                # An OPTIONAL field left empty is an absent value, not a vocabulary violation. The
+                # three patterns in this descriptor say so themselves (`^(pzt:[0-9]{6})?$`), which
+                # an enum has no way to express — so the rule lives here instead. `method` is the
+                # first optional vocabulary field: 1529 rows have no recorded provenance, and that
+                # is a gap to close rather than 1529 errors.
+                optional_blank = value == "" and not constraints.get("required")
+                if allowed is not None and not optional_blank and value not in allowed:
                     findings.append(Finding("enum", SEVERITY_ERROR, name, locator, f"{value!r} not in {sorted(allowed)}"))
-                if vocabulary is not None and value not in vocabulary:
+                if vocabulary is not None and not optional_blank and value not in vocabulary:
                     findings.append(
                         Finding("vocabulary", SEVERITY_ERROR, name, locator, f"{value!r} not in {constraints['vocabulary']}")
                     )
@@ -345,10 +351,22 @@ def _check_shared_ids(package_dir: Path, taxa: dict, authorities: dict) -> list:
 
     The rest split by whether one claimant is an ANCESTOR of the others. A species carrying its own
     genus's id is a *coarse* identifier, not a collision — the register had nothing finer. It gets
-    its own name because it is a backlog with a known remedy (a ``skos:broadMatch`` row, which step
-    7 seeds), and because burying it with the real collisions hides them. An id shared by concepts
-    on different branches is the KI-13 shape and stays a collision.
+    its own name because it is a backlog with a known remedy — a ``skos:broadMatch`` row, which step
+    7 seeded for all 147 of them — and because burying it with the real collisions hides them. An id
+    shared by concepts on different branches is the KI-13 shape and stays a collision.
+
+    Since step 7 the first loop below checks the seeding itself: a broad match is only honest if
+    some exact-match holder of the same id is an ancestor of the subject. Without that, relabelling
+    a cross-branch collision as a broad match would make it disappear from this report.
     """
+
+    def ancestry(taxon_id):
+        chain, current = set(), taxon_id
+        while current and current in taxa:
+            chain.add(current)
+            current = taxa[current]["parentNameUsageID"]
+        return chain
+
     owners = {}
     for row in read_tsv(package_dir / "identifier.tsv"):
         prefix = row["object_id"].partition(":")[0]
@@ -358,14 +376,28 @@ def _check_shared_ids(package_dir: Path, taxa: dict, authorities: dict) -> list:
             continue
         owners.setdefault(row["object_id"], set()).add(row["subject_id"])
 
-    def ancestry(taxon_id):
-        chain, current = set(), taxon_id
-        while current and current in taxa:
-            chain.add(current)
-            current = taxa[current]["parentNameUsageID"]
-        return chain
+    # Step 7 re-predicated the coarse identifiers, which is what stops them being reported here —
+    # so the honesty of that re-predication has to be checked, or "call it a broad match" becomes a
+    # way to silence a real collision. A broad match claims the subject is NARROWER than the id's
+    # concept, which is only true if some exact-match holder of that id is one of its ancestors.
+    broad = {}
+    for row in read_tsv(package_dir / "identifier.tsv"):
+        if row["predicate_id"] == BROAD_MATCH:
+            broad.setdefault(row["object_id"], set()).add(row["subject_id"])
 
-    findings = []
+    findings = [
+        Finding(
+            "unjustified_broad_match",
+            SEVERITY_ERROR,
+            "identifier",
+            f"{subject} {object_id}",
+            "claims to be narrower than this id, but no exact-match holder of it is an ancestor",
+        )
+        for object_id, subjects in sorted(broad.items())
+        for subject in sorted(subjects)
+        if not any(holder in ancestry(subject) for holder in owners.get(object_id, set()))
+    ]
+
     for object_id, subjects in sorted(owners.items()):
         if len(subjects) < 2:
             continue

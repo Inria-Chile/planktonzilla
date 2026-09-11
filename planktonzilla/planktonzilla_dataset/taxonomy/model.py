@@ -122,10 +122,36 @@ RANK_VOCABULARY = (
 # `qualifier` is blank on 253 rows today. Blank is a value, not an absence, so it is named.
 UNQUALIFIED = "unqualified"
 
+# How a mapping row came to say what it says. A controlled vocabulary rather than free text: the
+# question "why does this row claim this?" is only answerable across 2,358 rows if the answers are
+# comparable, and the builders were already computing exactly these terms before throwing them into
+# a Markdown report. `donor` names the row or source a reused decision came from.
+#
+# BLANK IS NOT A TERM HERE. A row with no recorded method is a row nobody can answer for, and
+# writing "unknown" or "migrated" on it would dress an absence up as provenance. The count of blanks
+# is pinned by a test instead, so it can only go down.
+METHOD_VOCABULARY = (
+    # method, the source whose builder emits it, what it means
+    ("verbatim", "tara_pacific", "the class directory already existed as a Raw_Labels value; the whole mapping was copied"),
+    ("anchor", "tara_pacific", "the anchor taxon already existed as a proposed_label; its ranks and identifiers were reused"),
+    ("derived", "tara_pacific", "built from the frozen EcoTaxa lineage, with higher ranks reconciled against the table"),
+    ("genus_reuse", "frepj", "the genus already existed in the table; its whole lineage was reused rather than re-derived"),
+    ("class_anchor", "frepj", "kingdom and phylum taken from a class already anchored in the table"),
+    ("curated_class", "frepj", "kingdom and phylum hand-curated; the class had no anchor in the table"),
+)
+METHODS = frozenset(method for method, _source, _definition in METHOD_VOCABULARY)
+
 # The one predicate the identifier table carries, and the justification every migrated row was
 # given. Named here so the migration and the write API cannot drift on the bytes they mint.
 EXACT_MATCH = "skos:exactMatch"
 UNSPECIFIED_MATCHING = "semapv:UnspecifiedMatching"
+
+# What a coarse identifier actually claims: the register had nothing finer than a genus, so every
+# species under it carries the genus's id. Not an exact match and not a collision — the concept is
+# narrower than the thing the id names. The justification says the claim was reasoned from the
+# hierarchy rather than looked up, because it was.
+BROAD_MATCH = "skos:broadMatch"
+LOGICAL_REASONING = "semapv:LogicalReasoning"
 
 # What a lineage-less concept records about itself. Not an apology — it is the difference between
 # "the source gave no lineage" and "the lineage is empty", which a reader cannot otherwise tell.

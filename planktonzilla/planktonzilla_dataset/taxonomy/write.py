@@ -22,10 +22,12 @@ copied a byte prefix and dropped everything after it.
 ``apply=True``. The change set is cell-level: table, key, column, before, after. A curator sees what
 would move before it moves.
 
-**Ids are never blanked by omission.** A record that says nothing about an authority leaves that
+**Nothing is blanked by omission.** A record that says nothing about an authority leaves that
 authority alone; a record that contradicts one is refused rather than doubled. Clearing an id needs
-:func:`clear_id`, which is explicit and records a reason. Blanking by omission is how the 13 legacy
-overrides came to exist — ids cleared per row instead of per taxon (commit 7262085).
+:func:`clear_id`, which is explicit and records a reason. The same holds for the provenance columns
+step 7 fills: a builder re-run that does not compute a ``method`` must not erase the one a previous
+run recorded. Blanking by omission is how the 13 legacy overrides came to exist — ids cleared per
+row instead of per taxon (commit 7262085).
 
 **Canonical serialisation.** :func:`fmt` produces the same bytes whether a table was written by a
 builder, edited by hand, or left unsorted by a ``merge=union`` resolution. Without it the union
@@ -52,6 +54,7 @@ from planktonzilla.planktonzilla_dataset.taxonomy.model import (
     LEGACY_ID_COLUMNS,
     MAPPING_COLUMNS,
     MERGED_COLUMNS,
+    METHODS,
     MULTI_VALUED_COLUMNS,
     PREFIX_TO_LEGACY_COLUMN,
     TAXON_COLUMNS,
@@ -257,7 +260,7 @@ class _Minter:
         return parent
 
 
-def records_from_wide_rows(rows) -> list:
+def records_from_wide_rows(rows, provenance=None) -> list:
     """Records from 19-column legacy rows — the shape all three builders already produce.
 
     This is what makes porting a builder a small diff. Their ~2,600 lines of curation — rule tables,
@@ -269,6 +272,14 @@ def records_from_wide_rows(rows) -> list:
     something finer than the deepest rank becomes an ``unranked`` child of it — the rule that holds
     the 12 such concepts in the committed table. The id cells go through as they are; shedding the
     float suffix the CSV carries is :func:`_add_ids`'s job, so every entry point sheds it.
+
+    Args:
+        rows: 19-column legacy rows.
+        provenance: ``{(dataset, class dir): {method, donor, remarks, …}}`` — why each row says what
+            it says. The wide row cannot carry it, because the published CSV has no column for it;
+            the builders compute it and were throwing it into a Markdown report. A row the map does
+            not mention gets a blank ``method``, which is the honest answer for the rows nobody can
+            answer for rather than a term meaning "unknown".
     """
     records = []
     for row in rows:
@@ -285,6 +296,7 @@ def records_from_wide_rows(rows) -> list:
                 "qualifier": row["qualifier"] or UNQUALIFIED,
                 "plankton": row["plankton"] == "True",
                 "ids": {column: row.get(column, "") for column in LEGACY_ID_COLUMNS},
+                **((provenance or {}).get((row["Dataset"], row["Raw_Labels"])) or {}),
             }
         )
     return records
@@ -321,7 +333,7 @@ def _record_lineage(dataset, record) -> tuple:
     return lineage, concept
 
 
-def _mapping_row(dataset, verbatim, taxon_id, concept, record) -> dict:
+def _mapping_row(dataset, verbatim, taxon_id, concept, record, committed=None) -> dict:
     plankton = record.get("plankton")
     if not isinstance(plankton, bool):
         # Not coerced. `plankton` is the only boolean the published dataset carries, and a truthy
@@ -342,9 +354,24 @@ def _mapping_row(dataset, verbatim, taxon_id, concept, record) -> dict:
         plankton="true" if plankton else "false",
         status=record.get("status") or "accepted",
     )
+    method = record.get("method") or ""
+    if method and method not in METHODS:
+        # Free text here defeats the point: the question "why does this row claim this?" is only
+        # answerable across 2358 rows if the answers are comparable. A new method is a vocabulary
+        # entry, which is a reviewable one-line diff.
+        raise TaxonomyError(f"{dataset}/{verbatim}: method {method!r} is not in the vocabulary {sorted(METHODS)}")
+    if record.get("donor") and not method:
+        raise TaxonomyError(f"{dataset}/{verbatim}: a donor with no method says where a decision came from but not how")
+
+    # Provenance is not blanked by omission, for the same reason an identifier is not: a builder
+    # re-run that happens not to compute it must not erase what a previous run recorded. A record
+    # that NAMES a column overwrites it; silence leaves it. Nothing clears provenance today, and
+    # when something needs to, it gets an explicit entry point the way `clear_id` did.
     for column in PROVENANCE_COLUMNS:
         if record.get(column):
             row[column] = str(record[column])
+        elif committed is not None:
+            row[column] = committed.get(column, "")
     return row
 
 
@@ -464,6 +491,7 @@ def upsert_source(package_dir, dataset: str, records, *, apply: bool = False, al
     identifiers = read_tsv(package_dir / "identifier.tsv")
     mapping_path = package_dir / "mappings" / f"{dataset}.tsv"
     existing_mappings = read_tsv(mapping_path) if mapping_path.exists() else []
+    committed = {row["verbatimIdentification"]: row for row in existing_mappings}
 
     minter = _Minter.over(taxa)
     id_rows = {(row["subject_id"], row["object_id"]): row for row in identifiers}
@@ -478,7 +506,7 @@ def upsert_source(package_dir, dataset: str, records, *, apply: bool = False, al
             # and the two records that collided are by construction the ones that disagree.
             raise TaxonomyError(f"{dataset}: two records both map {verbatim!r}")
         taxon_id = minter.resolve(lineage, concept)
-        new_mappings[verbatim] = _mapping_row(dataset, verbatim, taxon_id, concept, record)
+        new_mappings[verbatim] = _mapping_row(dataset, verbatim, taxon_id, concept, record, committed.get(verbatim))
         _add_ids(id_rows, held, dataset, verbatim, taxon_id, record.get("ids"))
 
     new_taxa = _sorted_taxa(minter.rows)
@@ -513,7 +541,7 @@ def upsert_source(package_dir, dataset: str, records, *, apply: bool = False, al
     return changeset
 
 
-def upsert_wide_rows(package_dir, rows, *, apply: bool = False, allow_delete: bool = False) -> ChangeSet:
+def upsert_wide_rows(package_dir, rows, *, provenance=None, apply: bool = False, allow_delete: bool = False) -> ChangeSet:
     """:func:`upsert_source` for a builder that curates 19-column rows, for one source or several.
 
     Rows are grouped by their own ``Dataset`` column, so a builder that curates four sources — Tara
@@ -534,7 +562,9 @@ def upsert_wide_rows(package_dir, rows, *, apply: bool = False, allow_delete: bo
 
     changes = ChangeSet()
     for dataset, group in sorted(grouped.items()):
-        changes.changes += upsert_source(package_dir, dataset, records_from_wide_rows(group), allow_delete=allow_delete).changes
+        changes.changes += upsert_source(
+            package_dir, dataset, records_from_wide_rows(group, provenance), allow_delete=allow_delete
+        ).changes
     if not apply:
         return changes
 
@@ -543,7 +573,7 @@ def upsert_wide_rows(package_dir, rows, *, apply: bool = False, allow_delete: bo
     try:
         for dataset, group in sorted(grouped.items()):
             changes.changes += upsert_source(
-                package_dir, dataset, records_from_wide_rows(group), apply=True, allow_delete=allow_delete
+                package_dir, dataset, records_from_wide_rows(group, provenance), apply=True, allow_delete=allow_delete
             ).changes
     except Exception:
         _restore(snapshot)

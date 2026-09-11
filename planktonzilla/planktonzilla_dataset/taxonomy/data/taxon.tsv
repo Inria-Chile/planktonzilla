@@ -455,7 +455,7 @@ pzt:000453	pzt:000452	species	cavolinia inflexa	accepted			taxon
 pzt:000454	pzt:000451	genus	diacavolinia	accepted			taxon	
 pzt:000455	pzt:000451	genus	diacria	accepted			taxon	
 pzt:000456	pzt:000455	species	diacria trispinosa	accepted			taxon	
-pzt:000457	pzt:000450	family	cliidae	accepted			taxon	
+pzt:000457	pzt:000450	family	cliidae	accepted			taxon	departs from EcoTaxa's «creseidae»: **A defect, and the only one in this table — inherited, not introduced here.** It is the second case of docs/CODE_REVIEW.md finding 1.6, and KI-31 reports it from the other side. EcoTaxa places the `Creseidae` folder in the family Creseidae, and so do three pre-existing rows (`global_uvp5/Creseidae`, `uvp6net/Creseis acicula`, `zooscan/Creseidae acicula`). The one row that does not is `zooscan/Creseidae`, which maps the folder to `clio pyramidata` — family Cliidae — and the `verbatim` rule copies it here because it shares the class-dir name. zooscan is therefore inconsistent with itself, and the copy carries that inconsistency into this block. Recorded rather than corrected: fixing it changes published lineages, so it is gated on a golden diff like every KNOWN_ISSUES data item.
 pzt:000458	pzt:000457	genus	clio	accepted			taxon	
 pzt:000459	pzt:000458	species	clio pyramidata	accepted			taxon	
 pzt:000460	pzt:000450	family	creseidae	accepted			taxon	
@@ -644,7 +644,7 @@ pzt:000642	pzt:000521	family	trichotriidae	accepted			taxon
 pzt:000643	pzt:000642	genus	trichotria	accepted			taxon	
 pzt:000644	pzt:000643	species	trichotria tetractis	accepted			taxon	
 pzt:000645		kingdom	bacteria	accepted			taxon	
-pzt:000646	pzt:000645	phylum	cyanobacteria	accepted			taxon	
+pzt:000646	pzt:000645	phylum	cyanobacteria	accepted			taxon	departs from EcoTaxa's «proteobacteria»: A repair of an upstream misplacement, not a spelling. EcoTaxa hangs its `Cyanobacteria` node under `Bacteria > Proteobacteria`, which is not where cyanobacteria sit; the table records Cyanobacteria as the phylum in all 48 pre-existing rows that name it, and none name Proteobacteria.
 pzt:000647	pzt:000646	class	cyanophyceae	accepted			taxon	
 pzt:000648	pzt:000647	order	chroococcales	accepted			taxon	
 pzt:000649	pzt:000648	family	chroococcaceae	accepted			taxon	
@@ -728,7 +728,7 @@ pzt:000726	pzt:000725	order	peniculida	accepted			taxon
 pzt:000727	pzt:000726	family	parameciidae	accepted			taxon	
 pzt:000728	pzt:000727	genus	paramecium	accepted			taxon	
 pzt:000729	pzt:000728	species	paramecium bursaria	accepted			taxon	
-pzt:000730	pzt:000725	order	peritrichida	accepted			taxon	
+pzt:000730	pzt:000725	order	peritrichida	accepted			taxon	departs from EcoTaxa's «sessilida»: A rank-slot difference of the KI-8 shape, not a different organism. EcoTaxa puts Sessilida in the Order slot beneath a subclass it calls Peritrichia; the donor row — `frepj`, whose own source label path reads `Oligophymenophorea,Peritrichida,Vorticellidae,Vorticella` — records the ordinal spelling of that higher group instead. Sessilida sits inside it. The table is evenly split (one row each), so this follows the donor rather than a house majority.
 pzt:000731	pzt:000730	family	vorticellidae	accepted			taxon	
 pzt:000732	pzt:000731	genus	vorticella	accepted			taxon	
 pzt:000733	pzt:000725	order	pleuronematida	accepted			taxon	
@@ -744,7 +744,7 @@ pzt:000742	pzt:000740	genus	codonella	accepted			taxon
 pzt:000743	pzt:000742	species	codonella amphorella	accepted			taxon	
 pzt:000744	pzt:000740	genus	poroecus	accepted			taxon	
 pzt:000745	pzt:000740	genus	tintinnopsis	accepted			taxon	
-pzt:000746	pzt:000739	family	codonellopsidae	accepted			taxon	
+pzt:000746	pzt:000739	family	codonellopsidae	accepted			taxon	departs from EcoTaxa's «tintinnidiidae»: EcoTaxa hangs the genus `Codonellopsis` directly under Tintinnidiidae. All three pre-existing rows carrying this genus place it in Codonellopsidae; the single Tintinnidiidae row is a different genus (`leprotintinnus`). Following the table keeps one lineage per label.
 pzt:000747	pzt:000746	genus	codonellopsis	accepted			taxon	
 pzt:000748	pzt:000747	species	codonellopsis morchella	accepted			taxon	
 pzt:000749	pzt:000747	species	codonellopsis orthoceras	accepted			taxon	
@@ -876,7 +876,7 @@ pzt:000874	pzt:000838	order	zygodiscales	accepted			taxon
 pzt:000875	pzt:000874	family	pontosphaeraceae	accepted			taxon	
 pzt:000876	pzt:000875	genus	scyphosphaera	accepted			taxon	
 pzt:000877	pzt:000876	species	scyphosphaera apsteinii	accepted			taxon	
-pzt:000878	pzt:000675	phylum	heterokontophyta	accepted			taxon	
+pzt:000878	pzt:000675	phylum	heterokontophyta	accepted			taxon	departs from EcoTaxa's «bacillariophyta»: This table's diatom phylum is Heterokontophyta — 233 pre-existing rows name it, none name Bacillariophyta — with `bacillariophyceae` as the class below it. Same lineage, one rank renamed; see the `Odontella sp.` note above, which relies on the same convention.
 pzt:000879	pzt:000878	class	bacillariophyceae	accepted			taxon	
 pzt:000880	pzt:000879	order	asterolamprales	accepted			taxon	
 pzt:000881	pzt:000880	family	asterolampraceae	accepted			taxon	
@@ -903,7 +903,7 @@ pzt:000901	pzt:000898	genus	neobrightwellia	accepted			taxon
 pzt:000902	pzt:000901	species	neobrightwellia alternans	accepted			taxon	
 pzt:000903	pzt:000898	genus	trigonium	accepted			taxon	
 pzt:000904	pzt:000879	order	centrales	accepted			taxon	
-pzt:000905	pzt:000879	order	chaetocerotanae	accepted			taxon	
+pzt:000905	pzt:000879	order	chaetocerotanae	accepted			taxon	departs from EcoTaxa's «chaetocerotanae incertae sedis»: EcoTaxa's order node carries the *incertae sedis* uncertainty marker inside its name. All 33 pre-existing rows that name this order spell it without the marker, and none spell it with. Same taxon, this table's spelling.
 pzt:000906	pzt:000905	family	chaetocerotaceae	accepted			taxon	
 pzt:000907	pzt:000906	genus	bacteriastrum	accepted			taxon	
 pzt:000908	pzt:000906	genus	chaetoceros	accepted			taxon	
@@ -1093,7 +1093,7 @@ pzt:001091	pzt:001090	family	ceratiaceae	accepted			taxon
 pzt:001092	pzt:001091	genus	ceratium	accepted			taxon	
 pzt:001093	pzt:001092	species	ceratium hirundinella	accepted			taxon	
 pzt:001094	pzt:001091	genus	neoceratium	accepted			taxon	
-pzt:001095	pzt:001091	genus	tripos	accepted			taxon	
+pzt:001095	pzt:001091	genus	tripos	accepted			taxon	departs from EcoTaxa's «neoceratium»: The table records this genus as Tripos in 51 pre-existing rows and as EcoTaxa's Neoceratium in 5. Worth reading with KI-31: this leaves a seam INSIDE the appended block, because the five `Neoceratium <species>` folders find a `tripos <epithet>` donor and publish Tripos while the bare `Neoceratium` folder finds the `neoceratium` donor and publishes Neoceratium. Which name is correct is not settled here — the committed authority snapshot has both as accepted WoRMS records with distinct NCBI taxids.
 pzt:001096	pzt:001095	species	tripos arcticus	accepted			taxon	
 pzt:001097	pzt:001095	species	tripos arietinus	accepted			taxon	
 pzt:001098	pzt:001095	species	tripos azoricus	accepted			taxon	

@@ -83,16 +83,21 @@ def test_the_committed_package_validates_clean():
 def test_the_remaining_findings_are_the_identifier_backlog_and_nothing_else():
     """What is left is a named, countable backlog rather than undifferentiated noise.
 
-    147 coarse identifiers (a species carrying its own genus's id, which wants ``skos:broadMatch``)
-    and 21 cross-branch collisions. Pinned so the backlog cannot grow unnoticed, and so the step
-    that works it down has a number to move.
+    It was 147 coarse identifiers (a species carrying its own genus's id) plus 21 cross-branch
+    collisions. **Step 7 worked the first number to zero**: those 449 identifier rows now carry
+    ``skos:broadMatch``, which is what they always claimed, so they are no longer reported as a
+    state that needs fixing. The published bytes did not move — the 19-column CSV has no way to
+    qualify an id — and ``unjustified_broad_match`` now guards the re-predication, so relabelling a
+    real collision cannot make it disappear from this report.
+
+    The 21 are the KI-13 backlog and stay pinned: a number for a later step to move.
     """
     report = validate.apply_waivers(
         validate.validate(PACKAGE, registered=REGISTERED),
         validate.read_waivers(PACKAGE),
     )
 
-    assert report.summary()["by_check"] == {"coarse_identifier": 147, "id_shared_across_branches": 21}
+    assert report.summary()["by_check"] == {"id_shared_across_branches": 21}
     assert report.summary()["waived"] == 6
 
 
@@ -375,7 +380,7 @@ def test_the_descriptor_is_plain_json_and_needs_no_dependency():
 
     assert descriptor["profile"] == "tabular-data-package"
     assert descriptor["dialect"]["delimiter"] == "\t"
-    assert len(descriptor["resources"]) == 14
+    assert len(descriptor["resources"]) == 15
 
 
 def test_a_missing_descriptor_is_refused(tmp_path):

@@ -800,7 +800,36 @@ def build_rows(class_map, taxa, master_rows):
 # --- Writing --------------------------------------------------------------------------
 
 
-def write_rows(rows, *, package_dir=None, csv_path=None, apply: bool = False):
+def provenance_of(decisions) -> dict:
+    """``{(dataset, class dir): {method, donor, …}}`` — the decision record, as columns.
+
+    ``build_rows`` has always computed exactly this: which rule decided the row, which row donated
+    its identifiers, which anchor taxon it hung from. Until step 7 it went into a Markdown report
+    and nowhere else, so the question "why does this row say this?" was answerable by reading prose
+    and not by reading the table. The report is now derived from these columns rather than being
+    their only home.
+    """
+    provenance = {}
+    for decision in decisions:
+        record = {"method": decision["rule"]}
+        if decision["donor"]:
+            record["donor"] = decision["donor"]
+        if decision["anchor"]:
+            # The taxon the ranks and ids were reused from — the evidence for the identification,
+            # which is what this Darwin Core column is for.
+            record["identificationReferences"] = f"anchor:{decision['anchor']}"
+        notes = []
+        if decision["new_token"]:
+            notes.append("morphology token with no precedent in the table; root_class and qualifier reasoned by analogy")
+        if decision["needs_rule"]:
+            notes.append("fell through to the artefact default; no morphology rule matched")
+        if notes:
+            record["remarks"] = "; ".join(notes)
+        provenance[(decision["dataset"], decision["class_dir"])] = record
+    return provenance
+
+
+def write_rows(rows, *, decisions=None, package_dir=None, csv_path=None, apply: bool = False):
     """Upsert the curated Tara Pacific rows into the taxonomy package, then re-render the master CSV.
 
     This builder curates FOUR sources (``bongo``, ``decknet``, ``hsn``, ``manta``).
@@ -815,6 +844,8 @@ def write_rows(rows, *, package_dir=None, csv_path=None, apply: bool = False):
 
     Args:
         rows: The curated Tara Pacific rows, in file order.
+        decisions: The matching decision records from :func:`build_rows`; their rule, donor and
+            anchor become the rows' provenance columns.
         package_dir: The taxonomy package (default: the bundled one).
         csv_path: Master taxonomy CSV to re-render (default: the committed one).
         apply: Write. Defaults to False, so a run reports what it would change and touches nothing.
@@ -823,7 +854,8 @@ def write_rows(rows, *, package_dir=None, csv_path=None, apply: bool = False):
         The :class:`ChangeSet` the upsert produced.
     """
     package_dir = Path(package_dir or taxonomy_write.loader.PACKAGE_DIR)
-    changes = taxonomy_write.upsert_wide_rows(package_dir, rows, apply=apply)
+    provenance = provenance_of(decisions) if decisions else None
+    changes = taxonomy_write.upsert_wide_rows(package_dir, rows, provenance=provenance, apply=apply)
     if apply:
         write_guard.render_master(
             package_dir,
@@ -880,9 +912,28 @@ _B5_NOTE = (
 )
 
 
-def write_reconciliation(decisions, path=DEFAULT_RECONCILIATION_MD) -> Path:
-    """Emit the human-verify report: how each row was decided and what is genuinely new."""
-    by_rule = Counter(decision["rule"] for decision in decisions)
+def _committed_methods(package_dir) -> Counter:
+    """``{method: rows}`` for the four Tara Pacific sources, read back out of the package."""
+    from planktonzilla.planktonzilla_dataset.taxonomy.model import read_tsv
+
+    counts = Counter()
+    for name in DATASET_NAMES:
+        path = Path(package_dir) / "mappings" / f"{name}.tsv"
+        if path.exists():
+            counts.update(row["method"] for row in read_tsv(path) if row["method"])
+    return counts
+
+
+def write_reconciliation(decisions, path=DEFAULT_RECONCILIATION_MD, package_dir=None) -> Path:
+    """Emit the human-verify report: how each row was decided and what is genuinely new.
+
+    Section A's counts come from the COMMITTED PACKAGE when one is given, not from the in-memory
+    decisions — step 7's point. A report string-concatenated from a run says what that run thought;
+    a report read back out of the ledger says what was actually written, and cannot claim a number
+    the table disagrees with. The prose sections stay prose: ``HOMONYM_NOTES`` and
+    ``RANK_DEPARTURES`` are reasoning, and reasoning has no column.
+    """
+    by_rule = _committed_methods(package_dir) if package_dir else Counter(d["rule"] for d in decisions)
     new_tokens = sorted({decision["class_dir"] for decision in decisions if decision["new_token"]})
     needs_rule = sorted({decision["class_dir"] for decision in decisions if decision["needs_rule"]})
 
@@ -1006,13 +1057,13 @@ def main(argv=None) -> int:
     if needs_rule:
         logger.warning(f"{len(needs_rule)} label(s) fell through to the artefact default: {needs_rule}")
 
-    changes = write_rows(rows, package_dir=args.package, csv_path=args.csv, apply=args.apply)
+    changes = write_rows(rows, decisions=decisions, package_dir=args.package, csv_path=args.csv, apply=args.apply)
     logger.info(changes.describe())
     if not args.apply:
         logger.info("Nothing was written. Re-run with --apply to write it.")
         return 0
 
-    report = write_reconciliation(decisions, args.reconciliation)
+    report = write_reconciliation(decisions, args.reconciliation, package_dir=args.package or taxonomy_write.loader.PACKAGE_DIR)
     logger.info(f"Wrote {len(rows)} row(s) through the package and the report to {report}.")
     return 0
 

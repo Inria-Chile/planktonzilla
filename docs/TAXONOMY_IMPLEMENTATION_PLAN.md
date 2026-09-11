@@ -364,6 +364,32 @@ FREPJ decisions from the existing Markdown reports; move the seven `RANK_DEPARTU
 (`build_tara_pacific_taxonomy.py:373-421`) onto the rows they explain; seed `broadMatch` rows from the
 authority findings; derive the Markdown reports **from** the ledger instead of string-concatenating them.
 
+*Refined once it was written.* The backfill did not need the Markdown reports at all — both builders already
+**computed** the provenance per row and then threw it away into prose. So it is not a parse of a report, it is
+`method` / `donor` / `identificationReferences` coming out of `build_rows` where they were always available.
+The reach is larger than the plan estimated: Tara Pacific records a rule for all **600** of its rows and not
+only the 95 `derived` ones, so **829 of 2,358 rows (35 %)** carry a method, against the 324 predicted.
+
+Two things the plan did not say. **`method` is a controlled vocabulary** (`vocab/method.tsv`, six terms,
+declared in the descriptor and enforced at the write): free text makes 2,358 answers incomparable, which is
+the same as having none. And **blank is not a term.** Writing `unknown` on the 1,529 rows nobody can answer
+for would dress an absence up as provenance; the count is pinned by a test instead, so it can only go down.
+
+The `broadMatch` seeding covers all 147 coarse identifiers — **449 identifier rows**, one per finer concept —
+and **no published byte moves**: the renderer never looks at the predicate, because the 19-column CSV has no
+way to say "broader than". Withdrawing 449 published ids to express a nuance the format cannot carry would be
+the worse answer. The validator's backlog goes from 168 findings to 21, and `unjustified_broad_match` now
+guards the re-predication, so relabelling a real cross-branch collision cannot make it disappear.
+
+The descriptor earned its keep here: seeding `semapv:LogicalReasoning` produced **449 errors** until the
+justification enum was extended. That is the schema of record working, not a formality. It also exposed a
+general defect — the validator applied enum and vocabulary constraints to an EMPTY value on an OPTIONAL field,
+which `method` is the first field to hit.
+
+*Gate:* the render is byte-identical with every provenance column filled; the package validates with zero
+errors; both backfills are idempotent; a write that says nothing about provenance leaves it alone, the same
+rule ids already had.
+
 **PR 8 — Label vocabularies as data (≈1.5 d).** Write `v1.0_taxpath` (599 names) and `v1.2_taxpath` (21
 sources) as versioned files; `gen_planktonzilla_only_plankton` reads the file rather than computing
 `sorted(set(...))`. PR 0.1's test becomes the proof that the file equals today's expression. Released

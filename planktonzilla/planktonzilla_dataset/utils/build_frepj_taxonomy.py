@@ -427,7 +427,44 @@ def build_rows(tsv_path: Path, csv_path: Path) -> tuple[list[Parsed], list[dict]
     return parsed, [p.as_csv_row() for p in parsed]
 
 
-def write_rows(csv_rows: list[dict], *, package_dir=None, csv_path=None, apply: bool = False):
+def provenance_of(parsed: list) -> dict:
+    """``{(frepj, class dir): {method, donor, …}}`` — how each of the 229 rows was decided.
+
+    ``parse_class_dir`` has always recorded this on the :class:`Parsed` it returns: whether the
+    lineage was reused from a genus already in the table, whether the kingdom and phylum came from
+    a class anchor the table supplies or from the hand-curated map, whether a class name was
+    normalised, whether the sentinel cascade cut a rank. Until step 7 it reached only the
+    reconciliation report, so the table itself could not say why any row claimed what it claimed.
+    """
+    provenance = {}
+    for row in parsed:
+        if row.reused_genus is not None:
+            method = "genus_reuse"
+        elif row.class_curated:
+            method = "curated_class"
+        else:
+            method = "class_anchor"
+
+        record = {"method": method}
+        if row.reused_sources:
+            record["donor"] = ";".join(row.reused_sources)
+        if row.reused_genus is not None:
+            record["identificationReferences"] = f"genus:{row.reused_genus}"
+
+        notes = []
+        if row.class_typo is not None:
+            notes.append(f"class name normalised from {row.class_typo[0]!r}")
+        if row.species_flag:
+            notes.append(f"species epithet: {row.species_flag}")
+        if row.is_six_tuple:
+            notes.append("six-field class directory; the frozen list carries one")
+        if notes:
+            record["remarks"] = "; ".join(notes)
+        provenance[(DATASET_NAME, row.raw_labels)] = record
+    return provenance
+
+
+def write_rows(csv_rows: list[dict], *, parsed=None, package_dir=None, csv_path=None, apply: bool = False):
     """Upsert the curated frepj rows into the taxonomy package, then re-render the master CSV.
 
     Replaces the byte-splicing this builder did until step 6, which copied the prefix up to the
@@ -441,6 +478,8 @@ def write_rows(csv_rows: list[dict], *, package_dir=None, csv_path=None, apply: 
 
     Args:
         csv_rows: The curated frepj rows, in file order.
+        parsed: The matching :class:`Parsed` records; their reuse and curation flags become the
+            rows' provenance columns.
         package_dir: The taxonomy package (default: the bundled one).
         csv_path: The master CSV to re-render (default: the committed one).
         apply: Write. Defaults to False, so a run reports what it would change and touches nothing.
@@ -449,7 +488,8 @@ def write_rows(csv_rows: list[dict], *, package_dir=None, csv_path=None, apply: 
         The :class:`ChangeSet` the upsert produced.
     """
     package_dir = Path(package_dir or taxonomy_write.loader.PACKAGE_DIR)
-    changes = taxonomy_write.upsert_wide_rows(package_dir, csv_rows, apply=apply)
+    provenance = provenance_of(parsed) if parsed else None
+    changes = taxonomy_write.upsert_wide_rows(package_dir, csv_rows, provenance=provenance, apply=apply)
     if apply:
         write_guard.render_master(
             package_dir,
@@ -664,7 +704,7 @@ def main() -> None:
     parsed, csv_rows = build_rows(args.tsv, args.csv)
     logger.info(f"Curated {len(csv_rows)} «frepj» rows.")
 
-    changes = write_rows(csv_rows, package_dir=args.package, csv_path=args.csv, apply=args.apply)
+    changes = write_rows(csv_rows, parsed=parsed, package_dir=args.package, csv_path=args.csv, apply=args.apply)
     logger.info(changes.describe())
     if not args.apply:
         # The report is an artefact too. "Nothing was written" has to mean nothing.

@@ -412,16 +412,38 @@ def test_diff_published_reports_the_cells_that_moved_not_the_rows_that_exist(pac
 
 
 def test_diff_published_is_empty_when_a_write_moved_nothing_published(package):
-    """Provenance is curation, not publication; a ``method`` column moving must not read as a data change."""
+    """Provenance is curation, not publication; a ``method`` column moving must not read as a data change.
+
+    ``derived`` is a fixture value here, not a claim about zoolake's history — what is being shown is
+    that a provenance column moves without a published cell moving.
+    """
     before = loader.load_taxonomy(package).render_wide_csv()
     records = records_for(package, "zoolake")
     for record in records:
-        record["method"] = "rule_table_v2"
+        record["method"] = "derived"
 
     changes = write.upsert_source(package, "zoolake", records, apply=True)
 
     assert changes.applied and all(change.column == "method" for change in changes.changes)
     assert not write.diff_published(package, before)
+
+
+def test_a_method_outside_the_vocabulary_is_refused(package):
+    """Free text defeats the point: 2358 answers to "why does this row claim this?" must be comparable."""
+    records = records_for(package, "zoolake")
+    records[0]["method"] = "rule_table_v2"
+
+    with pytest.raises(TaxonomyError, match="is not in the vocabulary"):
+        write.upsert_source(package, "zoolake", records)
+
+
+def test_a_donor_with_no_method_is_refused(package):
+    """Where a decision came from, with no answer for how, is half a provenance record."""
+    records = records_for(package, "zoolake")
+    records[0]["donor"] = "syke_ifcb_2022"
+
+    with pytest.raises(TaxonomyError, match="donor with no method"):
+        write.upsert_source(package, "zoolake", records)
 
 
 # The builder-facing adapters

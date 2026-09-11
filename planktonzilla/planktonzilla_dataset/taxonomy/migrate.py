@@ -54,15 +54,20 @@ from planktonzilla.planktonzilla_dataset import constants
 from planktonzilla.planktonzilla_dataset.taxonomy import loader, render
 from planktonzilla.planktonzilla_dataset.taxonomy.model import (
     AUTHORITIES,
+    BROAD_MATCH,
     BUCKET_REMARK,
     EXACT_MATCH,
     FINER_REMARK,
     IDENTIFIER_COLUMNS,
     LEGACY_HEADER,
     LEGACY_ID_COLUMNS,
+    LOGICAL_REASONING,
     MAPPING_COLUMNS,
     MERGED_COLUMNS,
+    METHOD_VOCABULARY,
+    MULTI_VALUED_COLUMNS,
     OVERRIDE_COLUMNS,
+    PREFIX_TO_LEGACY_COLUMN,
     RANK_VOCABULARY,
     ROW_ORDER_COLUMNS,
     TAXON_COLUMNS,
@@ -433,6 +438,14 @@ def write_package(package_dir: Path, rows) -> dict:
             },
         ],
     )
+    write_tsv(
+        package_dir / "vocab" / "method.tsv",
+        ("method", "emitted_by", "definition"),
+        [
+            {"method": method, "emitted_by": source, "definition": definition}
+            for method, source, definition in METHOD_VOCABULARY
+        ],
+    )
     write_tsv(package_dir / "merged.tsv", MERGED_COLUMNS, [])
 
     release = package_dir / "release" / "v1.0"
@@ -473,13 +486,125 @@ def verify(package_dir: Path, csv_path: Path) -> None:
     raise MigrationError(f"render has {len(rendered_lines)} lines, the committed CSV has {len(committed_lines)}")
 
 
+# Step 7 backfills. One-time in intent, idempotent in fact: each is a pure function of what is
+# already committed, so re-running writes nothing and a reviewer can re-derive the diff.
+
+
+def backfill_rank_departures(package_dir: Path, *, apply: bool = False) -> list:
+    """Move the seven ``RANK_DEPARTURES`` prose entries onto the taxa they explain.
+
+    They live in a dict in ``build_tara_pacific_taxonomy.py``, keyed by
+    ``(rank, EcoTaxa's name, this table's name)``, and are reachable only by reading that file. Each
+    explains why one node of the tree is spelled differently from the register the Tara Pacific rows
+    came from — which is a fact about the node, so it belongs on the node.
+
+    ``taxonRemarks`` and not ``nameAccordingTo``: the departures do not follow a second published
+    classification, they record this table's own precedent (233 rows spell the diatom phylum
+    Heterokontophyta, none spell it Bacillariophyta). Naming EcoTaxa as the authority we follow
+    would say the opposite of what happened.
+    """
+    from planktonzilla.planktonzilla_dataset.utils.build_tara_pacific_taxonomy import RANK_DEPARTURES
+
+    taxa = read_tsv(package_dir / "taxon.tsv")
+    by_name = {}
+    for row in taxa:
+        by_name.setdefault((row["taxonRank"], row["scientificName"]), []).append(row)
+
+    moved = []
+    for (rank, ecotaxa_name, table_name), prose in RANK_DEPARTURES.items():
+        matches = by_name.get((rank.lower(), table_name), [])
+        if len(matches) != 1:
+            raise MigrationError(
+                f"the {rank} departure {table_name!r} matches {len(matches)} taxa; it must name exactly one node"
+            )
+        note = f"departs from EcoTaxa's «{ecotaxa_name}»: {prose}"
+        row = matches[0]
+        if note in row["taxonRemarks"]:
+            continue
+        row["taxonRemarks"] = f"{row['taxonRemarks']}; {note}" if row["taxonRemarks"] else note
+        moved.append(row["taxonID"])
+
+    if apply and moved:
+        write_tsv(package_dir / "taxon.tsv", TAXON_COLUMNS, taxa)
+        loader.cache_clear()
+    return moved
+
+
+def backfill_broad_matches(package_dir: Path, *, apply: bool = False) -> list:
+    """Re-predicate the coarse identifiers from ``skos:exactMatch`` to ``skos:broadMatch``.
+
+    A coarse identifier is one authority id claimed by several concepts where the shallowest is an
+    ancestor of all the rest: the register had nothing finer than a genus, so every species under it
+    carries the genus's id. That is not a collision and it is not an exact match either — the finer
+    concepts are narrower than the thing the id names, which is what ``skos:broadMatch`` says.
+
+    **No published byte moves.** The renderer reads the identifier index without looking at the
+    predicate, because the 19-column CSV has no way to express "broader than": the id is published
+    exactly as before, and the package now records what kind of claim it is. What changes is that
+    ``validate.check_rules`` stops reporting 147 warnings for a state that was never wrong, and
+    starts reporting only the ones that are.
+    """
+    rows = read_tsv(package_dir / "identifier.tsv")
+    taxa = {row["taxonID"]: row for row in read_tsv(package_dir / "taxon.tsv")}
+    multi = {prefix for prefix, legacy in PREFIX_TO_LEGACY_COLUMN.items() if legacy in MULTI_VALUED_COLUMNS}
+
+    def ancestry(taxon_id):
+        chain, current = set(), taxon_id
+        while current and current in taxa:
+            chain.add(current)
+            current = taxa[current]["parentNameUsageID"]
+        return chain
+
+    owners = {}
+    for row in rows:
+        prefix = row["object_id"].partition(":")[0]
+        if row["predicate_id"] != EXACT_MATCH or row["object_id"].endswith(":absent") or prefix in multi:
+            continue
+        owners.setdefault(row["object_id"], set()).add(row["subject_id"])
+
+    narrowed = set()
+    for object_id, subjects in owners.items():
+        if len(subjects) < 2:
+            continue
+        shallowest = min(subjects, key=lambda taxon_id: len(ancestry(taxon_id)))
+        if not all(shallowest in ancestry(subject) for subject in subjects):
+            # Concepts on different branches sharing an id is the KI-13 collision shape. Calling it
+            # a broad match would silence a real finding by relabelling it.
+            continue
+        narrowed |= {(subject, object_id) for subject in subjects if subject != shallowest}
+
+    changed = []
+    for row in rows:
+        if (row["subject_id"], row["object_id"]) in narrowed:
+            row["predicate_id"] = BROAD_MATCH
+            row["mapping_justification"] = LOGICAL_REASONING
+            changed.append((row["subject_id"], row["object_id"]))
+
+    if apply and changed:
+        write_tsv(package_dir / "identifier.tsv", IDENTIFIER_COLUMNS, rows)
+        loader.cache_clear()
+    return changed
+
+
 def main(argv=None) -> int:
     """Generate the package from the committed CSV and verify it renders that CSV back."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--csv", type=Path, default=constants.DEFAULT_TAXONOMY_CSV_FILENAME)
     parser.add_argument("--package", type=Path, default=PACKAGE_DIR)
     parser.add_argument("--verify", action="store_true", help="Verify an existing package; generate nothing.")
+    parser.add_argument(
+        "--backfill-provenance",
+        action="store_true",
+        help="Step 7's one-time backfills (rank departures, broad matches). Idempotent; generates nothing else.",
+    )
     args = parser.parse_args(argv)
+
+    if args.backfill_provenance:
+        moved = backfill_rank_departures(args.package, apply=True)
+        narrowed = backfill_broad_matches(args.package, apply=True)
+        logger.info(f"moved {len(moved)} rank departure(s) onto their taxa; re-predicated {len(narrowed)} broad match(es).")
+        verify(args.package, args.csv)
+        return 0
 
     if not args.verify:
         rows = read_legacy_rows(args.csv)

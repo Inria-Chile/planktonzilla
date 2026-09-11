@@ -121,9 +121,19 @@ def render_master(package_dir, csv_path, *, owner, tool: str) -> int:
         TaxonomyWriteRefusedError: If any line outside ``owner`` would move. Nothing is written.
     """
     csv_path = Path(csv_path)
+    if not csv_path.exists():
+        # Not a missing convenience. The ownership check compares the render against what is on
+        # disk, and there is nothing to compare against — so this would create a master CSV at a
+        # path nobody has vouched for, unchecked. `pz_taxonomy render --out` is the way to write a
+        # rendering somewhere new.
+        raise TaxonomyWriteRefusedError(
+            f"{tool} will not create «{csv_path}»: it re-renders an existing master CSV and checks "
+            f"that no row it does not own moved, which needs the file it is replacing. Use "
+            f"`pz_taxonomy render --out` to write a rendering to a new path. Nothing was written."
+        )
     loader.cache_clear()
     rendered = loader.load_taxonomy(Path(package_dir)).render_wide_csv().decode("utf-8")
-    original = csv_path.read_text(encoding="utf-8") if csv_path.exists() else ""
+    original = csv_path.read_text(encoding="utf-8")
 
     assert_owns_every_change(original, rendered, owner=owner, tool=tool)
     csv_path.write_text(rendered, encoding="utf-8", newline="")

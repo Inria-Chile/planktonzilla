@@ -9,6 +9,7 @@ builders write on every run, one of them destroying 644 rows when re-run with no
 
     pz_taxonomy check                        validate the package and the descriptor
     pz_taxonomy show <dataset>               what one source maps, and to which concepts
+    pz_taxonomy provenance [<dataset>]       why the rows say what they say, and how many cannot say
     pz_taxonomy fmt [--apply]                canonical form, after a union merge or a spreadsheet
     pz_taxonomy rename <id> <name> [--apply] rename a concept, keeping its id
     pz_taxonomy retire <id> <into> --reason  retire a concept into another, with a tombstone
@@ -74,6 +75,45 @@ def cmd_show(args) -> int:
     return 0
 
 
+def cmd_provenance(args) -> int:
+    """Why the rows say what they say — the ledger's own answer, for one source or all of them.
+
+    The question used to be answerable only by reading two Markdown reports written by two builders
+    in two styles, covering two sources. Since step 7 it is a column, so it is one command, and the
+    rows nobody can answer for are counted rather than left as an implication.
+    """
+    from collections import Counter
+
+    store = loader.load_taxonomy(args.package)
+    datasets = [args.dataset] if args.dataset else store.datasets()
+
+    total, recorded = 0, 0
+    for dataset in datasets:
+        path = args.package / "mappings" / f"{dataset}.tsv"
+        if not path.exists():
+            print(f"refused: {dataset} maps nothing", file=sys.stderr)
+            return 2
+        rows = read_tsv(path)
+        methods = Counter(row["method"] for row in rows if row["method"])
+        donors = Counter(row["donor"] for row in rows if row["donor"])
+        total += len(rows)
+        recorded += sum(methods.values())
+
+        blank = len(rows) - sum(methods.values())
+        summary = ", ".join(f"{method} {count}" for method, count in methods.most_common()) or "nothing recorded"
+        print(f"{dataset:<24} {len(rows):>4} rows   {summary}{f', blank {blank}' if blank and methods else ''}")
+        if args.dataset and donors:
+            print("  donors: " + ", ".join(f"{donor} ({count})" for donor, count in donors.most_common(8)))
+        if args.dataset:
+            for row in rows:
+                if row["remarks"]:
+                    print(f"  {row['verbatimIdentification']}: {row['remarks']}")
+
+    share = f"{recorded / total:.0%}" if total else "0%"
+    print(f"\n{recorded} of {total} row(s) carry a method ({share}); {total - recorded} cannot be answered for.")
+    return 0
+
+
 def cmd_fmt(args) -> int:
     """Canonical form. Run it after a ``merge=union`` resolution or a spreadsheet round trip."""
     return _report(write.fmt(args.package, apply=args.apply), args.apply)
@@ -132,6 +172,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     show = add("show", cmd_show, "What one source maps.")
     show.add_argument("dataset")
+
+    provenance = add("provenance", cmd_provenance, "Why the rows say what they say.")
+    provenance.add_argument("dataset", nargs="?", default=None, help="One source; omit for every source.")
 
     add("fmt", cmd_fmt, "Rewrite every table in canonical form.", writes=True)
 

@@ -169,13 +169,14 @@
           {
             "name": "mapping_justification",
             "type": "string",
-            "description": "",
+            "description": "How the mapping was arrived at. LogicalReasoning is a broad match inferred from the hierarchy.",
             "constraints": {
               "required": true,
               "enum": [
-                "semapv:UnspecifiedMatching",
+                "semapv:LexicalMatching",
+                "semapv:LogicalReasoning",
                 "semapv:ManualMappingCuration",
-                "semapv:LexicalMatching"
+                "semapv:UnspecifiedMatching"
               ]
             }
           },
@@ -303,27 +304,30 @@
           {
             "name": "method",
             "type": "string",
-            "description": ""
+            "description": "How this row was decided. Blank where nobody can answer; a gap, not a value.",
+            "constraints": {
+              "vocabulary": "method#method"
+            }
           },
           {
             "name": "donor",
             "type": "string",
-            "description": ""
+            "description": "The source or row a reused decision came from. Never set without a method."
           },
           {
             "name": "identifiedBy",
             "type": "string",
-            "description": ""
+            "description": "Who made the identification."
           },
           {
             "name": "dateIdentified",
             "type": "string",
-            "description": ""
+            "description": "A string, never a date type: a spreadsheet round trip rewrites dates."
           },
           {
             "name": "identificationReferences",
             "type": "string",
-            "description": ""
+            "description": "The evidence: the anchor taxon or genus whose lineage was reused."
           },
           {
             "name": "confidence",
@@ -333,7 +337,7 @@
           {
             "name": "remarks",
             "type": "string",
-            "description": ""
+            "description": "Anything about this row a column cannot hold."
           }
         ],
         "primaryKey": [
@@ -513,6 +517,39 @@
         ],
         "primaryKey": [
           "kind"
+        ]
+      }
+    },
+    {
+      "name": "method",
+      "path": "vocab/method.tsv",
+      "description": "How a mapping row was decided. Controlled so 2358 answers to «why?» are comparable.",
+      "schema": {
+        "fields": [
+          {
+            "name": "method",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "emitted_by",
+            "type": "string",
+            "description": "The source whose builder emits this method."
+          },
+          {
+            "name": "definition",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          }
+        ],
+        "primaryKey": [
+          "method"
         ]
       }
     },
