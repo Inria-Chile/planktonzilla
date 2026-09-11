@@ -48,106 +48,38 @@ Usage:
 import argparse
 import csv
 import hashlib
-import io
 from pathlib import Path
 
 from planktonzilla.planktonzilla_dataset import constants
+from planktonzilla.planktonzilla_dataset.taxonomy import loader, render
+from planktonzilla.planktonzilla_dataset.taxonomy.model import (
+    AUTHORITIES,
+    IDENTIFIER_COLUMNS,
+    LEGACY_HEADER,
+    LEGACY_ID_COLUMNS,
+    LEGACY_RANKS,
+    MAPPING_COLUMNS,
+    OVERRIDE_COLUMNS,
+    RANK_VOCABULARY,
+    ROW_ORDER_COLUMNS,
+    TAXON_COLUMNS,
+    TAXON_PREFIX,
+    UNQUALIFIED,
+    TaxonomyError,
+    read_tsv,
+    write_tsv,
+)
 from planktonzilla.utils.logger import get_pylogger
 
 logger = get_pylogger(__name__)
 
-PACKAGE_DIR = Path(__file__).parent / "data"
+PACKAGE_DIR = loader.PACKAGE_DIR
 
-LEGACY_RANKS = tuple(constants.TAXONOMY_RANKS)
-LEGACY_ID_COLUMNS = ("wikidata_ID", "aphia_ID", "NCBI_ID", "BOLD_ID", "ecotaxa_ID")
-LEGACY_HEADER = (
-    "Dataset",
-    "Raw_Labels",
-    *LEGACY_RANKS,
-    "proposed_label",
-    "plankton",
-    "living",
-    "root_class",
-    "qualifier",
-    *LEGACY_ID_COLUMNS,
-)
+# The migration's own failures are taxonomy failures; the name is kept so the step-1 gate and
+# any runbook that catches it still do.
+MigrationError = TaxonomyError
 
-TAXON_PREFIX = "pzt"
-TAXON_COLUMNS = (
-    "taxonID",
-    "parentNameUsageID",
-    "taxonRank",
-    "scientificName",
-    "taxonomicStatus",
-    "acceptedNameUsageID",
-    "nameAccordingTo",
-    "kind",
-    "taxonRemarks",
-)
-IDENTIFIER_COLUMNS = (
-    "subject_id",
-    "predicate_id",
-    "object_id",
-    "mapping_justification",
-    "mapping_date",
-    "author_id",
-    "confidence",
-    "comment",
-)
-MAPPING_COLUMNS = (
-    "datasetID",
-    "verbatimIdentification",
-    "taxonID",
-    "concept",
-    "root_class",
-    "qualifier",
-    "plankton",
-    "status",
-    "method",
-    "donor",
-    "identifiedBy",
-    "dateIdentified",
-    "identificationReferences",
-    "confidence",
-    "remarks",
-)
-ROW_ORDER_COLUMNS = ("sequence", "datasetID", "verbatimIdentification")
-OVERRIDE_COLUMNS = (
-    "datasetID",
-    "verbatimIdentification",
-    *LEGACY_ID_COLUMNS,
-    "root_class",
-    "qualifier",
-    "plankton",
-    "reason",
-)
-
-# One authority per legacy ID column. `ecotaxa_legacy` is a DIFFERENT id space from today's
-# EcoTaxa taxon ids and is never backfilled, so it gets its own scope rather than sharing one.
-AUTHORITIES = (
-    # authority, legacy column, CURIE prefix, scope, multi-valued
-    ("wikidata", "wikidata_ID", "wikidata", "all life, crowd-curated", "false"),
-    ("worms", "aphia_ID", "worms", "marine taxa; blank for freshwater is expected", "false"),
-    ("ncbi", "NCBI_ID", "ncbi", "sequenced taxa; no Chromista/Myzozoa", "false"),
-    ("bold", "BOLD_ID", "bold", "barcoded taxa", "false"),
-    ("ecotaxa_legacy", "ecotaxa_ID", "ecotaxa_legacy", "legacy id space, no longer resolvable; NEVER backfill", "true"),
-)
 _LEGACY_COLUMN_AUTHORITY = {legacy: (name, prefix) for name, legacy, prefix, _scope, _multi in AUTHORITIES}
-
-# The seven legacy slots, as a rank vocabulary. `legacy_slot` is what makes project7() a lookup
-# rather than a branch: a rank without one contributes no cell to the wide CSV, which is how the
-# 12 `unranked` concept nodes stay distinct without widening the frozen columns.
-RANK_VOCABULARY = (
-    *((rank.lower(), str(ordinal), rank) for ordinal, rank in enumerate(LEGACY_RANKS, start=1)),
-    ("unranked", "", ""),
-)
-
-# `qualifier` is blank on 253 rows today. Blank is a value, not an absence, so it is named.
-UNQUALIFIED = "unqualified"
-
-
-class MigrationError(RuntimeError):
-    """Raised when the package cannot be built from, or cannot reproduce, the legacy CSV."""
 
 
 # Reading the legacy CSV
@@ -455,31 +387,6 @@ def check_prefix_collation(rows, prefix_length: int = 1485) -> None:
 
 
 # Writing
-def write_tsv(path: Path, columns, table) -> None:
-    """Write a canonical TSV: tab-separated, LF, no quoting, trailing newline.
-
-    A tab or newline inside a value would make the file unparseable, so it is refused rather
-    than escaped — no value in this data has ever contained either.
-    """
-    path.parent.mkdir(parents=True, exist_ok=True)
-    lines = ["\t".join(columns)]
-    for row in table:
-        values = [row[column] for column in columns]
-        for column, value in zip(columns, values):
-            if "\t" in value or "\n" in value or "\r" in value:
-                raise MigrationError(f"{path.name}: {column}={value!r} contains a tab or newline")
-        lines.append("\t".join(values))
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="")
-
-
-def read_tsv(path: Path) -> list:
-    """Read a canonical TSV back. The inverse of :func:`write_tsv`."""
-    text = path.read_text(encoding="utf-8")
-    lines = text.split("\n")
-    if lines[-1] != "":
-        raise MigrationError(f"{path.name}: missing trailing newline")
-    columns = lines[0].split("\t")
-    return [dict(zip(columns, line.split("\t"))) for line in lines[1:-1]]
 
 
 def write_package(package_dir: Path, rows) -> dict:
@@ -556,122 +463,21 @@ def write_package(package_dir: Path, rows) -> dict:
 
 # Verification
 def render_legacy_csv(package_dir: Path) -> bytes:
-    """Rebuild the 19-column CSV from the written package.
+    """Render the 19-column CSV out of the written package.
 
-    Deliberately reads the FILES rather than the in-memory tables: a package that only renders
-    from the objects that produced it proves nothing about what was committed.
+    Goes through the shipped loader and renderer rather than a second implementation: a
+    migration verified by its own private copy of the projection proves only that the copy
+    agrees with itself. Reads the FILES, so what is checked is what was committed.
     """
-    taxa = {row["taxonID"]: row for row in read_tsv(package_dir / "taxon.tsv")}
-    legacy_slot = {row["rank"]: row["legacy_slot"] for row in read_tsv(package_dir / "vocab" / "rank.tsv")}
-    blank_qualifier = {row["qualifier"]: row["legacy_value"] for row in read_tsv(package_dir / "vocab" / "qualifier.tsv")}
-    prefix_to_column = {prefix: legacy for _name, legacy, prefix, _scope, _multi in AUTHORITIES}
-
-    ids_by_subject = {}
-    for row in read_tsv(package_dir / "identifier.tsv"):
-        prefix, _, value = row["object_id"].partition(":")
-        ids_by_subject.setdefault(row["subject_id"], {}).setdefault(prefix_to_column[prefix], []).append(value)
-
-    mappings = {}
-    for path in (package_dir / "mappings").glob("*.tsv"):
-        for row in read_tsv(path):
-            if row["datasetID"] != path.stem:
-                raise MigrationError(f"{path.name} holds a row for {row['datasetID']}")
-            mappings[(row["datasetID"], row["verbatimIdentification"])] = row
-
-    overrides = {
-        (row["datasetID"], row["verbatimIdentification"]): row
-        for row in read_tsv(package_dir / "release" / "v1.0" / "legacy_overrides.tsv")
-    }
-
-    buffer = io.StringIO(newline="")
-    writer = csv.writer(buffer, lineterminator="\n", quoting=csv.QUOTE_MINIMAL)
-    writer.writerow(LEGACY_HEADER)
-
-    for entry in read_tsv(package_dir / "release" / "v1.0" / "legacy_row_order.tsv"):
-        key = (entry["datasetID"], entry["verbatimIdentification"])
-        mapping = mappings[key]
-        slots = project7(taxa, mapping["taxonID"], legacy_slot)
-        override = overrides.get(key)
-        ids = ids_by_subject.get(mapping["taxonID"], {})
-
-        cells = {
-            "Dataset": mapping["datasetID"],
-            "Raw_Labels": mapping["verbatimIdentification"],
-            **slots,
-            "proposed_label": mapping["concept"],
-            "plankton": "True" if mapping["plankton"] == "true" else "False",
-            "living": "True" if mapping["root_class"] == "living" else "False",
-            "root_class": mapping["root_class"],
-            "qualifier": blank_qualifier[mapping["qualifier"]],
-        }
-        for column in LEGACY_ID_COLUMNS:
-            if override is not None:
-                cells[column] = override[column]
-            else:
-                cells[column] = _legacy_id_cell(column, ids.get(column, []))
-        writer.writerow([cells[column] for column in LEGACY_HEADER])
-
-    return buffer.getvalue().encode("utf-8")
-
-
-_MULTI_VALUED = {legacy for _n, legacy, _p, _s, multi in AUTHORITIES if multi == "true"}
-
-
-def _legacy_id_cell(column: str, values) -> str:
-    """Render an id list back into its legacy cell form, float suffix included.
-
-    Raises:
-        MigrationError: If a single-valued authority carries more than one id. A second
-            ``exact`` id is schema-legal in any SSSOM-shaped table and would otherwise be
-            dropped here silently, with the survivor decided by sort order rather than by the
-            model — one of the over-claims the refuters found in every design.
-    """
-    if not values:
-        return ""
-    if column in _MULTI_VALUED:
-        return ";".join(values)
-    if len(values) > 1:
-        raise MigrationError(f"{column} is single-valued but carries {len(values)} ids: {values}")
-    return values[0] if column == "wikidata_ID" else f"{values[0]}.0"
-
-
-def project7(taxa, taxon_id, legacy_slot) -> dict:
-    """Fill the seven legacy slots from the ancestors whose rank HAS a slot.
-
-    A rank with no ``legacy_slot`` contributes no cell, which is what keeps the 12 ``unranked``
-    concept nodes distinct without widening the frozen columns, and what renders a ``bucket``
-    as seven blanks. The Species cell is the epithet, derived by removing the genus prefix.
-    """
-    slots = dict.fromkeys(LEGACY_RANKS, "")
-    genus = ""
-    chain = []
-    current = taxon_id
-    while current:
-        row = taxa[current]
-        chain.append(row)
-        current = row["parentNameUsageID"]
-
-    for row in reversed(chain):
-        slot = legacy_slot.get(row["taxonRank"], "")
-        if not slot:
-            continue
-        if slot == "Genus":
-            genus = row["scientificName"]
-        if slot != "Species":
-            slots[slot] = row["scientificName"]
-            continue
-        if not genus:
-            raise MigrationError(f"species {row['scientificName']!r} has no genus ancestor; the epithet is underivable")
-        slots[slot] = row["scientificName"].removeprefix(f"{genus} ")
-    return slots
+    return render.render_wide_csv(loader.load_taxonomy(package_dir))
 
 
 def verify(package_dir: Path, csv_path: Path) -> None:
     """Render the package back and compare against the committed CSV, byte for byte."""
     rendered = render_legacy_csv(package_dir)
-    committed = csv_path.read_bytes()
+    committed = Path(csv_path).read_bytes()
     if rendered == committed:
-        logger.info(f"verified: the package renders «{csv_path.name}» byte-for-byte ({len(committed)} bytes).")
+        logger.info(f"verified: the package renders «{Path(csv_path).name}» byte-for-byte ({len(committed)} bytes).")
         return
 
     rendered_lines = rendered.decode("utf-8").split("\n")
