@@ -59,6 +59,7 @@ from collections import Counter
 from pathlib import Path
 
 from planktonzilla.planktonzilla_dataset import constants
+from planktonzilla.planktonzilla_dataset.utils import taxonomy_write_guard as write_guard
 from planktonzilla.utils.logger import get_pylogger
 
 logger = get_pylogger(__name__)
@@ -432,7 +433,7 @@ def _encode_rows(csv_rows: list[dict]) -> str:
     return buf.getvalue()
 
 
-def write_csv(csv_path: Path, csv_rows: list[dict]) -> None:
+def write_csv(csv_path: Path, csv_rows: list[dict], *, unlocked: bool) -> None:
     """Idempotently append the frepj rows after the pristine 1486-line prefix.
 
     The pre-existing header + 1485 rows are preserved byte-for-byte: the append
@@ -442,7 +443,26 @@ def write_csv(csv_path: Path, csv_rows: list[dict]) -> None:
     can never be mistaken for the boundary. The prefix bytes up to that row are
     copied verbatim (never re-serialised), so a re-run rewrites only the frepj block
     and leaves the file byte-identical.
+
+    That last sentence held only while frepj was the LAST block in the file. It is
+    not, and has not been since daplankton landed: everything after the frepj block
+    falls outside the copied prefix and is dropped. On the committed table this turns
+    2358 rows into 1714 and exits 0 (``docs/CODE_REVIEW.md`` finding 1.1). Both guards
+    below therefore run before anything is written, and on today's table the second one
+    refuses every call — which is the intended state until the write API of
+    ``docs/TAXONOMY_IMPLEMENTATION_PLAN.md`` step 6 replaces this byte-splicing.
+
+    Args:
+        csv_path: The master taxonomy CSV to rewrite in place.
+        csv_rows: The curated frepj rows, in file order.
+        unlocked: Whether the caller passed ``--i-know-this-rewrites-the-csv``.
+
+    Raises:
+        TaxonomyWriteRefusedError: If the caller did not opt in, or if the render
+            would move a row this builder does not own. Nothing is written either way.
     """
+    write_guard.assert_unlocked(unlocked, tool="build_frepj_taxonomy", path=csv_path)
+
     raw = csv_path.read_bytes()
     prefix = bytearray()
     for line in raw.splitlines(keepends=True):
@@ -451,7 +471,15 @@ def write_csv(csv_path: Path, csv_rows: list[dict]) -> None:
         if first_field == DATASET_NAME:
             break
         prefix += line
-    csv_path.write_text(bytes(prefix).decode("utf-8") + _encode_rows(csv_rows))
+
+    rendered = bytes(prefix).decode("utf-8") + _encode_rows(csv_rows)
+    write_guard.assert_owns_every_change(
+        raw.decode("utf-8"),
+        rendered,
+        owner={DATASET_NAME},
+        tool="build_frepj_taxonomy",
+    )
+    csv_path.write_text(rendered)
 
 
 def _fmt_ids(id_rows: list[dict]) -> str:
@@ -650,13 +678,14 @@ def main() -> None:
     parser.add_argument("--tsv", type=Path, default=DEFAULT_CLASS_DIRS_TSV)
     parser.add_argument("--csv", type=Path, default=constants.DEFAULT_TAXONOMY_CSV_FILENAME)
     parser.add_argument("--report", type=Path, default=DEFAULT_RECONCILIATION_MD)
+    write_guard.add_unlock_argument(parser)
     args = parser.parse_args()
 
     logger.info(f"Reading frozen class-dirs from «{args.tsv}».")
     parsed, csv_rows = build_rows(args.tsv, args.csv)
     logger.info(f"Curated {len(csv_rows)} «frepj» rows.")
 
-    write_csv(args.csv, csv_rows)
+    write_csv(args.csv, csv_rows, unlocked=write_guard.is_unlocked(args))
     logger.info(f"Appended {len(csv_rows)} rows to «{args.csv}» (idempotent, append-only).")
 
     write_report(args.report, parsed)

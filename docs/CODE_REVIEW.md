@@ -43,7 +43,8 @@ lint, a green suite, and a curated known-issues ledger — which is exactly wher
 
 Five code commits on `claude/code-review-l4k0db` (`0aa18aa..9a31b32`) address the **training-path**
 findings. The data-pipeline findings — the ones that destroy or mislabel *published* data, and which this
-review ranks highest — are **all still open**.
+review ranks highest — are **all still open**, except 1.1, whose data loss is now *contained* by a guard
+that refuses the write (the writer itself is unrepaired; see below).
 
 | Finding | Status | Where |
 | --- | --- | --- |
@@ -55,7 +56,8 @@ review ranks highest — are **all still open**.
 | Test split read on every run | **fixed** — not a review finding; found later | `train.py:285` (`eval_test`) · `7a7b709` |
 | 1.7 guard compares only `Kingdom` | **fixed** | all 7 ranks; `RANK_DEPARTURES` in `build_tara_pacific_taxonomy.py`, `tests/test_tara_pacific_taxonomy.py` |
 | `Raw_Labels` → one taxon never checked | **fixed** — not a review finding; the gap 1.6 sits in | `utils/verify_label_consistency.py` (KI-31) |
-| 1.1, 1.2, 1.3, 1.6, 1.9 | **open** | 1.6 re-verified against `main` `e4ebdd4` — still live; its root cause is now recorded (see 1.7) |
+| 1.1 `write_csv` destroys 644 rows | **contained, not repaired** — the loss is refused, the writer still mis-renders | `utils/taxonomy_write_guard.py`, `tests/test_taxonomy_write_guard.py` |
+| 1.2, 1.3, 1.6, 1.9 | **open** | 1.6 re-verified against `main` `e4ebdd4` — still live; its root cause is now recorded (see 1.7) |
 | Tier 2 (17 entries), Tier 3 (11 entries) | **open** | — |
 
 So, of the ten Tier 1 findings: **4 closed** (1.4, 1.7, 1.8, 1.10), **1 re-diagnosed and left open on
@@ -200,6 +202,18 @@ test that runs `write_csv` against a CSV with a post-frepj block and asserts the
 > Same file, second defect (finding #22): `Parsed.as_csv_row` hardcodes the four external-ID columns to
 > `""` (lines 332-335), so a re-run also blanks the `wikidata_ID`/`aphia_ID`/`NCBI_ID`/`BOLD_ID` values
 > that `resolve_frepj_ids.backfill_csv` wrote into 208 of the 229 frepj rows.
+
+**Status: contained, not repaired.** `utils/taxonomy_write_guard.py` now runs before either in-place
+writer touches the file. It compares the render against the file on disk and raises if any line outside the
+builder's own `Dataset` set is dropped, added, reordered or edited, so on the committed table `write_csv`
+refuses every call instead of silently returning 1714 rows; a second guard makes the rewrite opt-in on the
+command line. `tests/test_taxonomy_write_guard.py` reproduces the 644-row loss and pins the refusal.
+
+Two things this does **not** do, on purpose. The writer is not mirrored onto `append_to_master`'s
+pass-through shape, because `docs/TAXONOMY_IMPLEMENTATION_PLAN.md` step 6 replaces the byte-splicing with a
+key-addressed write API rather than patching the boundary scan — refusing costs no work in the meantime,
+since the builder re-derives a block that is already committed. And finding #22 above is **untouched**:
+blanking IDs on frepj's own rows is inside frepj's ownership, so no cross-source guard can see it.
 
 ### 1.2 `atomic_replace` deletes the whole data directory on the migration command the tool itself prints
 
