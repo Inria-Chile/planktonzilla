@@ -38,6 +38,7 @@ from PIL import Image as PILImage
 from planktonzilla.planktonzilla_dataset import constants
 from planktonzilla.planktonzilla_dataset import generate_planktonzilla as gp
 from planktonzilla.planktonzilla_dataset import make_planktonzilla as mk
+from planktonzilla.planktonzilla_dataset.taxonomy import loader as taxonomy_loader
 
 # (name, import_name, importer class name) for the two offline sources.
 LENSLESS = ("lensless", "lensless", "lenslessdatasetimporter_imagefolder")
@@ -268,7 +269,7 @@ def test_taxonomy_only_run_preserves_rows_and_order(offline, two_source_env, tmp
             _csv_row("isiisnet", "appendicularia", proposed="Appendicularia", phylum="Chordata"),
         ],
     )
-    gp._build_taxonomy_lookup_cached.cache_clear()
+    taxonomy_loader.cache_clear()
 
     cfg2 = _compose(
         [*common, f"output_dir={tmp_path / 'after'}", "sources=[]", f"base={tmp_path / 'base'}"],
@@ -283,7 +284,7 @@ def test_taxonomy_only_run_preserves_rows_and_order(offline, two_source_env, tmp
     assert [r["original_path"] for r in after] == paths_before, "a taxonomy-only run must not reorder rows"
     assert {r["proposed_label"] for r in after if r["original_label"] == "copepoda"} == {"Calanoida"}
 
-    gp._build_taxonomy_lookup_cached.cache_clear()
+    taxonomy_loader.cache_clear()
 
 
 def test_sync_unmatched_keep_versus_clear(offline, two_source_env, tmp_path):
@@ -302,7 +303,7 @@ def test_sync_unmatched_keep_versus_clear(offline, two_source_env, tmp_path):
 
     # Drop lensless/copepoda from the CSV so those rows become unmatched.
     _write_csv(csv_path, [_csv_row("isiisnet", "appendicularia", proposed="Appendicularia", phylum="Chordata")])
-    gp._build_taxonomy_lookup_cached.cache_clear()
+    taxonomy_loader.cache_clear()
 
     results = {}
     for policy in ("keep", "clear"):
@@ -321,7 +322,7 @@ def test_sync_unmatched_keep_versus_clear(offline, two_source_env, tmp_path):
     assert all(r["proposed_label"] is None for r in results["clear"])
     assert all(r["Phylum"] is None for r in results["clear"])
 
-    gp._build_taxonomy_lookup_cached.cache_clear()
+    taxonomy_loader.cache_clear()
 
 
 def test_drop_removes_a_source(offline, two_source_env, tmp_path):

@@ -125,8 +125,13 @@ def test_build_taxonomy_lookup_is_an_alias_that_kept_its_contract():
     assert len(gp.build_taxonomy_lookup(str(REAL_CSV))) == 2358
 
 
-def test_the_three_names_callers_reach_for_survived_the_deletion():
-    """``LOOKUP_COLS``, ``_norm`` and the cache handle. Each has a live caller outside this module."""
+def test_the_two_names_callers_reach_for_survived_the_deletion():
+    """``LOOKUP_COLS`` and ``_norm``. Each has a live caller outside this module.
+
+    ``_norm`` is the one that looks deletable and is not: ``RedefineDataset`` binds it as a
+    staticmethod in its class body, which reads the module-level name before shadowing it. A static
+    analysis that misses that reports it unused, and deleting it is a NameError at import.
+    """
     assert gp.LOOKUP_COLS == (
         *constants.TAXONOMY_RANKS,
         *constants.EXTRA_COLS,
@@ -134,8 +139,17 @@ def test_the_three_names_callers_reach_for_survived_the_deletion():
         *constants.ID_NUM_COLS,
     )
     assert gp._norm("  ") is None and gp._norm(" x ") == "x"
-    # The same cached callable, so the ten `.cache_clear()` call sites reach the loader's cache.
-    assert gp._build_taxonomy_lookup_cached is loader.load_cached
+    assert gp.RedefineDataset._norm(" x ") == "x", "the staticmethod binding that makes _norm live"
+
+
+def test_the_cache_handle_this_module_used_to_re_export_is_gone():
+    """It was a step-5 courtesy so the call sites were not churned mid-refactor. Step 6 spends it.
+
+    The cache belongs to the loader; a test reaching through the generation module to clear it is an
+    indirection with no production caller behind it.
+    """
+    assert not hasattr(gp, "_build_taxonomy_lookup_cached")
+    assert callable(loader.cache_clear)
 
 
 def test_the_lookup_is_still_cached_per_resolved_path():

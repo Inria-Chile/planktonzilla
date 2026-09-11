@@ -111,17 +111,17 @@ num_proc = constants.default_num_proc()
 # (tests/test_taxonomy_render_golden.py), which is the evidence that let this deletion happen at
 # all rather than a second implementation being kept "just in case".
 #
-# Three names survive the deletion because callers reach for them:
-#   LOOKUP_COLS                    imported by make_planktonzilla.check_taxonomy_csv
-#   _norm                          bound as a staticmethod on RedefineDataset below
-#   _build_taxonomy_lookup_cached  ten test call sites use its .cache_clear()
+# Two names survive the deletion because callers reach for them:
+#   LOOKUP_COLS  imported by make_planktonzilla.check_taxonomy_csv
+#   _norm        bound as a staticmethod on RedefineDataset below, so deleting it is a NameError
+#                at import rather than dead-code removal
+#
+# A third, `_build_taxonomy_lookup_cached`, was kept through step 5 so the test call sites that
+# clear the cache would not be churned mid-refactor. It is gone: the cache is the loader's, and a
+# test reaching through this module to clear it is an indirection with no production caller.
+# `taxonomy.loader.cache_clear()` is the handle.
 LOOKUP_COLS = taxonomy_model.LOOKUP_COLUMNS
 _norm = taxonomy_render._norm
-
-# The cached body, now the loader's own. It returns a TaxonomyStore rather than the lookup dict the
-# old function returned; nothing but `.cache_clear()` touches it, which is why the name is kept
-# rather than ten call sites churned.
-_build_taxonomy_lookup_cached = taxonomy_loader.load_cached
 
 
 def build_taxonomy_lookup(csv_path) -> dict:

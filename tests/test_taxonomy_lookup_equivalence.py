@@ -42,6 +42,7 @@ import pytest
 from planktonzilla.planktonzilla_dataset import constants
 from planktonzilla.planktonzilla_dataset import generate_planktonzilla as gp
 from planktonzilla.planktonzilla_dataset import update_planktonzilla as up
+from planktonzilla.planktonzilla_dataset.taxonomy import loader as taxonomy_loader
 
 REAL_CSV = constants.DEFAULT_TAXONOMY_CSV_FILENAME
 
@@ -188,7 +189,7 @@ def test_duplicate_keys_warn_and_keep_the_last_row(tmp_path, caplog):
     csv_path = tmp_path / "dupes.csv"
     csv_path.write_text(header + "\n" + "\n".join(rows) + "\n")
 
-    gp._build_taxonomy_lookup_cached.cache_clear()
+    taxonomy_loader.cache_clear()
     with caplog.at_level("WARNING"):
         lookup = gp.build_taxonomy_lookup(csv_path)
 
@@ -199,7 +200,7 @@ def test_duplicate_keys_warn_and_keep_the_last_row(tmp_path, caplog):
     assert lookup[("ds", "dup")]["proposed_label"] == "second", "last row should win"
     assert lookup[("ds", "other")]["proposed_label"] == "other"
 
-    gp._build_taxonomy_lookup_cached.cache_clear()
+    taxonomy_loader.cache_clear()
 
 
 @pytest.mark.parametrize("dataset_name,raw_label", [("x", "y")])
@@ -218,7 +219,7 @@ def test_equivalence_on_the_single_row_fixture(tmp_path, dataset_name, raw_label
     csv_path = tmp_path / "taxo.csv"
     csv_path.write_text(header + "\n" + row + "\n")
 
-    gp._build_taxonomy_lookup_cached.cache_clear()
+    taxonomy_loader.cache_clear()
     new = up.build_sync_dict(csv_path)
     legacy = _legacy_pandas_sync_dict(csv_path)
 
@@ -228,4 +229,4 @@ def test_equivalence_on_the_single_row_fixture(tmp_path, dataset_name, raw_label
             assert new[key][col] == legacy[key][col], f"{col} differs"
             assert type(new[key][col]) is type(legacy[key][col]), f"{col} type differs"
 
-    gp._build_taxonomy_lookup_cached.cache_clear()
+    taxonomy_loader.cache_clear()
