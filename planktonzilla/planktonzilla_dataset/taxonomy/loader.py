@@ -261,13 +261,36 @@ def build_taxonomy_lookup(csv_path) -> dict:
     return load_taxonomy(csv_path).lookup()
 
 
+# THE RETIREMENT SWITCH — documented, deliberately not thrown (plan step 9).
+#
+# Flipping this to PACKAGE_DIR makes the normalised package the source of record and stops the wide
+# CSV being the thing every consumer reads. One line, because `default_source()` is the only place
+# the default lives; the reason it is not flipped yet is that a one-line change is not the same as
+# a safe one. Three things have to hold first, and the third is not something this repository can
+# check on its own:
+#
+#   1. `pz_taxonomy diff` is empty — the package renders the committed CSV byte for byte. TRUE
+#      today, and the golden gate keeps it true.
+#   2. `pz_taxonomy check` reports zero errors. TRUE today.
+#   3. A golden diff against the PUBLISHED Hub artefact — not against the committed CSV, which is
+#      an input to the build and not its output. The published dataset carries 17.4 M rows of
+#      taxonomy joined at build time; nothing here proves the join produced what is on the Hub.
+#      That is a network job against `project-oceania/planktonzilla-17m`, and until it has been
+#      run and its result recorded, retiring the CSV would be trading a checkable artefact for an
+#      unchecked one.
+#
+# Until then the CSV stays committed and stays read, and the package is its provenance rather than
+# its replacement.
+RETIREMENT_SWITCH_THROWN = False
+
+
 def default_source():
     """The wide CSV while it is still the source of record; the package once it is not.
 
-    One place to flip when step 8's retirement switch is thrown, rather than a default spread
+    One place to flip when the retirement switch above is thrown, rather than a default spread
     across four Hydra configs.
     """
-    return constants.DEFAULT_TAXONOMY_CSV_FILENAME
+    return PACKAGE_DIR if RETIREMENT_SWITCH_THROWN else constants.DEFAULT_TAXONOMY_CSV_FILENAME
 
 
 # Re-exported so a caller needs one import rather than three.

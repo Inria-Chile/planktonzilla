@@ -11,6 +11,7 @@ the write path would miss the half that matters.
 """
 
 import shutil
+from pathlib import Path
 
 import pyrootutils
 
@@ -151,3 +152,86 @@ def test_a_reason_is_required_by_the_parser_not_defaulted(package, argv):
         run(package, *argv)
 
     assert exit_code.value.code == 2
+
+
+# Step 9 — release, the CI summary, the generated runbook
+def test_a_release_freezes_todays_order_and_pins_it(package, capsys):
+    """A release answers "which rows did we publish, in which order?" — needed because the order
+    WITHIN a label is not derivable: 56 runs covering 545 rows of the frozen prefix obey no key."""
+    from planktonzilla.planktonzilla_dataset.taxonomy.model import read_tsv
+
+    assert run(package, "release", "v1.1", "--apply") == 0
+
+    cut = package / "release" / "v1.1"
+    order = read_tsv(cut / "legacy_row_order.tsv")
+    assert len(order) == 2358
+    assert [row["sequence"] for row in order] == [str(i) for i in range(2358)]
+    assert (cut / "sha256").read_text(encoding="utf-8").strip()
+    # Per-release, and empty: a correction pinned against v1.0's bytes says nothing about v1.1.
+    assert read_tsv(cut / "legacy_overrides.tsv") == []
+
+
+def test_cutting_a_release_never_edits_an_existing_one(package, capsys):
+    """v1.0's manifest and pin are what let the loader prove the frozen block has not drifted."""
+    before = {path: path.read_bytes() for path in (package / "release" / "v1.0").iterdir()}
+
+    assert run(package, "release", "v1.0", "--apply") == 2
+    assert "already exists" in capsys.readouterr().err
+    assert {path: path.read_bytes() for path in (package / "release" / "v1.0").iterdir()} == before
+
+
+def test_release_writes_nothing_without_apply(package):
+    assert run(package, "release", "v1.1") == 0
+    assert not (package / "release" / "v1.1").exists()
+
+
+def test_the_ci_summary_is_one_sentence_a_reviewer_can_act_on(package, capsys):
+    """A 2358-line CSV diff does not say whether a curation moved published data. This does."""
+    run(package, "rename", "pzt:000071", "bosmina renamed", "--apply")
+    capsys.readouterr()
+
+    assert run(package, "diff", "--summary") == 0
+    out = capsys.readouterr().out
+    assert "**2 published cell(s) changed on 1 row(s)**" in out
+    assert "- `proposed_label`: 1" in out and "- `Species`: 1" in out
+
+
+def test_the_ci_summary_says_so_when_nothing_published_moved(package, capsys):
+    """Provenance, vocabularies and predicates all move without moving a published cell."""
+    assert run(package, "diff", "--summary") == 0
+    assert capsys.readouterr().out.strip() == "No published cell changed."
+
+
+def test_the_committed_runbook_is_what_the_generator_produces():
+    """A hand-written runbook rots silently — wrong counts, renamed commands, nothing red.
+
+    This is the test that makes "generated" mean something: the committed file has to equal what
+    the command produces from today's package, or the suite says so.
+    """
+    from planktonzilla.planktonzilla_dataset.taxonomy import PACKAGE_DIR
+
+    committed = (Path(root) / "docs" / "TAXONOMY_RUNBOOK.md").read_text(encoding="utf-8")
+
+    assert committed == cli.runbook(PACKAGE_DIR), "docs/TAXONOMY_RUNBOOK.md is stale: run `pz_taxonomy runbook --out`"
+
+
+def test_every_command_documents_itself_in_the_runbook():
+    """The table is generated from the handlers' docstrings, so a command added without a sentence
+    explaining itself shows up as **undocumented** rather than as nothing at all."""
+    from planktonzilla.planktonzilla_dataset.taxonomy import PACKAGE_DIR
+
+    assert "**undocumented**" not in cli.runbook(PACKAGE_DIR)
+
+
+def test_the_retirement_switch_is_documented_and_not_thrown():
+    """Step 9 documents it; throwing it waits on a golden diff against the published Hub artefact.
+
+    Pinned because the switch is one line and the temptation is to flip it once `diff` and `check`
+    are both clean — which they are. What they cannot show is that the 17.4 M-row join on the Hub
+    matches, and the CSV is the only checkable artefact until something does.
+    """
+    from planktonzilla.planktonzilla_dataset import constants
+    from planktonzilla.planktonzilla_dataset.taxonomy import loader
+
+    assert loader.RETIREMENT_SWITCH_THROWN is False
+    assert loader.default_source() == constants.DEFAULT_TAXONOMY_CSV_FILENAME

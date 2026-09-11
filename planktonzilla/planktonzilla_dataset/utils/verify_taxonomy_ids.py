@@ -556,12 +556,44 @@ def distinct_ids(rows: list[dict]) -> dict[str, list[str]]:
     return {col: sorted(values, key=lambda v: (len(v), v)) for col, values in buckets.items()}
 
 
-def build_snapshot(csv_path: Path, email: str | None = None) -> dict:
+def id_set_digest(ids: dict) -> str:
+    """The sha256 of the sorted distinct id set — what the snapshot actually depends on.
+
+    Step 9 re-keys the snapshot to this instead of to the whole-CSV sha (open decision §10.4, at
+    its default). The two differ on exactly the edits that matter: correcting a spelling, adding a
+    ``method``, re-ordering a block — none of which changes a single identifier — used to change
+    the CSV's hash, turn the staleness check red, and demand a network re-harvest of ~3,500 ids
+    plus an 86,618-line JSON diff. The id set is unmoved by all of them and moves the moment an
+    identifier is added, changed or removed, which is the only time a harvest is owed.
+    """
+    payload = "\n".join(f"{column}\t{value}" for column in sorted(ids) for value in sorted(ids[column]))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _reuse(previous: dict, authority: str, wanted: list) -> tuple:
+    """``(kept, to_fetch)`` — what the previous harvest still covers, and what it does not.
+
+    Ids that have LEFT the table are dropped rather than carried: a snapshot that accumulates
+    records for identifiers nothing references stops being a statement about this table.
+    """
+    held = (previous or {}).get(authority, {})
+    unresolved = set((previous or {}).get("provenance", {}).get("sources", {}).get(authority, {}).get("unresolved", []))
+    kept = {identifier: held[identifier] for identifier in wanted if identifier in held}
+    return kept, [identifier for identifier in wanted if identifier not in held and identifier not in unresolved]
+
+
+def build_snapshot(csv_path: Path, email: str | None = None, previous: dict | None = None) -> dict:
     """Harvest all three authorities for the identifiers present in the CSV.
+
+    Incremental when ``previous`` is given: an id the previous snapshot already resolved is carried
+    over, an id it recorded as unresolvable is not re-requested, and an id that has left the table
+    is dropped. Only genuinely new identifiers hit the network. A full re-harvest is then something
+    a maintainer chooses (``--full``) rather than something a spelling fix imposes.
 
     Args:
         csv_path: Path to the taxonomy CSV.
         email: Contact address for NCBI Entrez.
+        previous: A committed snapshot to harvest incrementally against; ``None`` fetches everything.
 
     Returns:
         The snapshot dict, ready for :func:`write_snapshot`.
@@ -570,35 +602,57 @@ def build_snapshot(csv_path: Path, email: str | None = None) -> dict:
     ids = distinct_ids(rows)
     logger.info("distinct ids to resolve: %s", {k: len(v) for k, v in ids.items()})
 
-    worms, worms_missing = fetch_worms(ids["aphia_ID"])
-    ncbi, ncbi_missing = fetch_ncbi(ids["NCBI_ID"], email=email)
-    wikidata, wikidata_missing = fetch_wikidata(ids["wikidata_ID"])
+    kept_worms, new_worms = _reuse(previous, "worms", ids["aphia_ID"])
+    kept_ncbi, new_ncbi = _reuse(previous, "ncbi", ids["NCBI_ID"])
+    kept_wikidata, new_wikidata = _reuse(previous, "wikidata", ids["wikidata_ID"])
+    if previous is not None:
+        logger.info(
+            "incremental harvest: %s new id(s) to fetch, %s carried over",
+            len(new_worms) + len(new_ncbi) + len(new_wikidata),
+            len(kept_worms) + len(kept_ncbi) + len(kept_wikidata),
+        )
+
+    fetched_worms, worms_missing = fetch_worms(new_worms)
+    fetched_ncbi, ncbi_missing = fetch_ncbi(new_ncbi, email=email)
+    fetched_wikidata, wikidata_missing = fetch_wikidata(new_wikidata)
+
+    worms = {**kept_worms, **fetched_worms}
+    ncbi = {**kept_ncbi, **fetched_ncbi}
+    wikidata = {**kept_wikidata, **fetched_wikidata}
+
+    def carried(authority, wanted, resolved, missing):
+        """Unresolved ids: this run's misses, plus the previous run's that are still in the table."""
+        before = set((previous or {}).get("provenance", {}).get("sources", {}).get(authority, {}).get("unresolved", []))
+        return sorted((before | set(missing)) & set(wanted) - set(resolved))
 
     return {
         "provenance": {
             "generated_utc": datetime.now(UTC).isoformat(timespec="seconds"),
             "tool": "planktonzilla.planktonzilla_dataset.utils.verify_taxonomy_ids",
             "taxonomy_csv": csv_path.name,
-            "taxonomy_csv_sha256": hashlib.sha256(csv_path.read_bytes()).hexdigest(),
-            "taxonomy_csv_rows": len(rows),
+            # NOT the CSV's own sha: see id_set_digest. A label edit must not demand a re-harvest.
+            "id_set_sha256": id_set_digest(ids),
             "sources": {
                 "worms": {
                     "endpoint": f"{WORMS_REST}/AphiaRecordByAphiaID + AphiaClassificationByAphiaID",
                     "requested": len(ids["aphia_ID"]),
+                    "fetched": len(new_worms),
                     "resolved": len(worms),
-                    "unresolved": worms_missing,
+                    "unresolved": carried("worms", ids["aphia_ID"], worms, worms_missing),
                 },
                 "ncbi": {
                     "endpoint": NCBI_EFETCH,
                     "requested": len(ids["NCBI_ID"]),
+                    "fetched": len(new_ncbi),
                     "resolved": len(ncbi),
-                    "unresolved": ncbi_missing,
+                    "unresolved": carried("ncbi", ids["NCBI_ID"], ncbi, ncbi_missing),
                 },
                 "wikidata": {
                     "endpoint": WIKIDATA_API,
                     "requested": len(ids["wikidata_ID"]),
+                    "fetched": len(new_wikidata),
                     "resolved": len(wikidata),
-                    "unresolved": wikidata_missing,
+                    "unresolved": carried("wikidata", ids["wikidata_ID"], wikidata, wikidata_missing),
                 },
             },
         },
@@ -1425,7 +1479,15 @@ def main(argv: list[str] | None = None) -> int:
         Process exit status — non-zero when unwaived findings at or above ``--fail-on`` exist.
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--refresh-snapshot", action="store_true", help="network stage: re-harvest all three authorities")
+    parser.add_argument(
+        "--refresh-snapshot", action="store_true", help="network stage: harvest the identifiers the snapshot does not cover"
+    )
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="With --refresh-snapshot, re-fetch every identifier instead of only the new ones. "
+        "Needed when an authority has restated records, not when the table has been edited.",
+    )
     parser.add_argument("--report", action="store_true", help="network-free stage: cross-check the CSV against the snapshot")
     parser.add_argument("--csv", type=Path, default=Path(DEFAULT_TAXONOMY_CSV_FILENAME), help="taxonomy CSV to verify")
     parser.add_argument("--snapshot", type=Path, default=DEFAULT_SNAPSHOT_PATH, help="authority snapshot JSON")
@@ -1444,7 +1506,10 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.WARNING if args.quiet else logging.INFO, format="%(levelname)s %(message)s")
 
     if args.refresh_snapshot:
-        write_snapshot(build_snapshot(args.csv, email=args.email), args.snapshot)
+        # Incremental by default: only identifiers the committed snapshot does not already cover
+        # reach the network. A full re-harvest is a maintainer's choice, not a spelling fix's.
+        previous = None if args.full else (load_snapshot(args.snapshot) if args.snapshot.exists() else None)
+        write_snapshot(build_snapshot(args.csv, email=args.email, previous=previous), args.snapshot)
 
     if not args.report:
         return 0

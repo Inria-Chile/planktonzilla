@@ -16,7 +16,9 @@ builders write on every run, one of them destroying 644 rows when re-run with no
     pz_taxonomy clear-id <id> <authority> --reason
                                              the only way to blank an identifier
     pz_taxonomy render [--out FILE]          the 19-column legacy CSV
-    pz_taxonomy diff [--against FILE]        which PUBLISHED cells differ from a rendered CSV
+    pz_taxonomy diff [--summary]             which PUBLISHED cells differ from a rendered CSV
+    pz_taxonomy release <tag> [--apply]      freeze today's row order as a new release
+    pz_taxonomy runbook [--out FILE]         the curation runbook, generated from the package
 
 ``upsert-source`` is deliberately absent. A source's records come from its builder — the rule
 tables, label grammars and donor resolution that are the actual curation — and there is no way to
@@ -25,11 +27,19 @@ this CLI is for the acts that ARE one line.
 """
 
 import argparse
+import hashlib
 import sys
+from collections import Counter
 from pathlib import Path
 
 from planktonzilla.planktonzilla_dataset.taxonomy import loader, validate, write
-from planktonzilla.planktonzilla_dataset.taxonomy.model import TaxonomyError, read_tsv
+from planktonzilla.planktonzilla_dataset.taxonomy.model import (
+    OVERRIDE_COLUMNS,
+    ROW_ORDER_COLUMNS,
+    TaxonomyError,
+    read_tsv,
+    write_tsv,
+)
 from planktonzilla.utils.logger import get_pylogger
 
 logger = get_pylogger(__name__)
@@ -120,14 +130,17 @@ def cmd_fmt(args) -> int:
 
 
 def cmd_rename(args) -> int:
+    """Rename a concept, keeping its id. The id is the identity; the name never was."""
     return _report(write.rename(args.package, args.taxon_id, args.name, apply=args.apply), args.apply)
 
 
 def cmd_retire(args) -> int:
+    """Retire a concept into another, leaving a tombstone rather than a hole."""
     return _report(write.merge(args.package, args.taxon_id, args.into, args.reason, apply=args.apply), args.apply)
 
 
 def cmd_clear_id(args) -> int:
+    """Remove one authority's identifiers from one concept. The only way to blank an id."""
     return _report(write.clear_id(args.package, args.taxon_id, args.authority, args.reason, apply=args.apply), args.apply)
 
 
@@ -147,10 +160,197 @@ def cmd_diff(args) -> int:
 
     Defaults to the committed wide CSV, so ``pz_taxonomy diff`` on a clean tree prints nothing and
     on a curated one prints exactly the published cells that would move.
+
+    ``--summary`` prints the one line CI posts on a taxonomy PR: "N published cells changed on M
+    rows". A 2,358-line CSV diff does not tell a reviewer whether a curation moved published data
+    or only its provenance; this does, in a sentence.
     """
     against = args.against if args.against is not None else Path(loader.default_source())
     changes = write.diff_published(args.package, against.read_bytes())
+
+    if args.summary:
+        cells = [change for change in changes.changes if change.column != "*"]
+        added = [change for change in changes.changes if change.column == "*" and change.after == "row"]
+        removed = changes.removals()
+        rows = {change.key for change in changes.changes}
+        if not changes:
+            print("No published cell changed.")
+            return 0
+        parts = [f"**{len(cells)} published cell(s) changed on {len(rows)} row(s)**"]
+        if added:
+            parts.append(f"{len(added)} row(s) added")
+        if removed:
+            parts.append(f"{len(removed)} row(s) REMOVED")
+        print(", ".join(parts) + ".")
+        for column, count in sorted(Counter(change.column for change in cells).items()):
+            print(f"- `{column}`: {count}")
+        return 0
+
     print(changes.describe(limit=args.limit))
+    return 0
+
+
+def runbook(package_dir) -> str:
+    """The curation runbook, GENERATED from the package and this parser.
+
+    Generated and not written, because a hand-written runbook rots silently: it names commands that
+    were renamed, counts that moved, and vocabularies that grew, and nothing goes red. Everything
+    below is read from the package or from the argument parser at the moment of writing, and a test
+    asserts the committed file still equals this — so the runbook cannot drift from the tool it
+    documents without the suite saying so.
+    """
+    from collections import Counter
+
+    package_dir = Path(package_dir)
+    store = loader.load_taxonomy(package_dir)
+    mappings = [row for path in sorted((package_dir / "mappings").glob("*.tsv")) for row in read_tsv(path)]
+    with_method = sum(1 for row in mappings if row["method"])
+    methods = read_tsv(package_dir / "vocab" / "method.tsv")
+    releases = sorted(path.name for path in (package_dir / "release").iterdir() if path.is_dir())
+    vocabularies = sorted(
+        path.name.removesuffix("_taxpath.tsv") for path in (package_dir / "vocab" / "labels").glob("*_taxpath.tsv")
+    )
+    predicates = Counter(row["predicate_id"] for row in read_tsv(package_dir / "identifier.tsv"))
+
+    lines = [
+        "# Curating the taxonomy",
+        "",
+        "**Generated by `pz_taxonomy runbook`. Do not edit — edit the code or the package and re-run.**",
+        "",
+        "Every number below is read from the committed package. A hand-written runbook that says "
+        "«2,358 rows» goes on saying it after the table grows; this one cannot.",
+        "",
+        "## What is in the package",
+        "",
+        "| | |",
+        "| --- | ---: |",
+        f"| sources | {len(store.datasets())} |",
+        f"| mapping rows | {len(mappings)} |",
+        f"| concepts (`taxon.tsv`) | {len(store.taxa)} |",
+        f"| identifiers | {sum(predicates.values())} |",
+        f"| — of them exact matches | {predicates['skos:exactMatch']} |",
+        f"| — of them broad matches | {predicates['skos:broadMatch']} |",
+        f"| rows whose provenance is recorded | {with_method} |",
+        f"| rows nobody can answer for | {len(mappings) - with_method} |",
+        f"| frozen releases | {', '.join(releases)} |",
+        f"| released label vocabularies | {', '.join(vocabularies)} |",
+        "",
+        "## The commands",
+        "",
+        "Every write is a dry run until `--apply`. A refusal is one line on stderr and exit 2.",
+        "",
+        "| command | what it does |",
+        "| --- | --- |",
+    ]
+    parser = build_parser()
+    commands = next(action for action in parser._actions if isinstance(action.choices, dict))
+    for name, sub in commands.choices.items():
+        # The handler's own first docstring line. Every command has one, and this table is why:
+        # a command added without a sentence explaining itself shows up here as a blank.
+        summary = (sub.description or "").strip().splitlines()
+        lines.append(f"| `pz_taxonomy {name}` | {summary[0] if summary else '**undocumented**'} |")
+
+    lines += [
+        "",
+        "## How a decision gets recorded",
+        "",
+        "`method` is a controlled vocabulary. A new way of deciding a row is a new term here, which is a "
+        "reviewable one-line diff — not free text nobody can group by.",
+        "",
+        "| method | emitted by | means |",
+        "| --- | --- | --- |",
+    ]
+    lines += [f"| `{row['method']}` | {row['emitted_by']} | {row['definition']} |" for row in methods]
+
+    lines += [
+        "",
+        "A blank `method` is not a term. It means nobody can say why that row claims what it claims, and "
+        "the count above is pinned by a test so it can only go down.",
+        "",
+        "## The three things that are frozen",
+        "",
+        "1. **A release's row order.** `release/<tag>/legacy_row_order.tsv`, pinned by its own sha. Never "
+        "edited — `pz_taxonomy release <tag>` cuts a new one. Rows mapped after a release render after its "
+        "block, in collation order.",
+        "2. **A released label vocabulary.** `vocab/labels/<tag>_taxpath.tsv`. The class ids a model was "
+        "trained against; regenerating one renumbers them. New names are a new tag.",
+        "3. **The published CSV.** `planktonzilla_taxonomy.csv` is rendered from the package and is still the "
+        "source of record every consumer reads. `pz_taxonomy diff --summary` says what a curation moved in it.",
+        "",
+        "## Adding a source",
+        "",
+        "1. Curate it however the source demands — a rule table, a spreadsheet, an EcoTaxa export.",
+        "2. Call `taxonomy.write.upsert_wide_rows(package, rows, provenance=...)` from your builder. It writes "
+        "`mappings/<source>.tsv` and nothing else under `mappings/`; it cannot reach another source.",
+        "3. `pz_taxonomy check` — zero errors, or fix what it names.",
+        "4. `pz_taxonomy diff --summary` — confirm the published cells that moved are the ones you meant.",
+        "5. Re-render the CSV (`pz_taxonomy render --out`) and commit both.",
+        "",
+        "If the source has an independent list of its class directories, add it to "
+        "`tests/test_taxonomy_source_coverage.py`. Without one, a mistyped class name publishes sixteen nulls "
+        "for every one of its images and nothing goes red.",
+        "",
+        "## Correcting something already published",
+        "",
+        "| you want to | do |",
+        "| --- | --- |",
+        "| rename a concept | `rename <id> <name> --apply` — the id is the identity, the name never was |",
+        "| retire a concept into another | `retire <id> <into> --reason … --apply` — leaves a tombstone |",
+        "| remove an identifier | `clear-id <id> <authority> --reason … --apply` — the only way |",
+        "| correct an identifier | `clear-id`, then re-add. A record contradicting a held id is refused |",
+        "| tidy a table after a merge | `pz_taxonomy fmt --apply` |",
+        "",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def cmd_runbook(args) -> int:
+    """Write the generated curation runbook."""
+    text = runbook(args.package)
+    if args.out is None:
+        print(text, end="")
+        return 0
+    args.out.write_text(text, encoding="utf-8")
+    print(f"wrote {len(text.splitlines())} lines to «{args.out}»")
+    return 0
+
+
+def cmd_release(args) -> int:
+    """Freeze the current physical order into a new release, and pin it.
+
+    A release is the answer to "which rows did we publish, in which order?", and it is needed
+    because the order WITHIN a label is not derivable — 56 runs covering 545 rows of the frozen
+    prefix are not in any key's order, and no key tried recovers them.
+
+    Cutting one never edits an existing release. ``v1.0``'s manifest and its pin stay exactly as
+    they are, which is what lets the loader keep proving the frozen block has not drifted; the new
+    tag records today's order, including the rows that have landed since.
+    """
+    release = args.package / "release" / args.tag
+    if release.exists():
+        print(f"refused: release {args.tag} already exists. A release is frozen; cut a new tag.", file=sys.stderr)
+        return 2
+
+    store = loader.load_taxonomy(args.package)
+    order = [
+        {"sequence": str(index), "datasetID": dataset, "verbatimIdentification": verbatim}
+        for index, (dataset, verbatim) in enumerate(store.row_order)
+    ]
+    digest = hashlib.sha256(
+        "\n".join(f"{row['datasetID']}\t{row['verbatimIdentification']}" for row in order).encode("utf-8")
+    ).hexdigest()
+
+    if not args.apply:
+        print(f"would freeze {len(order)} row(s) as release {args.tag}, pinned to {digest[:12]}…")
+        print("\nNothing was written. Re-run with --apply to write it.")
+        return 0
+
+    write_tsv(release / "legacy_row_order.tsv", ROW_ORDER_COLUMNS, order)
+    # The overrides are per-release and start empty: a correction pinned against v1.0's bytes says
+    # nothing about a release cut after it.
+    write_tsv(release / "legacy_overrides.tsv", OVERRIDE_COLUMNS, [])
+    (release / "sha256").write_text(digest + "\n", encoding="utf-8")
+    print(f"froze {len(order)} row(s) as release {args.tag}, pinned to {digest[:12]}…")
     return 0
 
 
@@ -198,6 +398,13 @@ def build_parser() -> argparse.ArgumentParser:
     diff = add("diff", cmd_diff, "Which published cells differ from a rendered CSV.")
     diff.add_argument("--against", type=Path, default=None, help="Default: the committed wide CSV.")
     diff.add_argument("--limit", type=int, default=40)
+    diff.add_argument("--summary", action="store_true", help="The one line CI posts: N cells on M rows.")
+
+    book = add("runbook", cmd_runbook, "Write the generated curation runbook.")
+    book.add_argument("--out", type=Path, default=None, help="Write here instead of stdout.")
+
+    release = add("release", cmd_release, "Freeze the current row order as a new release.", writes=True)
+    release.add_argument("tag", help="The new release tag, e.g. v1.1. An existing tag is never edited.")
 
     return parser
 

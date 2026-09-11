@@ -701,6 +701,23 @@ direction is clean — no taxon carries two IDs in any column.
 **Frozen-output risk: data-side.** Correcting an ID changes the published `*_ID` columns.
 Document only.
 
+**Partially resolved (the coarse-rank half).** That larger bucket is no longer an undifferentiated
+"precision limitation": step 7 of `docs/TAXONOMY_IMPLEMENTATION_PLAN.md` re-predicated all 147 of
+them to `skos:broadMatch` in `taxonomy/data/identifier.tsv` — **449 identifier rows**, one per
+finer concept — with `semapv:LogicalReasoning` recording that the claim was inferred from the
+hierarchy rather than looked up. A species carrying its genus's id now SAYS it is carrying its
+genus's id.
+
+No published byte moved: the renderer never reads the predicate, because the 19-column CSV has no
+way to express "broader than", and withdrawing 449 published ids to state a nuance the format
+cannot carry would be the worse answer. `pz_taxonomy check` reported 168 findings before and
+reports 21 after, and `unjustified_broad_match` now guards the re-predication — relabelling a real
+cross-branch collision as a broad match is an ERROR, so this cannot be used to make the remaining
+21 disappear.
+
+**Still open:** those 21 genuine cross-branch collisions, listed by `pz_taxonomy check`. Correcting
+one changes a published `*_ID` cell, so each needs the same adjudication it always did.
+
 ---
 
 ## KI-31 — One source label, two different taxa: `Raw_Labels` disagreements across datasets

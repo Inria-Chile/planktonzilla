@@ -78,3 +78,61 @@ jobs:
       # fixtures (which self-skip via skip_if_vendored_deleted).
       - name: Run pytest (excluding slow integration matrix)
         run: uv run pytest tests/ --ignore=tests/test_train.py --ignore=tests/test_datasets.py -v
+
+  taxonomy-diff:
+    name: Taxonomy diff (published cells)
+    runs-on: ubuntu-latest
+    # Only on PRs, and only when something under the taxonomy actually moved. A 2,358-line CSV
+    # diff does not tell a reviewer whether a curation changed published data or only its
+    # provenance; this posts the sentence that does. Step 9 of docs/TAXONOMY_IMPLEMENTATION_PLAN.md.
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup uv (with cache)
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.13"
+
+      - name: Install project deps (uv sync)
+        run: uv sync
+
+      - name: Did the taxonomy change at all?
+        id: touched
+        run: |
+          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+          if git diff --quiet "origin/${{ github.base_ref }}" -- \
+              planktonzilla/planktonzilla_dataset/taxonomy/ \
+              planktonzilla/planktonzilla_dataset/planktonzilla_taxonomy.csv; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The package renders the CSV, so "the package vs the base branch's CSV" is exactly
+      # "what this PR would publish vs what is published today".
+      - name: Render the base branch's CSV and diff the published cells
+        if: steps.touched.outputs.changed == 'true'
+        run: |
+          git show "origin/${{ github.base_ref }}:planktonzilla/planktonzilla_dataset/planktonzilla_taxonomy.csv" > /tmp/base_taxonomy.csv
+          {
+            echo "### Taxonomy: published cells"
+            echo
+            uv run pz_taxonomy diff --summary --against /tmp/base_taxonomy.csv
+            echo
+            echo "_Provenance, vocabularies and identifier predicates are curation, not publication:"
+            echo "they move without moving a published cell. \`pz_taxonomy check\` gates the rest._"
+          } > /tmp/taxonomy_comment.md
+          cat /tmp/taxonomy_comment.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post it on the PR
+        if: steps.touched.outputs.changed == 'true'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: taxonomy-published-cells
+          path: /tmp/taxonomy_comment.md

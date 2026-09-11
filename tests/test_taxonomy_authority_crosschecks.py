@@ -33,7 +33,6 @@ root = pyrootutils.setup_root(
     dotenv=False,
 )
 
-import hashlib
 import json
 
 import pytest
@@ -243,19 +242,50 @@ def test_engine_normalizers():
 def test_snapshot_provenance_is_recorded(snapshot):
     """The snapshot must say what it was built from and when, or it cannot be audited."""
     provenance = snapshot["provenance"]
-    for key in ("generated_utc", "tool", "taxonomy_csv_sha256", "taxonomy_csv_rows", "sources"):
+    for key in ("generated_utc", "tool", "id_set_sha256", "sources"):
         assert provenance.get(key), f"provenance is missing {key}"
     assert set(provenance["sources"]) == {"worms", "ncbi", "wikidata"}
     for source in provenance["sources"].values():
         assert source["endpoint"] and source["requested"] >= 0
 
 
-def test_snapshot_matches_the_committed_csv(snapshot):
-    """A snapshot harvested against a different CSV revision would verify the wrong table."""
-    digest = hashlib.sha256(_CSV_PATH.read_bytes()).hexdigest()
-    assert snapshot["provenance"]["taxonomy_csv_sha256"] == digest, (
-        "authority_snapshot.json was harvested against a different planktonzilla_taxonomy.csv; re-run --refresh-snapshot"
+def test_snapshot_matches_the_committed_identifier_set(snapshot):
+    """A snapshot harvested against a different set of identifiers would verify the wrong table.
+
+    Keyed to the **id set** and not to the CSV's own sha since step 9 (§10.4, at its default). The
+    intent is unchanged; the false alarms are gone. Correcting a spelling, filling a `method`,
+    re-ordering a block — none of them touches an identifier, and all of them used to turn this red
+    and demand a network re-harvest of ~3,500 ids plus an 86,618-line JSON diff.
+    """
+    digest = vti.id_set_digest(vti.distinct_ids(vti.read_taxonomy(_CSV_PATH)))
+
+    assert snapshot["provenance"]["id_set_sha256"] == digest, (
+        "authority_snapshot.json was harvested against a different identifier set; re-run --refresh-snapshot"
     )
+
+
+def test_an_edit_that_touches_no_identifier_does_not_stale_the_snapshot():
+    """The property the re-key exists for, exercised rather than described.
+
+    A label edit changes the CSV's bytes and its sha. The id set — and therefore the snapshot's
+    key — is unmoved, so no harvest is owed.
+    """
+    rows = vti.read_taxonomy(_CSV_PATH)
+    before = vti.id_set_digest(vti.distinct_ids(rows))
+
+    relabelled = [{**row, "proposed_label": row["proposed_label"] + " (respelled)"} for row in rows]
+
+    assert vti.id_set_digest(vti.distinct_ids(relabelled)) == before
+
+
+def test_an_edit_that_adds_an_identifier_does_stale_the_snapshot():
+    """The other half. A key that never moves is not a key."""
+    rows = vti.read_taxonomy(_CSV_PATH)
+    before = vti.id_set_digest(vti.distinct_ids(rows))
+
+    grown = [*rows, {**rows[0], "Raw_Labels": "new", "aphia_ID": "999999"}]
+
+    assert vti.id_set_digest(vti.distinct_ids(grown)) != before
 
 
 def test_snapshot_covers_every_populated_identifier(rows, snapshot):

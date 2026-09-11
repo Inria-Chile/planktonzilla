@@ -415,7 +415,32 @@ releases into one id space and because uniqueness passes on a shuffled file that
 
 **PR 9 — Authority snapshot, review tooling, retirement switch (≈3 d).** Now also carries `release`,
 moved here from PR 6: cutting a release freezes the current order into a new manifest, which is only
-meaningful once the switch that stops committing the wide CSV is decided. Re-key the authority snapshot to the
+meaningful once the switch that stops committing the wide CSV is decided.
+
+*Refined once it was written.* The snapshot was already keyed by authority id, so a spelling fix never moved a
+KEY — what it moved was `provenance.taxonomy_csv_sha256`, which turned the staleness check red and demanded a
+network re-harvest of ~3,500 ids and an 86,618-line diff for an edit that touched no identifier. The re-key is
+therefore to `id_set_sha256` (§10.4, at its default), and the harvest is incremental by default: an id the
+committed snapshot resolved is carried over, one it recorded as unresolvable is not re-requested, one that has
+left the table is dropped, and `--full` is a maintainer's choice rather than a spelling fix's imposition. The
+staleness test keeps its intent and loses its false alarms, and two new tests state both halves — an edit that
+touches no identifier does not stale it, an edit that adds one does.
+
+The **runbook is generated** (`pz_taxonomy runbook`, committed as `docs/TAXONOMY_RUNBOOK.md`) and a test
+asserts the committed file equals what the generator produces. A hand-written runbook rots silently: wrong
+counts, renamed commands, vocabularies that grew, nothing red. Its command table is built from the handlers'
+own docstrings, so a command added without a sentence explaining itself renders as **undocumented**.
+
+The **CI comment** is a `taxonomy-diff` job that renders the base branch's CSV, diffs the published cells, and
+posts one sticky comment. It runs only when something under the taxonomy moved, and it exists because a
+2,358-line CSV diff cannot tell a reviewer whether a curation changed published data or only its provenance.
+
+The **retirement switch** is `loader.RETIREMENT_SWITCH_THROWN`, one line, and deliberately `False`. Two of its
+three gates hold today — `pz_taxonomy diff` is empty and `pz_taxonomy check` reports zero errors — and the
+third cannot be checked from inside this repository: the published dataset joins this taxonomy across 17.4 M
+rows, and nothing here proves the join produced what is on the Hub. Until that golden diff has been run,
+throwing the switch would trade a checkable artefact for an unchecked one. The comment beside it says exactly
+that, and a test pins it unthrown. Re-key the authority snapshot to the
 sorted distinct-id set with incremental harvest, so a spelling fix no longer forces a network re-harvest and an
 86,618-line JSON diff (needs the maintainers' HARDEN decision, §10.4). Add the CI semantic-diff comment
 ("N published cells changed on M rows", computed by rendering the legacy view before and after), the generated
