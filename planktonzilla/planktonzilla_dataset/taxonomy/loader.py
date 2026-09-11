@@ -119,9 +119,14 @@ def _load_package(package_dir: Path) -> TaxonomyStore:
         (row["datasetID"], row["verbatimIdentification"]): row for row in read_tsv(release / "legacy_overrides.tsv")
     }
 
-    if len(store.row_order) != len(store.mappings):
+    # `draft` rows are excluded on purpose, so a partially mapped source can be committed: the
+    # renderer skips them and they are not in any release's row order. Design B could not commit
+    # one — 150 blank rows produced 150 errors and a renderer crash.
+    accepted = [mapping for mapping in store.mappings.values() if mapping.status != "draft"]
+    if len(store.row_order) != len(accepted):
         raise TaxonomyError(
-            f"the row-order manifest has {len(store.row_order)} keys but the mapping files have {len(store.mappings)} rows"
+            f"the row-order manifest has {len(store.row_order)} keys but the mapping files have "
+            f"{len(accepted)} accepted rows ({len(store.mappings) - len(accepted)} draft)"
         )
 
     return store

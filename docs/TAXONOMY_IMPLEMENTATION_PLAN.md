@@ -83,7 +83,7 @@ planktonzilla/planktonzilla_dataset/taxonomy/
 ├── cli.py                 pz_taxonomy console script
 ├── migrate.py             the one-shot migration (step 1), with its own render-back verification
 └── data/
-    ├── datapackage.yaml           Frictionless descriptor + source registry (one stanza per source)
+    ├── datapackage.json           the schema of record, EXECUTED by validate.py + source registry
     ├── taxon.tsv                  1,352 rows (as built: 1,297 lineage nodes + 12 finer-than-their-rank
     │                              concepts as `unranked` children + 43 lineage-less buckets)
     ├── identifier.tsv             4,032 rows (measured; 132 ';'-joined ecotaxa cells exploded one id per line)
@@ -208,9 +208,12 @@ own row-order keys.
 
 ### Stage 2 — Make it enforceable, then move the readers
 
-**PR 3 — Schema of record and validation (≈3 d).** `validate.py` plus `datapackage.yaml` plus a seven-defect
-fixture package. The polars module is the enforcer and must re-implement every constraint the descriptor
-declares, so that a laptop without Frictionless gives CI's verdict. Four checks exist **because tools the
+**PR 3 — Schema of record and validation (≈3 d).** `validate.py` plus `datapackage.json` plus a seven-defect
+fixture package. *As built*, `validate.py` **executes** the descriptor rather than re-implementing it: two
+statements of one constraint is a drift hazard with nothing to make them agree, so there is a single
+execution path and a constraint declared in the descriptor cannot be silently unenforced. The descriptor is
+plain JSON, parsed with the standard library, which is what actually delivers "a laptop without Frictionless
+gives CI's verdict". Four checks exist **because tools the
 design trusted do not enforce them**, and each needs its own failing fixture:
 
 | Check | Why polars must own it |
@@ -291,7 +294,7 @@ shows exactly the published rows that move.
 | R7 | Concurrent add-source PRs conflict | `merge=union` + duplicate-id rule + per-source descriptor fragments; manual-resolution case documented | PR 4 |
 | R8 | Pin layer freezes the concept but not the mapping, so a curator cannot land a KI-10 fix | three nullable `root_class` / `qualifier` / `plankton` columns on the mapping pin | PR 1 |
 | R9 | Adding a source needs edits outside the taxonomy directory | `validate_license_coverage` raises without a `DATASET_LICENSES` entry (`constants.py:212-228`); the runbook says so | PR 9 |
-| R10 | Frictionless in the dev group drifts (`uv.lock` is gitignored at `.gitignore:279`) | exact `==` pin, matching the `ruff==0.16.5` precedent and its written rationale | PR 3 |
+| R10 | ~~Frictionless in the dev group drifts~~ — **retired**: no Frictionless dependency was added | the descriptor is stdlib-parsed and executed directly; nothing to pin | PR 3 |
 
 R10 deserves its own note: `pyproject.toml:78-92` already carries a long comment explaining that a `>=` floor
 plus an absent lockfile is not a pin at all. Any new dev dependency inherits that reasoning, not a floor.
@@ -309,7 +312,7 @@ the PR that depends on them**, because reversing them later is a data migration 
 | §10.6 row order for post-freeze sources | **PR 1** | the manifest is written during migration. §1's measurement supplies a default the existing data already obeys: `proposed_label.lower().replace("-", "")`, then registry order, then raw-label bytes |
 | §10.2 frozen-defect policy (keep the pin layer) | **PR 2** | decides whether the golden gate targets today's bytes or a corrected v1.1 |
 | §10.3 unpublished Tara Pacific blocks | PR 6 | nothing pins them yet, so the window to correct Harpacticoida / Creseidae without a release closes when the write API ports the builder |
-| §10.5 Frictionless in the dev group | PR 3 | cheap either way; the polars module is the enforcer regardless |
+| §10.5 Frictionless in the dev group | **PR 3, resolved: no** | the package could not be installed in this environment at all, and an unverifiable dev dependency is not a gate. The descriptor is executed directly instead, so Frictionless stays an optional cross-check on the same file |
 | §10.4, .7–.12 | PR 6–9 | defaults hold; each is reversible in the step that consumes it |
 
 §10.12's second half is already spent: PR #35 merged on 2026-09-10, so rebasing `verify_label_consistency.py`

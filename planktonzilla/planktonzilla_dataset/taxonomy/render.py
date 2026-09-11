@@ -103,6 +103,11 @@ def legacy_rows(store) -> list:
         except KeyError:
             raise TaxonomyError(f"the row-order manifest names {key}, which no mapping file carries") from None
 
+        # A draft mapping is curation in progress and is not published. It never reaches a release's
+        # row order either, so this is belt and braces — but a manifest edited by hand could name one.
+        if mapping.status == "draft":
+            continue
+
         override = store.overrides.get(key)
         ids = store.identifiers.get(mapping.taxon_id, {})
         row = {
