@@ -111,17 +111,16 @@ num_proc = constants.default_num_proc()
 # (tests/test_taxonomy_render_golden.py), which is the evidence that let this deletion happen at
 # all rather than a second implementation being kept "just in case".
 #
-# Two names survive the deletion because callers reach for them:
+# ONE name survives the deletion because a caller reaches for it:
 #   LOOKUP_COLS  imported by make_planktonzilla.check_taxonomy_csv
-#   _norm        bound as a staticmethod on RedefineDataset below, so deleting it is a NameError
-#                at import rather than dead-code removal
 #
-# A third, `_build_taxonomy_lookup_cached`, was kept through step 5 so the test call sites that
-# clear the cache would not be churned mid-refactor. It is gone: the cache is the loader's, and a
-# test reaching through this module to clear it is an indirection with no production caller.
-# `taxonomy.loader.cache_clear()` is the handle.
+# Two others were kept as aliases while the readers moved and are now gone, for the same reason
+# each time: neither had a production caller left, only tests reaching through this module for
+# something the taxonomy package owns.
+#   `_build_taxonomy_lookup_cached`  the cache is the loader's; `taxonomy.loader.cache_clear()`.
+#   `_norm`                          the normaliser is the renderer's; `RedefineDataset._norm` is
+#                                    bound straight from it below, so nothing needs the alias.
 LOOKUP_COLS = taxonomy_model.LOOKUP_COLUMNS
-_norm = taxonomy_render._norm
 
 
 def build_taxonomy_lookup(csv_path) -> dict:
@@ -349,10 +348,11 @@ class RedefineDataset:
             "timestamp",
         ]
 
-    # _norm and _build_lookup were hoisted to module level as _norm /
-    # build_taxonomy_lookup so the re-sync path shares one CSV reader; these keep the
-    # former method names working for any external caller.
-    _norm = staticmethod(_norm)
+    # _norm and _build_lookup were hoisted out of this class so the re-sync path shares one CSV
+    # reader; these keep the former method names working for any external caller. Bound straight
+    # from the renderer, which owns the implementation — an alias in this module would only be a
+    # second name for it, reachable by nothing but the binding on this line.
+    _norm = staticmethod(taxonomy_render._norm)
 
     def _build_lookup(self, csv_path):
         """Build the ``(Dataset, Raw_Labels) -> {column: value}`` lookup from the CSV."""

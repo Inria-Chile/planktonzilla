@@ -92,8 +92,6 @@ def cmd_provenance(args) -> int:
     in two styles, covering two sources. Since step 7 it is a column, so it is one command, and the
     rows nobody can answer for are counted rather than left as an implication.
     """
-    from collections import Counter
-
     store = loader.load_taxonomy(args.package)
     datasets = [args.dataset] if args.dataset else store.datasets()
 
@@ -190,6 +188,79 @@ def cmd_diff(args) -> int:
     return 0
 
 
+# The runbook's prose, kept out of the list that assembles it.
+#
+# Implicit string concatenation inside a list literal is indistinguishable from a missing comma —
+# `"a" "b"` is one element, `"a", "b"` is two, and a reviewer cannot tell which was meant. In a
+# numbered list, one absent comma silently merges two steps. So the wrapped prose lives here as
+# triple-quoted blocks, and the list below holds only whole values. It also puts what a human wrote
+# in one place and what the package says in another, which is the point of a generated runbook.
+_INTRO = """Every number below is read from the committed package. A hand-written runbook that says
+«2,358 rows» goes on saying it after the table grows; this one cannot."""
+
+_COMMANDS = "Every write is a dry run until `--apply`. A refusal is one line on stderr and exit 2."
+
+_METHOD_IS_CONTROLLED = """`method` is a controlled vocabulary. A new way of deciding a row is a new
+term here, which is a reviewable one-line diff — not free text nobody can group by."""
+
+_BLANK_IS_NOT_A_TERM = """A blank `method` is not a term. It means nobody can say why that row claims
+what it claims, and the count above is pinned by a test so it can only go down."""
+
+# Numbered lists as one string PER ITEM, so a wrapped line can never merge two steps.
+_FROZEN = (
+    """1. **A release's row order.** `release/<tag>/legacy_row_order.tsv`, pinned by its own sha.
+    Never edited — `pz_taxonomy release <tag>` cuts a new one. Rows mapped after a release render
+    after its block, in collation order.""",
+    """2. **A released label vocabulary.** `vocab/labels/<tag>_taxpath.tsv`. The class ids a model
+    was trained against; regenerating one renumbers them. New names are a new tag.""",
+    """3. **The published CSV.** `planktonzilla_taxonomy.csv` is rendered from the package and is
+    still the source of record every consumer reads. `pz_taxonomy diff --summary` says what a
+    curation moved in it.""",
+)
+
+_ADDING_A_SOURCE = (
+    "1. Curate it however the source demands — a rule table, a spreadsheet, an EcoTaxa export.",
+    """2. Call `taxonomy.write.upsert_wide_rows(package, rows, provenance=...)` from your builder.
+    It writes `mappings/<source>.tsv` and nothing else under `mappings/`; it cannot reach another
+    source.""",
+    "3. `pz_taxonomy check` — zero errors, or fix what it names.",
+    "4. `pz_taxonomy diff --summary` — confirm the published cells that moved are the ones you meant.",
+    "5. Re-render the CSV (`pz_taxonomy render --out`) and commit both.",
+)
+
+_COVERAGE = """If the source has an independent list of its class directories, add it to
+`tests/test_taxonomy_source_coverage.py`. Without one, a mistyped class name publishes sixteen nulls
+for every one of its images and nothing goes red."""
+
+_CORRECTING = """| you want to | do |
+| --- | --- |
+| rename a concept | `rename <id> <name> --apply` — the id is the identity, the name never was |
+| retire a concept into another | `retire <id> <into> --reason … --apply` — leaves a tombstone |
+| remove an identifier | `clear-id <id> <authority> --reason … --apply` — the only way |
+| correct an identifier | `clear-id`, then re-add. A record contradicting a held id is refused |
+| tidy a table after a merge | `pz_taxonomy fmt --apply` |"""
+
+
+def _unwrap(prose: str) -> str:
+    """A triple-quoted block back to one line. Markdown wraps; the source wraps for the line limit."""
+    return " ".join(line.strip() for line in prose.split(chr(10)))
+
+
+def _command_table() -> list:
+    """One row per command, from the handlers' own docstrings.
+
+    A command added without a sentence explaining itself renders as **undocumented**, which is the
+    only reason this is generated rather than typed.
+    """
+    parser = build_parser()
+    commands = next(action for action in parser._actions if isinstance(action.choices, dict))
+    rows = []
+    for name, sub in commands.choices.items():
+        summary = (sub.description or "").strip().splitlines()
+        rows.append(f"| `pz_taxonomy {name}` | {summary[0] if summary else '**undocumented**'} |")
+    return rows
+
+
 def runbook(package_dir) -> str:
     """The curation runbook, GENERATED from the package and this parser.
 
@@ -199,8 +270,6 @@ def runbook(package_dir) -> str:
     asserts the committed file still equals this — so the runbook cannot drift from the tool it
     documents without the suite saying so.
     """
-    from collections import Counter
-
     package_dir = Path(package_dir)
     store = loader.load_taxonomy(package_dir)
     mappings = [row for path in sorted((package_dir / "mappings").glob("*.tsv")) for row in read_tsv(path)]
@@ -212,13 +281,12 @@ def runbook(package_dir) -> str:
     )
     predicates = Counter(row["predicate_id"] for row in read_tsv(package_dir / "identifier.tsv"))
 
-    lines = [
+    sections = [
         "# Curating the taxonomy",
         "",
         "**Generated by `pz_taxonomy runbook`. Do not edit — edit the code or the package and re-run.**",
         "",
-        "Every number below is read from the committed package. A hand-written runbook that says "
-        "«2,358 rows» goes on saying it after the table grows; this one cannot.",
+        _unwrap(_INTRO),
         "",
         "## What is in the package",
         "",
@@ -237,71 +305,38 @@ def runbook(package_dir) -> str:
         "",
         "## The commands",
         "",
-        "Every write is a dry run until `--apply`. A refusal is one line on stderr and exit 2.",
+        _COMMANDS,
         "",
         "| command | what it does |",
         "| --- | --- |",
-    ]
-    parser = build_parser()
-    commands = next(action for action in parser._actions if isinstance(action.choices, dict))
-    for name, sub in commands.choices.items():
-        # The handler's own first docstring line. Every command has one, and this table is why:
-        # a command added without a sentence explaining itself shows up here as a blank.
-        summary = (sub.description or "").strip().splitlines()
-        lines.append(f"| `pz_taxonomy {name}` | {summary[0] if summary else '**undocumented**'} |")
-
-    lines += [
+        *_command_table(),
         "",
         "## How a decision gets recorded",
         "",
-        "`method` is a controlled vocabulary. A new way of deciding a row is a new term here, which is a "
-        "reviewable one-line diff — not free text nobody can group by.",
+        _unwrap(_METHOD_IS_CONTROLLED),
         "",
         "| method | emitted by | means |",
         "| --- | --- | --- |",
-    ]
-    lines += [f"| `{row['method']}` | {row['emitted_by']} | {row['definition']} |" for row in methods]
-
-    lines += [
+        *(f"| `{row['method']}` | {row['emitted_by']} | {row['definition']} |" for row in methods),
         "",
-        "A blank `method` is not a term. It means nobody can say why that row claims what it claims, and "
-        "the count above is pinned by a test so it can only go down.",
+        _unwrap(_BLANK_IS_NOT_A_TERM),
         "",
         "## The three things that are frozen",
         "",
-        "1. **A release's row order.** `release/<tag>/legacy_row_order.tsv`, pinned by its own sha. Never "
-        "edited — `pz_taxonomy release <tag>` cuts a new one. Rows mapped after a release render after its "
-        "block, in collation order.",
-        "2. **A released label vocabulary.** `vocab/labels/<tag>_taxpath.tsv`. The class ids a model was "
-        "trained against; regenerating one renumbers them. New names are a new tag.",
-        "3. **The published CSV.** `planktonzilla_taxonomy.csv` is rendered from the package and is still the "
-        "source of record every consumer reads. `pz_taxonomy diff --summary` says what a curation moved in it.",
+        *(_unwrap(item) for item in _FROZEN),
         "",
         "## Adding a source",
         "",
-        "1. Curate it however the source demands — a rule table, a spreadsheet, an EcoTaxa export.",
-        "2. Call `taxonomy.write.upsert_wide_rows(package, rows, provenance=...)` from your builder. It writes "
-        "`mappings/<source>.tsv` and nothing else under `mappings/`; it cannot reach another source.",
-        "3. `pz_taxonomy check` — zero errors, or fix what it names.",
-        "4. `pz_taxonomy diff --summary` — confirm the published cells that moved are the ones you meant.",
-        "5. Re-render the CSV (`pz_taxonomy render --out`) and commit both.",
+        *(_unwrap(item) for item in _ADDING_A_SOURCE),
         "",
-        "If the source has an independent list of its class directories, add it to "
-        "`tests/test_taxonomy_source_coverage.py`. Without one, a mistyped class name publishes sixteen nulls "
-        "for every one of its images and nothing goes red.",
+        _unwrap(_COVERAGE),
         "",
         "## Correcting something already published",
         "",
-        "| you want to | do |",
-        "| --- | --- |",
-        "| rename a concept | `rename <id> <name> --apply` — the id is the identity, the name never was |",
-        "| retire a concept into another | `retire <id> <into> --reason … --apply` — leaves a tombstone |",
-        "| remove an identifier | `clear-id <id> <authority> --reason … --apply` — the only way |",
-        "| correct an identifier | `clear-id`, then re-add. A record contradicting a held id is refused |",
-        "| tidy a table after a merge | `pz_taxonomy fmt --apply` |",
+        _CORRECTING,
         "",
     ]
-    return "\n".join(lines) + "\n"
+    return "\n".join(sections) + "\n"
 
 
 def cmd_runbook(args) -> int:

@@ -38,7 +38,7 @@ import pytest
 
 from planktonzilla.planktonzilla_dataset import constants, frepj_validate, make_planktonzilla
 from planktonzilla.planktonzilla_dataset import generate_planktonzilla as gp
-from planktonzilla.planktonzilla_dataset.taxonomy import load_taxonomy, loader
+from planktonzilla.planktonzilla_dataset.taxonomy import load_taxonomy, loader, render
 from planktonzilla.planktonzilla_dataset.utils import verify_label_consistency, verify_taxonomy_ids
 
 REAL_CSV = Path(constants.DEFAULT_TAXONOMY_CSV_FILENAME)
@@ -125,12 +125,11 @@ def test_build_taxonomy_lookup_is_an_alias_that_kept_its_contract():
     assert len(gp.build_taxonomy_lookup(str(REAL_CSV))) == 2358
 
 
-def test_the_two_names_callers_reach_for_survived_the_deletion():
-    """``LOOKUP_COLS`` and ``_norm``. Each has a live caller outside this module.
+def test_the_one_name_callers_reach_for_survived_the_deletion():
+    """``LOOKUP_COLS``, imported by ``make_planktonzilla.check_taxonomy_csv``.
 
-    ``_norm`` is the one that looks deletable and is not: ``RedefineDataset`` binds it as a
-    staticmethod in its class body, which reads the module-level name before shadowing it. A static
-    analysis that misses that reports it unused, and deleting it is a NameError at import.
+    ``RedefineDataset._norm`` survives too, as a back-compat method name for any external caller,
+    but it is bound straight from the renderer now — this module holds no second name for it.
     """
     assert gp.LOOKUP_COLS == (
         *constants.TAXONOMY_RANKS,
@@ -138,8 +137,20 @@ def test_the_two_names_callers_reach_for_survived_the_deletion():
         *constants.ID_STR_COLS,
         *constants.ID_NUM_COLS,
     )
-    assert gp._norm("  ") is None and gp._norm(" x ") == "x"
-    assert gp.RedefineDataset._norm(" x ") == "x", "the staticmethod binding that makes _norm live"
+    assert gp.RedefineDataset._norm("  ") is None and gp.RedefineDataset._norm(" x ") == "x"
+
+
+def test_the_two_aliases_the_reader_switch_kept_as_a_courtesy_are_gone():
+    """Both were module-level names with no production caller, reachable only from tests.
+
+    ``_norm`` looked different from ``_build_taxonomy_lookup_cached`` because one line of
+    production code did read it — ``_norm = staticmethod(_norm)`` in a class body, which is also
+    why a static analysis reported it unused. Binding the staticmethod from the renderer instead
+    left it in exactly the same position as the other, and it went the same way.
+    """
+    assert not hasattr(gp, "_build_taxonomy_lookup_cached")
+    assert not hasattr(gp, "_norm")
+    assert gp.RedefineDataset._norm is render._norm, "the binding must be the renderer's own function"
 
 
 def test_the_cache_handle_this_module_used_to_re_export_is_gone():
