@@ -294,8 +294,22 @@ Hence two halves, and only the first is code:
 - **5.5b** a one-time scan of `original_label` in the published artifact to mint frozen class-dir lists for the
   15 v1.0 sources. A network job, not a code job, and the unlock for the other 63 %.
 
-*Gate:* the generic test is red when a class dir in any frozen list has no mapping row — verified by deleting a
-row, not asserted.
+*Gate:* the generic test is red when a class dir in any frozen list has no mapping row — exercised, not
+asserted.
+
+*Refined once 5.5a was written.* "Verified by deleting a row" turned out to name the wrong failure: since PR 6a
+the loader refuses a package whose frozen row-order manifest names a key no mapping file carries, so deleting a
+*published* row never reaches the coverage check at all. The realistic failure is an archive that grows a class
+the curator has not mapped — the frozen list names it, the table does not — and that is what the gate now does.
+A second gate covers the other direction (a row for a class directory renamed upstream) and a third records
+which failures the release layer catches first, so the two lines of defence are not confused for one.
+
+"Replacing the two bespoke coverage modules with one" was also too strong. Only their **coverage** tests are
+the shared contract; the rest of each module is source knowledge that does not generalise — FREPJ's `Ge._unk`
+sentinel cascade, DAPlankton's reuse-vs-resolution split and the sea ⊂ syke subset relation. Those stay where
+they are. The four Tara Pacific sources, which had evidence and no coverage test at all, gain one: **six of
+twenty-one sources, 873 of 2,358 rows.** The 15 without evidence are pinned by name and by row count, so 5.5b
+minting a list turns the suite red rather than passing silently at 37 % forever.
 
 ### Stage 3 — Write side and the long tail
 
