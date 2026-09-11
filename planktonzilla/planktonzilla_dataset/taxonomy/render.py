@@ -19,6 +19,7 @@ silently swaps id values between columns.
 
 import csv
 import io
+from pathlib import Path
 
 from planktonzilla.planktonzilla_dataset import constants
 from planktonzilla.planktonzilla_dataset.taxonomy.model import (
@@ -29,6 +30,7 @@ from planktonzilla.planktonzilla_dataset.taxonomy.model import (
     MULTI_VALUED_COLUMNS,
     UNQUALIFIED,
     TaxonomyError,
+    read_tsv,
 )
 
 
@@ -224,6 +226,50 @@ def label_vocabulary(rows, datasets=None) -> list:
             continue
         names.add(" ".join(values[rank] for rank in LEGACY_RANKS if values[rank] not in ("", None)))
     return sorted(names)
+
+
+PACKAGE_DIR = Path(__file__).parent / "data"
+RELEASED_VOCABULARIES = PACKAGE_DIR / "vocab" / "labels"
+
+
+def released_vocabulary(tag: str) -> list:
+    """The ``ClassLabel`` names of a RELEASED vocabulary, read rather than recomputed.
+
+    The distinction is the whole of step 8. ``label_vocabulary`` above derives names from whatever
+    the table currently holds; this reads what a release published. They agree today and must not be
+    assumed to: landing the six curated-but-unpublished sources moves the class id of **591 of the
+    599** v1.0 names, and a model checkpoint's ``id2label`` then points at the wrong taxon with
+    nothing going red. Design C regenerated its vocabulary and renumbered 537 of 599 on its first
+    data fix.
+
+    So a released vocabulary is a frozen artifact keyed to a release tag. It is never regenerated —
+    a new set of names is a NEW tag, and the crosswalk between them is a diff of two committed files
+    rather than an archaeology of two model checkpoints.
+
+    Raises:
+        TaxonomyError: If no vocabulary is published under that tag.
+    """
+    path = RELEASED_VOCABULARIES / f"{tag}_taxpath.tsv"
+    if not path.exists():
+        published = sorted(p.name.removesuffix("_taxpath.tsv") for p in RELEASED_VOCABULARIES.glob("*_taxpath.tsv"))
+        raise TaxonomyError(f"no released label vocabulary {tag!r}; published tags are {published}")
+
+    names = []
+    for index, row in enumerate(read_tsv(path)):
+        if int(row["class_id"]) != index:
+            raise TaxonomyError(f"{path.name}: class_id {row['class_id']} sits at position {index}; the ids ARE the order")
+        names.append(row["tax_label"])
+    return names
+
+
+def unknown_labels(names, tag: str) -> list:
+    """The label strings a released vocabulary cannot encode, sorted.
+
+    Called before encoding rather than after, so a build that has grown a taxon says which one and
+    stops, instead of raising a bare ``ValueError`` from deep inside a ``map`` over 17 M rows.
+    """
+    published = set(released_vocabulary(tag))
+    return sorted({name for name in names if name not in published})
 
 
 def legacy_qualifier(store, qualifier: str) -> str:

@@ -265,6 +265,33 @@ def check_rules(package_dir: Path, descriptor: dict, registered=None) -> list:
     findings += _check_shared_ids(package_dir, taxa, authorities)
     findings += _check_mapping_files(package_dir, descriptor, taxa, registered)
     findings += _check_canonical_names(taxa)
+    findings += _check_label_vocabularies(package_dir)
+    return findings
+
+
+def _check_label_vocabularies(package_dir: Path) -> list:
+    """A released vocabulary's ``class_id`` must equal its row's position, per file.
+
+    Not a uniqueness rule, which is what a primary key would give: the ids ARE the integers a
+    model's ``id2label`` holds, so a file whose ids are unique but shuffled would encode every
+    class wrongly while passing every schema check. A ``pathGlob`` resource also pools its files
+    into one key space, which is right for the mapping files and wrong here — each release has its
+    own space starting at 0.
+    """
+    findings = []
+    for path in sorted((package_dir / "vocab" / "labels").glob("*_taxpath.tsv")):
+        for index, row in enumerate(read_tsv(path)):
+            if row["class_id"] != str(index):
+                findings.append(
+                    Finding(
+                        "class_id_is_not_its_position",
+                        SEVERITY_ERROR,
+                        "label_vocabulary",
+                        f"{path.name}:{index}",
+                        f"class_id is {row['class_id']!r}; the ids are the order a model was trained against",
+                    )
+                )
+                break
     return findings
 
 

@@ -43,6 +43,8 @@ from planktonzilla.planktonzilla_dataset.constants import (
     TAXONOMY_RANKS,
     default_num_proc,
 )
+from planktonzilla.planktonzilla_dataset.taxonomy import TaxonomyError
+from planktonzilla.planktonzilla_dataset.taxonomy import render as taxonomy_render
 from planktonzilla.utils.logger import get_pylogger
 
 logger = get_pylogger(__name__)
@@ -60,7 +62,7 @@ MIN_CLASS_FREQ = 5  # classes with fewer examples are kept whole in train
 TAXONOMY_COLS = list(TAXONOMY_RANKS)
 
 
-def build_only_plankton(ds: Dataset, num_proc: int = 1) -> Dataset:
+def build_only_plankton(ds: Dataset, num_proc: int = 1, vocabulary: str | None = None) -> Dataset:
     """Keep only plankton with taxonomy and encode the taxonomy label.
 
     Filters to examples flagged as plankton with a non-empty Kingdom, builds a
@@ -68,14 +70,29 @@ def build_only_plankton(ds: Dataset, num_proc: int = 1) -> Dataset:
     unique string into an integer ``ClassLabel``, and trims the dataset to just
     the ``image``, ``label`` and ``dataset`` columns.
 
+    ``vocabulary`` is what step 8 added, and the reason to use it is that the
+    default is dangerous. Computing ``sorted(set(...))`` makes the class ids a
+    function of whatever rows the build happened to include: landing the six
+    curated-but-unpublished sources moves **591 of the 599** v1.0 class ids, and
+    a released checkpoint's ``id2label`` then points at the wrong taxon with
+    nothing going red. Naming a released tag pins the ids to that release, and a
+    label the release does not carry stops the build instead of renumbering it.
+
     Args:
         ds: Source dataset exposing the ``plankton``, taxonomy-rank, ``image``
             and ``dataset`` columns.
         num_proc: Number of processes passed to the ``filter``/``map`` calls.
+        vocabulary: A released vocabulary tag (``"v1.0"``, ``"v1.2"``) whose
+            class ids this build must reproduce. ``None`` computes the names
+            from the data, which is correct only when minting a NEW vocabulary.
 
     Returns:
         A dataset with ``image``, ``label`` (the encoded ``ClassLabel``) and
         ``dataset`` columns.
+
+    Raises:
+        TaxonomyError: If a released vocabulary is named and the data carries a
+            label it does not publish.
     """
 
     # Plankton mask: marked as plankton and with a Kingdom assigned.
@@ -92,7 +109,23 @@ def build_only_plankton(ds: Dataset, num_proc: int = 1) -> Dataset:
     ds = ds.map(build_tax_string, num_proc=num_proc)
 
     # Encode each unique taxonomy string into an integer class.
-    unique_labels = sorted(set(ds["tax_label"]))
+    present = sorted(set(ds["tax_label"]))
+    if vocabulary is None:
+        logger.warning(
+            f"No released label vocabulary named: minting {len(present)} class ids from the data. "
+            f"These ids are a function of which sources this build included and will not match a "
+            f"released model's id2label. Pass vocabulary='v1.0' (or the tag being reproduced)."
+        )
+        unique_labels = present
+    else:
+        unknown = taxonomy_render.unknown_labels(present, vocabulary)
+        if unknown:
+            raise TaxonomyError(
+                f"{len(unknown)} label(s) are not in the released vocabulary {vocabulary!r}, "
+                f"e.g. {unknown[:5]}. Encoding them would renumber the ids of a released model. "
+                f"Cut a new vocabulary tag instead of regenerating this one."
+            )
+        unique_labels = taxonomy_render.released_vocabulary(vocabulary)
     class_label = ClassLabel(names=unique_labels)
 
     def encode_label(example):
@@ -237,12 +270,18 @@ def main() -> None:
     parser.add_argument("--test-frac", type=float, default=TEST_FRAC, help="Fraction of each dataset reserved for test.")
     parser.add_argument("--val-frac", type=float, default=VAL_FRAC, help="Fraction of each dataset reserved for validation.")
     parser.add_argument("--num-proc", type=int, default=default_num_proc(), help="Number of processes for dataset ops.")
+    parser.add_argument(
+        "--vocabulary",
+        default=None,
+        help="A released label-vocabulary tag (v1.0, v1.2) whose class ids this build must reproduce. "
+        "Omit only when minting a new vocabulary: without it the ids depend on which sources were built.",
+    )
     args = parser.parse_args()
 
     num_proc = args.num_proc
 
     ds = load_dataset(args.repo_id, split="train")
-    ds = build_only_plankton(ds, num_proc=num_proc)
+    ds = build_only_plankton(ds, num_proc=num_proc, vocabulary=args.vocabulary)
 
     train_ds, val_ds, test_ds = stratified_split_by_dataset(
         ds,

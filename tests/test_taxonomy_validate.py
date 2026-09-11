@@ -380,7 +380,7 @@ def test_the_descriptor_is_plain_json_and_needs_no_dependency():
 
     assert descriptor["profile"] == "tabular-data-package"
     assert descriptor["dialect"]["delimiter"] == "\t"
-    assert len(descriptor["resources"]) == 15
+    assert len(descriptor["resources"]) == 16
 
 
 def test_a_missing_descriptor_is_refused(tmp_path):

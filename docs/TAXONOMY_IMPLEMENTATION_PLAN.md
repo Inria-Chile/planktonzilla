@@ -396,6 +396,23 @@ sources) as versioned files; `gen_planktonzilla_only_plankton` reads the file ra
 vocabularies are frozen snapshots keyed to a release tag — only new vocabularies are regenerated, because
 design C's regenerated vocabulary renumbered 537 of 599 class ids on its first data fix.
 
+*Refined once it was written.* PR 0.1 had already written both files, as test fixtures. What step 8 changed
+is **what they are**: they move into the package under `vocab/labels/`, are declared in the descriptor, and
+`build_only_plankton` reads them — so they stopped being test data that happened to match the code and became
+the artifact the build encodes against. PR 0.1's module keeps asserting exactly what it asserted, which is now
+the bridge between the frozen artifact and the live table: it goes red the moment they part company, and that
+is the moment a new tag is due.
+
+The default is deliberately NOT flipped. `vocabulary=None` still computes `sorted(set(...))` and now warns
+that the ids it mints depend on which sources the build included; naming a tag pins them. Flipping the default
+would change what the next build produces, which is the hazard, not the fix — the release process chooses the
+tag, and that is PR 9's `release`.
+
+The failure mode is the point: a label the named release does not publish **stops the build and names the
+labels**, rather than being encoded and shifting 591 of 599 ids. And the invariant the descriptor cannot state
+— `class_id` equals its row's position — is checked per file, because a `pathGlob` primary key would pool two
+releases into one id space and because uniqueness passes on a shuffled file that encodes every class wrongly.
+
 **PR 9 — Authority snapshot, review tooling, retirement switch (≈3 d).** Now also carries `release`,
 moved here from PR 6: cutting a release freezes the current order into a new manifest, which is only
 meaningful once the switch that stops committing the wide CSV is decided. Re-key the authority snapshot to the

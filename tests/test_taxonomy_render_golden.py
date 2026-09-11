@@ -57,7 +57,8 @@ from planktonzilla.planktonzilla_dataset.taxonomy.model import LEGACY_RANKS, LOO
 
 REAL_CSV = Path(constants.DEFAULT_TAXONOMY_CSV_FILENAME)
 PREFIX_SHA = Path(__file__).parent / "fixtures" / "frepj" / "pre_frepj_taxonomy.sha256"
-VOCABULARY = Path(__file__).parent / "fixtures" / "label_vocabulary"
+# Step 8 moved the released vocabularies into the package, where the build reads them.
+VOCABULARY = Path(root) / "planktonzilla" / "planktonzilla_dataset" / "taxonomy" / "data" / "vocab" / "labels"
 SAMPLES_JSON = Path(root) / "samples.json"
 
 # The pristine CSV is exactly 1486 lines; every source since is appended after it.
@@ -80,8 +81,9 @@ def _published_datasets():
     return {row["dataset"] for row in json.loads(SAMPLES_JSON.read_text())["counts"]}
 
 
-def _committed_vocabulary(stem):
-    lines = (VOCABULARY / f"{stem}.tsv").read_text(encoding="utf-8").split("\n")
+def _committed_vocabulary(tag):
+    """The names a release published, in class-id order, straight off the shipped file."""
+    lines = (VOCABULARY / f"{tag}_taxpath.tsv").read_text(encoding="utf-8").split("\n")
     return [line.partition("\t")[2] for line in lines[1:-1]]
 
 
@@ -185,8 +187,8 @@ def test_the_label_vocabularies_reproduce_from_the_model(store):
     v1_2 = render.label_vocabulary(rows)
     v1_0 = render.label_vocabulary(rows, datasets=_published_datasets())
 
-    assert v1_2 == _committed_vocabulary("v1_2_taxpath")
-    assert v1_0 == _committed_vocabulary("v1_0_taxpath")
+    assert v1_2 == _committed_vocabulary("v1.2")
+    assert v1_0 == _committed_vocabulary("v1.0")
     assert (len(v1_2), len(v1_0)) == (850, 599)
     assert v1_2[0] == "" and v1_0[0] == ""
 

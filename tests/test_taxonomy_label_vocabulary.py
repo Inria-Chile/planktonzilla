@@ -20,11 +20,17 @@ from whatever the table happens to hold — which is what
 that has to exist first, so that step (and every migration step after it) has something to
 be measured against.
 
-Two vocabularies are pinned, as committed TSV fixtures rather than as bare counts, so a diff
-shows WHICH names moved and to which class id:
+Two vocabularies are pinned, as committed TSV files rather than as bare counts, so a diff
+shows WHICH names moved and to which class id. **Step 8 moved them into the package**, where
+``build_only_plankton`` now reads them, so they stopped being test data that happened to match
+the code and became the artifact the build encodes against:
 
-    tests/fixtures/label_vocabulary/v1_0_taxpath.tsv   599 names, the 15 published sources
-    tests/fixtures/label_vocabulary/v1_2_taxpath.tsv   850 names, all 21 registered sources
+    taxonomy/data/vocab/labels/v1.0_taxpath.tsv   599 names, the 15 published sources
+    taxonomy/data/vocab/labels/v1.2_taxpath.tsv   850 names, all 21 registered sources
+
+What this module asserts is unchanged and is now worth more: that the SHIPPED file equals what a
+pure projection of the committed table produces today. It is the bridge between the frozen artifact
+and the live data, and it goes red when they part company — which is the moment a new tag is due.
 
 Predicate, stated because it is easy to get wrong: these are projections of the COMMITTED
 TABLE, one row per ``(Dataset, Raw_Labels)`` class directory. The published dataset's
@@ -56,10 +62,14 @@ from planktonzilla.planktonzilla_dataset.gen_planktonzilla_only_plankton import 
     build_only_plankton,
 )
 from planktonzilla.planktonzilla_dataset.generate_planktonzilla import build_taxonomy_lookup
+from planktonzilla.planktonzilla_dataset.taxonomy import render as taxonomy_render
 
-FIXTURES = Path(__file__).parent / "fixtures" / "label_vocabulary"
-V1_0_TSV = FIXTURES / "v1_0_taxpath.tsv"
-V1_2_TSV = FIXTURES / "v1_2_taxpath.tsv"
+# Step 8 moved these out of tests/fixtures/ and into the package: a released vocabulary is a
+# SHIPPED artifact that the build reads, not test data that happens to match. This module keeps
+# pointing at them, which is now the proof that the shipped file equals today's expression.
+RELEASED = taxonomy_render.RELEASED_VOCABULARIES
+V1_0_TSV = RELEASED / "v1.0_taxpath.tsv"
+V1_2_TSV = RELEASED / "v1.2_taxpath.tsv"
 SAMPLES_JSON = Path(root) / "samples.json"
 
 # The six sources curated in the table ahead of their arrival in the published artifact.
@@ -264,3 +274,63 @@ def test_the_vocabularies_are_sorted_deduplicated_and_tsv_safe():
         names = _read_vocabulary(path)
         assert names == sorted(set(names)), f"{path.name} is not sorted(set(...))"
         assert not [n for n in names if "\t" in n or n != n.strip(" ")], f"{path.name} has a name a TSV cannot round-trip"
+
+
+# Step 8 — the vocabulary as a shipped, frozen artifact
+def test_a_released_vocabulary_is_read_not_recomputed():
+    """The distinction step 8 exists for. Both tags load, in class-id order, at their pinned sizes."""
+    assert len(taxonomy_render.released_vocabulary("v1.0")) == 599
+    assert len(taxonomy_render.released_vocabulary("v1.2")) == 850
+    assert taxonomy_render.released_vocabulary("v1.0")[0] == "", "the empty-string class left index 0"
+
+
+def test_an_unpublished_tag_names_the_tags_that_exist():
+    """A typo in a release tag must not fall back to computing — that is the renumbering hazard."""
+    from planktonzilla.planktonzilla_dataset.taxonomy import TaxonomyError
+
+    with pytest.raises(TaxonomyError, match=r"published tags are \['v1.0', 'v1.2'\]"):
+        taxonomy_render.released_vocabulary("v1.1")
+
+
+def test_a_shuffled_class_id_is_refused_at_read(tmp_path, monkeypatch):
+    """The ids ARE the order. A file whose ids are unique but shuffled encodes every class wrongly.
+
+    Uniqueness — what a primary key would check — passes on exactly that file, which is why the
+    rule is positional and why it is asserted here rather than left to the schema.
+    """
+    from planktonzilla.planktonzilla_dataset.taxonomy import TaxonomyError
+    from planktonzilla.planktonzilla_dataset.taxonomy.model import read_tsv, write_tsv
+
+    monkeypatch.setattr(taxonomy_render, "RELEASED_VOCABULARIES", tmp_path)
+    rows = read_tsv(V1_0_TSV)
+    write_tsv(tmp_path / "v9.9_taxpath.tsv", ("class_id", "tax_label"), [rows[1], rows[0], *rows[2:]])
+
+    with pytest.raises(TaxonomyError, match="sits at position"):
+        taxonomy_render.released_vocabulary("v9.9")
+
+
+def test_a_label_the_release_does_not_publish_is_named_rather_than_encoded():
+    """The check that turns a silent renumbering into a stopped build.
+
+    Landing the six pending sources adds names v1.0 never published. Encoding them against v1.0
+    would shift 591 of its 599 ids; this says which labels are new and stops.
+    """
+    v1_2_only = set(taxonomy_render.released_vocabulary("v1.2")) - set(taxonomy_render.released_vocabulary("v1.0"))
+    assert v1_2_only, "the two releases would have to differ for this to mean anything"
+
+    unknown = taxonomy_render.unknown_labels(sorted(v1_2_only)[:3], "v1.0")
+
+    assert unknown == sorted(v1_2_only)[:3]
+    assert taxonomy_render.unknown_labels(taxonomy_render.released_vocabulary("v1.0"), "v1.0") == []
+
+
+def test_the_builder_refuses_to_renumber_a_released_vocabulary():
+    """``build_only_plankton`` with a tag it cannot satisfy stops, and says why, before encoding.
+
+    Exercised on the real check rather than on a dataset, because building one costs minutes and
+    the assertion is about the refusal, not about datasets.
+    """
+    from planktonzilla.planktonzilla_dataset.taxonomy import TaxonomyError
+
+    with pytest.raises(TaxonomyError, match="no released label vocabulary"):
+        taxonomy_render.unknown_labels(["animalia"], "v0.1")
