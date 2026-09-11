@@ -54,18 +54,23 @@ from planktonzilla.planktonzilla_dataset import constants
 from planktonzilla.planktonzilla_dataset.taxonomy import loader, render
 from planktonzilla.planktonzilla_dataset.taxonomy.model import (
     AUTHORITIES,
+    BUCKET_REMARK,
+    EXACT_MATCH,
     IDENTIFIER_COLUMNS,
     LEGACY_HEADER,
     LEGACY_ID_COLUMNS,
     LEGACY_RANKS,
     MAPPING_COLUMNS,
+    MERGED_COLUMNS,
     OVERRIDE_COLUMNS,
     RANK_VOCABULARY,
     ROW_ORDER_COLUMNS,
     TAXON_COLUMNS,
     TAXON_PREFIX,
     UNQUALIFIED,
+    UNSPECIFIED_MATCHING,
     TaxonomyError,
+    collation_key,
     read_tsv,
     write_tsv,
 )
@@ -143,7 +148,7 @@ def build_taxa(rows) -> tuple:
 
         if not path:
             key = f"bucket={label}"
-            remark = "no lineage in the source table; sub-classification is a curation act"
+            remark = BUCKET_REMARK
             nodes[key] = ((("unranked", label),), "bucket", remark)
             concept_to_key[label] = key
             continue
@@ -277,9 +282,9 @@ def identifier_table(canonical, concept_to_key, ids) -> list:
                 table.append(
                     {
                         "subject_id": subject,
-                        "predicate_id": "skos:exactMatch",
+                        "predicate_id": EXACT_MATCH,
                         "object_id": f"{prefix}:{_render_legacy_id(item)}",
-                        "mapping_justification": "semapv:UnspecifiedMatching",
+                        "mapping_justification": UNSPECIFIED_MATCHING,
                         "mapping_date": "",
                         "author_id": "",
                         "confidence": "",
@@ -366,11 +371,6 @@ def row_order_table(rows) -> list:
     ]
 
 
-def collation_key(label: str) -> str:
-    """The sort key the frozen prefix obeys: case-folded, hyphens ignored."""
-    return label.lower().replace("-", "")
-
-
 def check_prefix_collation(rows, prefix_length: int = 1485) -> None:
     """The stored prefix order must be non-descending under :func:`collation_key`.
 
@@ -448,7 +448,7 @@ def write_package(package_dir: Path, rows) -> dict:
             },
         ],
     )
-    write_tsv(package_dir / "merged.tsv", ("retired_id", "replacement_id", "date", "reason"), [])
+    write_tsv(package_dir / "merged.tsv", MERGED_COLUMNS, [])
 
     release = package_dir / "release" / "v1.0"
     write_tsv(release / "legacy_row_order.tsv", ROW_ORDER_COLUMNS, order)

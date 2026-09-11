@@ -390,13 +390,99 @@ def test_a_dangling_parent_is_refused(tmp_path):
         load_taxonomy(_broken(tmp_path, edit))
 
 
-def test_a_row_order_manifest_that_disagrees_with_the_mappings_is_refused(tmp_path):
-    """The manifest and the mapping files are two halves of one fact; a drift is not renderable."""
+def test_an_edited_frozen_row_order_is_refused_by_the_release_pin(tmp_path):
+    """A frozen release's order is frozen. Dropping its last key is still dropping a published row.
+
+    The pin is over the manifest's own keys, NOT over the render — design B hashed the render and
+    adding one source turned its gate red. Hashing the manifest is what lets the package grow while
+    the release it froze stays provably the one that was published.
+    """
 
     def edit(work):
         path = work / "release" / "v1.0" / "legacy_row_order.tsv"
         rows = path.read_text(encoding="utf-8").split("\n")
         path.write_text("\n".join([*rows[:-2], ""]), encoding="utf-8")
 
-    with pytest.raises(TaxonomyError, match="row-order manifest has"):
+    with pytest.raises(TaxonomyError, match="has drifted"):
         load_taxonomy(_broken(tmp_path, edit))
+
+
+def test_a_frozen_row_order_key_no_mapping_carries_is_refused(tmp_path):
+    """The manifest and the mapping files are two halves of one fact; a drift is not renderable."""
+
+    def edit(work):
+        path = work / "mappings" / "zoolake.tsv"
+        rows = path.read_text(encoding="utf-8").split("\n")
+        fields = rows[1].split("\t")
+        fields[1] = f"{fields[1]} (renamed upstream)"
+        rows[1] = "\t".join(fields)
+        path.write_text("\n".join(rows), encoding="utf-8")
+
+    with pytest.raises(TaxonomyError, match="which no mapping file carries"):
+        load_taxonomy(_broken(tmp_path, edit))
+
+
+def test_a_published_row_walked_back_to_draft_is_refused(tmp_path):
+    """``draft`` lets a partial curation be committed; it is not a way to unpublish a released row.
+
+    Without this the row simply stops rendering — a published class silently gone from the dataset,
+    with nothing in the diff but a one-word status change.
+    """
+
+    def edit(work):
+        path = work / "mappings" / "zoolake.tsv"
+        rows = path.read_text(encoding="utf-8").split("\n")
+        fields = rows[1].split("\t")
+        fields[7] = "draft"
+        rows[1] = "\t".join(fields)
+        path.write_text("\n".join(rows), encoding="utf-8")
+
+    with pytest.raises(TaxonomyError, match="published in the frozen row order"):
+        load_taxonomy(_broken(tmp_path, edit))
+
+
+def test_a_source_mapped_after_the_freeze_renders_after_the_frozen_block(tmp_path):
+    """The package has to be loadable BETWEEN adding a source and cutting the next release.
+
+    Otherwise every consumer is broken for the length of a curation, and ``upsert_source`` is
+    unusable. Rows the frozen manifest does not name follow it, ordered by the collation key the
+    frozen prefix already obeys — appended, never interleaved, so a new source can never push a
+    frozen row down the file and past the 1486-line prefix pin.
+    """
+    from planktonzilla.planktonzilla_dataset.taxonomy.model import MAPPING_COLUMNS, read_tsv, write_tsv
+
+    def edit(work):
+        template = read_tsv(work / "mappings" / "zoolake.tsv")[0]
+        write_tsv(
+            work / "mappings" / "newsource.tsv",
+            MAPPING_COLUMNS,
+            [
+                # 'abylidae' sorts first under the collation key and would land at line 2 if
+                # post-freeze rows were interleaved rather than appended. The verbatim order is the
+                # reverse, so a file that merely kept insertion order would fail too.
+                {
+                    **template,
+                    "datasetID": "newsource",
+                    "verbatimIdentification": "b",
+                    "concept": "abylidae",
+                    "taxonID": "pzt:000382",
+                },
+                {
+                    **template,
+                    "datasetID": "newsource",
+                    "verbatimIdentification": "a",
+                    "concept": "zygodiscales",
+                    "taxonID": "pzt:000874",
+                },
+            ],
+        )
+
+    store = load_taxonomy(_broken(tmp_path, edit))
+    lines = store.render_wide_csv().decode("utf-8").split("\n")
+
+    assert lines[:1487] == REAL_CSV.read_bytes().decode("utf-8").split("\n")[:1487], "a frozen row moved"
+    assert [row["Dataset"] for row in store.rows()[:2358]] == [row["Dataset"] for row in load_taxonomy(REAL_CSV).rows()]
+    assert [(row["Dataset"], row["Raw_Labels"]) for row in store.rows()[2358:]] == [
+        ("newsource", "b"),
+        ("newsource", "a"),
+    ], "post-freeze rows are not in collation order"

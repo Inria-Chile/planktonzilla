@@ -85,6 +85,9 @@ MAPPING_COLUMNS = (
     "remarks",
 )
 ROW_ORDER_COLUMNS = ("sequence", "datasetID", "verbatimIdentification")
+# The tombstone ledger. An id present in the previous commit and absent now must appear here,
+# so a published pin never dangles: `merge` writes the row, the validator enforces the rule.
+MERGED_COLUMNS = ("retired_id", "replacement_id", "date", "reason")
 OVERRIDE_COLUMNS = (
     "datasetID",
     "verbatimIdentification",
@@ -118,6 +121,25 @@ RANK_VOCABULARY = (
 
 # `qualifier` is blank on 253 rows today. Blank is a value, not an absence, so it is named.
 UNQUALIFIED = "unqualified"
+
+# The one predicate the identifier table carries, and the justification every migrated row was
+# given. Named here so the migration and the write API cannot drift on the bytes they mint.
+EXACT_MATCH = "skos:exactMatch"
+UNSPECIFIED_MATCHING = "semapv:UnspecifiedMatching"
+
+# What a lineage-less concept records about itself. Not an apology — it is the difference between
+# "the source gave no lineage" and "the lineage is empty", which a reader cannot otherwise tell.
+BUCKET_REMARK = "no lineage in the source table; sub-classification is a curation act"
+
+
+def collation_key(label: str) -> str:
+    """The sort key the frozen prefix obeys: case-folded, hyphens ignored.
+
+    One normalisation absorbs both documented exceptions (``Eukaryota``, ``pseudo-nitzschia``), and
+    the frozen 1,485-row prefix has zero descents under it. That is what makes it usable as the
+    placement rule for rows mapped after the freeze rather than as a new convention.
+    """
+    return label.lower().replace("-", "")
 
 
 class TaxonomyError(RuntimeError):

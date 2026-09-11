@@ -37,7 +37,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from planktonzilla.planktonzilla_dataset.taxonomy.model import TaxonomyError, read_tsv
+from planktonzilla.planktonzilla_dataset.taxonomy.model import EXACT_MATCH, TaxonomyError, read_tsv
 
 SEVERITY_ERROR = "ERROR"
 SEVERITY_WARN = "WARN"
@@ -314,7 +314,7 @@ def _check_single_valued_authorities(package_dir: Path, authorities: dict) -> li
     """
     counts = {}
     for row in read_tsv(package_dir / "identifier.tsv"):
-        if row["predicate_id"] != "skos:exactMatch":
+        if row["predicate_id"] != EXACT_MATCH:
             continue
         prefix = row["object_id"].partition(":")[0]
         if authorities.get(prefix, {}).get("multi_valued") == "true":
@@ -352,7 +352,7 @@ def _check_shared_ids(package_dir: Path, taxa: dict, authorities: dict) -> list:
     owners = {}
     for row in read_tsv(package_dir / "identifier.tsv"):
         prefix = row["object_id"].partition(":")[0]
-        if row["predicate_id"] != "skos:exactMatch" or row["object_id"].endswith(":absent"):
+        if row["predicate_id"] != EXACT_MATCH or row["object_id"].endswith(":absent"):
             continue
         if authorities.get(prefix, {}).get("multi_valued") == "true":
             continue

@@ -18,6 +18,8 @@ know which one it got.
 """
 
 import csv
+import hashlib
+from collections import Counter
 from functools import lru_cache
 from pathlib import Path
 
@@ -28,6 +30,7 @@ from planktonzilla.planktonzilla_dataset.taxonomy.model import (
     Taxon,
     TaxonomyError,
     TaxonomyStore,
+    collation_key,
     read_tsv,
 )
 from planktonzilla.utils.logger import get_pylogger
@@ -155,22 +158,68 @@ def _load_package(package_dir: Path) -> TaxonomyStore:
         store.identifiers.setdefault(row["subject_id"], {}).setdefault(PREFIX_TO_LEGACY_COLUMN[prefix], []).append(value)
 
     release = package_dir / "release" / "v1.0"
-    store.row_order = [(row["datasetID"], row["verbatimIdentification"]) for row in read_tsv(release / "legacy_row_order.tsv")]
+    frozen = [(row["datasetID"], row["verbatimIdentification"]) for row in read_tsv(release / "legacy_row_order.tsv")]
+    _check_release_pin(release, frozen)
+    store.row_order = _effective_order(frozen, store.mappings)
     store.overrides = {
         (row["datasetID"], row["verbatimIdentification"]): row for row in read_tsv(release / "legacy_overrides.tsv")
     }
 
-    # `draft` rows are excluded on purpose, so a partially mapped source can be committed: the
-    # renderer skips them and they are not in any release's row order. Design B could not commit
-    # one — 150 blank rows produced 150 errors and a renderer crash.
-    accepted = [mapping for mapping in store.mappings.values() if mapping.status != "draft"]
-    if len(store.row_order) != len(accepted):
+    return store
+
+
+def _check_release_pin(release: Path, frozen) -> None:
+    """A frozen release's order is frozen; its pin proves the bytes have not drifted.
+
+    Deliberately NOT a hash of the render: design B gated on that and adding one source turned the
+    gate red. This hashes the manifest's own keys, so the package may grow while the release it
+    froze stays provably the one that was published.
+    """
+    digest = hashlib.sha256("\n".join(f"{dataset}\t{verbatim}" for dataset, verbatim in frozen).encode("utf-8")).hexdigest()
+    recorded = (release / "sha256").read_text(encoding="utf-8").strip()
+    if digest != recorded:
         raise TaxonomyError(
-            f"the row-order manifest has {len(store.row_order)} keys but the mapping files have "
-            f"{len(accepted)} accepted rows ({len(store.mappings) - len(accepted)} draft)"
+            f"{release.name}/legacy_row_order.tsv has drifted: it hashes to {digest[:12]}… but "
+            f"{release.name}/sha256 pins {recorded[:12]}…. A frozen release's order is not editable — "
+            f"add rows to the mapping files instead; they render after the frozen block."
         )
 
-    return store
+
+def _effective_order(frozen, mappings) -> list:
+    """The frozen release's order, then everything mapped since, by the rule the frozen block follows.
+
+    A release freezes the physical order of the rows it published, and nothing more. Rows mapped
+    afterwards are not in its manifest and must still render — otherwise ``write.upsert_source``
+    would leave the package unloadable between adding a source and cutting the next release, which
+    is every consumer broken for the length of a curation. So they follow the frozen block, sorted
+    by the collation key the prefix already obeys (plan §10.6).
+
+    Appending rather than interleaving is what the wide CSV itself did for its three post-freeze
+    blocks, and it is what keeps the 1,486-line sha pin meaningful: a new source can never push a
+    frozen row down the file.
+
+    `draft` rows are excluded on purpose, so a partially mapped source can be committed. Design B
+    could not commit one — 150 blank rows produced 150 errors and a renderer crash.
+    """
+    if len(set(frozen)) != len(frozen):
+        repeated = sorted(key for key, count in Counter(frozen).items() if count > 1)
+        raise TaxonomyError(f"the row-order manifest names {len(repeated)} key(s) twice, e.g. {repeated[0]}")
+
+    for key in frozen:
+        mapping = mappings.get(key)
+        if mapping is None:
+            raise TaxonomyError(f"the row-order manifest names {key}, which no mapping file carries")
+        if mapping.status == "draft":
+            # A row the release published cannot be walked back to draft: that is a published row
+            # vanishing from the render with nothing to say it went.
+            raise TaxonomyError(f"{key} is published in the frozen row order but its mapping is {mapping.status!r}")
+
+    pinned = set(frozen)
+    appended = sorted(
+        (mapping for mapping in mappings.values() if mapping.status != "draft" and mapping.key not in pinned),
+        key=lambda mapping: (collation_key(mapping.concept), mapping.dataset, mapping.verbatim),
+    )
+    return [*frozen, *(mapping.key for mapping in appended)]
 
 
 def _load_wide_csv(csv_path: Path) -> TaxonomyStore:
