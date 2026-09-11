@@ -81,12 +81,14 @@ planktonzilla/planktonzilla_dataset/taxonomy/
 ├── validate.py            the polars rule module (the enforcer)
 ├── write.py               upsert_source, set_mapping, add_taxon, add_id, rename/merge/split, fmt, diff, release
 ├── cli.py                 pz_taxonomy console script
+├── migrate.py             the one-shot migration (step 1), with its own render-back verification
 └── data/
     ├── datapackage.yaml           Frictionless descriptor + source registry (one stanza per source)
-    ├── taxon.tsv                  1,340 rows (measured: 1,297 lineage nodes + 43 lineage-less concepts)
+    ├── taxon.tsv                  1,352 rows (as built: 1,297 lineage nodes + 12 finer-than-their-rank
+    │                              concepts as `unranked` children + 43 lineage-less buckets)
     ├── identifier.tsv             4,032 rows (measured; 132 ';'-joined ecotaxa cells exploded one id per line)
     ├── mappings/<dataset>.tsv     21 files, 2,358 rows (measured; largest planktoscope 266, global_uvp5 254, frepj 229)
-    ├── vocab/{rank,qualifier,root_class,authority}.tsv
+    ├── vocab/{rank,qualifier,root_class,authority,kind}.tsv
     ├── merged.tsv                 retired id -> replacement, date, reason
     ├── waivers/{horizontal,authority,tree}.tsv
     └── release/v1.0/              legacy_row_order.tsv (2,358 keys), legacy_overrides.tsv (13 id rows + concept pins), sha256
@@ -96,6 +98,15 @@ planktonzilla/planktonzilla_dataset/planktonzilla_taxonomy.csv    GENERATED unti
 
 `tara_pacific` is four registered sources (`bongo` 137, `decknet` 132, `hsn` 159, `manta` 172 *(measured)*), so
 porting its builder writes four mapping files, not one.
+
+The `taxon.tsv` figure is 1,352 rather than the 1,297 + 43 = 1,340 this section first stated. The difference is
+the 12 concepts that name something finer than their deepest legacy rank (`brachyura` under `decapoda`,
+`alciopini` under `phyllodocidae`, …). Folding them into that deepest node, which the 1,340 figure assumed,
+makes concept → taxon non-injective: 10 nodes end up named by two or three concepts each *(measured)*. Giving
+them `unranked` child nodes is what report §7.2 asks for, and it costs the seven frozen columns nothing —
+`project7()` fills a slot only from an ancestor whose rank *has* a `legacy_slot`, so an `unranked` node
+contributes no cell. Their true ranks (infraorder, tribe, subclass) are left unassigned: that is a curation
+act, not a migration one.
 
 ### 2.1 The public API every consumer moves onto
 

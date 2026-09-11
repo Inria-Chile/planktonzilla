@@ -1,0 +1,230 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+frepj	Arachnida,Trombidiformes,Hydrachnidia,Ge._unk,Ge._unk	pzt:000066	hydrachnidia	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Bosminidae,Bosmina,Bosmina fatalis	pzt:000071	bosmina fatalis	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Bosminidae,Bosmina,Bosmina freyi	pzt:000072	bosmina freyi	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Bosminidae,Bosmina,Bosmina longirostris	pzt:000073	bosmina longirostris	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Bosminidae,Bosmina,Bosmina tanakai	pzt:000074	bosmina tanakai	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Bosminidae,Bosmina,Sp._unk	pzt:000070	bosmina	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Bosminidae,Bosminopsis,Bosminopsis deitersi	pzt:000102	bosminopsis deitersi	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Alona,Alona affinis	pzt:000105	alona affinis	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Alona,Alona costata	pzt:000106	alona costata	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Alona,Alona guttata	pzt:000107	alona guttata	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Alona,Alona intermedia	pzt:000108	alona intermedia	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Alona,Sp._unk	pzt:000104	alona	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Alonella,Alonella excisa	pzt:000110	alonella excisa	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Camptocercus,Camptocercus australis	pzt:000112	camptocercus australis	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Camptocercus,Sp._unk	pzt:000111	camptocercus	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Chydorus,Chydorus brevilabris	pzt:000114	chydorus brevilabris	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Chydorus,Chydorus sphaericus	pzt:000115	chydorus sphaericus	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Chydorus,Sp._unk	pzt:000113	chydorus	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Disparalona,Disparalona rostrata	pzt:000117	disparalona rostrata	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Ge._unk,Ge._unk	pzt:000103	chydoridae	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Leydigia,Leydigia cliata	pzt:000119	leydigia cliata	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Leydigia,Leydigia leydigi	pzt:000120	leydigia leydigi	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Monospilus,Monospilus dispar	pzt:000122	monospilus dispar	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Pleuroxus,Pleuroxus hamulatus	pzt:000124	pleuroxus hamulatus	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Chydoridae,Pleuroxus,Pleuroxus laevis	pzt:000125	pleuroxus laevis	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniida,Simocephalus,Simocephalus serrulatus	pzt:000128	simocephalus serrulatus	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniida,Simocephalus,Simocephalus vetulus	pzt:000129	simocephalus vetulus	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniidae,Ceriodaphnia,Ceriodaphnia cornuta	pzt:000077	ceriodaphnia cornuta	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniidae,Ceriodaphnia,Ceriodaphnia dubia	pzt:000078	ceriodaphnia dubia	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniidae,Ceriodaphnia,Ceriodaphnia pulchella	pzt:000079	ceriodaphnia pulchella	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniidae,Ceriodaphnia,Ceriodaphnia sp2	pzt:000076	ceriodaphnia	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniidae,Ceriodaphnia,Sp._unk	pzt:000076	ceriodaphnia	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnai galeata or daphnia dentifera	pzt:000080	daphnia	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia ambigua	pzt:000081	daphnia ambigua	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia cristata	pzt:000082	daphnia cristata	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia dentifera	pzt:000083	daphnia dentifera	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia galeata	pzt:000084	daphnia galeata	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia longiremis	pzt:000085	daphnia longiremis	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia mitsukuri	pzt:000086	daphnia mitsukuri	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia pulex	pzt:000087	daphnia pulex	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniidae,Daphnia,Daphnia tanakai	pzt:000088	daphnia tanakai	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniidae,Daphnia,Sp._unk	pzt:000080	daphnia	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Daphniidae,Scapholeberis,Scapholeberis smirnovi	pzt:000132	scapholeberis smirnovi	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Holopediidae,Holopedium,Holopedium gibberum	pzt:000135	holopedium gibberum	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Leptodoridae,Leptodora,Leptodora kindtii	pzt:000147	leptodora kindtii	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Macrothricidae,Macrothrix,Sp._unk	pzt:000137	macrothrix	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Moinidae,Moina,Moina affinis	pzt:000140	moina affinis	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Moinidae,Moina,Moina micrura jpn1	pzt:000141	moina micrura	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Moinidae,Moina,Moina micrura jpn2	pzt:000141	moina micrura	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Moinidae,Moina,Moina sp	pzt:000139	moina	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Moinidae,Moina,Sp._unk	pzt:000139	moina	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma brachyurum	pzt:000092	diaphanosoma brachyurum	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma cf. amurensis	pzt:000091	diaphanosoma	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma dubium	pzt:000093	diaphanosoma dubium	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma macrophthalma	pzt:000094	diaphanosoma macrophthalma	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma nipponica	pzt:000095	diaphanosoma nipponica	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Diaphanosoma orientalis	pzt:000096	diaphanosoma orientalis	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Sididae,Diaphanosoma,Sp._unk	pzt:000091	diaphanosoma	living	full_body	true	accepted							
+frepj	Branchiopoda,Diplostraca,Sididae,Sida,Sp._unk	pzt:000143	sida	living	full_body	true	accepted							
+frepj	Branchiopoda,Or._unk,Or._unk,Or._unk,Or._unk	pzt:000067	branchiopoda	living	full_body	true	accepted							
+frepj	Copepoda,Calanoida,Centropagidae,Sinocalanus,Sinocalanus tenellus	pzt:000163	sinocalanus tenellus	living	full_body	true	accepted							
+frepj	Copepoda,Calanoida,Diaptomidae,Acanthodiaptomus,Acanthodiaptomus pacificus	pzt:000169	acanthodiaptomus pacificus	living	full_body	true	accepted							
+frepj	Copepoda,Calanoida,Diaptomidae,Eodiaptomus,Eodiaptomus japonicus	pzt:000171	eodiaptomus japonicus	living	full_body	true	accepted							
+frepj	Copepoda,Calanoida,Diaptomidae,Heliodiaptomus,Heliodiaptomus kikuchii	pzt:000174	heliodiaptomus kikuchii	living	full_body	true	accepted							
+frepj	Copepoda,Calanoida,Diaptomidae,Heliodiaptomus,Heliodiaptomus nipponicus	pzt:000175	heliodiaptomus nipponicus	living	full_body	true	accepted							
+frepj	Copepoda,Calanoida,Diaptomidae,Neodiaptomus,Neodiaptomus schmackeri	pzt:000177	neodiaptomus schmackeri	living	full_body	true	accepted							
+frepj	Copepoda,Calanoida,Diaptomidae,Neutrodiaptomus,Neutrodiaptomus formosus	pzt:000179	neutrodiaptomus formosus	living	full_body	true	accepted							
+frepj	Copepoda,Calanoida,Diaptomidae,Sinodiaptomus,Sinodiaptomus sarsi	pzt:000181	sinodiaptomus sarsi	living	full_body	true	accepted							
+frepj	Copepoda,Calanoida,Diaptomidae,Sinodiaptomus,Sinodiaptomus valkano	pzt:000182	sinodiaptomus valkano	living	full_body	true	accepted							
+frepj	Copepoda,Calanoida,Fa._unk,Fa._unk,Fa._unk	pzt:000153	calanoida	living	full_body	true	accepted							
+frepj	Copepoda,Calanoida,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage	pzt:000153	calanoida	living	full_body	true	accepted							
+frepj	Copepoda,Calanoida,Temoridae,Eurytemora,Eurytemora affinis	pzt:000200	eurytemora affinis	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Cyclopidae,Acanthocyclops,Sp._unk	pzt:000205	acanthocyclops	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Cyclopidae,Cyclops,Cyclops kikuchii	pzt:000207	cyclops kikuchii	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Cyclopidae,Cyclops,Cyclops vicinus	pzt:000208	cyclops vicinus	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Cyclopidae,Cyclops,Sp._unk	pzt:000206	cyclops	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Cyclopidae,Diacyclops,Diacyclops biscuspidatus	pzt:000210	diacyclops biscuspidatus	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Cyclopidae,Diacyclops,Sp._unk	pzt:000209	diacyclops	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Cyclopidae,Eucyclops,Sp._unk	pzt:000211	eucyclops	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Cyclopidae,Ge._unk,Ge._unk	pzt:000204	cyclopidae	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Cyclopidae,Macrocyclops,Sp._unk	pzt:000212	macrocyclops	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Cyclopidae,Megacyclops,Megacyclops viridis	pzt:000214	megacyclops viridis	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Cyclopidae,Mesocyclops,Mesocyclops dissimilis	pzt:000216	mesocyclops dissimilis	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Cyclopidae,Mesocyclops,Sp._unk	pzt:000215	mesocyclops	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Cyclopidae,Microcyclops,Sp._unk	pzt:000217	microcyclops	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Cyclopidae,Thermocyclops,Sp._unk	pzt:000218	thermocyclops	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Cyclopidae,Thermocyclops,Thermocyclops crassus	pzt:000219	thermocyclops crassus	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Cyclopidae,Thermocyclops,Thermocyclops taihokuensis	pzt:000220	thermocyclops taihokuensis	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Cyclopidae,Tropocyclops,Sp._unk	pzt:000221	tropocyclops	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Ergasilidae,Ergasilus,Sp._unk	pzt:000223	ergasilus	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Ergasilidae,Ergasilus,Sp._unk_copepodid_stage	pzt:000223	ergasilus	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Fa._unk,Fa._unk,Fa._unk	pzt:000202	cyclopoida	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage	pzt:000202	cyclopoida	living	full_body	true	accepted							
+frepj	Copepoda,Cyclopoida,Oithonidae,Oithona,Sp._unk_naupliar_stage	pzt:000227	oithona	living	full_body	true	accepted							
+frepj	Copepoda,Harpacticoida,Fa._unk,Fa._unk,Fa._unk	pzt:000232	harpacticoida	living	full_body	true	accepted							
+frepj	Copepoda,Harpacticoida,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage	pzt:000232	harpacticoida	living	full_body	true	accepted							
+frepj	Copepoda,Or._unk_naupliar_stage,Or._unk_naupliar_stage,Or._unk_naupliar_stage,Or._unk_naupliar_stage	pzt:000152	copepoda	living	full_body	true	accepted							
+frepj	Dinophyceae,Gonyaulacales,Ceratiaceae,Ceratium,Ceratium hirundinella	pzt:001093	ceratium hirundinella	living	full_body	true	accepted							
+frepj	Eurotatoria,Bdelloidea,Fa._unk,Fa._unk,Fa._unk	pzt:000488	bdelloidea	living	full_body	true	accepted							
+frepj	Eurotatoria,Bdelloidea,Habrotrochidae,Ge._unk,Ge._unk	pzt:000489	habrotrochidae	living	full_body	true	accepted							
+frepj	Eurotatoria,Bdelloidea,Philodinidae,Dissotrocha,Sp._unk	pzt:000491	dissotrocha	living	full_body	true	accepted							
+frepj	Eurotatoria,Bdelloidea,Philodinidae,Ge._unk,Ge._unk	pzt:000490	philodinidae	living	full_body	true	accepted							
+frepj	Eurotatoria,Bdelloidea,Philodinidae,Rotaria,Rotaria neptunia	pzt:000493	rotaria neptunia	living	full_body	true	accepted							
+frepj	Eurotatoria,Collothecacea,Collothecidae,Collotheca,Sp._unk	pzt:000496	collotheca	living	full_body	true	accepted							
+frepj	Eurotatoria,Flosculariaceae,Conochilidae,Conochiloides,Conochiloides dossuarius	pzt:000500	conochiloides dossuarius	living	full_body	true	accepted							
+frepj	Eurotatoria,Flosculariaceae,Conochilidae,Conochiloides,Sp._unk	pzt:000499	conochiloides	living	full_body	true	accepted							
+frepj	Eurotatoria,Flosculariaceae,Conochilidae,Conochilus,Conochilus unicornis	pzt:000502	conochilus unicornis	living	full_body	true	accepted							
+frepj	Eurotatoria,Flosculariaceae,Conochilidae,Conochilus,Sp._unk	pzt:000501	conochilus	living	full_body	true	accepted							
+frepj	Eurotatoria,Flosculariaceae,Flosculariidae,Ge._unk,Ge._unk	pzt:000503	flosculariidae	living	full_body	true	accepted							
+frepj	Eurotatoria,Flosculariaceae,Flosculariidae,Lacinularia,Lacinularia flosculosa	pzt:000506	lacinularia flosculosa	living	full_body	true	accepted							
+frepj	Eurotatoria,Flosculariaceae,Hexarthridae,Hexarthra,Sp._unk	pzt:000508	hexarthra	living	full_body	true	accepted							
+frepj	Eurotatoria,Flosculariaceae,Testudinellidae,Pompholyx,Pompholyx complanata	pzt:000511	pompholyx complanata	living	full_body	true	accepted							
+frepj	Eurotatoria,Flosculariaceae,Testudinellidae,Pompholyx,Pompholyx sulcata	pzt:000512	pompholyx sulcata	living	full_body	true	accepted							
+frepj	Eurotatoria,Flosculariaceae,Testudinellidae,Pompholyx,Sp._unk	pzt:000510	pompholyx	living	full_body	true	accepted							
+frepj	Eurotatoria,Flosculariaceae,Testudinellidae,Testudinella,Sp._unk	pzt:000513	testudinella	living	full_body	true	accepted							
+frepj	Eurotatoria,Flosculariaceae,Testudinellidae,Testudinella,Testudinella brevicaudata	pzt:000514	testudinella brevicaudata	living	full_body	true	accepted							
+frepj	Eurotatoria,Flosculariaceae,Testudinellidae,Testudinella,Testudinella patina	pzt:000515	testudinella patina	living	full_body	true	accepted							
+frepj	Eurotatoria,Flosculariaceae,Trochosphaeridae,Filinia,Filinia longiseta	pzt:000518	filinia longiseta	living	full_body	true	accepted							
+frepj	Eurotatoria,Flosculariaceae,Trochosphaeridae,Tetramastix,Tetramastix opoliensis	pzt:000520	tetramastix opoliensis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Asplanchnidae,Asplanchna,Asplanchna priodonta	pzt:000524	asplanchna priodonta	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Asplanchnidae,Asplanchna,Asplanchna sieboldi	pzt:000525	asplanchna sieboldi	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Asplanchnidae,Asplanchna,Sp._unk	pzt:000523	asplanchna	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Asplanchnidae,Asplanchnopus,Sp._unk	pzt:000526	asplanchnopus	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Anuraeopsis,Anuraeopsis fissa	pzt:000529	anuraeopsis fissa	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Anuraeopsis,Sp._unk	pzt:000528	anuraeopsis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus angularis	pzt:000531	brachionus angularis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus budapestinensis	pzt:000532	brachionus budapestinensis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus calyciflorus	pzt:000533	brachionus calyciflorus	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus caudatus	pzt:000534	brachionus caudatus	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus dimidiatus	pzt:000535	brachionus dimidiatus	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus diversicornis	pzt:000536	brachionus diversicornis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus falcatus	pzt:000537	brachionus falcatus	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus forficula	pzt:000538	brachionus forficula	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus plicatilis	pzt:000539	brachionus plicatilis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus quadridentatus	pzt:000540	brachionus quadridentatus	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus sessilis	pzt:000541	brachionus sessilis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Brachionus,Brachionus urceolaris	pzt:000542	brachionus urceolaris	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Kellicottia,Kellicottia bostoniensis	pzt:000544	kellicottia bostoniensis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Kellicottia,Kellicottia longispina	pzt:000545	kellicottia longispina	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Keratella,Keratella cochlearis	pzt:000547	keratella cochlearis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Keratella,Keratella quadrata	pzt:000548	keratella quadrata	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Keratella,Keratella valga or tropica	pzt:000546	keratella	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Notholca,Notholca labis	pzt:000550	notholca labis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Platyias,Platyias patulus	pzt:000552	platyias patulus	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Brachionidae,Platyias,Platyias quadricornis	pzt:000553	platyias quadricornis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Dicranophoridae,Dicranophorus,Dicranophorus uncinatus	pzt:000556	dicranophorus uncinatus	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Dicranophoridae,Dicranophorus,Sp._unk	pzt:000555	dicranophorus	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Dicranophoridae,Encentrum,Sp._unk	pzt:000557	encentrum	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Epiphanidae,Epiphanes,Sp._unk	pzt:000559	epiphanes	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Euchlanidae,Dipleuchlanis,Dipleuchlanis propatula	pzt:000562	dipleuchlanis propatula	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Euchlanidae,Euchlanis,Euchlanis pyriformis	pzt:000564	euchlanis pyriformis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Euchlanidae,Euchlanis,Sp._unk	pzt:000563	euchlanis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Euchlanidae,Eudactylota,Eudactylota eudactylota	pzt:000566	eudactylota eudactylota	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Flosculariaceae,Flosculariidae,Floscularia,Floscularia sp	pzt:000504	floscularia	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Gastropoidae,Ascomorpha,Sp._unk	pzt:000568	ascomorpha	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Gastropoidae,Gastropus,Gastropus stylifer	pzt:000570	gastropus stylifer	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Ge._unk,Ge._unk	pzt:000571	lecanidae	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Lecane,Lecane curvicornis	pzt:000573	lecane curvicornis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Lecane,Lecane flexilis	pzt:000574	lecane flexilis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Lecane,Lecane hastata	pzt:000575	lecane hastata	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Lecane,Lecane hornemanni	pzt:000576	lecane hornemanni	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Lecane,Lecane infula	pzt:000577	lecane infula	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Lecane,Lecane latissima	pzt:000578	lecane latissima	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Lecane,Lecane leontina	pzt:000579	lecane leontina	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Lecane,Lecane luna	pzt:000580	lecane luna	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Lecane,Lecane nana	pzt:000581	lecane nana	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Lecane,Lecane papuana	pzt:000582	lecane papuana	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Lecane,Lecane stichaea	pzt:000583	lecane stichaea	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Lecane,Lecane ungulata	pzt:000584	lecane ungulata	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Lecane,Sp._unk	pzt:000572	lecane	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla acus	pzt:000586	monostyla acus	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla bulla	pzt:000587	monostyla bulla	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla closterocerca	pzt:000588	monostyla closterocerca	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla furcata	pzt:000589	monostyla furcata	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla hamata	pzt:000590	monostyla hamata	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla lunaris	pzt:000591	monostyla lunaris	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla opias	pzt:000592	monostyla opias	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla pyriformis	pzt:000593	monostyla pyriformis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Monostyla,Monostyla quadridentata	pzt:000594	monostyla quadridentata	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lecanidae,Monostyla,Sp._unk	pzt:000585	monostyla	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lepadellidae,Colurella,Sp._unk	pzt:000596	colurella	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lepadellidae,Lepadella,Lepadella acuminata	pzt:000598	lepadella acuminata	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lepadellidae,Lepadella,Lepadella oblonga	pzt:000599	lepadella oblonga	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lepadellidae,Lepadella,Lepadella ovalis	pzt:000600	lepadella ovalis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lepadellidae,Lepadella,Lepadella patella	pzt:000601	lepadella patella	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Lepadellidae,Lepadella,Sp._unk	pzt:000597	lepadella	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Mytilinidae,Mytilina,Mytilina compressa	pzt:000604	mytilina compressa	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Mytilinidae,Mytilina,Mytilina trigona	pzt:000605	mytilina trigona	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Mytilinidae,Mytilina,Mytilina ventralis	pzt:000606	mytilina ventralis	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Mytilinidae,Mytilina,Sp._unk	pzt:000603	mytilina	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Notommatidae,Cephalodella,Sp._unk	pzt:000608	cephalodella	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Notommatidae,Ge._unk,Ge._unk	pzt:000607	notommatidae	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Notommatidae,Notommata,Sp._unk	pzt:000609	notommata	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Scaridiidae,Scaridium,Scaridium longicaudum	pzt:000612	scaridium longicaudum	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Synchaetidae,Ploesoma,Ploesoma hudsoni	pzt:000615	ploesoma hudsoni	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Synchaetidae,Ploesoma,Ploesoma lenticulare	pzt:000616	ploesoma lenticulare	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Synchaetidae,Ploesoma,Ploesoma truncatum	pzt:000617	ploesoma truncatum	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Synchaetidae,Ploesoma,Sp._unk	pzt:000614	ploesoma	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Synchaetidae,Polyarthra,Polyarthra euryptera	pzt:000619	polyarthra euryptera	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Synchaetidae,Polyarthra,Polyarthra remata	pzt:000620	polyarthra remata	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Synchaetidae,Polyarthra,Polyarthra vulgaris	pzt:000621	polyarthra vulgaris	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Synchaetidae,Polyarthra,Sp._unk	pzt:000618	polyarthra	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Synchaetidae,Synchaeta,Sp._unk	pzt:000622	synchaeta	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Synchaetidae,Synchaeta,Synchaeta oblonga	pzt:000623	synchaeta oblonga	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Synchaetidae,Synchaeta,Synchaeta stylata	pzt:000624	synchaeta stylata	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Synchaetidae,Synchaeta,Synchaeta tremula	pzt:000625	synchaeta tremula	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Trichocercidae,Diurella,Diurella collaris	pzt:000628	diurella collaris	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Trichocercidae,Diurella,Diurella dixon-nuttalli	pzt:000629	diurella dixon-nuttalli	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Trichocercidae,Diurella,Diurella porcellus	pzt:000630	diurella porcellus	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Trichocercidae,Diurella,Diurella rousseleti	pzt:000631	diurella rousseleti	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Trichocercidae,Trichocerca,Sp._unk	pzt:000632	trichocerca	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca bicristata	pzt:000633	trichocerca bicristata	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca birostris	pzt:000634	trichocerca birostris	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca capucina	pzt:000635	trichocerca capucina	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca cylindrica	pzt:000636	trichocerca cylindrica	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca elongata	pzt:000637	trichocerca elongata	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca longiseta	pzt:000638	trichocerca longiseta	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca mucosa	pzt:000639	trichocerca mucosa	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca pusilla	pzt:000640	trichocerca pusilla	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Trichocercidae,Trichocerca,Trichocerca rattus	pzt:000641	trichocerca rattus	living	full_body	true	accepted							
+frepj	Eurotatoria,Ploima,Trichotriidae,Trichotria,Trichotria tetractis	pzt:000644	trichotria tetractis	living	full_body	true	accepted							
+frepj	Heterotrichea,Or._unk,Or._unk,Or._unk,Or._unk	pzt:000700	heterotrichea	living	full_body	true	accepted							
+frepj	Insecta,Diptera,Chaoboridae,Chaoborus,Sp._unk_larva_stage	pzt:000260	chaoborus	living	full_body	true	accepted							
+frepj	Insecta,Diptera,Chironomidae,Ge._unk_larva_stage,Ge._unk_larva_stage	pzt:000261	chironomidae	living	full_body	true	accepted							
+frepj	Litostomatea,Dileptida,Dileptidae,Paradileptus,Sp._unk	pzt:000724	paradileptus	living	full_body	true	accepted							
+frepj	Lobosa,Arcellinida,Centropyxidae,Centropyxis,Centropyxis discoides	pzt:001328	centropyxis discoides	living	full_body	true	accepted							
+frepj	Lobosa,Arcellinida,Centropyxidae,Centropyxis,Sp._unk	pzt:001327	centropyxis	living	full_body	true	accepted							
+frepj	Oligophymenophorea,Peritrichida,Vorticellidae,Vorticella,Sp._unk	pzt:000732	vorticella	living	full_body	true	accepted							
+frepj	Ostracoda,Or._unk,Or._unk,Or._unk,Or._unk	pzt:000296	ostracoda	living	full_body	true	accepted							

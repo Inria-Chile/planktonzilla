@@ -1,0 +1,138 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+tara_pacific_bongo	Acantharea	pzt:001265	acantharia	living	full_body	true	accepted							
+tara_pacific_bongo	Amphitetras	pzt:001053	amphitetras	living	full_body	true	accepted							
+tara_pacific_bongo	Amphorides	pzt:000774	amphorides	living	full_body	true	accepted							
+tara_pacific_bongo	Asterionella	pzt:000942	asterionella	living	full_body	true	accepted							
+tara_pacific_bongo	Asterolamprales	pzt:000880	asterolamprales	living	full_body	true	accepted							
+tara_pacific_bongo	Bacillariophyceae	pzt:000879	bacillariophyceae	living	full_body	true	accepted							
+tara_pacific_bongo	Bacteriastrum<Chaetocerotaceae	pzt:000907	bacteriastrum	living	full_body	true	accepted							
+tara_pacific_bongo	Biddulphia	pzt:000899	biddulphia	living	full_body	true	accepted							
+tara_pacific_bongo	Calanoida	pzt:000153	calanoida	living	full_body	true	accepted							
+tara_pacific_bongo	Chaetoceros inter ciliate	pzt:000920	chaetoceros inter ciliate	living	full_body	true	accepted							
+tara_pacific_bongo	Chaetoceros inter. Calothrix	pzt:000921	chaetoceros inter. calothrix	living	full_body	true	accepted							
+tara_pacific_bongo	Chaetoceros<Chaetocerotaceae	pzt:000908	chaetoceros	living	full_body	true	accepted							
+tara_pacific_bongo	Ciliophora	pzt:000699	ciliophora	living	full_body	true	accepted							
+tara_pacific_bongo	Cladopyxis	pzt:001132	cladopyxis	living	full_body	true	accepted							
+tara_pacific_bongo	Cladopyxis quadrispina	pzt:001134	cladopyxis quadrispina	living	full_body	true	accepted							
+tara_pacific_bongo	Codonellidae	pzt:000740	codonellidae	living	full_body	true	accepted							
+tara_pacific_bongo	Copepoda<Multicrustacea	pzt:000152	copepoda	living	full_body	true	accepted							
+tara_pacific_bongo	Corycaeidae	pzt:000203	corycaeidae	living	full_body	true	accepted							
+tara_pacific_bongo	Coscinodiscophycidae	pzt:000879	bacillariophyceae	living	full_body	true	accepted							
+tara_pacific_bongo	Cyanobacteria<Proteobacteria	pzt:000646	cyanobacteria	living	full_body	true	accepted							
+tara_pacific_bongo	Cyclopoida	pzt:000202	cyclopoida	living	full_body	true	accepted							
+tara_pacific_bongo	Cylindrotheca	pzt:000887	cylindrotheca	living	full_body	true	accepted							
+tara_pacific_bongo	Cyttarocylis	pzt:000751	cyttarocylis	living	full_body	true	accepted							
+tara_pacific_bongo	Dactyliosolen	pzt:001010	dactyliosolen	living	full_body	true	accepted							
+tara_pacific_bongo	Diatoma	pzt:000950	diatoma	living	full_body	true	accepted							
+tara_pacific_bongo	Dictyocha	pzt:001243	dictyocha	living	full_body	true	accepted							
+tara_pacific_bongo	Dictyocysta	pzt:000753	dictyocysta	living	full_body	true	accepted							
+tara_pacific_bongo	Dinophyceae X	pzt:001229	dinophyceae x	living	full_body	true	accepted							
+tara_pacific_bongo	Ditylum	pzt:000976	ditylum	living	full_body	true	accepted							
+tara_pacific_bongo	Epiplocylis	pzt:000756	epiplocylis	living	full_body	true	accepted							
+tara_pacific_bongo	Eucampia	pzt:000962	eucampia	living	full_body	true	accepted							
+tara_pacific_bongo	Eutintinnus	pzt:000758	eutintinnus	living	full_body	true	accepted							
+tara_pacific_bongo	Foraminifera	pzt:000831	foraminifera	living	full_body	true	accepted							
+tara_pacific_bongo	Guinardia	pzt:001013	guinardia	living	full_body	true	accepted							
+tara_pacific_bongo	Hemiaulus	pzt:000964	hemiaulus	living	full_body	true	accepted							
+tara_pacific_bongo	Hemidiscus	pzt:000934	hemidiscus	living	full_body	true	accepted							
+tara_pacific_bongo	Hemidiscus cuneiformis	pzt:000935	hemidiscus cuneiformis	living	full_body	true	accepted							
+tara_pacific_bongo	Lacrymaria	pzt:000721	lacrymaria	living	full_body	true	accepted							
+tara_pacific_bongo	Licmophora	pzt:000973	licmophora	living	full_body	true	accepted							
+tara_pacific_bongo	Metacylis	pzt:000764	metacylis	living	full_body	true	accepted							
+tara_pacific_bongo	Mollusca	pzt:000438	mollusca	living	full_body	true	accepted							
+tara_pacific_bongo	Nassellaria<Polycystina	pzt:001270	nassellaria	living	full_body	true	accepted							
+tara_pacific_bongo	Neoceratium	pzt:001094	neoceratium	living	full_body	true	accepted							
+tara_pacific_bongo	Neoceratium candelabrum	pzt:001101	tripos candelabrum	living	full_body	true	accepted							
+tara_pacific_bongo	Neoceratium furca<Neoceratium	pzt:001107	tripos furca	living	full_body	true	accepted							
+tara_pacific_bongo	Neoceratium fusus<Neoceratium	pzt:001108	tripos fusus	living	full_body	true	accepted							
+tara_pacific_bongo	Neoceratium pentagonum	pzt:001120	tripos pentagonus	living	full_body	true	accepted							
+tara_pacific_bongo	Odontella sp.	pzt:001057	odontella sp.	living	full_body	true	accepted							
+tara_pacific_bongo	Oncaeidae	pzt:000228	oncaeidae	living	full_body	true	accepted							
+tara_pacific_bongo	Ornithocercus	pzt:001081	ornithocercus	living	full_body	true	accepted							
+tara_pacific_bongo	Ornithocercus magnificus<Ornithocercus	pzt:001083	ornithocercus magnificus	living	full_body	true	accepted							
+tara_pacific_bongo	Ornithocercus steinii	pzt:001086	ornithocercus steinii	living	full_body	true	accepted							
+tara_pacific_bongo	Oxytoxum	pzt:001198	oxytoxum	living	full_body	true	accepted							
+tara_pacific_bongo	Peridiniales	pzt:001185	peridiniales	living	full_body	true	accepted							
+tara_pacific_bongo	Phalacroma	pzt:001088	phalacroma	living	full_body	true	accepted							
+tara_pacific_bongo	Planktoniella	pzt:001046	planktoniella	living	full_body	true	accepted							
+tara_pacific_bongo	Podolampas	pzt:001207	podolampas	living	full_body	true	accepted							
+tara_pacific_bongo	Poroecus	pzt:000744	poroecus	living	full_body	true	accepted							
+tara_pacific_bongo	Protoperidinium	pzt:001211	protoperidinium	living	full_body	true	accepted							
+tara_pacific_bongo	Pseudo-nitzschia	pzt:000892	pseudo-nitzschia	living	full_body	true	accepted							
+tara_pacific_bongo	Pyrocystaceae	pzt:001149	pyrocystaceae	living	full_body	true	accepted							
+tara_pacific_bongo	Pyrophacus	pzt:001157	pyrophacus	living	full_body	true	accepted							
+tara_pacific_bongo	Retaria	pzt:000675	chromista	living	full_body	true	accepted							
+tara_pacific_bongo	Rhabdonella	pzt:000768	rhabdonella	living	full_body	true	accepted							
+tara_pacific_bongo	Rhabdonellopsis	pzt:000769	rhabdonellopsis	living	full_body	true	accepted							
+tara_pacific_bongo	Rhizaria	pzt:000675	chromista	living	full_body	true	accepted							
+tara_pacific_bongo	Rhizosolenia	pzt:001021	rhizosolenia	living	full_body	true	accepted							
+tara_pacific_bongo	Rhizosolenia inter. Richelia	pzt:001021	rhizosolenia	living	full_body	true	accepted							
+tara_pacific_bongo	Rhizosolenids	pzt:001021	rhizosolenia	living	full_body	true	accepted							
+tara_pacific_bongo	Richelia	pzt:000668	richelia	living	full_body	true	accepted							
+tara_pacific_bongo	Spumellaria	pzt:001275	spumellaria	living	full_body	true	accepted							
+tara_pacific_bongo	Steenstrupiella	pzt:000777	steenstrupiella	living	full_body	true	accepted							
+tara_pacific_bongo	Striatella	pzt:001025	striatella	living	full_body	true	accepted							
+tara_pacific_bongo	Synedra	pzt:000953	synedra	living	full_body	true	accepted							
+tara_pacific_bongo	Thalassionematales	pzt:001029	thalassionematales	living	full_body	true	accepted							
+tara_pacific_bongo	Tintinnina<Choreotrichida	pzt:000739	choreotrichida	living	full_body	true	accepted							
+tara_pacific_bongo	Trichodesmium	pzt:000671	trichodesmium	living	full_body	true	accepted							
+tara_pacific_bongo	UCYNA like	pzt:000647	cyanophyceae	living	like	true	accepted							
+tara_pacific_bongo	Undellidae	pzt:000780	undellidae	living	full_body	true	accepted							
+tara_pacific_bongo	Vorticella	pzt:000732	vorticella	living	full_body	true	accepted							
+tara_pacific_bongo	aggregates	pzt:000024	other	artefact	unqualified	false	accepted							
+tara_pacific_bongo	artefact	pzt:000002	artefact	artefact	unqualified	false	accepted							
+tara_pacific_bongo	badfocus<artefact	pzt:000003	bad focus	artefact	unqualified	false	accepted							
+tara_pacific_bongo	bubble	pzt:000005	bubble	artefact	unqualified	false	accepted							
+tara_pacific_bongo	centric	pzt:000676	bacillariophyta	living	full_body	true	accepted							
+tara_pacific_bongo	chainlarge	pzt:000950	diatoma	living	full_body	true	accepted							
+tara_pacific_bongo	chainthin	pzt:000950	diatoma	living	full_body	true	accepted							
+tara_pacific_bongo	crumple sphere	pzt:000039	shape	artefact	unqualified	false	accepted							
+tara_pacific_bongo	dark<detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+tara_pacific_bongo	darkrods<rods	pzt:000033	plastic rod	inert	unqualified	false	accepted							
+tara_pacific_bongo	detritus<not-living	pzt:000008	detritus	detritus	unqualified	false	accepted							
+tara_pacific_bongo	duplicate	pzt:000012	error	artefact	unqualified	false	accepted							
+tara_pacific_bongo	egg sac<egg	pzt:000010	egg	living	egg	false	accepted							
+tara_pacific_bongo	egg<other	pzt:000010	egg	living	egg	false	accepted							
+tara_pacific_bongo	feces	pzt:000013	feces	detritus	unqualified	false	accepted							
+tara_pacific_bongo	fiber<detritus	pzt:000014	fiber	detritus	unqualified	false	accepted							
+tara_pacific_bongo	larvae<Annelida	pzt:000045	annelida	living	larvae	true	accepted							
+tara_pacific_bongo	larvae<Biota	pzt:000018	larvae	living	larvae	true	accepted							
+tara_pacific_bongo	larvae<Echinodermata	pzt:000428	echinodermata	living	larvae	true	accepted							
+tara_pacific_bongo	larvae<Polychaeta	pzt:000046	polychaeta	living	larvae	true	accepted							
+tara_pacific_bongo	light<detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+tara_pacific_bongo	lightrods<othertocheck	pzt:000039	shape	artefact	unqualified	false	accepted							
+tara_pacific_bongo	lightrods<rods	pzt:000033	plastic rod	inert	unqualified	false	accepted							
+tara_pacific_bongo	multiple<Diatoma	pzt:000950	diatoma	living	mix	true	accepted							
+tara_pacific_bongo	multiple<other	pzt:000024	other	artefact	unqualified	false	accepted							
+tara_pacific_bongo	nauplii<Crustacea	pzt:000062	arthropoda	living	full_body	true	accepted							
+tara_pacific_bongo	other<Biota	pzt:000024	other	living	full_body	false	accepted							
+tara_pacific_bongo	othertocheck	pzt:000024	other	artefact	unqualified	false	accepted							
+tara_pacific_bongo	part diatom	pzt:000026	part diatom	detritus	part	false	accepted							
+tara_pacific_bongo	part<Ciliophora	pzt:000699	ciliophora	detritus	part	false	accepted							
+tara_pacific_bongo	part<Copepoda	pzt:000152	copepoda	detritus	part	false	accepted							
+tara_pacific_bongo	part<Crustacea	pzt:000062	arthropoda	detritus	part	false	accepted							
+tara_pacific_bongo	part<other	pzt:000024	other	detritus	part	false	accepted							
+tara_pacific_bongo	pennate<Bacillariophyta	pzt:000676	bacillariophyta	living	full_body	true	accepted							
+tara_pacific_bongo	rhizosolenia inter richelia tmp i	pzt:001021	rhizosolenia	living	full_body	true	accepted							
+tara_pacific_bongo	rhizosolenia tmp i	pzt:001021	rhizosolenia	living	full_body	true	accepted							
+tara_pacific_bongo	spines<Acantharia	pzt:001265	acantharia	detritus	part	false	accepted							
+tara_pacific_bongo	spines<Rhizaria	pzt:000675	chromista	detritus	part	false	accepted							
+tara_pacific_bongo	t001	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_bongo	t002	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_bongo	t003	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_bongo	t004	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_bongo	t005	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_bongo	t006	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_bongo	t007	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_bongo	t008	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_bongo	t010	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_bongo	t011	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_bongo	t012	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_bongo	t013	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_bongo	t014	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_bongo	t015	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_bongo	t016	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_bongo	t017	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_bongo	trochophore	pzt:000045	annelida	living	larvae	true	accepted							
+tara_pacific_bongo	trochozoa	pzt:000044	animalia	living	larvae	true	accepted							
+tara_pacific_bongo	veliger<Mollusca	pzt:000438	mollusca	living	full_body	true	accepted							

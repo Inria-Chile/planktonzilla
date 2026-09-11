@@ -1,0 +1,9 @@
+rank	ordinal	legacy_slot
+kingdom	1	Kingdom
+phylum	2	Phylum
+class	3	Class
+order	4	Order
+family	5	Family
+genus	6	Genus
+species	7	Species
+unranked		

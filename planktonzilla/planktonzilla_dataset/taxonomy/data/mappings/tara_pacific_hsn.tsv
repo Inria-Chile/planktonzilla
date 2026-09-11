@@ -1,0 +1,160 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+tara_pacific_hsn	Abylopsis tetragona	pzt:000384	abylopsis tetragona	living	full_body	true	accepted							
+tara_pacific_hsn	Acantharia	pzt:001265	acantharia	living	full_body	true	accepted							
+tara_pacific_hsn	Acartiidae	pzt:000154	acartiidae	living	full_body	true	accepted							
+tara_pacific_hsn	Actinopterygii	pzt:000312	chordata	living	full_body	true	accepted							
+tara_pacific_hsn	Amphipoda	pzt:000263	amphipoda	living	full_body	true	accepted							
+tara_pacific_hsn	Annelida	pzt:000045	annelida	living	full_body	true	accepted							
+tara_pacific_hsn	Appendicularia<Tunicata	pzt:000313	appendicularia	living	full_body	true	accepted							
+tara_pacific_hsn	Atlanta	pzt:000446	atlantidae	living	full_body	true	accepted							
+tara_pacific_hsn	Bivalvia<Mollusca	pzt:000439	bivalvia	living	full_body	true	accepted							
+tara_pacific_hsn	Brachyura	pzt:000283	brachyura	living	full_body	true	accepted							
+tara_pacific_hsn	Bryozoa	pzt:000303	bryozoa	living	full_body	true	accepted							
+tara_pacific_hsn	Calanidae	pzt:000157	calanidae	living	full_body	true	accepted							
+tara_pacific_hsn	Calanoida	pzt:000153	calanoida	living	full_body	true	accepted							
+tara_pacific_hsn	Calocalanus pavo	pzt:000193	calocalanus pavo	living	full_body	true	accepted							
+tara_pacific_hsn	Candaciidae	pzt:000158	candaciidae	living	full_body	true	accepted							
+tara_pacific_hsn	Caprellidae	pzt:000264	caprellidae	living	full_body	true	accepted							
+tara_pacific_hsn	Cavolinia inflexa	pzt:000453	cavolinia inflexa	living	full_body	true	accepted							
+tara_pacific_hsn	Cavoliniidae	pzt:000451	cavoliniidae	living	full_body	true	accepted							
+tara_pacific_hsn	Centropagidae	pzt:000159	centropagidae	living	full_body	true	accepted							
+tara_pacific_hsn	Cephalopoda	pzt:000443	cephalopoda	living	full_body	true	accepted							
+tara_pacific_hsn	Chaetognatha<Animalia	pzt:000304	chaetognatha	living	full_body	true	accepted							
+tara_pacific_hsn	Cirripedia	pzt:000302	cirripedia	living	full_body	true	accepted							
+tara_pacific_hsn	Collodaria	pzt:001270	nassellaria	living	full_body	true	accepted							
+tara_pacific_hsn	Copilia	pzt:000231	copilia	living	full_body	true	accepted							
+tara_pacific_hsn	Corycaeidae	pzt:000203	corycaeidae	living	full_body	true	accepted							
+tara_pacific_hsn	Creseidae	pzt:000459	clio pyramidata	living	full_body	true	accepted							
+tara_pacific_hsn	Creseis acicula	pzt:000462	creseis acicula	living	full_body	true	accepted							
+tara_pacific_hsn	Creseis virgula	pzt:000463	creseis virgula	living	full_body	true	accepted							
+tara_pacific_hsn	Crustacea	pzt:000062	arthropoda	living	full_body	true	accepted							
+tara_pacific_hsn	Cyanobacteria<Negibacteria	pzt:000646	cyanobacteria	living	full_body	true	accepted							
+tara_pacific_hsn	Diacria	pzt:000455	diacria	living	full_body	true	accepted							
+tara_pacific_hsn	Diphyidae	pzt:000387	diphyidae	living	full_body	true	accepted							
+tara_pacific_hsn	Doliolida	pzt:000340	doliolida	living	full_body	true	accepted							
+tara_pacific_hsn	Echinodermata	pzt:000428	echinodermata	living	full_body	true	accepted							
+tara_pacific_hsn	Eucalanidae	pzt:000183	eucalanidae	living	full_body	true	accepted							
+tara_pacific_hsn	Euchaetidae	pzt:000185	euchaetidae	living	full_body	true	accepted							
+tara_pacific_hsn	Eumalacostraca	pzt:000262	malacostraca	living	full_body	true	accepted							
+tara_pacific_hsn	Euphausiacea	pzt:000284	euphausiacea	living	full_body	true	accepted							
+tara_pacific_hsn	Evadne	pzt:000150	evadne	living	full_body	true	accepted							
+tara_pacific_hsn	Foraminifera	pzt:000831	foraminifera	living	full_body	true	accepted							
+tara_pacific_hsn	Gammaridea	pzt:000271	gammaridea	living	full_body	true	accepted							
+tara_pacific_hsn	Globorotalidae	pzt:000836	globorotalidae	living	full_body	true	accepted							
+tara_pacific_hsn	Gymnosomata	pzt:000450	pteropoda	living	full_body	true	accepted							
+tara_pacific_hsn	Halobates	pzt:000253	halobates	living	full_body	true	accepted							
+tara_pacific_hsn	Harosa	pzt:000675	chromista	living	full_body	true	accepted							
+tara_pacific_hsn	Harpacticoida	pzt:000237	euterpina	living	full_body	true	accepted							
+tara_pacific_hsn	Heterorhabdidae	pzt:000187	heterorhabdidae	living	full_body	true	accepted							
+tara_pacific_hsn	Hydrozoa	pzt:000352	hydrozoa	living	full_body	true	accepted							
+tara_pacific_hsn	Hyperiidea	pzt:000263	amphipoda	living	full_body	true	accepted							
+tara_pacific_hsn	Insecta	pzt:000247	hexapoda	living	full_body	false	accepted							
+tara_pacific_hsn	Isopoda	pzt:000287	eurydice	living	full_body	true	accepted							
+tara_pacific_hsn	Laomediidae	pzt:000275	laomediidae	living	full_body	true	accepted							
+tara_pacific_hsn	Limacinidae	pzt:000467	limacinidae	living	full_body	true	accepted							
+tara_pacific_hsn	Lubbockia	pzt:000225	lubbockia	living	full_body	true	accepted							
+tara_pacific_hsn	Metridinidae	pzt:000190	pleuromamma abdominalis	living	full_body	true	accepted							
+tara_pacific_hsn	Mollusca	pzt:000438	mollusca	living	full_body	true	accepted							
+tara_pacific_hsn	Monstrilloida	pzt:000238	monstrilloida	living	full_body	true	accepted							
+tara_pacific_hsn	Nudibranchia	pzt:000449	nudibranchia	living	full_body	true	accepted							
+tara_pacific_hsn	Oikopleuridae	pzt:000317	oikopleuridae	living	full_body	true	accepted							
+tara_pacific_hsn	Oithonidae	pzt:000226	oithonidae	living	full_body	true	accepted							
+tara_pacific_hsn	Oncaeidae	pzt:000228	oncaeidae	living	full_body	true	accepted							
+tara_pacific_hsn	Ophiuroidea	pzt:000435	ophiuroidea	living	full_body	true	accepted							
+tara_pacific_hsn	Orbulina	pzt:000835	orbulina	living	full_body	true	accepted							
+tara_pacific_hsn	Ostracoda	pzt:000296	ostracoda	living	full_body	true	accepted							
+tara_pacific_hsn	Phronimidae	pzt:000266	phronimidae	living	full_body	true	accepted							
+tara_pacific_hsn	Physonectae	pzt:000381	siphonophorae	living	full_body	true	accepted							
+tara_pacific_hsn	Podon	pzt:000151	podon	living	full_body	true	accepted							
+tara_pacific_hsn	Pontellidae	pzt:000194	pontellidae	living	full_body	true	accepted							
+tara_pacific_hsn	Pontellina plumata	pzt:000196	pontellina plumata	living	full_body	true	accepted							
+tara_pacific_hsn	Porpita	pzt:000360	porpita	living	full_body	true	accepted							
+tara_pacific_hsn	Pterotrachea	pzt:000448	pterotrachea	living	full_body	true	accepted							
+tara_pacific_hsn	Pyrocystaceae	pzt:001149	pyrocystaceae	living	full_body	true	accepted							
+tara_pacific_hsn	Rhincalanidae	pzt:000197	rhincalanidae	living	full_body	true	accepted							
+tara_pacific_hsn	Salpida	pzt:000344	salpida	living	full_body	true	accepted							
+tara_pacific_hsn	Sapphirinidae	pzt:000230	sapphirinidae	living	full_body	true	accepted							
+tara_pacific_hsn	Scyphozoa	pzt:000411	scyphozoa	living	full_body	true	accepted							
+tara_pacific_hsn	Siphonophorae	pzt:000381	siphonophorae	living	full_body	true	accepted							
+tara_pacific_hsn	Siphonostomatoida	pzt:000239	siphonostomatoida	living	full_body	true	accepted							
+tara_pacific_hsn	Spirorbis	pzt:000054	spirorbis	living	full_body	true	accepted							
+tara_pacific_hsn	Spumellaria	pzt:001275	spumellaria	living	full_body	true	accepted							
+tara_pacific_hsn	Temoridae	pzt:000198	temoridae	living	full_body	true	accepted							
+tara_pacific_hsn	Velella	pzt:000362	velella	living	full_body	true	accepted							
+tara_pacific_hsn	artefact	pzt:000002	artefact	artefact	unqualified	false	accepted							
+tara_pacific_hsn	badfocus<Copepoda	pzt:000152	copepoda	living	full_body	true	accepted							
+tara_pacific_hsn	badfocus<artefact	pzt:000003	bad focus	artefact	unqualified	false	accepted							
+tara_pacific_hsn	borax	pzt:000008	detritus	detritus	unqualified	false	accepted							
+tara_pacific_hsn	bract<Abylidae	pzt:000382	abylidae	living	full_body	true	accepted							
+tara_pacific_hsn	bract<Abylopsis tetragona	pzt:000384	abylopsis tetragona	living	full_body	true	accepted							
+tara_pacific_hsn	bract<Bassia bassensis	pzt:000386	bassia bassensis	living	full_body	true	accepted							
+tara_pacific_hsn	bract<Diphyidae	pzt:000387	diphyidae	living	full_body	true	accepted							
+tara_pacific_hsn	bubble	pzt:000005	bubble	artefact	unqualified	false	accepted							
+tara_pacific_hsn	calyptopsis	pzt:000284	euphausiacea	living	full_body	true	accepted							
+tara_pacific_hsn	cirrus	pzt:000300	thecostraca	living	full_body	true	accepted							
+tara_pacific_hsn	cyphonautes	pzt:000303	bryozoa	living	full_body	true	accepted							
+tara_pacific_hsn	cypris<Cirripedia	pzt:000302	cirripedia	living	full_body	true	accepted							
+tara_pacific_hsn	damaged<Copepoda	pzt:000152	copepoda	living	full_body	true	accepted							
+tara_pacific_hsn	dark<detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+tara_pacific_hsn	dark<sphere	pzt:000039	shape	artefact	unqualified	false	accepted							
+tara_pacific_hsn	detritus<not-living	pzt:000008	detritus	detritus	unqualified	false	accepted							
+tara_pacific_hsn	echinopluteus	pzt:000433	echinoidea	living	full_body	true	accepted							
+tara_pacific_hsn	egg sac<egg	pzt:000010	egg	living	egg	false	accepted							
+tara_pacific_hsn	egg<Actinopterygii	pzt:000312	chordata	living	egg	true	accepted							
+tara_pacific_hsn	egg<other	pzt:000010	egg	living	egg	false	accepted							
+tara_pacific_hsn	empty<Ostracoda	pzt:000296	ostracoda	living	full_body	true	accepted							
+tara_pacific_hsn	eudoxid<Abylopsis tetragona	pzt:000384	abylopsis tetragona	living	full_body	true	accepted							
+tara_pacific_hsn	eudoxid<Diphyidae	pzt:000387	diphyidae	living	full_body	true	accepted							
+tara_pacific_hsn	fiber<detritus	pzt:000014	fiber	detritus	unqualified	false	accepted							
+tara_pacific_hsn	gelatinous	pzt:000024	other	artefact	unqualified	false	accepted							
+tara_pacific_hsn	gonophore<Abylidae	pzt:000382	abylidae	living	full_body	true	accepted							
+tara_pacific_hsn	gonophore<Abylopsis tetragona	pzt:000384	abylopsis tetragona	living	full_body	true	accepted							
+tara_pacific_hsn	gonophore<Diphyidae	pzt:000387	diphyidae	living	full_body	true	accepted							
+tara_pacific_hsn	head<Chaetognatha	pzt:000304	chaetognatha	detritus	part_head	false	accepted							
+tara_pacific_hsn	juvenile<Salpida	pzt:000344	salpida	living	full_body	true	accepted							
+tara_pacific_hsn	larvae<Annelida	pzt:000045	annelida	living	larvae	true	accepted							
+tara_pacific_hsn	larvae<Porcellanidae	pzt:000280	porcellanidae	living	larvae	true	accepted							
+tara_pacific_hsn	larvae<Porpitidae	pzt:000359	porpitidae	living	larvae	true	accepted							
+tara_pacific_hsn	larvae<Squillidae	pzt:000295	squillidae	living	larvae	true	accepted							
+tara_pacific_hsn	megalopa<Brachyura	pzt:000283	brachyura	living	full_body	true	accepted							
+tara_pacific_hsn	metanauplii<Crustacea	pzt:000062	arthropoda	living	full_body	true	accepted							
+tara_pacific_hsn	multiple<Copepoda	pzt:000152	copepoda	living	mix	true	accepted							
+tara_pacific_hsn	multiple<Pyrocystaceae	pzt:001149	pyrocystaceae	living	mix	true	accepted							
+tara_pacific_hsn	multiple<other	pzt:000024	other	artefact	unqualified	false	accepted							
+tara_pacific_hsn	nauplii<Cirripedia	pzt:000302	cirripedia	living	full_body	true	accepted							
+tara_pacific_hsn	nauplii<Crustacea	pzt:000062	arthropoda	living	full_body	true	accepted							
+tara_pacific_hsn	nectophore<Abylidae	pzt:000382	abylidae	living	full_body	true	accepted							
+tara_pacific_hsn	nectophore<Abylopsis tetragona	pzt:000384	abylopsis tetragona	living	full_body	true	accepted							
+tara_pacific_hsn	nectophore<Bassia bassensis	pzt:000386	bassia bassensis	living	full_body	true	accepted							
+tara_pacific_hsn	nectophore<Diphyidae	pzt:000387	diphyidae	living	full_body	true	accepted							
+tara_pacific_hsn	nectophore<Hippopodiidae	pzt:000391	hippopodiidae	living	full_body	true	accepted							
+tara_pacific_hsn	nectophore<Physonectae	pzt:000381	siphonophorae	living	full_body	true	accepted							
+tara_pacific_hsn	nucleus<Salpidae	pzt:000345	salpidae	living	full_body	true	accepted							
+tara_pacific_hsn	ophiopluteus	pzt:000435	ophiuroidea	living	full_body	true	accepted							
+tara_pacific_hsn	othertocheck	pzt:000024	other	artefact	unqualified	false	accepted							
+tara_pacific_hsn	part<Actinopterygii	pzt:000312	chordata	detritus	part	false	accepted							
+tara_pacific_hsn	part<Annelida	pzt:000045	annelida	detritus	part	false	accepted							
+tara_pacific_hsn	part<Cnidaria	pzt:000346	cnidaria	detritus	part	false	accepted							
+tara_pacific_hsn	part<Copepoda	pzt:000152	copepoda	detritus	part	false	accepted							
+tara_pacific_hsn	part<Crustacea	pzt:000062	arthropoda	detritus	part	false	accepted							
+tara_pacific_hsn	part<Ctenophora	pzt:000949	ctenophora	detritus	part	false	accepted							
+tara_pacific_hsn	part<Mollusca	pzt:000438	mollusca	detritus	part	false	accepted							
+tara_pacific_hsn	part<Siphonophorae	pzt:000381	siphonophorae	detritus	part	false	accepted							
+tara_pacific_hsn	part<Thaliacea	pzt:000339	thaliacea	detritus	part	false	accepted							
+tara_pacific_hsn	phyllosoma	pzt:000282	achelata	living	full_body	true	accepted							
+tara_pacific_hsn	pluteus<Echinoidea	pzt:000433	echinoidea	living	full_body	true	accepted							
+tara_pacific_hsn	pluteus<Ophiuroidea	pzt:000435	ophiuroidea	living	full_body	true	accepted							
+tara_pacific_hsn	polype<Anthozoa	pzt:000417	anthozoa	living	full_body	true	accepted							
+tara_pacific_hsn	polype<Leptothecata	pzt:000363	leptothecata	living	full_body	true	accepted							
+tara_pacific_hsn	protozoea<Sergestidae	pzt:000281	sergestidae	living	full_body	true	accepted							
+tara_pacific_hsn	scale	pzt:000312	chordata	detritus	part_skin	false	accepted							
+tara_pacific_hsn	seaweed	pzt:000038	seaweed	living	full_body	false	accepted							
+tara_pacific_hsn	t002	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_hsn	t003	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_hsn	t004	pzt:000042	unknown	artefact	unqualified	false	accepted							
+tara_pacific_hsn	tail<Appendicularia	pzt:000313	appendicularia	detritus	part_tail	false	accepted							
+tara_pacific_hsn	tail<Chaetognatha	pzt:000304	chaetognatha	detritus	part_tail	false	accepted							
+tara_pacific_hsn	trunk<Appendicularia	pzt:000313	appendicularia	detritus	part_trunk	false	accepted							
+tara_pacific_hsn	veliger<Mollusca	pzt:000438	mollusca	living	full_body	true	accepted							
+tara_pacific_hsn	wing	pzt:000247	hexapoda	detritus	part	false	accepted							
+tara_pacific_hsn	zoea<Brachyura<Pleocyemata<Decapoda	pzt:000283	brachyura	living	full_body	true	accepted							
