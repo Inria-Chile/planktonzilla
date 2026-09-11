@@ -222,30 +222,7 @@
     },
     {
       "name": "mapping",
-      "path": [
-        "mappings/daplankton.tsv",
-        "mappings/flowcamnet.tsv",
-        "mappings/frepj.tsv",
-        "mappings/global_uvp5.tsv",
-        "mappings/isiisnet.tsv",
-        "mappings/jedioceans.tsv",
-        "mappings/lensless.tsv",
-        "mappings/medplanktonset.tsv",
-        "mappings/planktonset1.0.tsv",
-        "mappings/planktoscope.tsv",
-        "mappings/syke_ifcb_2022.tsv",
-        "mappings/sykezooscan2024.tsv",
-        "mappings/tara_pacific_bongo.tsv",
-        "mappings/tara_pacific_decknet.tsv",
-        "mappings/tara_pacific_hsn.tsv",
-        "mappings/tara_pacific_manta.tsv",
-        "mappings/uvp6net.tsv",
-        "mappings/whoi.tsv",
-        "mappings/zoocamnet.tsv",
-        "mappings/zoolake.tsv",
-        "mappings/zooscan.tsv"
-      ],
-      "description": "One file per source, and the source registry: a mapping file with no stanza here, or a stanza with no file, is a finding. Each file's datasetID must equal its own stem.",
+      "description": "One file per source. `pathGlob` is a project extension: the descriptor declares the SHAPE of a mapping file and nothing about which sources exist, because enumerating them here would be a second source registry beside constants.DATASET_IMPORT_CONFIGS -- two lists that drift, and a line both branches of a concurrent add-source PR insert at the same position (measured: it conflicted). The registry is constants.DATASET_IMPORT_CONFIGS, which adding a source already has to touch for validate_license_coverage. Each file's datasetID must equal its own stem.",
       "schema": {
         "fields": [
           {
@@ -376,7 +353,8 @@
             }
           }
         ]
-      }
+      },
+      "pathGlob": "mappings/*.tsv"
     },
     {
       "name": "rank",

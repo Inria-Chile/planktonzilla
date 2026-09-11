@@ -101,8 +101,18 @@ def load_descriptor(package_dir: Path) -> dict:
 
 
 def _resource_paths(package_dir: Path, resource: dict) -> list:
+    """The files one resource covers: an explicit ``path``, or the files a ``pathGlob`` matches.
+
+    ``pathGlob`` is a project extension, used only by the mapping resource. It exists so the
+    descriptor declares the SHAPE of a mapping file and nothing about which sources exist: an
+    enumeration here would be a second source registry beside ``constants.DATASET_IMPORT_CONFIGS``,
+    and a line that both branches of a concurrent add-source PR insert at the same position.
+    """
+    package_dir = Path(package_dir)
+    if "pathGlob" in resource:
+        return sorted(package_dir.glob(resource["pathGlob"]))
     paths = resource["path"]
-    return [Path(package_dir) / p for p in ([paths] if isinstance(paths, str) else paths)]
+    return [package_dir / p for p in ([paths] if isinstance(paths, str) else paths)]
 
 
 def _vocabulary_values(package_dir: Path, descriptor: dict, reference: str) -> set:
@@ -235,7 +245,7 @@ def _check_foreign_keys(descriptor: dict, by_name: dict, rows_by_resource: dict)
 
 
 # Rules no table schema can express
-def check_rules(package_dir: Path, descriptor: dict) -> list:
+def check_rules(package_dir: Path, descriptor: dict, registered=None) -> list:
     """The structural and semantic rules a Table Schema cannot state."""
     package_dir = Path(package_dir)
     findings = []
@@ -247,7 +257,7 @@ def check_rules(package_dir: Path, descriptor: dict) -> list:
     findings += _check_lineage_name_repeat(taxa, legacy_slot)
     findings += _check_single_valued_authorities(package_dir, authorities)
     findings += _check_shared_ids(package_dir, taxa, authorities)
-    findings += _check_mapping_files(package_dir, descriptor, taxa)
+    findings += _check_mapping_files(package_dir, descriptor, taxa, registered)
     findings += _check_canonical_names(taxa)
     return findings
 
@@ -384,7 +394,7 @@ def _check_shared_ids(package_dir: Path, taxa: dict, authorities: dict) -> list:
     return findings
 
 
-def _check_mapping_files(package_dir: Path, descriptor: dict, taxa: dict) -> list:
+def _check_mapping_files(package_dir: Path, descriptor: dict, taxa: dict, registered=None) -> list:
     """``datasetID == file stem``, the display-name agreement, and registry/disk agreement.
 
     A row for one source dropped into another's file passes a per-file primary key unnoticed, and
@@ -392,17 +402,21 @@ def _check_mapping_files(package_dir: Path, descriptor: dict, taxa: dict) -> lis
     """
     findings = []
     resource = next(r for r in descriptor["resources"] if r["name"] == "mapping")
-    declared = {Path(p).name for p in resource["path"]}
-    on_disk = {p.name for p in sorted((package_dir / "mappings").glob("*.tsv"))}
-
-    findings += [
-        Finding("registry_drift", SEVERITY_ERROR, "mapping", name, "in the descriptor, absent on disk")
-        for name in sorted(declared - on_disk)
-    ]
-    findings += [
-        Finding("registry_drift", SEVERITY_ERROR, "mapping", name, "on disk, absent from the descriptor")
-        for name in sorted(on_disk - declared)
-    ]
+    # Disk against the ONE registry, not against a second copy in the descriptor. `registered` is
+    # constants.DATASET_IMPORT_CONFIGS, which adding a source already has to touch anyway for
+    # validate_license_coverage; checking against a descriptor list as well would be two lists to
+    # keep in step. `registered=None` means the caller did not offer a registry, so the direction
+    # that needs one is skipped rather than guessed at.
+    on_disk = {path.stem for path in _resource_paths(package_dir, resource)}
+    if registered is not None:
+        findings += [
+            Finding("registry_drift", SEVERITY_ERROR, "mapping", name, "registered, but no mapping file on disk")
+            for name in sorted(set(registered) - on_disk)
+        ]
+        findings += [
+            Finding("registry_drift", SEVERITY_ERROR, "mapping", name, "a mapping file on disk, but not a registered source")
+            for name in sorted(on_disk - set(registered))
+        ]
 
     for path in sorted((package_dir / "mappings").glob("*.tsv")):
         for row in read_tsv(path):
@@ -461,7 +475,7 @@ def validate(package_dir, registered=None) -> Report:
     """Run every check. Returns a :class:`Report`; raises only if the package cannot be read."""
     package_dir = Path(package_dir)
     descriptor = load_descriptor(package_dir)
-    findings = check_descriptor(package_dir, descriptor) + check_rules(package_dir, descriptor)
+    findings = check_descriptor(package_dir, descriptor) + check_rules(package_dir, descriptor, registered)
     if registered is not None:
         findings += check_coverage(package_dir, registered)
     return Report(findings=sorted(findings, key=lambda f: (f.check, f.resource, f.locator, f.detail)))

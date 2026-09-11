@@ -233,8 +233,17 @@ concept ids, preserving each `category` and `reason` verbatim.
 **PR 4 — Concurrency and diff ergonomics (≈1 d).** `.gitattributes` with `merge=union` on the append-only
 ledgers and `eol=lf` on `*.tsv`; a duplicate-id rule in `validate.py` to catch what union merge lets through;
 per-source descriptor fragments, since `merge=union` fixes the ledgers but both branches still insert their
-source stanza at the same position in a single descriptor. State plainly in the runbook that a shared stanza
-may still need a one-line manual resolution — no design in the panel could honestly claim "never conflicts".
+source stanza at the same position in a single descriptor.
+
+*As built*, the descriptor's source enumeration is **removed** rather than fragmented. Fragments would have
+solved the conflict while leaving a second source registry beside `constants.DATASET_IMPORT_CONFIGS` — two
+lists to keep in step, and R9 already notes that adding a source must touch `constants` regardless, for
+`validate_license_coverage`. The mapping resource becomes a `pathGlob`, registry drift is measured against
+`constants` in both directions, and adding a source is one new file plus the `constants` entry it already
+needed. That also retires the runbook caveat the refuters asked for: with no shared stanza, there is no
+stanza to resolve by hand. The measurement is in the gate rather than in prose — `tests/test_taxonomy_concurrency.py`
+performs a real `git merge` of two add-source branches, and a control test proves the same two branches
+conflict on both ledgers without `.gitattributes`.
 
 **PR 5 — Switch every reader (≈2 d).** `build_taxonomy_lookup` becomes an alias
 (`generate_planktonzilla.py:105-172` deleted); the near-verbatim copy in `frepj_validate.py:113-132` deleted;

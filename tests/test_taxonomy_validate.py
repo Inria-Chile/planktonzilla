@@ -247,13 +247,19 @@ def test_a_foreign_source_row_passes_a_per_file_key_and_is_caught_anyway(package
     assert "primary_key" not in _checks(report), "the per-file key saw nothing, which is the point"
 
 
-def test_a_source_added_without_a_descriptor_stanza_is_caught(package):
-    """The descriptor is also the source registry, so disk and registry must agree both ways."""
+def test_a_source_on_disk_that_no_registry_knows_about_is_caught(package):
+    """Disk and the registry must agree — and the registry is ``constants``, not the descriptor.
+
+    Step 4 removed the descriptor's source enumeration: two registries drift, and both branches of
+    a concurrent add-source PR insert into the same line of the second one. The thorough
+    both-directions case lives in ``tests/test_taxonomy_concurrency.py``; this is the validator's
+    own record that it still refuses an unknown source.
+    """
     shutil.copy(package / "mappings" / "zoolake.tsv", package / "mappings" / "newsource.tsv")
 
-    report = validate.validate(package)
+    report = validate.validate(package, registered=REGISTERED)
     assert "registry_drift" in _checks(report)
-    assert any("absent from the descriptor" in f.detail for f in report.findings)
+    assert any("not a registered source" in f.detail for f in report.findings)
 
 
 def test_the_absence_row_the_design_offers_actually_validates(package):
@@ -328,14 +334,10 @@ def test_a_partially_mapped_source_is_committable(package):
 
     A ``draft`` row loads, does not count against the row-order manifest, does not reach the
     render, and does not satisfy coverage.
+
+    Since step 4 the new source needs no descriptor edit at all — the mapping resource is a glob —
+    so this is now the real flow a curator follows rather than a rehearsal of it.
     """
-    import json as _json
-
-    descriptor = _json.loads((package / "datapackage.json").read_text())
-    resource = next(r for r in descriptor["resources"] if r["name"] == "mapping")
-    resource["path"].append("mappings/newsource.tsv")
-    (package / "datapackage.json").write_text(_json.dumps(descriptor, indent=2) + "\n")
-
     template = read_tsv(package / "mappings" / "zoolake.tsv")[0]
     write_tsv(
         package / "mappings" / "newsource.tsv",
