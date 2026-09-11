@@ -36,9 +36,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import datasets
-import polars as pl
 
 from planktonzilla.planktonzilla_dataset import constants
+from planktonzilla.planktonzilla_dataset.taxonomy import load_taxonomy
 
 # The lookup columns pulled from the taxonomy CSV, ordered exactly as
 # ``RedefineDataset._build_lookup`` builds them so external-ID comparison is
@@ -110,26 +110,10 @@ def _cmp_norm(value):
     return str(value).strip()
 
 
-def _build_taxonomy_lookup(csv_path) -> dict:
-    """Build the ``(Dataset, Raw_Labels) -> {column: value}`` lookup from the CSV.
-
-    Mirrors ``RedefineDataset._build_lookup``: numeric ID columns are normalised to
-    decimal-free strings and blank values to ``None``.
-    """
-    df = pl.read_csv(csv_path)
-
-    for col in _ID_NUM_COLS:
-        if col in df.columns:
-            df = df.with_columns(pl.col(col).cast(pl.Int64, strict=False).cast(pl.Utf8).alias(col))
-
-    present = [col for col in _LOOKUP_COLS if col in df.columns]
-    keys = zip(df["Dataset"].to_list(), df["Raw_Labels"].to_list())
-    rows = df.select(present).to_dicts()
-
-    lookup = {}
-    for key, row in zip(keys, rows):
-        lookup[key] = {col: _norm(row.get(col)) for col in _LOOKUP_COLS}
-    return lookup
+# The near-verbatim copy of the reader that lived here is deleted. It mirrored
+# `RedefineDataset._build_lookup` by hand, which is exactly how two readers drift: this module
+# existed to VALIDATE that the published FREPJ rows match the taxonomy, using a second
+# implementation of the thing it was checking against. It now reads through the one loader.
 
 
 def _as_dataset(dataset_or_path) -> datasets.Dataset:
@@ -411,7 +395,7 @@ def validate_frepj_dataset(
     latitude = _col(ds, "Latitude", n)
     longitude = _col(ds, "Longitude", n)
 
-    taxonomy_lookup = _build_taxonomy_lookup(taxonomy_csv)
+    taxonomy_lookup = load_taxonomy(taxonomy_csv).lookup()
     class_dirs = _load_class_dirs(class_dirs_tsv)
     imagefolder_counts = _count_imagefolder(imagefolder_dir)
 

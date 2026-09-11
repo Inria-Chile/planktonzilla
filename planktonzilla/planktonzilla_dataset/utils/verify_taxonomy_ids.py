@@ -83,6 +83,7 @@ from planktonzilla.planktonzilla_dataset.constants import (
     ID_STR_COLS,
     TAXONOMY_RANKS,
 )
+from planktonzilla.planktonzilla_dataset.taxonomy import load_taxonomy
 from planktonzilla.utils.logger import get_pylogger
 
 logger = get_pylogger(__name__)
@@ -531,8 +532,10 @@ def read_taxonomy(csv_path: Path) -> list[dict]:
     Returns:
         One dict per CSV row.
     """
-    frame = pl.read_csv(csv_path, infer_schema_length=0)
-    return [{k: ("" if v is None else str(v)) for k, v in row.items()} for row in frame.to_dicts()]
+    # Through the one loader. `rows()` is already all-string with blanks as "", which is exactly
+    # what the private `infer_schema_length=0` read produced -- asserted row-for-row by
+    # tests/test_taxonomy_reader_switch.py rather than assumed.
+    return load_taxonomy(csv_path).rows()
 
 
 def distinct_ids(rows: list[dict]) -> dict[str, list[str]]:

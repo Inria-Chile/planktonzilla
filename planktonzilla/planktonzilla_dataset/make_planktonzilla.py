@@ -47,7 +47,6 @@ Prerequisites:
 """
 
 import concurrent.futures
-import csv
 import json
 import os
 import shutil
@@ -77,6 +76,7 @@ from planktonzilla.planktonzilla_dataset.generate_planktonzilla import (
     clean_corrupt_examples_optimized,
     import_and_redefine_source,
 )
+from planktonzilla.planktonzilla_dataset.taxonomy import load_taxonomy
 from planktonzilla.planktonzilla_dataset.update_planktonzilla import (
     add_license_columns,
     build_sync_dict,
@@ -517,41 +517,39 @@ class Check:
 
 
 def check_taxonomy_csv(csv_path, selected) -> list:
-    """Check the taxonomy CSV exists, parses, has every column, and covers each source.
+    """Check the taxonomy exists, parses, has every column, and covers each selected source.
 
-    The column check is not decoration: ``build_taxonomy_lookup`` resolves an absent
-    column to ``None`` for every row instead of raising, so a CSV that lost a rank
-    builds the whole dataset with that rank blank and reports success.
+    The column check is not decoration: the lookup resolves an absent column to ``None`` for every
+    row instead of raising, so a table that lost a rank builds the whole dataset with that rank
+    blank and reports success. It used to be done by peeking the header with a bare ``csv.reader``
+    before handing the file to the reader of record — two parses of the same file, and a check that
+    could only ever work on a CSV. It now asks the loaded store what columns it has, which is the
+    same question answered once and answered for the normalised package too.
 
-    A selected source with NO row at all in the CSV is reported as a warning rather than
-    a failure — it is what adding a source before curating its labels looks like — but
-    it is worth saying up front, because the alternative is discovering afterwards that
-    a few hundred thousand images have null taxonomy and null IDs.
+    A selected source with NO row at all is reported as a warning rather than a failure — it is
+    what adding a source before curating its labels looks like — but it is worth saying up front,
+    because the alternative is discovering afterwards that a few hundred thousand images have null
+    taxonomy and null IDs.
     """
     path = Path(csv_path)
     if not path.exists():
         return [Check("taxonomy-csv", False, f"missing: {path}")]
 
     try:
-        with path.open(newline="", encoding="utf-8") as handle:
-            header = next(csv.reader(handle), [])
+        store = load_taxonomy(path)
     except OSError as e:
         return [Check("taxonomy-csv", False, f"unreadable: {path} ({e})")]
-
-    required = ("Dataset", "Raw_Labels", *LOOKUP_COLS)
-    absent = [column for column in required if column not in header]
-    if absent:
-        return [Check("taxonomy-csv", False, f"{path} is missing the column(s) {absent}")]
-
-    try:
-        lookup = build_taxonomy_lookup(str(path))
     except Exception as e:
         return [Check("taxonomy-csv", False, f"{path} could not be parsed: {type(e).__name__}: {e}")]
 
-    checks = [Check("taxonomy-csv", True, f"{len(lookup)} (dataset, label) rows, all {len(required)} columns present")]
+    required = ("Dataset", "Raw_Labels", *LOOKUP_COLS)
+    absent = [column for column in required if column not in store.legacy_header()]
+    if absent:
+        return [Check("taxonomy-csv", False, f"{path} is missing the column(s) {absent}")]
 
-    covered = {dataset for dataset, _ in lookup}
-    uncovered = [entry["name"] for entry in selected if entry["name"] not in covered]
+    checks = [Check("taxonomy-csv", True, f"{len(store.lookup())} (dataset, label) rows, all {len(required)} columns present")]
+
+    uncovered = [entry["name"] for entry in selected if not store.labels_for(entry["name"])]
     if uncovered:
         checks.append(
             Check(

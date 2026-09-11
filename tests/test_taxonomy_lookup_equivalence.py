@@ -139,25 +139,32 @@ def test_blank_cells_become_none_not_empty_string():
 
 
 def test_lookup_is_cached_per_path(monkeypatch):
-    """Repeated builds read the CSV once, so a 12-source run does not read it 12 times."""
-    gp._build_taxonomy_lookup_cached.cache_clear()
+    """Repeated builds read the CSV once, so a 21-source run does not read it 21 times.
+
+    The behaviour is unchanged; the seam moved. ``generate_planktonzilla`` no longer imports polars
+    — the reader is ``taxonomy.loader`` — so the counter hooks the loader's wide-CSV backend rather
+    than ``gp.pl.read_csv``. Both the generation path and the re-sync path still arrive there.
+    """
+    from planktonzilla.planktonzilla_dataset.taxonomy import loader
+
+    loader.cache_clear()
 
     calls = []
-    real_read_csv = gp.pl.read_csv
+    real_load_wide_csv = loader._load_wide_csv
 
-    def counting_read_csv(*args, **kwargs):
-        calls.append(args[0] if args else kwargs.get("source"))
-        return real_read_csv(*args, **kwargs)
+    def counting_load(csv_path):
+        calls.append(csv_path)
+        return real_load_wide_csv(csv_path)
 
-    monkeypatch.setattr(gp.pl, "read_csv", counting_read_csv)
+    monkeypatch.setattr(loader, "_load_wide_csv", counting_load)
 
     for _ in range(5):
         gp.build_taxonomy_lookup(REAL_CSV)
     up.build_sync_dict(REAL_CSV)
 
-    assert len(calls) == 1, f"expected 1 CSV read, got {len(calls)}"
+    assert len(calls) == 1, f"expected 1 taxonomy read, got {len(calls)}"
 
-    gp._build_taxonomy_lookup_cached.cache_clear()
+    loader.cache_clear()
 
 
 def test_duplicate_keys_warn_and_keep_the_last_row(tmp_path, caplog):

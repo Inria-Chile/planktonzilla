@@ -18,11 +18,11 @@ know which one it got.
 """
 
 import csv
+from functools import lru_cache
 from pathlib import Path
 
 from planktonzilla.planktonzilla_dataset import constants
 from planktonzilla.planktonzilla_dataset.taxonomy.model import (
-    LEGACY_RANKS,
     PREFIX_TO_LEGACY_COLUMN,
     Mapping,
     Taxon,
@@ -54,7 +54,48 @@ def load_taxonomy(source=None) -> TaxonomyStore:
     path = Path(source) if source is not None else PACKAGE_DIR
     if not path.exists():
         raise TaxonomyError(f"no taxonomy at «{path}»")
+    return load_cached(str(path.resolve()), _fingerprint(path))
+
+
+def _fingerprint(path: Path) -> tuple:
+    """``(size, mtime_ns)`` for a file; the same over every file for a package directory.
+
+    Part of the cache key, so a taxonomy rewritten at a path already read is re-read rather than
+    served stale. Without it the cache is a correctness bug and not merely a stale value: routing
+    EVERY reader through one cache — as step 5 does — widens the blast radius of the legacy
+    reader's own staleness from the generation path to the verifiers and the builders, which write
+    a table and read it back in the same process. Found by a test doing exactly that.
+    """
+    if path.is_dir():
+        return tuple(
+            (str(child.relative_to(path)), child.stat().st_size, child.stat().st_mtime_ns)
+            for child in sorted(path.rglob("*"))
+            if child.is_file()
+        )
+    stat = path.stat()
+    return (stat.st_size, stat.st_mtime_ns)
+
+
+@lru_cache(maxsize=4)
+def load_cached(resolved: str, fingerprint=None) -> TaxonomyStore:
+    """The cached body of :func:`load_taxonomy`, keyed by resolved path AND content fingerprint.
+
+    Caching is not an optimisation detail here: a published build constructs one redefiner per
+    source, and without it each would re-read and re-derive the whole taxonomy. The legacy reader
+    cached for exactly this reason, and dropping it while switching the readers over would trade a
+    silent 21x regression for a tidier signature.
+
+    The store it hands back is shared, which is the same contract the legacy cache had — it
+    returned one shared dict. Callers treat it as a value; its own lazy caches are idempotent.
+    A path whose contents change under the cache needs :func:`cache_clear`, as it always did.
+    """
+    path = Path(resolved)
     return _load_package(path) if path.is_dir() else _load_wide_csv(path)
+
+
+def cache_clear() -> None:
+    """Forget every loaded store. Needed when a test rewrites a taxonomy at a path already read."""
+    load_cached.cache_clear()
 
 
 def _load_package(package_dir: Path) -> TaxonomyStore:
@@ -181,4 +222,12 @@ def default_source():
 
 
 # Re-exported so a caller needs one import rather than three.
-__all__ = ["LEGACY_RANKS", "PACKAGE_DIR", "TaxonomyError", "TaxonomyStore", "build_taxonomy_lookup", "load_taxonomy"]
+__all__ = [
+    "PACKAGE_DIR",
+    "TaxonomyError",
+    "TaxonomyStore",
+    "build_taxonomy_lookup",
+    "cache_clear",
+    "load_cached",
+    "load_taxonomy",
+]
