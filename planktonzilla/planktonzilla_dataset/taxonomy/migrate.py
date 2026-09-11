@@ -56,10 +56,10 @@ from planktonzilla.planktonzilla_dataset.taxonomy.model import (
     AUTHORITIES,
     BUCKET_REMARK,
     EXACT_MATCH,
+    FINER_REMARK,
     IDENTIFIER_COLUMNS,
     LEGACY_HEADER,
     LEGACY_ID_COLUMNS,
-    LEGACY_RANKS,
     MAPPING_COLUMNS,
     MERGED_COLUMNS,
     OVERRIDE_COLUMNS,
@@ -71,6 +71,7 @@ from planktonzilla.planktonzilla_dataset.taxonomy.model import (
     UNSPECIFIED_MATCHING,
     TaxonomyError,
     collation_key,
+    lineage_of,
     read_tsv,
     write_tsv,
 )
@@ -95,22 +96,6 @@ def read_legacy_rows(csv_path: Path) -> list:
     if rows and tuple(rows[0]) != LEGACY_HEADER:
         raise MigrationError(f"unexpected legacy header: {tuple(rows[0])}")
     return rows
-
-
-def lineage_of(row) -> tuple:
-    """The row's rank path as ``((rank, name), ...)``, lowercase ranks, blanks dropped.
-
-    Species carry the binomial rather than the epithet: the epithet alone is not a node
-    identity (19 epithets occur under more than one genus).
-    """
-    path = []
-    for rank in LEGACY_RANKS:
-        value = row[rank]
-        if not value:
-            continue
-        name = f"{row['Genus']} {value}" if rank == "Species" and row["Genus"] else value
-        path.append((rank.lower(), name))
-    return tuple(path)
 
 
 def natural_key(path) -> str:
@@ -160,7 +145,7 @@ def build_taxa(rows) -> tuple:
         # The concept names something finer than the deepest rank the legacy columns can hold.
         finer = (*path, ("unranked", label))
         key = natural_key(finer)
-        nodes[key] = (finer, "taxon", "finer than its deepest legacy rank; true rank unassigned")
+        nodes[key] = (finer, "taxon", FINER_REMARK)
         concept_to_key[label] = key
 
     return nodes, concept_to_key

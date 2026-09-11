@@ -167,6 +167,11 @@ not its own. Fixes `CODE_REVIEW.md` finding 1.1 (verified live: 644 rows destroy
 *Gate:* a regression test that runs `write_csv` on the committed CSV and asserts all 2,358 rows survive —
 red before the fix, green after.
 
+*Superseded by PR 6.* The flag is gone with the splice it guarded, and the gate changed shape with it: it no
+longer asserts that the builder **refuses**, it asserts that the builder **runs and all 644 rows are still
+there**. `assert_owns_every_change` stays, now over the whole re-render, where it should be unreachable and
+runs anyway.
+
 ### Stage 1 — Build the store beside the CSV (nothing reads it yet)
 
 **PR 1 — Migration script and the generated package (≈3 d).** `taxonomy/migrate.py`, run once, producing
@@ -304,6 +309,35 @@ committed block" test on records rather than bytes, and add the end-to-end test 
 This is the step to schedule alone; it is where the panel's estimates were judged floors, and where the guard
 flag from PR 0.2 finally comes off because the write path is no longer byte-splicing.
 
+*Refined once the port was measured.* "2,728 lines of builders" is the wrong unit and made this step look
+larger than it is. Those lines are overwhelmingly **curation** — rule tables, label grammars, donor
+resolution, reconciliation reports — which is source knowledge and stays where it is. The **write surfaces**
+are `build_frepj_taxonomy._encode_rows` + `write_csv`, `build_tara_pacific_taxonomy._serialize` +
+`append_to_master`, and `resolve_frepj_ids.backfill_csv`. Porting all three deleted **150 lines and added
+102** *(measured: the diff of this step)* — 5.5 % of the 2,728. The port is one adapter,
+`write.records_from_wide_rows`, which inverts the seven legacy rank columns through the same `lineage_of` the
+migration uses, so the builders go on producing 19-column rows and only the last call changes.
+
+*Refined again on the release layer.* The loader required the frozen row-order manifest to name every
+accepted mapping, which made `upsert_source` unusable: adding a source left every consumer broken until the
+next release was cut. A release now freezes the order of the rows **it published** and nothing more, and rows
+mapped afterwards render after the frozen block in collation order — §10.6's rule, applied at read time
+rather than only at migration time. Appending rather than interleaving is what the wide CSV itself did for
+its three post-freeze blocks, and it is what keeps the 1,486-line prefix pin meaningful: a new source can
+never push a frozen row down the file. The count check the manifest used to get is replaced by its own sha
+pin, so truncating it is still refused, by a check that says which release drifted.
+
+*Gate, all measured on the committed table:* re-deriving all 21 sources from what is committed and upserting
+them back is a **zero-change no-op**, through both the record API and the wide-row adapter; running all three
+ported builders writes **0 changes** and leaves the package and the CSV byte-identical; the synthetic
+50-class source lands, mints 65 nodes from the next free id with no gaps, moves no frozen byte, and is a
+no-op on its second run. A dry run allocates no id at all.
+
+`upsert-source` is deliberately absent from the CLI: a source's records come from its builder, and there is
+no way to express 229 FREPJ records on a command line. The CLI carries the acts that ARE one line — `check`,
+`show`, `fmt`, `rename`, `retire`, `clear-id`, `render`, `diff` — and `release` moves to PR 9, where the
+retirement switch it serves is decided.
+
 **PR 7 — Provenance and waivers as data (≈2 d).** This is where FREPJ's and Tara Pacific's reconciliation
 reports stop being prose and become columns. Provenance for *why a row says what it says* exists for 229 of
 2,358 rows today, inside a Markdown file, plus 95 of the 600 rows Tara Pacific computes and writes out; for the
@@ -322,7 +356,9 @@ sources) as versioned files; `gen_planktonzilla_only_plankton` reads the file ra
 vocabularies are frozen snapshots keyed to a release tag — only new vocabularies are regenerated, because
 design C's regenerated vocabulary renumbered 537 of 599 class ids on its first data fix.
 
-**PR 9 — Authority snapshot, review tooling, retirement switch (≈3 d).** Re-key the authority snapshot to the
+**PR 9 — Authority snapshot, review tooling, retirement switch (≈3 d).** Now also carries `release`,
+moved here from PR 6: cutting a release freezes the current order into a new manifest, which is only
+meaningful once the switch that stops committing the wide CSV is decided. Re-key the authority snapshot to the
 sorted distinct-id set with incremental harvest, so a spelling fix no longer forces a network re-harvest and an
 86,618-line JSON diff (needs the maintainers' HARDEN decision, §10.4). Add the CI semantic-diff comment
 ("N published cells changed on M rows", computed by rendering the legacy view before and after), the generated

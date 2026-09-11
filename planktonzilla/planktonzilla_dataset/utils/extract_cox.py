@@ -24,7 +24,7 @@ Usage (a single species):
     python extract_cox.py --ncbi_id 124140
 
 Usage (batch from a CSV):
-    python extract_cox.py --csv data/taxonomy_wiki_and_ids.csv --nb_rows 10 --clean
+    python extract_cox.py --csv planktonzilla_taxonomy.csv --nb_rows 10 --clean
 
 Requirements:
     pip install biopython polars tqdm

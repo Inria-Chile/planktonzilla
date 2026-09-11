@@ -67,7 +67,9 @@ from pathlib import Path
 import polars as pl
 
 from planktonzilla.planktonzilla_dataset import constants
+from planktonzilla.planktonzilla_dataset.taxonomy import write as taxonomy_write
 from planktonzilla.planktonzilla_dataset.utils import extract_taxon_ids
+from planktonzilla.planktonzilla_dataset.utils import taxonomy_write_guard as write_guard
 from planktonzilla.utils.logger import get_pylogger
 
 logger = get_pylogger(__name__)
@@ -867,50 +869,47 @@ def parse_summary() -> dict:
     return mapping
 
 
-# ── CSV backfill (idempotent, frepj-rows-only) ───────────────────────────────────
+# ── Backfill: identifiers onto the concepts, through the taxonomy package ────────
 
 
-def backfill_csv(csv_path: Path, mapping: dict) -> int:
-    """Fill the four ID cells of every frepj row from ``mapping`` (idempotent).
+def backfill_ids(mapping: dict, *, package_dir=None, csv_path=None, apply: bool = False):
+    """Attach the resolved identifiers to the concepts the frepj class directories map to.
 
-    Edits ONLY lines beginning ``frepj,`` and, within them, ONLY the last-but-one
-    through last-but-four fields (wikidata/aphia/NCBI/BOLD). ``ecotaxa_ID`` (the
-    final field) and all non-frepj lines stay byte-identical, so the append-only
-    sha256 of the first 1486 lines is preserved. Re-running is a no-op.
+    Replaces a line rewriter that split every ``frepj,`` line on its last five commas and rebuilt
+    four fields of it in place. Ids belong to the concept, not to the row that names it, so they go
+    on the taxon — which also means two class directories mapping the same concept can no longer
+    disagree about its aphia id, and that a re-run is a no-op by construction rather than by
+    careful string handling.
+
+    An authority the summary leaves blank is left alone, never cleared: blanking by omission is how
+    the 13 legacy per-row overrides came to exist. Retiring an id is
+    ``pz_taxonomy clear-id --reason``.
+
+    Args:
+        mapping: ``{raw_label: {wikidata_ID, aphia_ID, NCBI_ID, BOLD_ID}}`` from the committed summary.
+        package_dir: The taxonomy package (default: the bundled one).
+        csv_path: Master taxonomy CSV to re-render (default: the committed one).
+        apply: Write. Defaults to False, so a run reports what it would change and touches nothing.
 
     Returns:
-        The number of frepj rows rewritten.
+        The :class:`ChangeSet` the write produced.
     """
-    raw = csv_path.read_bytes()
-    out_lines: list[bytes] = []
-    changed = 0
-    missing: list[str] = []
-    for physical in raw.splitlines(keepends=True):
-        text = physical.decode("utf-8")
-        if not text.startswith(f"{DATASET},"):
-            out_lines.append(physical)
-            continue
-        newline = "\n" if text.endswith("\n") else ""
-        content = text[: -len(newline)] if newline else text
-        raw_label = next(csv.reader([content]))[1]
-        rec = mapping.get(raw_label)
-        if rec is None:
-            missing.append(raw_label)
-            out_lines.append(physical)
-            continue
-        # The trailing five fields never contain commas, so rsplit isolates them
-        # without touching the quoted Raw_Labels commas earlier in the line.
-        head, _w, _a, _n, _b, ecotaxa = content.rsplit(",", 5)
-        rebuilt = f"{head},{rec[WIKIDATA_ID]},{rec['aphia_ID']},{rec['NCBI_ID']},{rec['BOLD_ID']},{ecotaxa}{newline}"
-        out_lines.append(rebuilt.encode("utf-8"))
-        changed += 1
+    package_dir = Path(package_dir or taxonomy_write.loader.PACKAGE_DIR)
+    columns = (WIKIDATA_ID, "aphia_ID", "NCBI_ID", "BOLD_ID")
+    ids_by_verbatim = {
+        raw_label: {column: record[column] for column in columns if record.get(column)} for raw_label, record in mapping.items()
+    }
 
-    if missing:
-        raise ValueError(f"{len(missing)} frepj rows have no mapping entry (first: {missing[0]!r})")
-
-    csv_path.write_bytes(b"".join(out_lines))
-    logger.info(f"Backfilled {changed} frepj rows in {csv_path}")
-    return changed
+    changes = taxonomy_write.add_ids(package_dir, DATASET, ids_by_verbatim, apply=apply)
+    if apply:
+        write_guard.render_master(
+            package_dir,
+            csv_path or constants.DEFAULT_TAXONOMY_CSV_FILENAME,
+            owner={DATASET},
+            tool="resolve_frepj_ids",
+        )
+    logger.info(f"{'Backfilled' if apply else 'Would backfill'} {len(changes)} identifier cell(s) for {DATASET}.")
+    return changes
 
 
 # ── Orchestration ────────────────────────────────────────────────────────────────
@@ -1017,12 +1016,15 @@ def main() -> None:
         action="store_true",
         help="Network (NCBI): blank the too-coarse KI-6 matches + run COX1 corroboration, rewrite the summary.",
     )
+    parser.add_argument("--apply", action="store_true", help="Write. Without it --backfill reports and stops.")
     args = parser.parse_args()
 
     if args.backfill:
         mapping = parse_summary()
         logger.info(f"Loaded {len(mapping)} taxa from the committed summary.")
-        backfill_csv(CSV_PATH, mapping)
+        changes = backfill_ids(mapping, apply=args.apply)
+        if not args.apply:
+            logger.info(f"{changes.describe()}\nNothing was written. Re-run with --apply to write it.")
         return
 
     if args.finalize:

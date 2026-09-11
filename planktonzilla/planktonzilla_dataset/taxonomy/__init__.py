@@ -32,10 +32,15 @@ from planktonzilla.planktonzilla_dataset.taxonomy.model import (
 from planktonzilla.planktonzilla_dataset.taxonomy.write import (
     Change,
     ChangeSet,
+    add_ids,
     clear_id,
     diff_published,
     fmt,
+    merge,
+    records_from_wide_rows,
+    rename,
     upsert_source,
+    upsert_wide_rows,
 )
 
 __all__ = [
@@ -46,10 +51,15 @@ __all__ = [
     "Taxon",
     "TaxonomyError",
     "TaxonomyStore",
+    "add_ids",
     "build_taxonomy_lookup",
     "clear_id",
     "diff_published",
     "fmt",
     "load_taxonomy",
+    "merge",
+    "records_from_wide_rows",
+    "rename",
     "upsert_source",
+    "upsert_wide_rows",
 ]

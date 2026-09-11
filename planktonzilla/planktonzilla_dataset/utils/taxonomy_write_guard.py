@@ -1,90 +1,49 @@
 """
 (c) Inria
 
-Preflight guard for the tools that rewrite ``planktonzilla_taxonomy.csv`` in place.
+How a builder writes the master ``planktonzilla_taxonomy.csv``: from the package, never in place.
 
-Three builders locate "their own" block by scanning the committed byte stream and then
-re-serialise the file around it. That works only while each one's idea of where its block
-ends agrees with reality, and one of them is already wrong: ``build_frepj_taxonomy.write_csv``
-copies the prefix up to the first ``frepj`` row and writes its own block after it, so
-everything appended LATER is discarded. On the committed table a no-op re-run turns 2358 rows
-into 1714 — the 44 ``daplankton`` and 600 ``tara_pacific_*`` rows are destroyed, the process
-exits 0, and nothing warns (``docs/CODE_REVIEW.md`` finding 1.1, reproduced).
+Until step 6 three builders located "their own" block by scanning the committed byte stream and
+re-serialised the file around it. That works only while each one's idea of where its block ends
+agrees with reality, and one of them was already wrong: ``build_frepj_taxonomy.write_csv`` copied
+the prefix up to the first ``frepj`` row and wrote its own block after it, so everything appended
+LATER was discarded. On the committed table a no-op re-run turned 2358 rows into 1714 — the 44
+``daplankton`` and 600 ``tara_pacific_*`` rows destroyed, the process exiting 0, nothing warning
+(``docs/CODE_REVIEW.md`` finding 1.1, reproduced).
 
-The real fix is the write API of ``docs/TAXONOMY_IMPLEMENTATION_PLAN.md`` step 6, which
-replaces byte-splicing with key-addressed rows. Until then this module makes the failure
-impossible rather than silent, in two independent layers:
+Byte-splicing is gone. A builder now upserts its own sources into the normalised package
+(:func:`taxonomy.write.upsert_wide_rows`, which writes ``mappings/<dataset>.tsv`` and nothing else
+under ``mappings/``) and the master CSV is RE-RENDERED whole from the package by :func:`render_master`
+below. A render is a total function of the package, so there is no byte range to get wrong and no
+block boundary to misjudge.
+
+With the splice gone the opt-in flag it needed — ``--i-know-this-rewrites-the-csv``, step 0.2 —
+comes off too, as the plan said it would. What stays is the check that never needed a flag:
 
 ``assert_owns_every_change``
-    The data-integrity layer, and the one that matters. Compares the rendered output against
-    the file on disk and refuses the write if ANY line belonging to a source the caller does
-    not own is dropped, added, reordered or edited. It cannot be bypassed — there is no flag
-    for it, because there is no legitimate reason for one builder to move another's rows.
+    Refuses the write if ANY line belonging to a source the caller does not own is dropped, added,
+    reordered or edited. On the new path this should be unreachable, which is exactly why it runs:
+    "this writer keeps foreign lines" was documented of the frepj writer too, and stayed true until
+    a source landed after its block. An asserted invariant survives that; a documented one does not.
 
-``assert_unlocked``
-    The blast-radius layer. A builder that rewrites the committed table in place must be
-    asked to, explicitly, on the command line. Protects against the accidental invocation —
-    a stale shell command, a copied runbook line — not against a wrong render.
-
-Both raise :class:`TaxonomyWriteRefusedError` and write nothing. Refusing is the correct outcome
+It raises :class:`TaxonomyWriteRefusedError` and writes nothing. Refusing is the correct outcome
 here: these tools re-derive a block that is already committed, so a refused run loses no work.
 """
 
 import csv
+from pathlib import Path
 
-# Opting in is deliberately verbose. A flag a reader can mistake for routine is not a guard.
-UNLOCK_FLAG = "--i-know-this-rewrites-the-csv"
-
-_UNLOCK_DEST = "i_know_this_rewrites_the_csv"
+from planktonzilla.planktonzilla_dataset.taxonomy import loader
 
 
 class TaxonomyWriteRefusedError(RuntimeError):
-    """Raised INSTEAD of writing, when a rewrite is unauthorised or would move foreign rows."""
-
-
-def add_unlock_argument(parser) -> None:
-    """Register the shared opt-in flag on a builder's argument parser."""
-    parser.add_argument(
-        UNLOCK_FLAG,
-        dest=_UNLOCK_DEST,
-        action="store_true",
-        help=(
-            "Actually rewrite the committed taxonomy CSV in place. Without this the builder "
-            "reports what it would write and exits without touching the file."
-        ),
-    )
-
-
-def is_unlocked(args) -> bool:
-    """Read the opt-in flag off a parsed argparse namespace."""
-    return bool(getattr(args, _UNLOCK_DEST, False))
-
-
-def assert_unlocked(unlocked: bool, *, tool: str, path) -> None:
-    """Refuse to rewrite the committed table unless the caller passed the opt-in flag.
-
-    Args:
-        unlocked: Whether the caller opted in.
-        tool: The builder's name, for the message.
-        path: The file that would have been rewritten.
-
-    Raises:
-        TaxonomyWriteRefusedError: If ``unlocked`` is false.
-    """
-    if not unlocked:
-        raise TaxonomyWriteRefusedError(
-            f"{tool} refused to rewrite «{path}» in place. This builder re-serialises the whole "
-            f"file around its own block, which is why the rewrite is opt-in: pass {UNLOCK_FLAG} "
-            f"to go ahead. Nothing was written."
-        )
+    """Raised INSTEAD of writing, when a render would move rows the caller does not own."""
 
 
 def _first_field(line: str) -> str:
     """The line's ``Dataset`` column, parsed as CSV rather than sliced.
 
-    A literal ``frepj,`` inside some other quoted field must never read as a Dataset value,
-    which is the same reasoning ``build_frepj_taxonomy.write_csv`` applies when it looks for
-    its own block (WR-04).
+    A literal ``frepj,`` inside some other quoted field must never read as a Dataset value.
     """
     fields = next(csv.reader([line]), [""])
     return fields[0] if fields else ""
@@ -140,3 +99,32 @@ def assert_owns_every_change(original: str, rendered: str, *, owner, tool: str) 
         f"docs/CODE_REVIEW.md finding 1.1: the builder re-serialises the file around its own "
         f"block and silently drops whatever was appended after it. Nothing was written."
     )
+
+
+def render_master(package_dir, csv_path, *, owner, tool: str) -> int:
+    """Re-render the master CSV whole from the package, refusing if a foreign row would move.
+
+    The replacement for every builder's in-place splice. The bytes come from the package, which is
+    where the builder has just upserted its own sources, so a source it did not touch renders
+    exactly as before — and :func:`assert_owns_every_change` proves that rather than assuming it.
+
+    Args:
+        package_dir: The normalised package to render.
+        csv_path: The master CSV to overwrite.
+        owner: The ``Dataset`` values this builder is allowed to change.
+        tool: The builder's name, for the message.
+
+    Returns:
+        The number of rows written.
+
+    Raises:
+        TaxonomyWriteRefusedError: If any line outside ``owner`` would move. Nothing is written.
+    """
+    csv_path = Path(csv_path)
+    loader.cache_clear()
+    rendered = loader.load_taxonomy(Path(package_dir)).render_wide_csv().decode("utf-8")
+    original = csv_path.read_text(encoding="utf-8") if csv_path.exists() else ""
+
+    assert_owns_every_change(original, rendered, owner=owner, tool=tool)
+    csv_path.write_text(rendered, encoding="utf-8", newline="")
+    return max(rendered.count("\n") - 1, 0)

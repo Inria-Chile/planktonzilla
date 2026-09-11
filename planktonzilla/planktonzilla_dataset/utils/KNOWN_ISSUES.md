@@ -179,9 +179,8 @@ true failures.
 **Where:** `extract_taxon_ids.py` (the two output CSVs, empty-string vs `null` asymmetry; polars)
 vs `update_planktonzilla.py` (`build_sync_dict`, pandas) and the `";"` vs `","` separators.
 
-**Today:** the two `extract_taxon_ids` output CSVs differ in empty-string vs null representation,
-and the suite mixes pandas and polars with different separators, so null/dtype representation is
-not uniform.
+**Today:** the suite mixes pandas and polars with different separators, so null/dtype
+representation is not uniform. The `extract_taxon_ids` half is gone — see below.
 
 **Proposed:** unify on one CSV engine + separator convention and a single null representation.
 
@@ -207,8 +206,14 @@ hard-raise in the pandas path and be silently last-wins in the polars path. It n
 keeps the last row** — the generation path's long-standing behavior, made visible. The shipped
 CSV has no duplicates.
 
-**Still open:** the `extract_taxon_ids.py` output CSVs (empty-string vs `null` asymmetry) and
-the `";"` vs `","` separator convention. Those are untouched. → `HARDEN-01`.
+**Resolved (`extract_taxon_ids` half).** The two output CSVs are gone: the pipeline that wrote
+them read a path that had not existed for some time and nothing consumed its output, so step 6
+retired it and kept only the Wikidata harvest functions `resolve_frepj_ids` calls. What they were
+reaching for is now `taxonomy/data/identifier.tsv` — one row per `(concept, authority)`, with one
+null representation because a TSV cell is either empty or it is not.
+
+**Still open:** the `";"` vs `","` separator convention, and the pandas/polars mix outside the
+taxonomy path. Those are untouched. → `HARDEN-01`.
 
 ## KI-16 — The split probe in the build path reads the repository root, not the imagefolder
 

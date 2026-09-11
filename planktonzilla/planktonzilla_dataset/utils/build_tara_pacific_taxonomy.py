@@ -57,17 +57,20 @@ way under ``global_uvp5`` and blank here; a row with nothing to inherit leaves i
 authoritative EcoTaxa taxon id per label lives in ``tara_pacific_classes.tsv``, which is
 where the importer reads it from anyway.
 
-The append is IDEMPOTENT: re-running rewrites the Tara Pacific block in place, so a second
-run leaves the CSV byte-identical.
+Since step 6 the write goes through the taxonomy package rather than into the master CSV:
+``write_rows`` upserts one ``mappings/<source>.tsv`` per curated source and the CSV is
+re-rendered whole from the package. The append-only invariant above is a consequence of that
+rather than something this builder arranges, so a re-run is byte-identical by construction.
+Nothing is written without ``--apply``.
 """
 
 import argparse
 import csv
-import io
 from collections import Counter, defaultdict
 from pathlib import Path
 
 from planktonzilla.planktonzilla_dataset import constants
+from planktonzilla.planktonzilla_dataset.taxonomy import write as taxonomy_write
 from planktonzilla.planktonzilla_dataset.utils import taxonomy_write_guard as write_guard
 from planktonzilla.utils.logger import get_pylogger
 
@@ -797,67 +800,38 @@ def build_rows(class_map, taxa, master_rows):
 # --- Writing --------------------------------------------------------------------------
 
 
-def _serialize(rows) -> str:
-    """Render rows with the master CSV's dialect (``\\n``, minimal quoting)."""
-    buffer = io.StringIO()
-    writer = csv.DictWriter(buffer, fieldnames=CSV_COLUMNS, lineterminator="\n")
-    writer.writerows(rows)
-    return buffer.getvalue()
+def write_rows(rows, *, package_dir=None, csv_path=None, apply: bool = False):
+    """Upsert the curated Tara Pacific rows into the taxonomy package, then re-render the master CSV.
 
+    This builder curates FOUR sources (``bongo``, ``decknet``, ``hsn``, ``manta``).
+    ``upsert_wide_rows`` groups the rows by their own ``Dataset`` column and writes one mapping file
+    each, so the four-way split is a partition rather than a filter — the builder cannot reach a
+    fifth source even by accident, which is what the byte-range writer it replaces could not say.
 
-def append_to_master(rows, path=None, *, unlocked: bool) -> int:
-    """Append (or, on a re-run, replace in place) the Tara Pacific block. Idempotent.
-
-    Every line that is not a Tara Pacific row is passed through byte-for-byte, so the
-    frozen header + 1485 rows and the 229 frepj rows are untouched — the append-only
-    invariant ``tests/test_frepj_taxonomy_coverage.py::test_existing_rows_byte_frozen``
-    pins.
-
-    Unlike ``build_frepj_taxonomy.write_csv`` this writer keeps foreign lines rather than
-    truncating at its own block, so the row-preservation guard below passes on today's
-    table. It runs anyway: the claim in the paragraph above is exactly the kind that was
-    true of the frepj writer too, until a source landed after it
-    (``docs/CODE_REVIEW.md`` finding 1.1). An asserted invariant survives that; a
-    documented one does not.
+    The row-preservation guard still runs on the re-render. This writer did keep foreign lines, but
+    so did ``build_frepj_taxonomy.write_csv`` until a source landed after its block
+    (``docs/CODE_REVIEW.md`` finding 1.1). An asserted invariant survives that; a documented one
+    does not.
 
     Args:
         rows: The curated Tara Pacific rows, in file order.
-        path: Master taxonomy CSV (default: the committed one).
-        unlocked: Whether the caller passed ``--i-know-this-rewrites-the-csv``.
+        package_dir: The taxonomy package (default: the bundled one).
+        csv_path: Master taxonomy CSV to re-render (default: the committed one).
+        apply: Write. Defaults to False, so a run reports what it would change and touches nothing.
 
     Returns:
-        The number of rows written.
-
-    Raises:
-        TaxonomyWriteRefusedError: If the caller did not opt in, or if the render would
-            move a row this builder does not own. Nothing is written either way.
+        The :class:`ChangeSet` the upsert produced.
     """
-    path = Path(path or constants.DEFAULT_TAXONOMY_CSV_FILENAME)
-    write_guard.assert_unlocked(unlocked, tool="build_tara_pacific_taxonomy", path=path)
-
-    original = path.read_text(encoding="utf-8")
-
-    kept = []
-    for line in original.splitlines(keepends=True):
-        # A Tara Pacific row is recognised by its Dataset column, which is the first field
-        # and never quoted; nothing else in the file starts with these names.
-        if any(line.startswith(f"{name},") for name in DATASET_NAMES):
-            continue
-        kept.append(line)
-
-    body = "".join(kept)
-    if body and not body.endswith("\n"):
-        body += "\n"
-
-    rendered = body + _serialize(rows)
-    write_guard.assert_owns_every_change(
-        original,
-        rendered,
-        owner=set(DATASET_NAMES),
-        tool="build_tara_pacific_taxonomy",
-    )
-    path.write_text(rendered, encoding="utf-8")
-    return len(rows)
+    package_dir = Path(package_dir or taxonomy_write.loader.PACKAGE_DIR)
+    changes = taxonomy_write.upsert_wide_rows(package_dir, rows, apply=apply)
+    if apply:
+        write_guard.render_master(
+            package_dir,
+            csv_path or constants.DEFAULT_TAXONOMY_CSV_FILENAME,
+            owner=set(DATASET_NAMES),
+            tool="build_tara_pacific_taxonomy",
+        )
+    return changes
 
 
 # The report's static prose, one constant per paragraph.
@@ -1016,8 +990,8 @@ def main(argv=None) -> int:
     parser.add_argument("--taxa-tsv", default=DEFAULT_TAXA_TSV, type=Path)
     parser.add_argument("--csv", default=None, type=Path, help="Master taxonomy CSV (default: the committed one).")
     parser.add_argument("--reconciliation", default=DEFAULT_RECONCILIATION_MD, type=Path)
-    parser.add_argument("--dry-run", action="store_true", help="Report what would be written, write nothing.")
-    write_guard.add_unlock_argument(parser)
+    parser.add_argument("--package", default=None, type=Path, help="Taxonomy package (default: the bundled one).")
+    parser.add_argument("--apply", action="store_true", help="Write. Without it the builder reports and stops.")
     args = parser.parse_args(argv)
 
     taxa = read_taxa(args.taxa_tsv)
@@ -1032,13 +1006,14 @@ def main(argv=None) -> int:
     if needs_rule:
         logger.warning(f"{len(needs_rule)} label(s) fell through to the artefact default: {needs_rule}")
 
-    if args.dry_run:
-        logger.info("Dry run: nothing written.")
+    changes = write_rows(rows, package_dir=args.package, csv_path=args.csv, apply=args.apply)
+    logger.info(changes.describe())
+    if not args.apply:
+        logger.info("Nothing was written. Re-run with --apply to write it.")
         return 0
 
-    written = append_to_master(rows, args.csv, unlocked=write_guard.is_unlocked(args))
     report = write_reconciliation(decisions, args.reconciliation)
-    logger.info(f"Wrote {written} row(s) to the master CSV and the report to {report}.")
+    logger.info(f"Wrote {len(rows)} row(s) through the package and the report to {report}.")
     return 0
 
 

@@ -3,57 +3,35 @@
 
 extract_taxon_ids.py
 =====================
-Two-step pipeline that, starting from the planktonzilla taxonomy, resolves the
-external identifiers for each taxon.
+Wikidata harvest: given a taxon name, its Qcode, and from the Qcode the external identifiers other
+authorities publish for it — WoRMS (P850 -> aphia_ID), NCBI Taxonomy (P685 -> NCBI_ID) and BOLD
+Systems (P3606 -> BOLD_ID).
 
-Step 1 (Wikidata):
-    For each unique taxon (Kingdom -> Species) it looks up its Wikidata Qcode,
-    keeping the deepest rank available (Species first, and if it does not exist
-    it goes up to Kingdom).
+These functions are the network half of ``resolve_frepj_ids``, which is their only caller.
 
-Step 2 (External databases):
-    From each Qcode it queries Wikidata (wbgetentities) and extracts the IDs for
-    WoRMS (P850 -> aphia_ID), NCBI Taxonomy (P685 -> NCBI_ID) and
-    BOLD Systems (P3606 -> BOLD_ID).
-
-Input:
-    data/planktonzilla_taxonomy_v20.csv   (separator ",")
-
-Outputs (in data/):
-    taxonomy_and_wikidata.csv     -> unique taxa + wikidata_ID
-    taxonomy_wiki_and_ids.csv     -> unique taxa + wikidata_ID + aphia/NCBI/BOLD
-
-Usage:
-    python extract_taxon_ids.py
-    python extract_taxon_ids.py --limit 10        # quick test with 10 taxa
-    python extract_taxon_ids.py --input data/another_taxonomy.csv
+**The two-step CSV pipeline this module used to carry is retired** (step 6 of
+``docs/TAXONOMY_IMPLEMENTATION_PLAN.md``, open decision 12 of ``docs/TAXONOMY_REPRESENTATION.md``).
+It read ``data/planktonzilla_taxonomy_v20.csv`` — a path that has not existed for some time — and
+wrote ``taxonomy_and_wikidata.csv`` and ``taxonomy_wiki_and_ids.csv``, two intermediate tables
+nothing consumed and whose disagreement about empty string versus null was half of KI-7. The
+identifier table of the normalised taxonomy package is what they were reaching for:
+``planktonzilla/planktonzilla_dataset/taxonomy/data/identifier.tsv``, one row per
+``(concept, authority)`` with its justification and date, written through
+``taxonomy.write.add_ids`` and validated by ``pz_taxonomy check``.
 
 Requirements:
     pip install polars requests
 """
 
-import argparse
-import logging
-import os
 import time
 
 import polars as pl
 import requests
 
-from planktonzilla.planktonzilla_dataset.constants import DEFAULT_TAXONOMY_CSV_FILENAME, TAXONOMY_RANKS
+from planktonzilla.planktonzilla_dataset.constants import TAXONOMY_RANKS
 from planktonzilla.utils.logger import get_pylogger
 
 logger = get_pylogger(__name__)
-
-# ── Paths (relative to the repo, no hardcoded absolute paths) ───────────────────
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(REPO_ROOT, "data")
-INPUT_CSV = os.path.join(DATA_DIR, DEFAULT_TAXONOMY_CSV_FILENAME)
-WIKIDATA_CSV = os.path.join(DATA_DIR, "taxonomy_and_wikidata.csv")
-IDS_CSV = os.path.join(DATA_DIR, "taxonomy_wiki_and_ids.csv")
-
-# Separator for the input/output CSV (planktonzilla_taxonomy_v20 uses ",").
-SEP = ","
 
 # Taxonomy columns, from most general to most specific.
 COLS = list(TAXONOMY_RANKS)
@@ -248,70 +226,3 @@ def fetch_external_ids(taxa_wiki: pl.DataFrame, batch_size: int = 50) -> pl.Data
 
     df_ids = pl.DataFrame(results)
     return taxa_wiki.join(df_ids, on="wikidata_ID", how="left")
-
-
-# ── Orchestration ───────────────────────────────────────────────────────────────
-
-
-def load_unique_taxa(input_csv: str, limit: int | None) -> pl.DataFrame:
-    """Read the taxonomy CSV and return the unique taxonomy combinations.
-
-    Selects the taxonomy-rank columns, drops all-empty rows, lowercases the values
-    and de-duplicates.
-
-    Args:
-        input_csv: Path to the input taxonomy CSV (separator ``SEP``).
-        limit: If set, only the first ``limit`` CSV rows are considered.
-
-    Returns:
-        A DataFrame of unique, lowercased taxonomy-rank combinations.
-    """
-    df = pl.read_csv(input_csv, separator=SEP).fill_null("")
-    if limit is not None:
-        df = df[:limit]
-    return (
-        df.select(COLS)
-        .filter(pl.any_horizontal([pl.col(c) != "" for c in COLS]))
-        .with_columns([pl.col(c).str.to_lowercase() for c in COLS])
-        .unique()
-    )
-
-
-def main() -> None:
-    """Resolve Wikidata Qcodes and external IDs for each taxon and write CSVs.
-
-    CLI entry point running the two-step pipeline (both steps hit the Wikidata API):
-    Step 1 writes ``--wikidata-out`` (taxa + ``wikidata_ID``) and Step 2 writes
-    ``--ids-out`` (taxa + aphia/NCBI/BOLD), normalizing empty strings to null first.
-    """
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--input", default=INPUT_CSV, help="Input taxonomy CSV.")
-    parser.add_argument("--wikidata-out", default=WIKIDATA_CSV, help="Step 1 output (taxa + wikidata_ID).")
-    parser.add_argument("--ids-out", default=IDS_CSV, help="Final output (taxa + all the IDs).")
-    parser.add_argument("--limit", type=int, default=None, help="Process only the first N rows (test).")
-    args = parser.parse_args()
-
-    # Step 0: unique taxa.
-    taxa = load_unique_taxa(args.input, args.limit)
-    logger.info(f"{taxa.height} unique taxa to resolve.")
-
-    # Step 1: Wikidata Qcodes.
-    taxa_wiki = fetch_wikidata_ids(taxa)
-    os.makedirs(os.path.dirname(args.wikidata_out), exist_ok=True)
-    taxa_wiki.write_csv(args.wikidata_out, separator=SEP)
-    logger.info(f"Step 1 done -> {args.wikidata_out}")
-
-    # Step 2: WoRMS / NCBI / BOLD.
-    taxa_ids = fetch_external_ids(taxa_wiki)
-    # Normalize empty strings to null before saving.
-    taxa_ids = taxa_ids.with_columns(pl.when(pl.col(pl.String) == "").then(None).otherwise(pl.col(pl.String)).name.keep())
-    os.makedirs(os.path.dirname(args.ids_out), exist_ok=True)
-    taxa_ids.write_csv(args.ids_out, separator=SEP)
-    logger.info(f"Step 2 done -> {args.ids_out}")
-
-    logger.info("DONE")
-
-
-if __name__ == "__main__":
-    main()

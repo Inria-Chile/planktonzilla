@@ -16,6 +16,7 @@ by omission, a row dropped by omission, a spreadsheet boolean, a retirement with
 """
 
 import shutil
+from pathlib import Path
 
 import pyrootutils
 
@@ -421,3 +422,114 @@ def test_diff_published_is_empty_when_a_write_moved_nothing_published(package):
 
     assert changes.applied and all(change.column == "method" for change in changes.changes)
     assert not write.diff_published(package, before)
+
+
+# The builder-facing adapters
+def test_every_committed_source_round_trips_through_the_wide_row_adapter(package):
+    """The port's own gate: the shape the builders already produce, back through the new write path.
+
+    ``records_from_wide_rows`` is what makes porting a builder a small diff — their ~2,600 lines of
+    curation go on producing 19-column rows and only the write at the end changes. Feeding all 2358
+    committed rows back through it must move nothing, which is the guarantee the byte-splicing
+    writers could not offer for even one.
+    """
+    from planktonzilla.planktonzilla_dataset import constants
+    from planktonzilla.planktonzilla_dataset.taxonomy import migrate
+
+    wide = migrate.read_legacy_rows(Path(constants.DEFAULT_TAXONOMY_CSV_FILENAME))
+    assert len(wide) == COMMITTED_ROWS
+
+    changes = write.upsert_wide_rows(package, wide)
+
+    assert not changes, changes.describe(8)
+
+
+def test_the_wide_row_adapter_splits_by_the_rows_own_dataset_column(package):
+    """A builder that curates four sources writes four files. The split is a partition, not a filter."""
+    from planktonzilla.planktonzilla_dataset import constants
+    from planktonzilla.planktonzilla_dataset.taxonomy import migrate
+
+    wide = [
+        row
+        for row in migrate.read_legacy_rows(Path(constants.DEFAULT_TAXONOMY_CSV_FILENAME))
+        if row["Dataset"].startswith("tara_pacific_")
+    ]
+    others = {path: path.read_bytes() for path in (package / "mappings").glob("*.tsv") if "tara" not in path.stem}
+
+    write.upsert_wide_rows(package, wide, apply=True)
+
+    assert {path: path.read_bytes() for path in (package / "mappings").glob("*.tsv") if "tara" not in path.stem} == others
+
+
+def test_a_float_serialised_id_never_becomes_a_second_curie(package):
+    """The wide CSV stores three authorities through a float column. A CURIE is not a float.
+
+    Left alone, ``135336.0`` and ``135336`` are two ids for one concept and the renderer crashes on
+    the pair two steps later, with the survivor decided by sort order.
+    """
+    store = loader.load_taxonomy(package)
+    taxon_id = next(tid for tid, ids in store.identifiers.items() if ids.get("aphia_ID"))
+    held = store.identifiers[taxon_id]["aphia_ID"][0]
+    verbatim = next(mapping.verbatim for mapping in store.mappings.values() if mapping.taxon_id == taxon_id)
+    dataset = next(mapping.dataset for mapping in store.mappings.values() if mapping.taxon_id == taxon_id)
+
+    assert not write.add_ids(package, dataset, {verbatim: {"aphia_ID": f"{held}.0"}})
+
+
+def test_a_non_numeric_value_in_a_numeric_authority_is_refused(package):
+    """Silently dropping it is how a resolution run reports success and resolves nothing."""
+    row = read_tsv(package / "mappings" / "zoolake.tsv")[0]
+
+    with pytest.raises(TaxonomyError, match="numeric but the record gives"):
+        write.add_ids(package, "zoolake", {row["verbatimIdentification"]: {"NCBI_ID": "Q12345"}})
+
+
+def test_add_ids_refuses_a_class_directory_the_source_does_not_map(package):
+    with pytest.raises(TaxonomyError, match="does not map"):
+        write.add_ids(package, "zoolake", {"no such class dir": {"aphia_ID": "1"}})
+
+
+def test_add_ids_puts_the_identifier_on_the_concept_not_the_row(package):
+    """Two class directories mapping one concept can no longer disagree about its BOLD id.
+
+    ``frepj``'s ``Moina sp`` and ``Sp._unk`` are the same concept spelled twice, and the row-cell
+    rewriter this replaced had to be given both. 67 such pairs exist within a single source today.
+    """
+    dataset, taxon_id = "frepj", "pzt:000139"
+    sharing = [
+        row["verbatimIdentification"] for row in read_tsv(package / f"mappings/{dataset}.tsv") if row["taxonID"] == taxon_id
+    ]
+    assert len(sharing) == 2
+
+    changes = write.add_ids(package, dataset, {sharing[0]: {"BOLD_ID": "9999999"}}, apply=True)
+
+    # One identifier row, named once — not one per class directory that happens to point at it.
+    assert len(changes) == 1
+    store = loader.load_taxonomy(package)
+    for verbatim in sharing:
+        assert store.identifiers[store.mappings[(dataset, verbatim)].taxon_id]["BOLD_ID"] == ["9999999"]
+
+
+def test_a_multi_source_write_that_fails_partway_rolls_back(package):
+    """A builder that curates four sources must not leave two of them applied.
+
+    A dry run over the groups does not catch this on its own: both groups here agree with what is
+    committed and only disagree with EACH OTHER, so the conflict cannot surface until the first has
+    been written. The rollback is what makes ``upsert_wide_rows`` an all-or-nothing act.
+    """
+    from planktonzilla.planktonzilla_dataset.taxonomy.model import LEGACY_HEADER
+
+    fingerprint = {path: path.read_bytes() for path in sorted(package.rglob("*")) if path.is_file()}
+    shared = dict.fromkeys(LEGACY_HEADER, "")
+    shared.update(Kingdom="synthetica", proposed_label="synthetica", plankton="True", living="True", root_class="living")
+    wide = [
+        {**shared, "Dataset": "asource", "Raw_Labels": "a", "aphia_ID": "111111.0"},
+        # Same concept, a different aphia id. Neither row contradicts the committed table.
+        {**shared, "Dataset": "zsource", "Raw_Labels": "z", "aphia_ID": "222222.0"},
+    ]
+
+    with pytest.raises(TaxonomyError, match="already holds"):
+        write.upsert_wide_rows(package, wide, apply=True)
+
+    assert {path: path.read_bytes() for path in sorted(package.rglob("*")) if path.is_file()} == fingerprint
+    assert not (package / "mappings" / "asource.tsv").exists(), "the first source's file survived the rollback"

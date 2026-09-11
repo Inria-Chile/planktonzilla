@@ -131,6 +131,28 @@ UNSPECIFIED_MATCHING = "semapv:UnspecifiedMatching"
 # "the source gave no lineage" and "the lineage is empty", which a reader cannot otherwise tell.
 BUCKET_REMARK = "no lineage in the source table; sub-classification is a curation act"
 
+# What a concept finer than any legacy rank records about itself — 12 such nodes exist today
+# (`brachyura` under `order=decapoda`). Shared so the migration and the write API mint the same
+# bytes for the same node.
+FINER_REMARK = "finer than its deepest legacy rank; true rank unassigned"
+
+
+def lineage_of(row) -> tuple:
+    """A wide row's rank path as ``((rank, name), ...)`` — the inverse of ``render.project7``.
+
+    Lowercase ranks, blank cells dropped. Species carry the binomial rather than the epithet the
+    legacy column holds: the epithet alone is not a node identity, since 19 of them occur under
+    more than one genus.
+    """
+    path = []
+    for rank in LEGACY_RANKS:
+        value = row[rank]
+        if not value:
+            continue
+        name = f"{row['Genus']} {value}" if rank == "Species" and row["Genus"] else value
+        path.append((rank.lower(), name))
+    return tuple(path)
+
 
 def collation_key(label: str) -> str:
     """The sort key the frozen prefix obeys: case-folded, hyphens ignored.
