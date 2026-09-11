@@ -255,6 +255,43 @@ site and column expression — its only edit is the loader block becoming a dele
 *Gate:* the full CI suite, unchanged, plus the Stage 1 gates. The wide CSV stays committed with a staleness
 test. **No published bytes move in this PR**, which is the property that makes it revertable.
 
+**PR 5.5 — Per-source coverage, generalised (≈2 d).** Every source gets the guarantee FREPJ has: a frozen
+list of the class directories the source actually contains, and a test that every one of them has a mapping
+row. Today **two of twenty-one sources have this** — `frepj` (229 rows) and `daplankton` (44) — and the gap is
+not cosmetic. A class directory with no mapping row yields sixteen `None`s for every image of that class and
+nothing raises; `check_taxonomy_csv` only warns when a source has *no* rows at all, so a source missing twenty
+class dirs passes clean. The 15 sources in the published artifact — 1,485 rows, **63 % of the table** — are all
+in that state.
+
+What is NOT adopted is FREPJ's mechanism. Its taxonomy half is 1,709 lines (`build_frepj_taxonomy.py` 667,
+`resolve_frepj_ids.py` 1,042) of source-specific curation, and Tara Pacific's is another 1,019 written to a
+different design. Cloning that per source is how the repository got three precedents with three different
+methods; a fourth would be a fourth dialect with its own bugs, and `write_csv` destroying 644 rows is precisely
+a bespoke-builder bug. Those builders are also the *write* path that PR 6 replaces. FREPJ's rule tables exist
+because FREPJ labels have a grammar (`Ge._unk` sentinels, comma-separated five-field paths); most sources have
+flat irregular labels with nothing for a rule table to key on, so the same builder there is hand-curation with
+extra ceremony.
+
+So: one generic coverage test parameterised over whatever frozen lists exist, not eighteen builders.
+
+The constraint that sets the order is **evidence**. A frozen class-dir list is worth having only if it is
+independent of the CSV; deriving one from the CSV asserts the table against itself. Three sources already have
+independent evidence — `tests/fixtures/frepj/frepj_class_dirs.tsv` (229, an archive scan with per-magnification
+counts), `tests/fixtures/daplankton/daplankton_class_dirs.tsv` (44), and
+`planktonzilla/dataset_import/tara_pacific_classes.tsv` (600, an EcoTaxa export). That is 873 rows, 37 %. The
+other 15 sources have none, and `samples.json` does not supply it: it records `(dataset, proposed_label,
+root_class, n)` — the *harmonised* label, not the raw class directory.
+
+Hence two halves, and only the first is code:
+
+- **5.5a** the generic coverage test over the three sources whose evidence exists, replacing the two bespoke
+  coverage modules with one parameterised over the fixtures;
+- **5.5b** a one-time scan of `original_label` in the published artifact to mint frozen class-dir lists for the
+  15 v1.0 sources. A network job, not a code job, and the unlock for the other 63 %.
+
+*Gate:* the generic test is red when a class dir in any frozen list has no mapping row — verified by deleting a
+row, not asserted.
+
 ### Stage 3 — Write side and the long tail
 
 **PR 6 — Write API and CLI (≈5 d, the risky step).** `write.py` and `pz_taxonomy`: `upsert-source`,
@@ -267,7 +304,14 @@ committed block" test on records rather than bytes, and add the end-to-end test 
 This is the step to schedule alone; it is where the panel's estimates were judged floors, and where the guard
 flag from PR 0.2 finally comes off because the write path is no longer byte-splicing.
 
-**PR 7 — Provenance and waivers as data (≈2 d).** Backfill `method` / `donor` for the 600 Tara Pacific and 229
+**PR 7 — Provenance and waivers as data (≈2 d).** This is where FREPJ's and Tara Pacific's reconciliation
+reports stop being prose and become columns. Provenance for *why a row says what it says* exists for 229 of
+2,358 rows today, inside a Markdown file, plus 95 of the 600 rows Tara Pacific computes and writes out; for the
+remaining 63 % nobody can answer the question at all. The `method` / `donor` / `identifiedBy` / `dateIdentified`
+columns are already on every mapping row and already empty, so this step needs no new external input and no new
+schema — which is why it is the cheapest half of generalising the FREPJ process and should not wait on 5.5b.
+
+Backfill `method` / `donor` for the 600 Tara Pacific and 229
 FREPJ decisions from the existing Markdown reports; move the seven `RANK_DEPARTURES` prose entries
 (`build_tara_pacific_taxonomy.py:373-421`) onto the rows they explain; seed `broadMatch` rows from the
 authority findings; derive the Markdown reports **from** the ledger instead of string-concatenating them.
@@ -302,6 +346,7 @@ shows exactly the published rows that move.
 | R6 | Declared constraints that the named tool does not enforce | polars module re-implements all four; each gets a failing fixture | PR 3 |
 | R7 | Concurrent add-source PRs conflict | `merge=union` + duplicate-id rule + per-source descriptor fragments; manual-resolution case documented | PR 4 |
 | R8 | Pin layer freezes the concept but not the mapping, so a curator cannot land a KI-10 fix | three nullable `root_class` / `qualifier` / `plankton` columns on the mapping pin | PR 1 |
+| R11 | A class directory with no mapping row publishes sixteen nulls per image, silently | a frozen class-dir list and a coverage test per source; only 2 of 21 have one today | PR 5.5 |
 | R9 | Adding a source needs edits outside the taxonomy directory | `validate_license_coverage` raises without a `DATASET_LICENSES` entry (`constants.py:212-228`); the runbook says so | PR 9 |
 | R10 | ~~Frictionless in the dev group drifts~~ — **retired**: no Frictionless dependency was added | the descriptor is stdlib-parsed and executed directly; nothing to pin | PR 3 |
 
@@ -336,8 +381,12 @@ onto the loader is simply part of PR 5.
 | 0 Protect the contract | 0.1, 0.2 | 1 |
 | 1 Build the store | 1, 2 | 6 |
 | 2 Enforce and switch readers | 3, 4, 5 | 6 |
+| 2 Per-source coverage | 5.5a | 2 |
 | 3 Write side and tail | 6, 7, 8, 9 | 11.5 |
-| | | **24.5** |
+| | | **26.5** |
+
+5.5b (the `original_label` scan for the 15 published sources) is deliberately not costed here: it is a network
+job against the Hub artefact, not engineering time, and it gates nothing else.
 
 Against the report's 20.5 listed days: Stage 0 is new (+1), PR 1 absorbs the refuters' finding that the
 migration is new code rather than a port (+1), and PR 4 separates concurrency work the report folded into other
