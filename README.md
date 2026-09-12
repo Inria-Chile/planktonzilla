@@ -24,7 +24,7 @@ Multimodal deep learning framework, datasets, and models for plankton identifica
 
 ## Online Resources
 
-- `planktonzilla-17M` dataset: 17.4 million plankton images drawn from 15 source datasets (two more are in the build registry, awaiting their first publication), all standardized and preprocessed for deep learning applications: [`project-oceania/planktonzilla-17M`](https://huggingface.co/datasets/project-oceania/planktonzilla-17m). To explore how those source labels map onto one taxonomy, build the Sankey locally with [`pz_sankey`](#explore-the-label-space-sankey).
+- `planktonzilla-17M` dataset: 17.4 million plankton images drawn from 15 source datasets (six more are in the build registry, awaiting their first publication), all standardized and preprocessed for deep learning applications: [`project-oceania/planktonzilla-17M`](https://huggingface.co/datasets/project-oceania/planktonzilla-17m). To explore how those source labels map onto one taxonomy, build the Sankey locally with [`pz_sankey`](#explore-the-label-space-sankey).
 - Models trained on [`project-oceania/planktonzilla-17M`](https://huggingface.co/datasets/project-oceania/planktonzilla-17m):
   - [`project-oceania/CLIP-ViT-B-16.openai-pt.planktonzilla-pt`](https://huggingface.co/project-oceania/CLIP-ViT-B-16.openai-pt.planktonzilla-pt)
   - [`project-oceania/CLIP-ViT-B-16.bioclip-pt.planktonzilla-pt`](https://huggingface.co/project-oceania/CLIP-ViT-B-16.bioclip-pt.planktonzilla-pt)
@@ -165,12 +165,18 @@ to activate it manually. If you prefer an activated shell, run
 
 ```bash
 # Import ISIISNET dataset
-uv run pz_import_dataset dataset_import=isiisnet
+uv run pz_import_dataset dataset_import=isiisnet action=import
 
 # Import other available datasets
-uv run pz_import_dataset dataset_import=flowcamnet
-uv run pz_import_dataset dataset_import=lensless
+uv run pz_import_dataset dataset_import=flowcamnet action=import
+uv run pz_import_dataset dataset_import=lensless action=import
+
+# Without action=import you get the default, which only PRINTS what the source is
+uv run pz_import_dataset dataset_import=isiisnet
 ```
+
+`action` defaults to `show` (`configs/import_dataset.yaml`), so `action=import` is what actually
+imports; the other value is `update-metadata`.
 
 Every importable source has a config in `configs/dataset_import/` — pass its filename (without
 the `.yaml`) as `dataset_import=`.
@@ -340,7 +346,8 @@ to republish the taxonomy too.
 
 The same holds for `custom_metadata` (added for v1.2): one JSON object per image holding what
 only its source knows and no consolidated column covers — FREPJ's `magnification` and raw `site`
-token; the literal `{}` for every other source. A base that predates the column is
+token, and the four Tara Pacific sources' `ecotaxa_project` and `orig_id`; the literal `{}` for
+every other source. A base that predates the column is
 filled with `{}` on its next `pz_planktonzilla base=…` run (logged loudly), so that run too
 belongs on a new `push_revision`, not over the frozen one.
 
@@ -432,7 +439,7 @@ uv run pz_train
 uv run pz_train dataset=isiisnet model=resnet18
 
 # Use specialized loss for imbalanced data
-uv run pz_train dataset=isiisnet model=resnet50 custom_loss=focal
+uv run pz_train dataset=isiisnet model=resnet18 custom_loss=focal
 
 # Override training parameters
 uv run pz_train dataset=isiisnet model=resnet18 training_arguments.num_train_epochs=10 training_arguments.learning_rate=1e-4
@@ -443,14 +450,14 @@ uv run pz_train dataset=isiisnet model=resnet18 training_arguments.num_train_epo
 Planktonzilla uses Hydra for hierarchical configuration management. You can override any configuration parameter:
 
 ```bash
-# Use different model architecture
-uv run pz_train model=efficientnet
+# Use different model architecture (see configs/model/ for the full list)
+uv run pz_train model=vit-base
 
 # Apply different augmentation strategy
 uv run pz_train augmentation=autoaugment
 
 # Combine multiple overrides
-uv run pz_train dataset=isiisnet model=resnet50 custom_loss=ldam training_arguments.learning_rate=1e-4
+uv run pz_train dataset=isiisnet model=beit-base custom_loss=ldam training_arguments.learning_rate=1e-4
 ```
 
 ### Architecture
@@ -539,7 +546,7 @@ enters with the v1.2 release; until then published on its own as
 | **SYKE IFCB 2022** | `syke_ifcb_2022` | 63,074 | Finnish Environment Institute, Imaging FlowCytobot | `cc-by-4.0` |
 | **PlanktonSet 1.0** | `planktonset1.0` | 60,736 | NOAA/Kaggle PlanktonSet | `other` ⚠️ |
 | **SYKE ZooScan 2024** | `sykezooscan2024` | 22,753 | Finnish Environment Institute, ZooScan | `cc-by-4.0` |
-| **ZooLake** | `zoolake` | 17,942 | Lake Greifensee (Switzerland) zooplankton | `cc-by-4.0` |
+| **ZooLake** | `zoolake` | 17,942 | Lake Greifensee (Switzerland) zooplankton | `cc0-1.0` |
 | **Lensless** | `lensless` | 6,400 | Lensless plankton microscopy (lab culture) | `cc-by-4.0` |
 | **FREPJ-Z** (v1.2) | `frepj` | 88,686 | Freshwater zooplankton of Japanese lakes and reservoirs, 40×/100× microscopy — registry only, not in the published 17M yet | `cc-by-4.0` |
 | **DAPlankton** | `daplankton` | 111,924 | Multi-instrument benchmark: 15 cultured classes imaged by IFCB, CytoSense and FlowCam, plus 31 Baltic field classes by IFCB and CytoSense — registry only, not in the published 17M yet | `cc-by-4.0` |
@@ -610,7 +617,7 @@ three layers: each image keeps its **source collection's** licence with no aggre
 planktonzilla contributions (harmonised taxonomy, derived metadata, splits, docs, scripts) are
 **CC BY 4.0**; and the compilation itself, including any sui generis database right, is **CC0 1.0**.
 
-`planktonzilla-17M` aggregates sources under **five different sets of terms**, so no single license
+`planktonzilla-17M` aggregates sources under **six different sets of terms**, so no single license
 can lawfully cover it — it holds both share-alike and non-commercial material, and those conditions
 are mutually incompatible. Every image therefore carries its source's terms in two columns —
 `license` (the slug, verbatim from that source's importer config) and `license_url` (where those
@@ -694,7 +701,10 @@ uv run pytest --cov=planktonzilla
 uv run pytest tests/test_datasets.py
 ```
 
-All tests mock the network: no run reaches NCBI, Wikidata, WHOI, EcoTaxa or the Hugging Face Hub.
+Everything CI runs mocks the network: no run reaches NCBI, Wikidata, WHOI, EcoTaxa or the
+Hugging Face Hub. The two suites CI excludes are the exception — `tests/test_datasets.py` issues
+live requests to `huggingface.co` and `datasets-server.huggingface.co`, and both it and
+`tests/test_train.py` are excluded for being network-bound and slow (~7 min), not for being broken.
 
 #### Code Quality
 

@@ -149,6 +149,40 @@ def build_only_plankton(ds: Dataset, num_proc: int = 1, vocabulary: str | None =
     return ds
 
 
+def _splittable_size(requested: int, available: int) -> int | None:
+    """Clamp ``requested`` into a size ``train_test_split`` can actually produce.
+
+    Both sides have to be non-empty, so the size must land in ``[1, available - 1]``. On
+    the real corpus every requested size already does and this returns it unchanged — it
+    is the small per-source classes that produced 0, or the whole block, and turned into a
+    ``ValueError`` that the unstratified retry could not fix, because that retry changes
+    the stratification and not the size.
+
+    ``None`` means the block cannot be split at all (fewer than two rows), which is a
+    decision for the caller rather than an exception at the bottom of a multi-hour build.
+    """
+    if available < 2:
+        return None
+    return max(1, min(requested, available - 1))
+
+
+def _split_off(dataset, size: int, *, seed: int, what: str, dname: str):
+    """Split ``size`` rows off ``dataset``, stratified when that is possible.
+
+    The fallback drops ONLY the stratification, which is the one cause it can address —
+    so it says so, rather than reporting "falling back to unstratified" over a failure
+    that had nothing to do with stratification and that the retry will hit again.
+    """
+    try:
+        return dataset.train_test_split(test_size=size, shuffle=True, seed=seed, stratify_by_column="label")
+    except ValueError as e:
+        logger.warning(
+            f"Stratified {what} split failed for dataset {dname!r} at test_size={size} of {len(dataset)}; "
+            f"retrying WITHOUT stratification, which helps only if a rare label was the cause: {e}"
+        )
+        return dataset.train_test_split(test_size=size, shuffle=True, seed=seed)
+
+
 def stratified_split_by_dataset(
     ds: Dataset,
     num_proc: int,
@@ -199,50 +233,44 @@ def stratified_split_by_dataset(
 
         n = len(ds_remaining)
 
+        # Both cuts express their size as a fraction of n, the pre-split total, which is
+        # what makes the second one land correctly: the reserved block IS (test+val)*n,
+        # so val_frac*n of it is exactly the intended validation share.
+        reserved = _splittable_size(int(n * (test_frac + val_frac)), n)
+        if reserved is None:
+            logger.warning(
+                f"Dataset {dname!r} has {n} non-minority example(s), too few to reserve a val/test block "
+                f"at test_frac={test_frac} + val_frac={val_frac}. All of it goes to train."
+            )
+            train_splits.append(ds_sub)
+            continue
+
         # First cut: train against the block reserved for val + test.
-        try:
-            splits = ds_remaining.train_test_split(
-                test_size=int(n * (test_frac + val_frac)),
-                shuffle=True,
-                seed=seed,
-                stratify_by_column="label",
-            )
-        except ValueError as e:
-            logger.warning(f"Stratified train/val-test split failed for dataset {dname!r}, falling back to unstratified: {e}")
-            splits = ds_remaining.train_test_split(
-                test_size=int(n * (test_frac + val_frac)),
-                shuffle=True,
-                seed=seed,
-            )
+        splits = _split_off(ds_remaining, reserved, seed=seed, what="train/val-test", dname=dname)
 
         train_split = splits["train"]
         val_test_split = splits["test"]
 
         # Second cut: we separate val and test inside the reserved block.
-        try:
-            splits = val_test_split.train_test_split(
-                test_size=int(n * val_frac),
-                shuffle=True,
-                seed=seed,
-                stratify_by_column="label",
+        wanted = _splittable_size(int(n * val_frac), len(val_test_split))
+        if wanted is None:
+            logger.warning(
+                f"Dataset {dname!r} reserved {len(val_test_split)} example(s), too few to divide into val and "
+                f"test. The whole reserved block becomes the test split."
             )
-        except ValueError as e:
-            logger.warning(f"Stratified val/test split failed for dataset {dname!r}, falling back to unstratified: {e}")
-            splits = val_test_split.train_test_split(
-                test_size=int(n * val_frac),
-                shuffle=True,
-                seed=seed,
-            )
-
-        test_split = splits["train"]
-        val_split = splits["test"]
+            test_split, val_split = val_test_split, None
+        else:
+            splits = _split_off(val_test_split, wanted, seed=seed, what="val/test", dname=dname)
+            test_split = splits["train"]
+            val_split = splits["test"]
 
         # Add the reserved minority classes to train.
         if ds_minority is not None:
             train_split = concatenate_datasets([train_split, ds_minority])
 
         train_splits.append(train_split)
-        val_splits.append(val_split)
+        if val_split is not None:
+            val_splits.append(val_split)
         test_splits.append(test_split)
 
     train_ds = concatenate_datasets(train_splits)

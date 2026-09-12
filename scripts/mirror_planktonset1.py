@@ -106,11 +106,29 @@ def _listdir(ftp, path):
         if len(parts) < 9:
             continue
         name = parts[8]
+        # Every name here comes from the SERVER and is used unmodified as a local path
+        # component: `out_root / klass / name`. `Path('/out') / '/etc/x'` is `/etc/x`, and
+        # `..` walks out of the mirror just as freely, so a hostile or broken listing could
+        # write anywhere the process can. Rejected at the parse, which is the one place
+        # both the survey and the download worker read these names from.
+        if not _is_safe_name(name):
+            print(f"  skipping unsafe name from the server listing: {name!r}", flush=True)
+            continue
         if line.startswith("d"):
             dirs.append(name)
         else:
             files[name] = int(parts[4])
     return dirs, files
+
+
+def _is_safe_name(name):
+    """Whether a server-supplied name may be used as ONE local path component.
+
+    Not a sanitiser: a name that is not already safe is dropped rather than rewritten,
+    because a mirror that quietly renames what upstream published is worse than a mirror
+    that is one file short and says so.
+    """
+    return bool(name) and name not in (".", "..") and "/" not in name and "\\" not in name
 
 
 def _survey(destination):

@@ -264,3 +264,32 @@ def test_no_builder_writes_without_apply_on_its_cli(module):
 
     assert "--apply" in help_text
     assert "--i-know-this-rewrites-the-csv" not in help_text, "the retired step-0.2 flag is still advertised"
+
+
+def test_a_frepj_rerun_does_not_blank_the_external_ids_it_never_carried(workspace):
+    """Finding #22, the second defect in the same writer: a re-run blanked 208 rows' ids.
+
+    ``Parsed.as_csv_row`` hardcodes the four external-ID columns to ``""`` — by design, since
+    the builder derives lineage and never resolves identifiers — and the byte-range writer
+    spliced those blanks straight over the values ``resolve_frepj_ids`` had backfilled. No
+    cross-source guard could see it: blanking frepj's own rows is inside frepj's ownership.
+
+    The rows here come from the REAL builder rather than from the committed CSV, so the blanks
+    are the ones the defect rode in on.
+    """
+    package, csv_path = workspace
+    _parsed, rebuilt = frepj_builder.build_rows(frepj_builder.DEFAULT_CLASS_DIRS_TSV, csv_path)
+
+    id_columns = ("wikidata_ID", "aphia_ID", "NCBI_ID", "BOLD_ID")
+    assert all(row[column] == "" for row in rebuilt for column in id_columns), (
+        "the fixture proves nothing unless the re-derived rows really do carry blank ids"
+    )
+    committed = [row for row in _rows(csv_path.read_text(encoding="utf-8")) if row["Dataset"] == "frepj"]
+    carrying = [row for row in committed if any(row[column] for column in id_columns)]
+    assert len(carrying) == 208, f"expected the 208 backfilled rows, found {len(carrying)}"
+
+    before = csv_path.read_bytes()
+    changes = frepj_builder.write_rows(rebuilt, package_dir=package, csv_path=csv_path, apply=True)
+
+    assert not changes, changes.describe(5)
+    assert csv_path.read_bytes() == before, "a blank cell erased a committed identifier"

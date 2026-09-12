@@ -9,4 +9,4 @@ mem_gb: 4
 nodes: 1
 name: ${hydra.job.name}
 setup:
-    - echo === Running job with parameters «${train_params}» in local testing mode ===
+    - echo === Running job «${hydra.job.name}» with overrides «${hydra.job.override_dirname}» in local testing mode ===

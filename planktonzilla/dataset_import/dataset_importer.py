@@ -23,6 +23,7 @@ import os
 import re
 import shutil
 import stat
+import threading
 import time
 import zlib
 from dataclasses import dataclass
@@ -222,6 +223,35 @@ def cleanup_imagefolder_empty_dirs(imagefolder_dir: Path) -> None:
 # (as is_valid_image_file does) would be far too slow. Readability is checked later,
 # behind check_image_file_integrity.
 IMAGE_SUFFIXES: Final = frozenset({".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".gif", ".ppm", ".webp"})
+
+#: Written into an imagefolder while it is being prepared and removed when preparation
+#: finishes. Its PRESENCE is the signal: an imagefolder that predates this marker has
+#: none and still reads as complete, so nothing already on disk is re-imported, while a
+#: preparation killed part-way leaves one behind and is rebuilt instead of published as
+#: a fragment. A dotfile, so the ``imagefolder`` loader ignores it.
+IMPORT_IN_PROGRESS_MARKER: Final = ".import-in-progress"
+
+
+def _fail_on_copy_errors(importer, failures) -> None:
+    """Raise if any image could not be copied into the imagefolder.
+
+    Every caller copies release by release and deletes each consumed release as it goes,
+    so a dropped image is not recoverable from disk — and the imagefolder that results is
+    short by exactly the images nobody was told about. Raising leaves
+    ``IMPORT_IN_PROGRESS_MARKER`` in place, so the next run rebuilds rather than reusing
+    the fragment; the copies that DID succeed are kept and skipped on that rerun.
+    """
+    if not failures:
+        return
+
+    shown = "; ".join(f"{path}: {error}" for path, error in failures[:5])
+    more = f" (+{len(failures) - 5} more)" if len(failures) > 5 else ""
+    raise RuntimeError(
+        f"«{importer.human_readable_name or importer.hf_dataset_name}»: {len(failures)} image(s) could not be "
+        f"copied into {importer.imagefolder_dir}, so the imagefolder is short by that many. First failures: "
+        f"{shown}{more}. Re-run to resume — images already copied are skipped."
+    )
+
 
 # Depth cap for find_class_root, counted from the extraction root. Every bundled source
 # nests its class folders at most 4 levels down — the deepest measured is SYKE ZooScan
@@ -816,6 +846,12 @@ def is_valid_image_file(image_filename):
         return True
     except (IOError, SyntaxError):
         return False
+    except Image.DecompressionBombError:
+        # Derives straight from Exception, so it escaped the tuple above and crashed the
+        # integrity walk mid-source. A file PIL refuses to decode is exactly what this
+        # function exists to report, so it is an answer here, not an error.
+        logger.warning(f"{image_filename} exceeds PIL's decompression-bomb limit; treating it as unreadable.")
+        return False
 
 
 @dataclass
@@ -996,6 +1032,23 @@ class DatasetImporter:
             declared = [declared]
         return [Path(path) for path in declared]
 
+    def manual_download_extract_argument(self):
+        """The manual archives in the shape ``DownloadManager.extract`` needs.
+
+        A plain ``list``, never the raw config value. ``datasets.map_nested`` dispatches on
+        ``isinstance(data_struct, list)``, and omegaconf's ``ListConfig`` is not a ``list``
+        subclass — so a multi-file declaration reached ``extract()`` as a SCALAR, was
+        stringified to ``"['a.zip', 'b.zip']"``, and was looked up as one relative path.
+
+        Arity is preserved on purpose: a declaration that is a single string still extracts
+        to a single scalar, because importers disagree about whether ``extracted_dirs`` is
+        one path (JEDI indexes into it) or a list of them (WHOI iterates it).
+        """
+        resolved = [str(path) for path in self.manual_download_paths()]
+        if isinstance(self.manual_download_local_file_names, (str, Path)):
+            return resolved[0]
+        return resolved
+
     def missing_manual_downloads(self) -> list[Path]:
         """Declared manual archives that are not on disk yet.
 
@@ -1088,6 +1141,17 @@ class DatasetImporter:
         no data!" on every later run. Any REAL imagefolder answers this from its first
         class folder's first entry, so the strengthening is free for them.
         """
+        if (self.imagefolder_dir / IMPORT_IN_PROGRESS_MARKER).is_file():
+            # A preparation that started and did not finish. WHOI and JEDI copy release
+            # by release and `rmtree` each one as they go, so a run killed at release 4
+            # of 9 leaves a NON-EMPTY imagefolder holding four ninths of the source —
+            # and, before this marker, every later run reported it complete and spliced
+            # that fraction into the published corpus.
+            logger.warning(
+                f"{self.imagefolder_dir} carries {IMPORT_IN_PROGRESS_MARKER}: a previous preparation did not "
+                f"finish, so what is there is a fragment. It will be rebuilt rather than reused."
+            )
+            return False
         if is_dir_empty(self.imagefolder_dir):
             return False
         return any(path.is_file() for path in self.imagefolder_dir.rglob("*"))
@@ -1398,7 +1462,7 @@ class DatasetImporter:
                 raise FileNotFoundError(self.manual_download_instructions())
 
             logger.info(f"Using manually downloaded file {self.manual_download_local_file_names}.")
-            downloaded_paths = self.manual_download_local_file_names
+            downloaded_paths = self.manual_download_extract_argument()
         else:
             if not self.download_uris:
                 raise ValueError(
@@ -1600,6 +1664,8 @@ class DatasetImporter:
             # source, a from-scratch build raised FileNotFoundError here before copying
             # a single file.
             self.imagefolder_dir.mkdir(parents=True, exist_ok=True)
+            # Before the hook, not after: the point is to survive a kill -9 mid-copy.
+            (self.imagefolder_dir / IMPORT_IN_PROGRESS_MARKER).touch()
             self._prepare_imagefolder()
 
             # A hook that produced no IMAGES must fail here, loudly, naming itself.
@@ -1634,6 +1700,11 @@ class DatasetImporter:
                     f"and prefer locating the class folders (find_class_root, or an rglob for the image files) "
                     f"over a hard-coded subpath."
                 )
+
+            # Preparation finished AND produced images: the imagefolder is whole, so the
+            # marker comes off and later runs may reuse it. Cleared before the integrity
+            # walk below, which would otherwise see a dotfile that is not an image.
+            (self.imagefolder_dir / IMPORT_IN_PROGRESS_MARKER).unlink(missing_ok=True)
 
         else:
             logger.info(
@@ -1826,6 +1897,7 @@ class WHOIPlanktonDatasetImporter(DatasetImporter):
     """
 
     def _prepare_imagefolder(self):
+        failures: list[tuple[Path, OSError]] = []
         for release_folder in tqdm(
             self.extracted_dirs,
             desc="ImageFolder move progress",
@@ -1845,9 +1917,17 @@ class WHOIPlanktonDatasetImporter(DatasetImporter):
                 for img_file in folder.glob("*.png"):
                     try:
                         copy2(folder / img_file, self.imagefolder_dir / folder.name)
-                    except OSError:
-                        logger.debug(f"File {folder / img_file} already in {self.imagefolder_dir / folder.name}.")
+                    except OSError as e:
+                        # NOT "already in": copy2 overwrites silently, so the cause this
+                        # once named cannot occur. What it swallowed at DEBUG was
+                        # ENOSPC/EACCES/EIO/EMFILE — every one of which drops an image
+                        # from a source that then reports itself complete.
+                        failures.append((folder / img_file, e))
+            # The release directory is deleted as we go, so a failure here is not
+            # recoverable from disk on the next run — it has to be re-downloaded.
             rmtree(self.raw_dir / release_folder, ignore_errors=True)
+
+        _fail_on_copy_errors(self, failures)
 
 
 class JEDISystemsOceansCPICSDatasetImporter(DatasetImporter):
@@ -1860,27 +1940,39 @@ class JEDISystemsOceansCPICSDatasetImporter(DatasetImporter):
     """
 
     def _prepare_imagefolder(self) -> None:
+        # This method consumes its own inputs — it unlinks each nested zip after
+        # extracting it and rmtree's each release directory after moving it — all inside
+        # the extraction tree under raw_dir. So an interrupted run leaves a payload
+        # directory that still EXISTS and is empty, and the globs below then match
+        # nothing, copy nothing, and hand up an empty imagefolder whose only error names
+        # a layout problem that is not the real one.
+        payload = Path(self.extracted_dirs) / "CPICS_Validated"
+        if not payload.is_dir() or not any(payload.iterdir()):
+            raise RuntimeError(
+                f"«{self.human_readable_name or self.hf_dataset_name}»: {payload} is missing or empty, so there is "
+                f"nothing to prepare. This preparation deletes the nested zips and release directories as it "
+                f"consumes them, so an interrupted run leaves exactly this state and the extracted tree cannot be "
+                f"reused. Re-extract with dataset_import.force_download=true."
+            )
+
         for zip_file in tqdm(
-            sorted((Path(self.extracted_dirs) / "CPICS_Validated").glob("*.zip")),
+            sorted(payload.glob("*.zip")),
             desc="Unzip progress",
             leave=False,
             disable=not self.show_progress,
         ):
-            unzip(
-                zip_file,
-                Path(self.extracted_dirs) / "CPICS_Validated",
-                show_progress=self.show_progress,
-            )
+            unzip(zip_file, payload, show_progress=self.show_progress)
 
             # nested zip files are an intermedite results, we delete them to save space
             Path(zip_file).unlink()
 
         # fixing file permissions issue in nested zips
-        for file in (Path(self.extracted_dirs) / "CPICS_Validated").glob("*"):
+        for file in payload.glob("*"):
             file.chmod(stat.S_IRUSR | stat.S_IXUSR | stat.S_IWUSR)  # owner read/write/excecute
 
+        failures: list[tuple[Path, OSError]] = []
         for release_dir in tqdm(
-            sorted([item for item in (Path(self.extracted_dirs) / "CPICS_Validated").glob("*") if item.is_dir()]),
+            sorted([item for item in payload.glob("*") if item.is_dir()]),
             desc="ImageFolder preparation",
             leave=False,
             position=0,
@@ -1900,9 +1992,14 @@ class JEDISystemsOceansCPICSDatasetImporter(DatasetImporter):
                             class_folder / img_file,
                             self.imagefolder_dir / class_folder.name,
                         )
-                    except OSError:
-                        logger.debug(f"File {class_folder / img_file} already in {self.imagefolder_dir / class_folder.name}.")
+                    except OSError as e:
+                        # See the WHOI note: `move` does not fail because the destination
+                        # exists either, so this named a cause that cannot occur while
+                        # hiding the ones that can.
+                        failures.append((class_folder / img_file, e))
             rmtree(release_dir, ignore_errors=True)
+
+        _fail_on_copy_errors(self, failures)
 
 
 class UVP6NetDatasetImporter(DatasetImporter):
@@ -2082,20 +2179,35 @@ class GlobalUVP5NetDatasetImporter(DatasetImporter):
                 copy_tasks.append((entry.path, dst))
 
         # --- MultiThread ---
+        failures: list[tuple[Path, OSError]] = []
+        failures_lock = threading.Lock()
+
         def copy_worker(task):
+            """Copy one image, reporting whether it is now on disk.
+
+            The verdict is the point: this used to return ``None`` for a successful copy,
+            a skipped one and a failed one alike, and nothing reconciled the results
+            against ``len(copy_tasks)``. A partial 7.4 M-image copy then passed the only
+            downstream gate there was — a non-empty imagefolder.
+            """
             src, dst = task
-            if not dst.exists():
-                try:
-                    copy2(src, dst)
-                except OSError as e:
-                    logger.warning(f"Failed to copy {src}: {e}")
+            if dst.exists():
+                return True
+            try:
+                copy2(src, dst)
+                return True
+            except OSError as e:
+                logger.warning(f"Failed to copy {src}: {e}")
+                with failures_lock:
+                    failures.append((Path(src), e))
+                return False
 
         if copy_tasks:
             max_threads = min(16, self.num_proc)
             logger.info(f"Starting multi-threaded copy with {max_threads} workers...")
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
-                list(
+                copied = sum(
                     tqdm(
                         executor.map(copy_worker, copy_tasks),
                         total=len(copy_tasks),
@@ -2104,6 +2216,9 @@ class GlobalUVP5NetDatasetImporter(DatasetImporter):
                         leave=False,
                     )
                 )
+
+            logger.info(f"Copied or already present: {copied}/{len(copy_tasks)} image(s).")
+            _fail_on_copy_errors(self, failures)
         else:
             logger.info("No new images to copy.")
 

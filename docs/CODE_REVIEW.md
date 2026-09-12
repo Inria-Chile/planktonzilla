@@ -56,9 +56,10 @@ that refuses the write (the writer itself is unrepaired; see below).
 | Test split read on every run | **fixed** — not a review finding; found later | `train.py:285` (`eval_test`) · `7a7b709` |
 | 1.7 guard compares only `Kingdom` | **fixed** | all 7 ranks; `RANK_DEPARTURES` in `build_tara_pacific_taxonomy.py`, `tests/test_tara_pacific_taxonomy.py` |
 | `Raw_Labels` → one taxon never checked | **fixed** — not a review finding; the gap 1.6 sits in | `utils/verify_label_consistency.py` (KI-31) |
-| 1.1 `write_csv` destroys 644 rows | **contained, not repaired** — the loss is refused, the writer still mis-renders | `utils/taxonomy_write_guard.py`, `tests/test_taxonomy_write_guard.py` |
-| 1.2, 1.3, 1.6, 1.9 | **open** | 1.6 re-verified against `main` `e4ebdd4` — still live; its root cause is now recorded (see 1.7) |
-| Tier 2 (17 entries), Tier 3 (11 entries) | **open** | — |
+| 1.1 `write_csv` destroys 644 rows | **fixed** — see *Second remediation pass* below | the byte-splicing writers are gone |
+| 1.2, 1.3, 1.9 | **fixed** — see *Second remediation pass* below | — |
+| 1.6 | **open** | re-verified against `main` `e4ebdd4` — still live; its root cause is now recorded (see 1.7). Data-side: correcting it changes a published lineage, so it is gated on the golden diff |
+| Tier 2 (17 entries), Tier 3 (11 entries) | **fixed** — see *Second remediation pass* below | — |
 
 So, of the ten Tier 1 findings: **4 closed** (1.4, 1.7, 1.8, 1.10), **1 re-diagnosed and left open on
 purpose** (1.5), **5 untouched** — plus contested #72 closed alongside them. The closed ones are those that made a
@@ -67,6 +68,32 @@ corruption, the data-directory deletion, or the published mislabels.
 
 These commits also fixed five defects this review **did not find** — see
 [What the review missed](#what-the-review-missed).
+
+### Second remediation pass
+
+A later pass closed everything that could be closed **without changing a published byte**: all of
+Tier 2 and Tier 3, three of the five remaining Tier 1 findings, and finding #22.
+
+| Finding | What changed |
+| --- | --- |
+| **1.1** `write_csv` destroys 644 rows | **fixed**, not merely contained. `docs/TAXONOMY_IMPLEMENTATION_PLAN.md` step 6 replaced the byte-splicing writers with a key-addressed write API: `write_rows` upserts `mappings/<source>.tsv` and the CSV is re-rendered whole from the package, so there is no block boundary left to misjudge. Gate: `test_the_no_op_rerun_that_destroyed_644_rows_now_changes_nothing` |
+| **#22** `as_csv_row` blanks 208 rows' external IDs | **fixed** by the same API's "nothing is blanked by omission" rule — an empty incoming cell is silence, not a withdrawal. `as_csv_row` still emits `""` for all four ID columns on all 229 rows, and a re-run now changes nothing. Gate: `test_a_frepj_rerun_does_not_blank_the_external_ids_it_never_carried` |
+| **1.2** `atomic_replace` deletes the data directory | An existing target must BE a saved dataset before the rename-then-delete starts, `output_dir` resolving to `data_dir` is refused up front, and the deprecation notice no longer prints the destructive invocation as the migration path |
+| **1.3** `apply_version` writes an unparseable version | `ds.info.version = Version(version)`; `check_base_on_disk` reads both shapes, so artifacts released in the broken window stay readable; the fixture is built through `apply_version` + `save_to_disk` instead of hand-written |
+| **1.9** HF token in cleartext | `print_config_tree` renders a redacted copy. A key that resolves to `None` stays `None` — "no token is set" is worth reading — and `tokenizer` / `include_tokens_per_second` are not masked |
+| Tier 2 — all 17 entries | #29 an interrupted preparation leaves `.import-in-progress` and is rebuilt rather than published as a fragment; #27 and #13 turn a swallowed copy failure into a raise that names it; #14 catches `DecompressionBombError`; #28 hands `extract()` a real `list`; #25 `refresh=rebuild` reaches its gate; #7/#24 the pre-flight asks `imagefolder_is_complete()` like the run does; #26 detects its own consumed extraction and says how to recover; #19 submits in a bounded window; #23 clamps both split sizes and stops mis-describing its fallback; #15 rejects an FTP name that is not one path component; #17/#33/#36 convert to RGB, decide arity from the whole dataset, and refuse empty input; #31 stops treating a missing `total_ids` as zero; #32 counts an unjoined class as unchecked, not as consistent; #34 asserts the warning it stages; #10 and #9 fix the two config values that cannot load |
+| Tier 3 — all 11 entries | README: `action=import`, two model configs that exist, ZooLake as `cc0-1.0`, six registry sources, six sets of terms, Tara Pacific's `custom_metadata`, and an honest statement of which suites reach the network. Plus `download_vault_images`' return type, `local_submitit`'s undefined `${train_params}`, the CI exclusion comment, and `generate_planktonzilla`'s "three omitted sources" that are all active |
+
+One more defect surfaced while writing a test for #17: `sqrt(E[x²] - E[x]²)` on a constant channel
+lands a few ulp below zero, so a class of flat images published **`nan`** as its `Normalize`
+standard deviation. The variance is now clamped at zero.
+
+**Still open, and why.** **1.5** (RAL focusing weight) is unchanged — the fix this review proposed
+does not work, and it stays a `strict=True` xfail. **1.6** and **#35** change published columns, so
+both are gated on the golden diff against the Hub artifact that `KNOWN_ISSUES.md` records as not
+yet built. The five low-severity defects in `templates/sankey_flow.html` and the CLIP-export path
+(**#46-48, #52-53**) are cited but never enumerated in this document — they live in appendix data
+that is not in the repository, so there is nothing here to act on.
 
 Gates on the current head (`9a31b32`), against the `0df8004` baseline above:
 

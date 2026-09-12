@@ -380,11 +380,13 @@ _SEAM_ENTRY = {"name": "src", "import_name": "src", "cleanup": False, "redefiner
 class _FakeImporter:
     """Records the order of ensure_sidecars / import_dataset; import creates one class dir."""
 
-    def __init__(self, imagefolder, sidecars, complete=None):
+    def __init__(self, imagefolder, sidecars, complete=None, force_imagefolder_preparation=False):
         self.imagefolder_dir = imagefolder
         self.sidecars = sidecars
         self.calls = []
         self.folder_existed_at_ensure = None
+        # What `refresh=rebuild` sets through build_overrides.
+        self.force_imagefolder_preparation = force_imagefolder_preparation
         # None -> answer like DatasetImporter's default (non-empty == complete). A bool
         # forces the answer, which is how a source with an incrementally-built imagefolder
         # reports a PARTIAL one.
@@ -484,6 +486,24 @@ def test_import_and_redefine_source_reuses_a_complete_imagefolder(monkeypatch, t
     _seam(monkeypatch, tmp_path, importer)
 
     assert importer.calls == ["ensure_sidecars"]
+
+
+def test_refresh_rebuild_rebuilds_a_complete_imagefolder(monkeypatch, tmp_path):
+    """`refresh=rebuild` was a silent no-op: it set the flag and never reached its gate.
+
+    ``build_overrides`` appends ``force_imagefolder_preparation=True``, but this branch
+    short-circuited the import whenever the imagefolder reported itself complete — so the
+    flag was consulted only inside ``import_dataset``, which was never called. A curator
+    asking for a rebuild got a reuse, and no message saying otherwise.
+    """
+    imagefolder = tmp_path / "src_imagefolder"
+    (imagefolder / "cls").mkdir(parents=True)
+    (imagefolder / "cls" / "img.png").write_bytes(b"x")
+
+    importer = _FakeImporter(imagefolder, {}, complete=True, force_imagefolder_preparation=True)
+    _seam(monkeypatch, tmp_path, importer)
+
+    assert importer.calls == ["ensure_sidecars", "import_dataset"]
 
 
 def test_import_and_redefine_source_accepts_an_instantiated_importer(monkeypatch, tmp_path):

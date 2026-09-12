@@ -232,11 +232,12 @@ def main(cfg: DictConfig) -> None:
     """
     logger.warning(
         "pz_update_planktonzilla is DEPRECATED and will be removed in the next minor "
-        "release. Use `pz_planktonzilla` instead — it creates or updates the dataset "
-        "with one command. The equivalent of this run is "
-        "`pz_planktonzilla base=hub sources=[] output_dir='${data_dir}'` (this script "
-        "saves to the bare data_dir; pz_planktonzilla defaults one level down, into "
-        "<data_dir>/planktonzilla-17M)."
+        "release. Use `pz_planktonzilla base=hub sources=[]` instead — it creates or "
+        "updates the dataset with one command, and saves one level down, into "
+        "<data_dir>/planktonzilla-17M. This script saves to the bare data_dir, and that "
+        "difference is deliberate: do NOT reproduce it with output_dir='${data_dir}', "
+        "because pz_planktonzilla REPLACES its output_dir, and data_dir also holds the "
+        "imagefolders and manual_downloads/. pz_planktonzilla refuses that target."
     )
 
     repo_id = cfg.repo_id

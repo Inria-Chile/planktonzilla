@@ -58,7 +58,7 @@ number missing from the table below is *resolved*, not withdrawn; look for it th
 | KI-8 | open, wontfix | data-side | a taxon in a rank slot its suffix contradicts |
 | KI-9 | open, wontfix | data-side | the one uppercase value in a normalized column |
 | KI-10 | open, wontfix | data-side | contradictory `plankton` flag on identical fish-egg taxa |
-| KI-12 | open, wontfix | HIGH | integer IDs serialized as `"12345.0"` |
+| KI-12 | **confined to the render** | HIGH | integer IDs serialized as `"12345.0"`; the package holds them clean |
 | KI-13 | open, wontfix | data-side | one external ID stamped on distinct taxa |
 | KI-14 | **open, escalate** | downstream-legal | `whoi` recorded as `mit` — 20.5% of the corpus |
 | KI-15 | open, bounded | downstream-legal | `planktonset1.0` recorded as `other` — states nothing |
@@ -683,6 +683,17 @@ integers / `;`-joined lists. Extends **KI-7** (pandas-vs-polars null/dtype handl
 
 **Frozen-output risk: HIGH (systematic).** Re-serializing as ints rewrites every ID cell's
 string form in the published CSV. Document only; if fixed, gate on a golden diff. → `HARDEN-01`.
+
+**Confined to the legacy render (step 6 onward).** The source of record is no longer the CSV:
+`taxonomy/data/identifier.tsv` holds **zero** float-suffixed ids, because the write API strips the
+suffix on the way in (`_bare_id`), and every new id is minted clean. The 5,854 `.0` cells in
+`planktonzilla_taxonomy.csv` are re-added by the renderer alone — `render.py:86`, deliberately, to
+reproduce the frozen bytes — and `render.py:164` parses them back off on the way in.
+
+So the defect no longer LIVES anywhere; it is a rendering step kept only for byte-compatibility with
+the published artifact, and it is one line to delete once the golden-diff gate exists. Nothing else
+needs finding first. **Still gated**, because deleting that line rewrites every ID cell in the
+published CSV.
 
 ## KI-13 — External ID reused across distinct taxa
 

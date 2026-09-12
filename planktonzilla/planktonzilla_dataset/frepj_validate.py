@@ -316,12 +316,20 @@ def _check_overlap(report, labels, id_data, taxonomy_lookup):
             rep[label] = {col: id_data[col][i] for col in compare_cols if col in id_data}
 
     mismatches = set()
+    unjoined = set()
 
     # Part A — fidelity of the (frepj, Raw_Labels) join.
     for label, values in rep.items():
         expected = taxonomy_lookup.get(("frepj", label))
         if expected is None:
-            continue  # a missing join is surfaced by the non-null-taxonomy check.
+            # NOT `continue`. This check's contract is that every built row matches the
+            # CSV for its (frepj, Raw_Labels) key, and a key that is not in the CSV cannot
+            # match — so skipping it silently made the check report "N/N consistent" over
+            # classes it had not checked at all. The non-null-taxonomy check covers only
+            # the case where the miss also emptied the built row's proposed_label; a built
+            # row carrying a label the CSV no longer keys passes that one and this one.
+            unjoined.add(label)
+            continue
         for col in compare_cols:
             if _cmp_norm(values.get(col)) != _cmp_norm(expected.get(col)):
                 mismatches.add(label)
@@ -352,11 +360,15 @@ def _check_overlap(report, labels, id_data, taxonomy_lookup):
                 mismatches.add(label)
                 break
 
-    ok = len(mismatches) == 0
+    ok = not mismatches and not unjoined
+    detail = f"{len(rep) - len(mismatches) - len(unjoined)}/{len(rep)} classes consistent"
+    if unjoined:
+        named = ", ".join(sorted(unjoined)[:5])
+        detail += f"; {len(unjoined)} not in the taxonomy CSV under ('frepj', label): {named}"
     report.add(
         "Overlap & Fidelity",
         ok,
-        f"{len(rep) - len(mismatches)}/{len(rep)} classes consistent",
+        detail,
         f"{len(rep)}/{len(rep)} classes consistent",
     )
 

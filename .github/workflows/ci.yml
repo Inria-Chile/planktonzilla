@@ -72,10 +72,14 @@ jobs:
       - name: Install project deps (uv sync)
         run: uv sync
 
-      # Excludes the slow HF Trainer / HF Hub integration matrices (per-combo
-      # ~7 min runtime; would blow the per-job timeout). Keeps the FOCUS-01
-      # axis tests, FOCUS-02 resolver tests, and the post-DEL-01 vendored
-      # fixtures (which self-skip via skip_if_vendored_deleted).
+      # Excludes the two network-bound suites. tests/test_datasets.py issues live
+      # requests to huggingface.co and datasets-server.huggingface.co, and
+      # tests/test_train.py runs the HF Trainer matrix; together they take ~7 min and
+      # would blow the per-job timeout. Both PASS when run — they are excluded for
+      # being slow and networked, not for being broken, so run them before a release:
+      #   uv run pytest tests/test_train.py tests/test_datasets.py
+      # Everything else is kept, including the post-DEL-01 vendored fixtures (which
+      # self-skip via skip_if_vendored_deleted).
       - name: Run pytest (excluding slow integration matrix)
         run: uv run pytest tests/ --ignore=tests/test_train.py --ignore=tests/test_datasets.py -v
 

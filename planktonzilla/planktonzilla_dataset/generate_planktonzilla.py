@@ -17,9 +17,11 @@ Prerequisites:
     (wikidata_ID, ecotaxa_ID, aphia_ID, NCBI_ID, BOLD_ID), indexed by
     (Dataset, Raw_Labels).
 
-  - Three sources are omitted from ``cfg.datasets``, long described as needing a
+  - Three sources were once omitted from ``cfg.datasets``, long described as needing a
     hand-downloaded .zip because of "anti-bot protection". Checked against the live
-    services on 2026-08-01: none of them does.
+    services on 2026-08-01: none of them does, and all three are ACTIVE registry
+    entries today (``constants.DATASET_REGISTRY``). The findings are kept because they
+    are why the automatic path is trusted for each:
 
       * Zoolake — `download_uris` already pointed straight at the .zip and there was
         no manual override. Serves a 492 MB application/zip. It is simply not in the
@@ -31,8 +33,9 @@ Prerequisites:
         packages on demand. `SYKEZooScan2024DatasetImporter` resolves that through
         the Download API (`fairdata_pid`), verified end to end.
 
-    Adding any of them to ``cfg.datasets`` is a separate decision: JEDI is
-    CC-BY-SA-4.0, which does not combine with the CC-BY-NC-4.0 sources already there.
+    Their licence mix was, and remains, a separate decision from their reachability:
+    JEDI is CC-BY-SA-4.0, which does not combine with the CC-BY-NC-4.0 sources already
+    there — see KI-24.
 
     A missing hand-downloaded archive, wherever one is still used, is now reported up
     front — by ``pz_planktonzilla dry_run=true`` for a whole build, and by the importer
@@ -1098,7 +1101,11 @@ def import_and_redefine_source(
     # filled one network fetch at a time (Tara Pacific): an interrupted run leaves it
     # non-empty but PARTIAL, and "non-empty" would carry a fraction of the source into the
     # output as though it were the whole of it. Asking lets that source resume instead.
-    if dataset_importer.imagefolder_is_complete():
+    # `force_imagefolder_preparation` is consulted HERE, not only inside import_dataset:
+    # refresh=rebuild appends it via build_overrides, but this branch short-circuited the
+    # import entirely whenever the imagefolder was complete, so the flag never reached the
+    # gate it was set for and `refresh=rebuild` was a silent no-op.
+    if dataset_importer.imagefolder_is_complete() and not dataset_importer.force_imagefolder_preparation:
         num_items = len(os.listdir(imagefolder_dir))
         logger.info(f"╰─ Using existing imagefolder with {num_items} categories in {imagefolder_dir}.")
     else:
