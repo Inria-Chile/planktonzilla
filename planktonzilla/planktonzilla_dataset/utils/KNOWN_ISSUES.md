@@ -50,9 +50,9 @@ number missing from the table below is *resolved*, not withdrawn; look for it th
 | --- | --- | --- | --- |
 | KI-1 | open, deferred | HIGH | broad `except Exception` swallows transport failures |
 | KI-2 | open, deferred | HIGH | no retry/backoff or socket timeouts on external fetchers |
-| KI-3 | open, deferred | HIGH | unbounded Wikidata 429 recursion; loose taxon disambiguation |
+| KI-3 | **half fixed** | HIGH | ~~unbounded Wikidata 429 recursion~~ (bounded); loose taxon disambiguation still open |
 | KI-4 | open, deferred | MEDIUM | `--noexp` not threaded into the batch path |
-| KI-5 | open, deferred | MEDIUM | a transport-error `None` is cached as a genuine no-match |
+| KI-5 | **not reproducible** | MEDIUM | a transport-error `None` is cached as a genuine no-match — no transport path writes to the cache |
 | KI-6 | open, deferred | MEDIUM | "API failed" indistinguishable from "no ID" |
 | KI-7 | **partly resolved** | MEDIUM | null/separator/engine handling; taxonomy-CSV half is done |
 | KI-8 | open, wontfix | data-side | a taxon in a rank slot its suffix contradicts |
@@ -135,6 +135,18 @@ keyword matching for disambiguation.
 **Frozen-output risk: HIGH.** Tighter disambiguation changes **which Qcodes resolve**, hence the
 resolved `aphia_ID` / `NCBI_ID` / `BOLD_ID` values. → `HARDEN-01`.
 
+**(a) is fixed.** The 429 path is a bounded loop with doubling waits (`RATE_LIMIT_ATTEMPTS = 6`;
+2 s, 4 s … 64 s), and the give-up returns an UNCACHED `None`, so a later retry in the same run is
+still possible. What it replaces was not a designed retry budget at all: recursion at a flat 2 s
+until the interpreter's stack ran out — roughly a thousand frames, half an hour of hammering
+Wikidata — then a `RecursionError` unwound through a thousand `except Exception` handlers.
+Pinned by `tests/test_wikidata_rate_limiting.py`.
+
+**(b) is untouched and still gated.** `BIOLOGICAL_KEYWORDS` is still matched as a SUBSTRING of the
+entity description, so `order` matches `disorder`. That is what changes which Qcodes resolve, and
+it is the reason this entry keeps its HIGH label. The last test in that file pins the match as
+still loose, so the file cannot be misread as closing KI-3. → `HARDEN-01`.
+
 ## KI-4 — Honor `--noexp` and revisit `skip_empty` in `process_csv`
 
 **Where:** `extract_cox.py` `process_csv` / `get_cox_sequences`.
@@ -159,7 +171,16 @@ often inert — but the change is genuinely behavior-altering for other invocati
 
 **Proposed:** cache only genuine no-match results; leave transport failures uncached (retryable).
 
-**Frozen-output risk: MEDIUM.** Changes which taxa eventually resolve. → `HARDEN-01`.
+**Not reproducible against the current code (re-checked 2026-09-12).** `_SEARCH_CACHE` is written
+in exactly two places, both on the 200-response path: line 101 caches a match, line 104 caches a
+genuine "200, but nothing in the results is biological". Every transport outcome — a non-200
+status, a `requests` exception, and now a 429 budget exhausted — returns `None` WITHOUT touching
+the cache, so a later call in the same run re-queries. Whether this was fixed by an earlier
+cleanup or never held as written, the entry as it stands describes code that is not there.
+
+Kept rather than moved to `RESOLVED_ISSUES.md`, because it was not resolved by a change anyone
+recorded and the numbering must stay stable. The property is now pinned —
+`test_a_rate_limited_answer_is_not_cached` — so it cannot quietly become true again.
 
 ## KI-6 — Distinguish "API failed" from "no ID" in `fetch_external_ids`
 

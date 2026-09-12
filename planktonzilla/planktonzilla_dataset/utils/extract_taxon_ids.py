@@ -51,6 +51,11 @@ WIKIDATA_PROPERTIES = {
 session = requests.Session()
 _SEARCH_CACHE: dict[str, dict | None] = {}
 
+#: How many times a single Wikidata search rides out an HTTP 429 before giving up. The
+#: waits double (2s, 4s, … 64s), so the budget is ~2 minutes rather than the flat 2s the
+#: recursive version used.
+RATE_LIMIT_ATTEMPTS = 6
+
 
 # ── Step 1: Wikidata Qcode per taxon ──────────────────────────────────────────
 
@@ -71,21 +76,42 @@ def search_wikidata_taxon(taxon: str) -> dict | None:
         "limit": 5,
     }
 
-    try:
-        r = session.get(
-            "https://www.wikidata.org/w/api.php",
-            params=params,
-            headers=HEADERS,
-            timeout=10,
-        )
-        if r.status_code == 429:
-            time.sleep(2)
-            return search_wikidata_taxon(taxon)
-        if r.status_code != 200:
+    # A bounded loop, not recursion (KI-3, first half). On 429 this used to sleep 2s and
+    # call ITSELF, so a rate-limit that outlasted the interpreter's stack — about a
+    # thousand frames, half an hour of hammering Wikidata at a flat 2s — ended in a
+    # RecursionError unwound through a thousand `except Exception` handlers. The budget
+    # here is deliberate rather than whatever the stack happened to allow, and the waits
+    # grow, so it backs off where the recursion did not.
+    #
+    # KI-3's SECOND half — the loose `description` substring match below, which can
+    # resolve the wrong entity — is untouched: tightening it changes which Qcodes resolve,
+    # hence the published aphia_ID / NCBI_ID / BOLD_ID values. Still → HARDEN-01.
+    data = None
+    for attempt in range(RATE_LIMIT_ATTEMPTS):
+        try:
+            r = session.get(
+                "https://www.wikidata.org/w/api.php",
+                params=params,
+                headers=HEADERS,
+                timeout=10,
+            )
+            if r.status_code == 429:
+                wait = 2 ** (attempt + 1)
+                logger.info(f"Wikidata rate-limited on {taxon!r}; waiting {wait}s (attempt {attempt + 1})")
+                time.sleep(wait)
+                continue
+            if r.status_code != 200:
+                return None
+            data = r.json()
+            break
+        except Exception as e:
+            logger.warning(f"Wikidata search failed for taxon {taxon!r}, returning None: {e}")
             return None
-        data = r.json()
-    except Exception as e:
-        logger.warning(f"Wikidata search failed for taxon {taxon!r}, returning None: {e}")
+
+    if data is None:
+        # Rate-limited for the whole budget. NOT cached: this is a transport outcome, and
+        # caching it would make a later retry in the same run impossible (KI-5's shape).
+        logger.warning(f"Wikidata stayed rate-limited for {taxon!r} across {RATE_LIMIT_ATTEMPTS} attempts.")
         return None
 
     for result in data.get("search", []):
