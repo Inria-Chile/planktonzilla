@@ -10,7 +10,7 @@ attaches per-batch augmentation/transform pipelines used by the HF `Trainer`.
 
 from dataclasses import dataclass
 from functools import partial
-from typing import Callable
+from typing import Callable, Final
 
 import numpy as np
 import torch
@@ -72,6 +72,12 @@ def augment_and_transform_batch(examples, transform, augmentation, input_column_
     return results
 
 
+#: PIL modes that carry ONE luminance channel (``LA`` adds only alpha). A dataset made
+#: entirely of these publishes a one-element Normalize constant; anything else — RGB, but
+#: also RGBA, P, CMYK, YCbCr — is colour and publishes three.
+MONOCHROME_IMAGE_MODES: Final = frozenset({"1", "L", "LA", "I", "I;16", "F"})
+
+
 def compute_mean_and_std_dev(huggingface_dataset: Dataset, input_column_name: str = "image"):
     """Compute per-channel mean and standard deviation for a dataset.
 
@@ -102,10 +108,15 @@ def compute_mean_and_std_dev(huggingface_dataset: Dataset, input_column_name: st
         # B alike while counting its pixels once. Converting first makes every row of
         # every image a real (r, g, b), and for a monochrome image that is (v, v, v), so
         # the answer for an all-grayscale dataset is unchanged.
+        #
+        # "monochrome" is decided from the SOURCE mode, not from "needed converting":
+        # RGBA, P and CMYK all need converting and none of them is grayscale, so keying
+        # off `mode != "RGB"` collapsed a colour dataset to a one-element constant that
+        # held only its red channel.
+        if image.mode not in MONOCHROME_IMAGE_MODES:
+            every_image_was_monochrome = False
         if image.mode != "RGB":
             image = image.convert("RGB")
-        else:
-            every_image_was_monochrome = False
 
         # Convert image to NumPy array and normalize to [0, 1] if needed
         image_array = np.array(image).astype(np.float32) / 255.0

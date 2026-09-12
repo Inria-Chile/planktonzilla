@@ -386,3 +386,30 @@ def test_the_descriptor_is_plain_json_and_needs_no_dependency():
 def test_a_missing_descriptor_is_refused(tmp_path):
     with pytest.raises(TaxonomyError, match="no descriptor at"):
         validate.load_descriptor(tmp_path)
+
+
+# A parent cycle must be REPORTED, never hung on
+def test_a_parent_cycle_is_reported_rather_than_hung_on(package):
+    """``taxon.tsv`` carries ``merge=union``, so two branches re-parenting one node give A->B->A.
+
+    Every walk over ``parentNameUsageID`` therefore needs a guard, and the one that matters is not
+    ``_check_no_cycles`` — that one always had a ``seen`` set. It is every check that runs AFTER
+    it: an unguarded walk there spins forever, so ``pz_taxonomy check`` hangs instead of printing
+    the ``parent_cycle`` finding that would explain the problem. A report is only reachable if the
+    checks after the report-producing one terminate.
+
+    The timeout is the assertion. `_check_lineage_name_repeat` was the last unguarded walk, and it
+    was missed once already by a review that believed the hang was fixed — so this pins the
+    property against the whole check suite rather than against any one walk.
+    """
+    rows = read_tsv(package / "taxon.tsv")
+    by_id = {row["taxonID"]: row for row in rows}
+    child = next(row for row in rows if row["parentNameUsageID"] in by_id)
+    by_id[child["parentNameUsageID"]]["parentNameUsageID"] = child["taxonID"]
+    write_tsv(package / "taxon.tsv", tuple(rows[0]), rows)
+
+    loader.cache_clear()
+    report = validate.validate(package)
+
+    assert "parent_cycle" in _checks(report)
+    assert any(finding.check == "parent_cycle" for finding in report.errors)

@@ -108,7 +108,10 @@ def test_a_failed_copy_stops_the_import_instead_of_shortening_it(tmp_path):
     message = str(failure.value)
     assert "1 image(s) could not be copied" in message
     assert "No space left on device" in message
-    assert "Re-run to resume" in message
+    assert "re-run: images already copied are skipped" in message
+    # WHOI and JEDI rmtree each release as they consume it, so "just re-run" is not advice they
+    # can follow — the extracted tree the re-run would resume from is gone.
+    assert "force_download=true" in message
 
 
 def test_no_failures_is_silent(tmp_path):

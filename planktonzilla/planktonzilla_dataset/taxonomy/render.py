@@ -28,7 +28,6 @@ from planktonzilla.planktonzilla_dataset.taxonomy.model import (
     LEGACY_RANKS,
     LOOKUP_COLUMNS,
     MULTI_VALUED_COLUMNS,
-    UNQUALIFIED,
     TaxonomyError,
     read_tsv,
 )
@@ -176,19 +175,26 @@ def build_lookup(rows) -> dict:
     guard for that belongs at the store, not in the mapper. A column the rows do not carry
     resolves to ``None`` for every row, which is how an 18-column test fixture keeps working.
     """
-    lookup = {}
-    for row in rows:
-        values = {}
-        for column in LOOKUP_COLUMNS:
-            raw = row.get(column)
-            if column in constants.ID_NUM_COLS:
-                values[column] = _as_decimal_free_string(raw)
-            elif column == "plankton":
-                values[column] = raw if isinstance(raw, bool) else _norm(raw) == "True"
-            else:
-                values[column] = _norm(raw)
-        lookup[(row["Dataset"], row["Raw_Labels"])] = values
-    return lookup
+    return {(row["Dataset"], row["Raw_Labels"]): project_row(row) for row in rows}
+
+
+def project_row(row) -> dict:
+    """One wide row as the 16 lookup columns, value- and type-identical to the legacy reader.
+
+    Split out of :func:`build_lookup` so the projections below can map a row without building a
+    one-entry dict around it: ``build_lookup([row])[key]`` per row re-derived the key tuple and
+    allocated a dict for every one of the 2,358 rows, twice over.
+    """
+    values = {}
+    for column in LOOKUP_COLUMNS:
+        raw = row.get(column)
+        if column in constants.ID_NUM_COLS:
+            values[column] = _as_decimal_free_string(raw)
+        elif column == "plankton":
+            values[column] = raw if isinstance(raw, bool) else _norm(raw) == "True"
+        else:
+            values[column] = _norm(raw)
+    return values
 
 
 def published_projection(rows) -> list:
@@ -198,11 +204,7 @@ def published_projection(rows) -> list:
     differs from both the CSV header and the 16-column lookup.
     """
     columns = [column for column in constants.CONSOLIDATED_COLUMNS if column in LOOKUP_COLUMNS]
-    projected = []
-    for row in rows:
-        values = build_lookup([row])[(row["Dataset"], row["Raw_Labels"])]
-        projected.append({column: values[column] for column in columns})
-    return projected
+    return [{column: values[column] for column in columns} for values in map(project_row, rows)]
 
 
 def label_vocabulary(rows, datasets=None) -> list:
@@ -221,7 +223,7 @@ def label_vocabulary(rows, datasets=None) -> list:
     for row in rows:
         if datasets is not None and row["Dataset"] not in datasets:
             continue
-        values = build_lookup([row])[(row["Dataset"], row["Raw_Labels"])]
+        values = project_row(row)
         if values["plankton"] is not True or values["Kingdom"] == "":
             continue
         names.add(" ".join(values[rank] for rank in LEGACY_RANKS if values[rank] not in ("", None)))
@@ -270,8 +272,3 @@ def unknown_labels(names, tag: str) -> list:
     """
     published = set(released_vocabulary(tag))
     return sorted({name for name in names if name not in published})
-
-
-def legacy_qualifier(store, qualifier: str) -> str:
-    """``unqualified`` -> the blank cell; every other term is itself."""
-    return "" if qualifier == UNQUALIFIED else qualifier

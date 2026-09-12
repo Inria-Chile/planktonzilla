@@ -47,7 +47,6 @@ _TAXONOMY_COLS = constants.TAXONOMY_RANKS
 _EXTRA_COLS = constants.EXTRA_COLS
 _ID_STR_COLS = constants.ID_STR_COLS  # already text in the CSV
 _ID_NUM_COLS = constants.ID_NUM_COLS  # numeric in the CSV -> text without decimals
-_LOOKUP_COLS = (*_TAXONOMY_COLS, *_EXTRA_COLS, *_ID_STR_COLS, *_ID_NUM_COLS)
 
 # ``timestamp`` values must be ISO dates: the build normalizes the hand-typed upstream
 # "Sampling date" (KI-26) and never lets a raw value through.

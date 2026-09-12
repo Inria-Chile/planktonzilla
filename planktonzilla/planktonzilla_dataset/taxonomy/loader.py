@@ -231,9 +231,19 @@ def _load_wide_csv(csv_path: Path) -> TaxonomyStore:
     """
     raw = csv_path.read_bytes()
     with csv_path.open(newline="", encoding="utf-8") as handle:
-        rows = list(csv.DictReader(handle))
+        reader = csv.DictReader(handle)
+        rows = list(reader)
+        # Read off the FILE, not off the first row: a table with a header and no rows still has to
+        # report which columns it has, or a caller checking for a lost rank column sees the
+        # canonical header and passes.
+        header = tuple(reader.fieldnames or ())
 
-    missing = [column for column in ("Dataset", "Raw_Labels") if rows and column not in rows[0]]
+    if not header:
+        # No header line at all. A zero-byte file used to load as an empty store reporting the
+        # canonical header, which is how a truncated taxonomy passed a column check.
+        raise TaxonomyError(f"«{csv_path}» is empty; it has no header row and is not a taxonomy CSV")
+
+    missing = [column for column in ("Dataset", "Raw_Labels") if column not in header]
     if missing:
         raise TaxonomyError(f"«{csv_path}» has no {missing} column(s); it is not a taxonomy CSV")
 
@@ -249,7 +259,7 @@ def _load_wide_csv(csv_path: Path) -> TaxonomyStore:
         more = f" (+{len(duplicates) - 10} more)" if len(duplicates) > 10 else ""
         logger.warning(f"Taxonomy CSV has {len(duplicates)} duplicate (Dataset, Raw_Labels) keys; keeping last: {shown}{more}")
 
-    return TaxonomyStore(source=csv_path, is_package=False, _legacy_rows=rows, _legacy_bytes=raw)
+    return TaxonomyStore(source=csv_path, is_package=False, _legacy_rows=rows, _legacy_bytes=raw, _legacy_header=header or None)
 
 
 def build_taxonomy_lookup(csv_path) -> dict:

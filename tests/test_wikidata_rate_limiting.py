@@ -80,14 +80,19 @@ def test_a_rate_limit_that_clears_still_resolves(monkeypatch):
 
 
 def test_the_waits_grow_rather_than_staying_flat(monkeypatch):
-    """The recursive version slept a flat 2s however long the limit lasted."""
+    """The recursive version slept a flat 2s however long the limit lasted.
+
+    One wait per RETRY, so the last attempt does not sleep: nothing follows it but the give-up,
+    and 64s of waiting to reach a decision already made is 64s of nothing.
+    """
     waited = []
     monkeypatch.setattr(eti.time, "sleep", waited.append)
     monkeypatch.setattr(eti, "session", _Session([]))
 
     eti.search_wikidata_taxon("nitzschia")
 
-    assert waited == [2, 4, 8, 16, 32, 64]
+    assert waited == [2, 4, 8, 16, 32]
+    assert len(waited) == eti.RATE_LIMIT_ATTEMPTS - 1
 
 
 def test_a_rate_limited_answer_is_not_cached(monkeypatch):

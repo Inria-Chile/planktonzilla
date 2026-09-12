@@ -249,7 +249,9 @@ def _fail_on_copy_errors(importer, failures) -> None:
     raise RuntimeError(
         f"«{importer.human_readable_name or importer.hf_dataset_name}»: {len(failures)} image(s) could not be "
         f"copied into {importer.imagefolder_dir}, so the imagefolder is short by that many. First failures: "
-        f"{shown}{more}. Re-run to resume — images already copied are skipped."
+        f"{shown}{more}. Fix the cause, then re-run: images already copied are skipped. A source that "
+        f"consumes its extracted releases as it goes (WHOI, JEDI) has nothing left on disk to resume from "
+        f"and needs `pz_planktonzilla dataset_import.force_download=true`."
     )
 
 

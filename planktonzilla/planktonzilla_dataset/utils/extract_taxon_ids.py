@@ -96,6 +96,10 @@ def search_wikidata_taxon(taxon: str) -> dict | None:
                 timeout=10,
             )
             if r.status_code == 429:
+                if attempt == RATE_LIMIT_ATTEMPTS - 1:
+                    # Nothing follows the last wait but the give-up below, so waiting 64s to do it
+                    # is 64s of nothing.
+                    break
                 wait = 2 ** (attempt + 1)
                 logger.info(f"Wikidata rate-limited on {taxon!r}; waiting {wait}s (attempt {attempt + 1})")
                 time.sleep(wait)

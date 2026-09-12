@@ -75,6 +75,8 @@ from planktonzilla.planktonzilla_dataset.taxonomy.model import (
     UNQUALIFIED,
     UNSPECIFIED_MATCHING,
     TaxonomyError,
+    ancestor_sets,
+    coarse_identifier_groups,
     collation_key,
     lineage_of,
     read_tsv,
@@ -184,11 +186,24 @@ def seed_ids(package_dir: Path) -> dict:
     return {key_of(taxon_id): taxon_id for taxon_id in by_id}
 
 
-def assign_ids(nodes, seeded) -> dict:
+def read_retired_ids(package_dir: Path) -> list:
+    """The ``retired_id`` column of ``merged.tsv``, or ``[]`` when the ledger does not exist yet.
+
+    A retired id is absent from ``taxon.tsv`` by construction, so the seed has to name it
+    separately or the next mint hands it to an unrelated concept.
+    """
+    path = Path(package_dir) / "merged.tsv"
+    return [row["retired_id"] for row in read_tsv(path)] if path.exists() else []
+
+
+def assign_ids(nodes, seeded, retired=()) -> dict:
     """``{natural key: taxonID}`` for every node: seeded where known, minted in path order after.
 
-    Minting starts above the highest seeded number rather than renumbering, so an id is never
-    reused for a different node even after one is retired.
+    Minting starts above the highest number the package has EVER issued — live ids and the
+    tombstoned ones in ``merged.tsv`` alike — rather than renumbering, so an id is never reused for
+    a different node even after one is retired. Seeding from ``taxon.tsv`` alone would hand the
+    highest retired id straight back, and the tombstone would then point a live concept at a
+    replacement it has nothing to do with.
 
     Raises:
         MigrationError: If a node the committed package already has an id for has disappeared.
@@ -207,7 +222,9 @@ def assign_ids(nodes, seeded) -> dict:
         )
 
     assigned = {key: seeded[key] for key in nodes if key in seeded}
-    next_number = 1 + max((int(value.split(":")[1]) for value in assigned.values()), default=0)
+    issued = [int(value.split(":")[1]) for value in assigned.values()]
+    issued += [int(str(value).split(":")[1]) for value in retired if str(value).startswith(f"{TAXON_PREFIX}:")]
+    next_number = 1 + max(issued, default=0)
 
     for key in sorted(key for key in nodes if key not in assigned):
         assigned[key] = f"{TAXON_PREFIX}:{next_number:06d}"
@@ -384,7 +401,8 @@ def write_package(package_dir: Path, rows) -> dict:
     check_prefix_collation(rows)
 
     nodes, concept_to_key = build_taxa(rows)
-    ids = assign_ids(nodes, seed_ids(package_dir))
+    retired = read_retired_ids(package_dir)
+    ids = assign_ids(nodes, seed_ids(package_dir), retired=retired)
     canonical = canonical_id_tuple(rows)
 
     taxa = taxon_table(nodes, ids)
@@ -446,7 +464,11 @@ def write_package(package_dir: Path, rows) -> dict:
             for method, source, definition in METHOD_VOCABULARY
         ],
     )
-    write_tsv(package_dir / "merged.tsv", MERGED_COLUMNS, [])
+    # The tombstone ledger is NOT regenerated. It records retirements the CSV cannot express, so
+    # re-deriving the package from the CSV has nothing to say about it — and truncating it would
+    # both lose the record and free every retired id for reuse. Created empty only if absent.
+    if not (package_dir / "merged.tsv").exists():
+        write_tsv(package_dir / "merged.tsv", MERGED_COLUMNS, [])
 
     release = package_dir / "release" / "v1.0"
     write_tsv(release / "legacy_row_order.tsv", ROW_ORDER_COLUMNS, order)
@@ -548,13 +570,6 @@ def backfill_broad_matches(package_dir: Path, *, apply: bool = False) -> list:
     taxa = {row["taxonID"]: row for row in read_tsv(package_dir / "taxon.tsv")}
     multi = {prefix for prefix, legacy in PREFIX_TO_LEGACY_COLUMN.items() if legacy in MULTI_VALUED_COLUMNS}
 
-    def ancestry(taxon_id):
-        chain, current = set(), taxon_id
-        while current and current in taxa:
-            chain.add(current)
-            current = taxa[current]["parentNameUsageID"]
-        return chain
-
     owners = {}
     for row in rows:
         prefix = row["object_id"].partition(":")[0]
@@ -562,16 +577,17 @@ def backfill_broad_matches(package_dir: Path, *, apply: bool = False) -> list:
             continue
         owners.setdefault(row["object_id"], set()).add(row["subject_id"])
 
-    narrowed = set()
-    for object_id, subjects in owners.items():
-        if len(subjects) < 2:
-            continue
-        shallowest = min(subjects, key=lambda taxon_id: len(ancestry(taxon_id)))
-        if not all(shallowest in ancestry(subject) for subject in subjects):
-            # Concepts on different branches sharing an id is the KI-13 collision shape. Calling it
-            # a broad match would silence a real finding by relabelling it.
-            continue
-        narrowed |= {(subject, object_id) for subject in subjects if subject != shallowest}
+    # The same split the validator reports, from the same function. Concepts on different branches
+    # sharing an id is the KI-13 collision shape and stays where it is: calling it a broad match
+    # would silence a real finding by relabelling it, and a second copy of the rule here could
+    # come to disagree with the one that reports it.
+    coarse, _collided = coarse_identifier_groups(owners, ancestor_sets(taxa))
+    narrowed = {
+        (subject, object_id)
+        for object_id, (shallowest, subjects) in coarse.items()
+        for subject in subjects
+        if subject != shallowest
+    }
 
     changed = []
     for row in rows:

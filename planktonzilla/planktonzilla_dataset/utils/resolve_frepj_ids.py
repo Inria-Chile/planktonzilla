@@ -67,6 +67,7 @@ from pathlib import Path
 import polars as pl
 
 from planktonzilla.planktonzilla_dataset import constants
+from planktonzilla.planktonzilla_dataset.taxonomy import model as taxonomy_model
 from planktonzilla.planktonzilla_dataset.taxonomy import write as taxonomy_write
 from planktonzilla.planktonzilla_dataset.utils import extract_taxon_ids
 from planktonzilla.planktonzilla_dataset.utils import taxonomy_write_guard as write_guard
@@ -885,6 +886,11 @@ def backfill_ids(mapping: dict, *, package_dir=None, csv_path=None, apply: bool 
     the 13 legacy per-row overrides came to exist. Retiring an id is
     ``pz_taxonomy clear-id --reason``.
 
+    A class directory the summary does not mention at all is a different thing, and it raises.
+    ``add_ids`` only checks the other direction — a summary key naming a class directory the source
+    does not map — so without this a summary that has fallen behind the table backfills the rows it
+    still covers and says nothing about the ones it has stopped covering.
+
     Args:
         mapping: ``{raw_label: {wikidata_ID, aphia_ID, NCBI_ID, BOLD_ID}}`` from the committed summary.
         package_dir: The taxonomy package (default: the bundled one).
@@ -899,6 +905,20 @@ def backfill_ids(mapping: dict, *, package_dir=None, csv_path=None, apply: bool 
     ids_by_verbatim = {
         raw_label: {column: record[column] for column in columns if record.get(column)} for raw_label, record in mapping.items()
     }
+
+    mapping_path = package_dir / "mappings" / f"{DATASET}.tsv"
+    mapped = (
+        {row["verbatimIdentification"] for row in taxonomy_model.read_tsv(mapping_path)} if mapping_path.exists() else set()
+    )
+    # A key naming nothing is add_ids' refusal to make, and its message is the better one; this
+    # only speaks for the other direction, once every key the summary carries does resolve.
+    unmentioned = sorted(mapped - set(ids_by_verbatim)) if set(ids_by_verbatim) <= mapped else []
+    if unmentioned:
+        raise ValueError(
+            f"{len(unmentioned)} {DATASET} class director{'y' if len(unmentioned) == 1 else 'ies'} have no entry in "
+            f"the committed summary (first: {unmentioned[0]!r}). Re-run the resolution rather than backfilling a "
+            f"subset: a partial summary silently leaves those concepts with whatever ids they already carry."
+        )
 
     changes = taxonomy_write.add_ids(package_dir, DATASET, ids_by_verbatim, apply=apply)
     if apply:

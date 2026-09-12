@@ -192,6 +192,17 @@ def _sorted_taxa(taxa) -> list:
     return sorted(taxa, key=lambda row: _path_of(row, by_id))
 
 
+def _retired_ids(package_dir) -> list:
+    """Every ``retired_id`` in the tombstone ledger. Empty when the package carries none.
+
+    An id in here is absent from ``taxon.tsv`` and must never be minted again: the whole point of
+    the ledger is that a published pin to a retired concept keeps resolving to its replacement
+    rather than to whatever concept happened to be created next.
+    """
+    path = Path(package_dir) / "merged.tsv"
+    return [row["retired_id"] for row in read_tsv(path)] if path.exists() else []
+
+
 def _taxon_row(taxon_id, parent, rank, name, kind, remarks) -> dict:
     return {
         "taxonID": taxon_id,
@@ -221,9 +232,18 @@ class _Minter:
     next_id: int
 
     @classmethod
-    def over(cls, taxa) -> "_Minter":
-        highest = max((int(row["taxonID"].split(":")[1]) for row in taxa), default=0)
-        return cls(by_key=_index_by_key(taxa), rows=list(taxa), next_id=highest + 1)
+    def over(cls, taxa, retired=()) -> "_Minter":
+        """Seed above every id the package has EVER issued — live ones and tombstoned ones alike.
+
+        ``merged.tsv`` is part of the seed, not an afterthought: a retired id is absent from
+        ``taxon.tsv`` by construction, so seeding from the live table alone hands the highest
+        retired id straight back to the next concept minted. The tombstone then reads "pzt:00X was
+        retired into pzt:00Y" while pzt:00X is a live, unrelated taxon, every published pin to the
+        old concept resolves to the new one, and nothing in the validator can see it.
+        """
+        issued = [int(row["taxonID"].split(":")[1]) for row in taxa]
+        issued += [int(str(value).split(":")[1]) for value in retired if str(value).startswith(f"{TAXON_PREFIX}:")]
+        return cls(by_key=_index_by_key(taxa), rows=list(taxa), next_id=max(issued, default=0) + 1)
 
     def mint(self, key, parent, rank, name, kind, remarks) -> str:
         taxon_id = f"{TAXON_PREFIX}:{self.next_id:06d}"
@@ -493,7 +513,7 @@ def upsert_source(package_dir, dataset: str, records, *, apply: bool = False, al
     existing_mappings = read_tsv(mapping_path) if mapping_path.exists() else []
     committed = {row["verbatimIdentification"]: row for row in existing_mappings}
 
-    minter = _Minter.over(taxa)
+    minter = _Minter.over(taxa, retired=_retired_ids(package_dir))
     id_rows = {(row["subject_id"], row["object_id"]): row for row in identifiers}
     held = _held_index(id_rows)
     new_mappings = {}
@@ -560,14 +580,19 @@ def upsert_wide_rows(package_dir, rows, *, provenance=None, apply: bool = False,
     for row in rows:
         grouped.setdefault(row["Dataset"], []).append(row)
 
-    changes = ChangeSet()
-    for dataset, group in sorted(grouped.items()):
-        changes.changes += upsert_source(
-            package_dir, dataset, records_from_wide_rows(group, provenance), allow_delete=allow_delete
-        ).changes
     if not apply:
+        changes = ChangeSet()
+        for dataset, group in sorted(grouped.items()):
+            changes.changes += upsert_source(
+                package_dir, dataset, records_from_wide_rows(group, provenance), allow_delete=allow_delete
+            ).changes
         return changes
 
+    # No dry pass first when applying. It re-read taxon.tsv, identifier.tsv and every mapping file
+    # once per group and rebuilt the minter over all of them, then threw the result away — twice
+    # the I/O and twice the derivation for a verdict the apply pass reaches anyway. The apply pass
+    # validates each group as it writes it and the snapshot rolls the whole run back on a failure,
+    # which is the property the dry pass could not provide either (see the docstring).
     changes = ChangeSet(applied=True)
     snapshot = _snapshot(package_dir)
     try:

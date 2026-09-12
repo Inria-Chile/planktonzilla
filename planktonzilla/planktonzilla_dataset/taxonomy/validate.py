@@ -37,7 +37,14 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from planktonzilla.planktonzilla_dataset.taxonomy.model import BROAD_MATCH, EXACT_MATCH, TaxonomyError, read_tsv
+from planktonzilla.planktonzilla_dataset.taxonomy.model import (
+    BROAD_MATCH,
+    EXACT_MATCH,
+    TaxonomyError,
+    ancestor_sets,
+    coarse_identifier_groups,
+    read_tsv,
+)
 
 SEVERITY_ERROR = "ERROR"
 SEVERITY_WARN = "WARN"
@@ -258,11 +265,14 @@ def check_rules(package_dir: Path, descriptor: dict, registered=None) -> list:
     taxa = {row["taxonID"]: row for row in read_tsv(package_dir / "taxon.tsv")}
     authorities = {row["prefix"]: row for row in read_tsv(package_dir / "vocab" / "authority.tsv")}
     legacy_slot = {row["rank"]: row["legacy_slot"] for row in read_tsv(package_dir / "vocab" / "rank.tsv")}
+    # Read once and passed down: the two identifier checks parsed this 4,032-row file three times
+    # between them, and it is the same bytes each time.
+    identifiers = read_tsv(package_dir / "identifier.tsv")
 
     findings += _check_no_cycles(taxa)
     findings += _check_lineage_name_repeat(taxa, legacy_slot)
-    findings += _check_single_valued_authorities(package_dir, authorities)
-    findings += _check_shared_ids(package_dir, taxa, authorities)
+    findings += _check_single_valued_authorities(identifiers, authorities)
+    findings += _check_shared_ids(identifiers, taxa, authorities)
     findings += _check_mapping_files(package_dir, descriptor, taxa, registered)
     findings += _check_canonical_names(taxa)
     findings += _check_label_vocabularies(package_dir)
@@ -320,8 +330,15 @@ def _check_lineage_name_repeat(taxa: dict, legacy_slot: dict) -> list:
             continue
         # Only the node that INTRODUCES the repeat. Reporting every descendant as well turned four
         # real cases into sixteen findings, twelve of which named an innocent node.
-        ancestors, current = [], row["parentNameUsageID"]
-        while current and current in taxa:
+        # `seen` for the same reason `_check_no_cycles` carries one: taxon.tsv is `merge=union`,
+        # so two branches re-parenting one node produce A->B->A, and this walk would spin on it
+        # forever — hanging `pz_taxonomy check` instead of letting it PRINT the parent_cycle
+        # finding that explains the problem. Not `model.ancestor_sets`: that returns a set of ids
+        # including the node itself, and this needs the ancestors only, filtered to the ranks that
+        # have a legacy slot.
+        ancestors, current, seen = [], row["parentNameUsageID"], set()
+        while current and current in taxa and current not in seen:
+            seen.add(current)
             node = taxa[current]
             if legacy_slot.get(node["taxonRank"], ""):
                 ancestors.append(node["scientificName"])
@@ -339,14 +356,14 @@ def _check_lineage_name_repeat(taxa: dict, legacy_slot: dict) -> list:
     return findings
 
 
-def _check_single_valued_authorities(package_dir: Path, authorities: dict) -> list:
+def _check_single_valued_authorities(identifiers: list, authorities: dict) -> list:
     """Exactly one ``exact`` id per (concept, single-valued authority).
 
     A second is schema-legal in any SSSOM-shaped table and would be dropped by the renderer with
     the survivor decided by numeric sort order rather than by the model.
     """
     counts = {}
-    for row in read_tsv(package_dir / "identifier.tsv"):
+    for row in identifiers:
         if row["predicate_id"] != EXACT_MATCH:
             continue
         prefix = row["object_id"].partition(":")[0]
@@ -367,7 +384,7 @@ def _check_single_valued_authorities(package_dir: Path, authorities: dict) -> li
     ]
 
 
-def _check_shared_ids(package_dir: Path, taxa: dict, authorities: dict) -> list:
+def _check_shared_ids(identifiers: list, taxa: dict, authorities: dict) -> list:
     """One authority id claimed by two concepts, split into the two cases that mean different things.
 
     Undifferentiated this fires 296 times, almost all of them the same benign shape, which is how a
@@ -387,16 +404,14 @@ def _check_shared_ids(package_dir: Path, taxa: dict, authorities: dict) -> list:
     a cross-branch collision as a broad match would make it disappear from this report.
     """
 
-    def ancestry(taxon_id):
-        chain, current = set(), taxon_id
-        while current and current in taxa:
-            chain.add(current)
-            current = taxa[current]["parentNameUsageID"]
-        return chain
+    ancestry = ancestor_sets(taxa)
 
-    owners = {}
-    for row in read_tsv(package_dir / "identifier.tsv"):
+    owners, broad = {}, {}
+    for row in identifiers:
         prefix = row["object_id"].partition(":")[0]
+        if row["predicate_id"] == BROAD_MATCH:
+            broad.setdefault(row["object_id"], set()).add(row["subject_id"])
+            continue
         if row["predicate_id"] != EXACT_MATCH or row["object_id"].endswith(":absent"):
             continue
         if authorities.get(prefix, {}).get("multi_valued") == "true":
@@ -407,11 +422,6 @@ def _check_shared_ids(package_dir: Path, taxa: dict, authorities: dict) -> list:
     # so the honesty of that re-predication has to be checked, or "call it a broad match" becomes a
     # way to silence a real collision. A broad match claims the subject is NARROWER than the id's
     # concept, which is only true if some exact-match holder of that id is one of its ancestors.
-    broad = {}
-    for row in read_tsv(package_dir / "identifier.tsv"):
-        if row["predicate_id"] == BROAD_MATCH:
-            broad.setdefault(row["object_id"], set()).add(row["subject_id"])
-
     findings = [
         Finding(
             "unjustified_broad_match",
@@ -422,34 +432,31 @@ def _check_shared_ids(package_dir: Path, taxa: dict, authorities: dict) -> list:
         )
         for object_id, subjects in sorted(broad.items())
         for subject in sorted(subjects)
-        if not any(holder in ancestry(subject) for holder in owners.get(object_id, set()))
+        if not (owners.get(object_id, set()) & ancestry.get(subject, frozenset()))
     ]
 
-    for object_id, subjects in sorted(owners.items()):
-        if len(subjects) < 2:
-            continue
-        shallowest = min(subjects, key=lambda t: len(ancestry(t)))
-        if all(shallowest in ancestry(subject) for subject in subjects):
-            findings.append(
-                Finding(
-                    "coarse_identifier",
-                    SEVERITY_WARN,
-                    "identifier",
-                    object_id,
-                    f"{len(subjects)} concepts under {taxa[shallowest]['scientificName']!r} share it; "
-                    f"the finer ones want skos:broadMatch",
-                )
-            )
-        else:
-            findings.append(
-                Finding(
-                    "id_shared_across_branches",
-                    SEVERITY_WARN,
-                    "identifier",
-                    object_id,
-                    f"claimed by unrelated concepts {sorted(subjects)}",
-                )
-            )
+    coarse, collided = coarse_identifier_groups(owners, ancestry)
+    findings += [
+        Finding(
+            "coarse_identifier",
+            SEVERITY_WARN,
+            "identifier",
+            object_id,
+            f"{len(subjects)} concepts under {taxa[shallowest]['scientificName']!r} share it; "
+            f"the finer ones want skos:broadMatch",
+        )
+        for object_id, (shallowest, subjects) in sorted(coarse.items())
+    ]
+    findings += [
+        Finding(
+            "id_shared_across_branches",
+            SEVERITY_WARN,
+            "identifier",
+            object_id,
+            f"claimed by unrelated concepts {sorted(subjects)}",
+        )
+        for object_id, subjects in sorted(collided.items())
+    ]
     return findings
 
 

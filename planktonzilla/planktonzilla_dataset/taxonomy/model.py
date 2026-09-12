@@ -194,6 +194,59 @@ class TaxonomyError(RuntimeError):
     """Any refusal from the taxonomy package: a malformed store, or a render that cannot hold."""
 
 
+def ancestor_sets(taxa: dict) -> dict:
+    """``{taxonID: frozenset(itself and every ancestor)}`` over raw ``taxon.tsv`` rows.
+
+    Memoised, so each parent chain is walked once rather than once per comparison — the callers ask
+    "is A an ancestor of B?" inside nested loops over the identifier table.
+
+    Cycle-safe by construction. The plain ``while current in taxa`` walk both callers used spins
+    forever on a parent cycle, and ``taxon.tsv`` carries ``merge=union``, which is exactly how two
+    branches produce one: the cycle is reported by ``validate._check_no_cycles``, and a report is
+    only reachable if the checks after it terminate.
+    """
+    cache: dict = {}
+
+    def walk(taxon_id):
+        if taxon_id in cache:
+            return cache[taxon_id]
+        chain, current, seen = set(), taxon_id, set()
+        while current and current in taxa and current not in seen:
+            seen.add(current)
+            chain.add(current)
+            current = taxa[current]["parentNameUsageID"]
+        cache[taxon_id] = frozenset(chain)
+        return cache[taxon_id]
+
+    return {taxon_id: walk(taxon_id) for taxon_id in taxa}
+
+
+def coarse_identifier_groups(owners: dict, ancestry: dict) -> tuple:
+    """Split ``{object_id: {subject_id, …}}`` into the coarse case and the collision case.
+
+    Returns ``(coarse, collided)``: ``coarse`` maps an id shared by two or more concepts to
+    ``(shallowest, subjects)`` when the shallowest claimant is an ancestor of every other — the
+    register simply had nothing finer than that node, so the finer concepts are NARROWER than what
+    the id names. ``collided`` maps the rest, where the claimants sit on unrelated branches and the
+    sharing is a real error (KI-13).
+
+    One statement of the rule, because there are two consumers of it — the validator, which reports
+    the split, and ``migrate.backfill_broad_matches``, which re-predicates the coarse half. Two
+    copies of it could disagree, and then a re-predication would silence a finding the validator
+    still believes in.
+    """
+    coarse, collided = {}, {}
+    for object_id, subjects in sorted(owners.items()):
+        if len(subjects) < 2:
+            continue
+        shallowest = min(subjects, key=lambda taxon_id: len(ancestry.get(taxon_id, ())))
+        if all(shallowest in ancestry.get(subject, ()) for subject in subjects):
+            coarse[object_id] = (shallowest, subjects)
+        else:
+            collided[object_id] = subjects
+    return coarse, collided
+
+
 @dataclass(frozen=True)
 class Taxon:
     """One node of the taxon table — a tree node, or a lineage-less bucket."""
@@ -283,6 +336,7 @@ class TaxonomyStore:
     is_package: bool = False
     _legacy_rows: list | None = None
     _legacy_bytes: bytes | None = None
+    _legacy_header: tuple | None = None
     _lookup: dict | None = None
 
     # Legacy views
@@ -307,9 +361,17 @@ class TaxonomyStore:
         """The wide columns this store can produce, in file order.
 
         A store loaded from an 18-column fixture reports 18, which is why the header is read off
-        the rows rather than assumed: the loader must keep accepting what the tests already write.
+        the file rather than assumed: the loader must keep accepting what the tests already write.
+
+        The wide-CSV backend records its own header at load time, so a table with a header and NO
+        rows reports the columns it actually has. Reading it off the first row instead made an
+        empty or truncated CSV claim the full canonical header, and
+        ``make_planktonzilla.check_taxonomy_csv`` — whose whole job is to catch a table that lost a
+        rank column — passed a zero-byte file as "all 18 columns present".
         """
-        if self._legacy_rows is not None and self._legacy_rows:
+        if self._legacy_header is not None:
+            return self._legacy_header
+        if self._legacy_rows:
             return tuple(self._legacy_rows[0])
         return LEGACY_HEADER
 

@@ -32,6 +32,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from planktonzilla.planktonzilla_dataset import constants
 from planktonzilla.planktonzilla_dataset.taxonomy import loader, validate, write
 from planktonzilla.planktonzilla_dataset.taxonomy.model import (
     OVERRIDE_COLUMNS,
@@ -54,8 +55,15 @@ def _report(changes, apply: bool) -> int:
 
 
 def cmd_check(args) -> int:
-    """Validate the package: descriptor, schema, cross-file rules, coverage."""
-    report = validate.apply_waivers(validate.validate(args.package), validate.read_waivers(args.package))
+    """Validate the package: descriptor, schema, cross-file rules, coverage.
+
+    The source registry is passed, not omitted. Without it ``validate`` silently skips the two
+    checks that need one — ``registry_drift`` and ``source_not_covered`` — so a source registered
+    in ``constants.DATASET_IMPORT_CONFIGS`` with no mapping file on disk passed the very gate the
+    retirement switch names as holding.
+    """
+    registered = sorted(constants.DATASET_IMPORT_CONFIGS)
+    report = validate.apply_waivers(validate.validate(args.package, registered=registered), validate.read_waivers(args.package))
     errors = [finding for finding in report.findings if finding.severity == validate.SEVERITY_ERROR]
     warnings = [finding for finding in report.findings if finding.severity != validate.SEVERITY_ERROR]
 
@@ -386,6 +394,16 @@ def cmd_release(args) -> int:
     write_tsv(release / "legacy_overrides.tsv", OVERRIDE_COLUMNS, [])
     (release / "sha256").write_text(digest + "\n", encoding="utf-8")
     print(f"froze {len(order)} row(s) as release {args.tag}, pinned to {digest[:12]}…")
+    # Cutting a tag does not adopt it. `loader._load_package` renders from `release/v1.0`, and
+    # `datapackage.json` declares that release's files by path, so until both are pointed at the
+    # new tag it is a record and not the render's input. Said out loud because a tag that looks
+    # adopted and is not is exactly the kind of thing a curator finds out about later.
+    print(
+        f"\nNOTE: the loader still renders from release/v1.0 and the descriptor still validates it. "
+        f"Adopting {args.tag} is a separate change — and its legacy_overrides.tsv is empty, so it "
+        f"must be reviewed against v1.0's {len(read_tsv(args.package / 'release' / 'v1.0' / 'legacy_overrides.tsv'))} "
+        f"override(s) before anything reads it."
+    )
     return 0
 
 
