@@ -46,15 +46,22 @@ code comments and tests cite them.
 KI-25 — were moved verbatim to [`RESOLVED_ISSUES.md`](RESOLVED_ISSUES.md) on 2026-08-04. A
 number missing from the table below is *resolved*, not withdrawn; look for it there.
 
+Three entries below are exceptions to that, kept in place on 2026-09-12 rather than archived,
+because each was closed by attrition rather than by a change anyone recorded against it, and the
+reasoning is worth more beside the original claim than in an archive: **KI-5** (not reproducible),
+**KI-7** (resolved), and **KI-12** (confined to one line of the renderer). **KI-3** is half fixed
+and stays for its open half. Every other status in the table below was re-verified against the
+code and the CSV on 2026-09-12; the corrections that pass found are noted inline.
+
 | # | Status | Frozen-output risk | Subject |
 | --- | --- | --- | --- |
-| KI-1 | open, deferred | HIGH | broad `except Exception` swallows transport failures |
+| KI-1 | open, deferred | HIGH | broad `except Exception` swallows transport failures (7 sites; one has since been narrowed) |
 | KI-2 | open, deferred | HIGH | no retry/backoff or socket timeouts on external fetchers |
 | KI-3 | **half fixed** | HIGH | ~~unbounded Wikidata 429 recursion~~ (bounded); loose taxon disambiguation still open |
 | KI-4 | open, deferred | MEDIUM | `--noexp` not threaded into the batch path |
 | KI-5 | **not reproducible** | MEDIUM | a transport-error `None` is cached as a genuine no-match — no transport path writes to the cache |
 | KI-6 | open, deferred | MEDIUM | "API failed" indistinguishable from "no ID" |
-| KI-7 | **partly resolved** | MEDIUM | null/separator/engine handling; taxonomy-CSV half is done |
+| KI-7 | **resolved in place** | none left | null/separator/engine handling; every half is now done |
 | KI-8 | open, wontfix | data-side | a taxon in a rank slot its suffix contradicts |
 | KI-9 | open, wontfix | data-side | the one uppercase value in a normalized column |
 | KI-10 | open, wontfix | data-side | contradictory `plankton` flag on identical fish-egg taxa |
@@ -93,9 +100,14 @@ golden-diff harness (blocks every HIGH item above), and KI-16's discarded split 
 ## KI-1 — Narrow the broad `except Exception` clauses to specific types
 
 **Where:** `extract_cox.py` (esearch/efetch), `generate_planktonzilla.py` (`retrieve_whoi_metadata`,
-`retrieve_ecotaxa_metadata`, `_flatten_metadata` JSON parse, `WHOIRedefiner` future handling,
+`_flatten_metadata` JSON parse, `WHOIRedefiner` future handling,
 `clean_corrupt_examples_optimized`), `extract_taxon_ids.py` (`search_wikidata_taxon`,
 `_extract_property`, `fetch_external_ids`).
+
+*`retrieve_ecotaxa_metadata` was on that list and is not any more (re-checked 2026-09-12 with an
+AST walk over every handler at every named site). It catches
+`(requests.RequestException, ValueError, TypeError)` — narrow, and narrowed before this entry was
+last touched. Every other site above is still a bare `except Exception`.*
 
 **Today:** broad `except Exception` swallows transient network/JSON/IO failures and falls back
 to NaN/empty/`None`, conflating "the API failed" with "there is genuinely no data."
@@ -172,10 +184,12 @@ often inert — but the change is genuinely behavior-altering for other invocati
 **Proposed:** cache only genuine no-match results; leave transport failures uncached (retryable).
 
 **Not reproducible against the current code (re-checked 2026-09-12).** `_SEARCH_CACHE` is written
-in exactly two places, both on the 200-response path: line 101 caches a match, line 104 caches a
-genuine "200, but nothing in the results is biological". Every transport outcome — a non-200
-status, a `requests` exception, and now a 429 budget exhausted — returns `None` WITHOUT touching
-the cache, so a later call in the same run re-queries. Whether this was fixed by an earlier
+in exactly two places, both at the END of `search_wikidata_taxon`, on the 200-response path: once
+where a result matches, and once for "200, but nothing in the results is biological". Every
+transport outcome — a non-200 status, a `requests` exception, and a 429 budget exhausted — returns
+`None` WITHOUT touching the cache, so a later call in the same run re-queries. (Described rather
+than given as line numbers: the KI-3 fix in this same commit moved them, which is how brittle a
+line citation is here.) Whether this was fixed by an earlier
 cleanup or never held as written, the entry as it stands describes code that is not there.
 
 Kept rather than moved to `RESOLVED_ISSUES.md`, because it was not resolved by a change anyone
@@ -233,8 +247,16 @@ retired it and kept only the Wikidata harvest functions `resolve_frepj_ids` call
 reaching for is now `taxonomy/data/identifier.tsv` — one row per `(concept, authority)`, with one
 null representation because a TSV cell is either empty or it is not.
 
-**Still open:** the `";"` vs `","` separator convention, and the pandas/polars mix outside the
-taxonomy path. Those are untouched. → `HARDEN-01`.
+**Also resolved, by attrition (re-checked 2026-09-12).** This entry used to close with "Still
+open: the `\";\"` vs `\",\"` separator convention, and the pandas/polars mix outside the taxonomy
+path." Neither is there any more. `planktonzilla/` and `scripts/` contain **no `import pandas`**
+and **no `sep=";"` / `delimiter=";"`** on any read or write — the only `pandas` left in the tree is
+in `tests/test_taxonomy_lookup_equivalence.py`, which is the verbatim copy of the deleted reader
+this entry describes as the pin, and the only `";"` left are joined VALUES (`ecotaxa_ID`
+multi-values, NCBI `Lineage`), which *Verified non-issues* already records as by design.
+
+`pandas` is still a declared dependency in `pyproject.toml`, for that one test. Nothing here is
+gated any more, so the `HARDEN-01` pointer this entry used to carry is withdrawn.
 
 ## KI-16 — The split probe in the build path reads the repository root, not the imagefolder
 
@@ -657,7 +679,7 @@ Row numbers are **0-based data rows** (CSV line = row + 2).
 **Today:** a taxon name is placed in a rank column that its own name-suffix contradicts,
 disagreeing with the same name's placement in dozens–hundreds of other rows:
 
-- row 945: `bacillariophyceae` (a `-phyceae` **class**, correctly in `Class` in 225 other
+- row 945: `bacillariophyceae` (a `-phyceae` **class**, correctly in `Class` in 224 other
   rows) is duplicated into both `Order` **and** `Family`.
 - row 153: `dinophyceae` (**class**) appears in `Order` as well as `Class`.
 - row 1126: `florenciellales` (an `-ales` **order**) appears in `Family` as well as `Order`.
@@ -736,8 +758,11 @@ Document only.
 **Partially resolved (the coarse-rank half).** That larger bucket is no longer an undifferentiated
 "precision limitation": step 7 of `docs/TAXONOMY_IMPLEMENTATION_PLAN.md` re-predicated all 147 of
 them to `skos:broadMatch` in `taxonomy/data/identifier.tsv` — **449 identifier rows**, one per
-finer concept — with `semapv:LogicalReasoning` recording that the claim was inferred from the
-hierarchy rather than looked up. A species carrying its genus's id now SAYS it is carrying its
+`(finer concept, authority)` pair, over 235 finer concepts — with `semapv:LogicalReasoning`
+recording that the claim was inferred from the hierarchy rather than looked up. (The 147 are the
+distinct COARSE ids being propagated; a species inheriting its genus's NCBI, BOLD and WoRMS ids
+contributes three rows. Counted 2026-09-12: 449 rows, 449 distinct pairs, 235 subjects, 147
+objects — bold 212, ncbi 99, wikidata 74, worms 64.) A species carrying its genus's id now SAYS it is carrying its
 genus's id.
 
 No published byte moved: the renderer never reads the predicate, because the 19-column CSV has no
@@ -754,7 +779,10 @@ one changes a published `*_ID` cell, so each needs the same adjudication it alwa
 
 ## KI-31 — One source label, two different taxa: `Raw_Labels` disagreements across datasets
 
-**Where:** 20 of the 1,622 distinct `Raw_Labels` values, touching 80 rows. Enumerated with their
+**Where:** 20 of the 1,622 `Raw_Labels` groups, touching 80 rows. (1,622 is the count AFTER
+`group_by_raw_label` case-folds — `Harpacticoida` and `harpacticoida` are one source label wearing
+two conventions. The byte-exact distinct count is 1,627, which is the figure
+`docs/TAXONOMY_REPRESENTATION.md` reports; both are right, they measure different things.) Enumerated with their
 adjudication in [`LABEL_CONSISTENCY_WAIVERS.json`](LABEL_CONSISTENCY_WAIVERS.json); reported by
 `utils/verify_label_consistency.py` and gated by `tests/test_taxonomy_label_consistency.py`.
 
