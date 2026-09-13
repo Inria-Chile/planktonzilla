@@ -46,20 +46,27 @@ code comments and tests cite them.
 KI-25 — were moved verbatim to [`RESOLVED_ISSUES.md`](RESOLVED_ISSUES.md) on 2026-08-04. A
 number missing from the table below is *resolved*, not withdrawn; look for it there.
 
+Three entries below are exceptions to that, kept in place on 2026-09-12 rather than archived,
+because each was closed by attrition rather than by a change anyone recorded against it, and the
+reasoning is worth more beside the original claim than in an archive: **KI-5** (not reproducible),
+**KI-7** (resolved), and **KI-12** (confined to one line of the renderer). **KI-3** is half fixed
+and stays for its open half. Every other status in the table below was re-verified against the
+code and the CSV on 2026-09-12; the corrections that pass found are noted inline.
+
 | # | Status | Frozen-output risk | Subject |
 | --- | --- | --- | --- |
-| KI-1 | open, deferred | HIGH | broad `except Exception` swallows transport failures |
-| KI-2 | open, deferred | HIGH | no retry/backoff or socket timeouts on external fetchers |
-| KI-3 | open, deferred | HIGH | unbounded Wikidata 429 recursion; loose taxon disambiguation |
-| KI-4 | open, deferred | MEDIUM | `--noexp` not threaded into the batch path |
-| KI-5 | open, deferred | MEDIUM | a transport-error `None` is cached as a genuine no-match |
-| KI-6 | open, deferred | MEDIUM | "API failed" indistinguishable from "no ID" |
-| KI-7 | **partly resolved** | MEDIUM | null/separator/engine handling; taxonomy-CSV half is done |
+| KI-1 | open, deferred | HIGH | broad `except Exception` swallows transport failures (**9 handlers** measured 2026-09-13; two sites since narrowed) |
+| KI-2 | **half fixed** | HIGH | ~~no socket timeouts~~ (both Entrez calls bounded); retry/backoff still open |
+| KI-3 | **half fixed** | HIGH | ~~unbounded Wikidata 429 recursion~~ (bounded); loose taxon disambiguation still open |
+| KI-4 | **fixed** | MEDIUM (unchanged in practice) | `--noexp` is threaded into the batch path |
+| KI-5 | **not reproducible** | MEDIUM | a transport-error `None` is cached as a genuine no-match — no transport path writes to the cache |
+| KI-6 | **fixed** | MEDIUM → none | "API failed" is now named, logged and returned separately from "no ID" |
+| KI-7 | **resolved in place** | none left | null/separator/engine handling; every half is now done |
 | KI-8 | open, wontfix | data-side | a taxon in a rank slot its suffix contradicts |
 | KI-9 | open, wontfix | data-side | the one uppercase value in a normalized column |
 | KI-10 | open, wontfix | data-side | contradictory `plankton` flag on identical fish-egg taxa |
-| KI-12 | open, wontfix | HIGH | integer IDs serialized as `"12345.0"` |
-| KI-13 | open, wontfix | data-side | one external ID stamped on distinct taxa |
+| KI-12 | **confined to the render** | HIGH | integer IDs serialized as `"12345.0"`; the package holds them clean |
+| KI-13 | 2 fixed, 19 adjudicated | data-side | one external ID held by unrelated concepts; every case now has a written verdict |
 | KI-14 | **open, escalate** | downstream-legal | `whoi` recorded as `mit` — 20.5% of the corpus |
 | KI-15 | open, bounded | downstream-legal | `planktonset1.0` recorded as `other` — states nothing |
 | KI-16 | open, **do not fix** | HIGH | split probe reads the repo root; splits discarded |
@@ -93,9 +100,19 @@ golden-diff harness (blocks every HIGH item above), and KI-16's discarded split 
 ## KI-1 — Narrow the broad `except Exception` clauses to specific types
 
 **Where:** `extract_cox.py` (esearch/efetch), `generate_planktonzilla.py` (`retrieve_whoi_metadata`,
-`retrieve_ecotaxa_metadata`, `_flatten_metadata` JSON parse, `WHOIRedefiner` future handling,
+`_flatten_metadata` JSON parse, `WHOIRedefiner` future handling,
 `clean_corrupt_examples_optimized`), `extract_taxon_ids.py` (`search_wikidata_taxon`,
 `_extract_property`, `fetch_external_ids`).
+
+*Two of the named sites are no longer broad, and the count is measured rather than remembered:
+an AST walk over every handler at every site above (re-run 2026-09-13) finds **9 `except Exception`
+handlers** across the three files. `retrieve_ecotaxa_metadata` catches
+`(requests.RequestException, ValueError, TypeError)`, narrowed before this entry was last touched;
+`_extract_property` now catches `(KeyError, IndexError, TypeError)`, narrowed 2026-09-13. That one
+could land while the other eight cannot because it reads a **field out of an already-parsed
+response** — it never touches the network, so there is no transport failure for it to have been
+swallowing and no row it can change. The remaining eight all sit directly on a request or on image
+decoding, which is exactly where narrowing turns a completed run with NaN rows into an aborted one.*
 
 **Today:** broad `except Exception` swallows transient network/JSON/IO failures and falls back
 to NaN/empty/`None`, conflating "the API failed" with "there is genuinely no data."
@@ -110,16 +127,29 @@ corrupt-image filter drops — altering metadata columns and **row counts**. →
 
 ## KI-2 — Add retry/backoff + socket timeouts to the external fetchers
 
-**Where:** `extract_cox.py` NCBI Entrez `esearch`/`efetch` (currently no retry, no timeout — a
-failed batch is silently dropped or truncated); `generate_planktonzilla.py` WHOI/EcoTaxa GETs.
+**Where:** `extract_cox.py` NCBI Entrez `esearch`/`efetch`; `generate_planktonzilla.py`
+WHOI/EcoTaxa GETs.
 
 **Today:** a transient failure means those sequences/records are simply missing from the output.
 
 **Proposed:** bounded retry with exponential backoff on 429/5xx, plus explicit socket timeouts.
 
-**Frozen-output risk: HIGH.** Retrying can **recover records the original run dropped**, changing
+**Half fixed (2026-09-13): the timeouts are in.** The two halves of this entry are not equally
+gated, and separating them is what let one of them land. A **timeout cannot recover a record** —
+it can only turn a hang into the failure that was already going to happen — so adding one moves no
+frozen byte, while a **retry can**, which is the half `HARDEN-01` actually blocks.
+
+`Bio.Entrez` builds on `urllib` with no timeout parameter, so a stalled socket hung the run
+forever instead of failing into the retry that already exists further up. `extract_cox.py` now
+defines `ENTREZ_TIMEOUT = 60` and a `_socket_timeout` context manager that sets and restores
+`socket.getdefaulttimeout()` in a `finally`, and both `Entrez.esearch` and `Entrez.efetch` run
+inside it. The restore matters: a bare `setdefaulttimeout` would leak a 60-second ceiling onto
+every later socket in the process, including the HTTP downloads the importers make.
+
+**Still open:** bounded retry with exponential backoff on 429/5xx, on both fetchers. **Frozen-output
+risk: HIGH** for that half — retrying can **recover records the original run dropped**, changing
 the produced FASTA / `summary.csv` / metadata columns and row counts versus the frozen
-reference. → `HARDEN-01`.
+reference. → `HARDEN-01`. (Wikidata's 429 loop is a separate case and is already bounded; see KI-3.)
 
 ## KI-3 — Bound the Wikidata 429 recursion and tighten taxon disambiguation
 
@@ -135,20 +165,39 @@ keyword matching for disambiguation.
 **Frozen-output risk: HIGH.** Tighter disambiguation changes **which Qcodes resolve**, hence the
 resolved `aphia_ID` / `NCBI_ID` / `BOLD_ID` values. → `HARDEN-01`.
 
+**(a) is fixed.** The 429 path is a bounded loop with doubling waits (`RATE_LIMIT_ATTEMPTS = 6`;
+2 s, 4 s … 64 s), and the give-up returns an UNCACHED `None`, so a later retry in the same run is
+still possible. What it replaces was not a designed retry budget at all: recursion at a flat 2 s
+until the interpreter's stack ran out — roughly a thousand frames, half an hour of hammering
+Wikidata — then a `RecursionError` unwound through a thousand `except Exception` handlers.
+Pinned by `tests/test_wikidata_rate_limiting.py`.
+
+**(b) is untouched and still gated.** `BIOLOGICAL_KEYWORDS` is still matched as a SUBSTRING of the
+entity description, so `order` matches `disorder`. That is what changes which Qcodes resolve, and
+it is the reason this entry keeps its HIGH label. The last test in that file pins the match as
+still loose, so the file cannot be misread as closing KI-3. → `HARDEN-01`.
+
 ## KI-4 — Honor `--noexp` and revisit `skip_empty` in `process_csv`
 
 **Where:** `extract_cox.py` `process_csv` / `get_cox_sequences`.
 
-**Today:** `process_csv` calls `get_cox_sequences(..., expand_to_children=True)` hard-coded — the
-`--noexp` CLI flag is not threaded into the batch path. The `skip_empty=False` branch also
-changes which "no-ID" rows are written to `summary.csv`.
+**Today:** the `skip_empty=False` branch changes which "no-ID" rows are written to
+`summary.csv`.
 
-**Proposed:** thread `--noexp` through to the batch path; make the `skip_empty` semantics
-explicit and consistent.
+**Fixed (2026-09-13), the `--noexp` half.** `process_csv` hard-coded
+`get_cox_sequences(..., expand_to_children=True)` while `main` computed `not args.noexp` for the
+single-taxon path only — so on every batch run the flag was accepted, logged nowhere, and did
+nothing. `process_csv` now takes `expand_to_children: bool = True` and `main` passes
+`expand_to_children=not args.noexp`.
 
-**Frozen-output risk: MEDIUM.** The frozen artifacts were produced on the success path
-*without* `--noexp` and with default `skip_empty`, so a clean re-run with today's invocation is
-often inert — but the change is genuinely behavior-altering for other invocations. → `HARDEN-01`.
+This is the rare gated-looking change that is inert on the frozen artifacts *by default*: the
+default is the value that was hard-coded, so an invocation that does not pass `--noexp` behaves
+exactly as before. What changes is that `--noexp` now does what it says, which no frozen artifact
+was produced with. Verified by re-running the suite; no published byte moved.
+
+**Still open:** the `skip_empty` semantics, which are genuinely inconsistent between the two
+branches. **Frozen-output risk: MEDIUM** for that half — it alters which rows reach
+`summary.csv`. → `HARDEN-01`.
 
 ## KI-5 — Don't cache a `None` that came from a transport error
 
@@ -159,7 +208,18 @@ often inert — but the change is genuinely behavior-altering for other invocati
 
 **Proposed:** cache only genuine no-match results; leave transport failures uncached (retryable).
 
-**Frozen-output risk: MEDIUM.** Changes which taxa eventually resolve. → `HARDEN-01`.
+**Not reproducible against the current code (re-checked 2026-09-12).** `_SEARCH_CACHE` is written
+in exactly two places, both at the END of `search_wikidata_taxon`, on the 200-response path: once
+where a result matches, and once for "200, but nothing in the results is biological". Every
+transport outcome — a non-200 status, a `requests` exception, and a 429 budget exhausted — returns
+`None` WITHOUT touching the cache, so a later call in the same run re-queries. (Described rather
+than given as line numbers: the KI-3 fix in this same commit moved them, which is how brittle a
+line citation is here.) Whether this was fixed by an earlier
+cleanup or never held as written, the entry as it stands describes code that is not there.
+
+Kept rather than moved to `RESOLVED_ISSUES.md`, because it was not resolved by a change anyone
+recorded and the numbering must stay stable. The property is now pinned —
+`test_a_rate_limited_answer_is_not_cached` — so it cannot quietly become true again.
 
 ## KI-6 — Distinguish "API failed" from "no ID" in `fetch_external_ids`
 
@@ -168,20 +228,31 @@ often inert — but the change is genuinely behavior-altering for other invocati
 **Today:** when a batch ultimately fails, every Qcode in it is filled with `None` IDs —
 indistinguishable from Qcodes that legitimately have no external ID.
 
-**Proposed:** add a status indicator (e.g. a column) so downstream consumers can retry only the
-true failures.
+**Fixed (2026-09-13).** The fix does not need the column the proposal assumed, which is why it
+could land: **nothing has to change in the output** for a failure to stop looking like an answer.
+`fetch_external_ids` now collects the Qcodes of every abandoned batch in an `abandoned` list,
+logs each abandonment at WARNING with the batch index and attempt count, and ends with a single
+ERROR naming how many of how many were abandoned — so a run that resolved nothing is no longer
+indistinguishable, in its own log, from a run that found nothing. The `None`-fill fallback is
+untouched and no column is added, so the frozen artifacts' shape is unchanged.
 
-**Frozen-output risk: MEDIUM.** Adds/changes columns and alters the `None`-fill fallback. →
-`HARDEN-01`.
+The same distinction was drawn on the verification side, where it *does* reach an artifact:
+`verify_taxonomy_ids.py`'s three fetchers now return `(records, not_found, undetermined)` instead
+of folding both into one list, and `build_snapshot` records only genuine `not_found` under
+`unresolved` while warning loudly about the undetermined. A registry being down used to be
+written into the snapshot as "this taxon has no record there", which is a false claim about the
+data rather than a gap in it.
+
+**Frozen-output risk: none, as landed.** The proposal's status *column* would have been MEDIUM;
+logging is not. → the column, if ever wanted, stays behind `HARDEN-01`.
 
 ## KI-7 — Reconcile null / separator / pandas-vs-polars CSV handling
 
 **Where:** `extract_taxon_ids.py` (the two output CSVs, empty-string vs `null` asymmetry; polars)
 vs `update_planktonzilla.py` (`build_sync_dict`, pandas) and the `";"` vs `","` separators.
 
-**Today:** the two `extract_taxon_ids` output CSVs differ in empty-string vs null representation,
-and the suite mixes pandas and polars with different separators, so null/dtype representation is
-not uniform.
+**Today:** the suite mixes pandas and polars with different separators, so null/dtype
+representation is not uniform. The `extract_taxon_ids` half is gone — see below.
 
 **Proposed:** unify on one CSV engine + separator convention and a single null representation.
 
@@ -207,8 +278,22 @@ hard-raise in the pandas path and be silently last-wins in the polars path. It n
 keeps the last row** — the generation path's long-standing behavior, made visible. The shipped
 CSV has no duplicates.
 
-**Still open:** the `extract_taxon_ids.py` output CSVs (empty-string vs `null` asymmetry) and
-the `";"` vs `","` separator convention. Those are untouched. → `HARDEN-01`.
+**Resolved (`extract_taxon_ids` half).** The two output CSVs are gone: the pipeline that wrote
+them read a path that had not existed for some time and nothing consumed its output, so step 6
+retired it and kept only the Wikidata harvest functions `resolve_frepj_ids` calls. What they were
+reaching for is now `taxonomy/data/identifier.tsv` — one row per `(concept, authority)`, with one
+null representation because a TSV cell is either empty or it is not.
+
+**Also resolved, by attrition (re-checked 2026-09-12).** This entry used to close with "Still
+open: the `\";\"` vs `\",\"` separator convention, and the pandas/polars mix outside the taxonomy
+path." Neither is there any more. `planktonzilla/` and `scripts/` contain **no `import pandas`**
+and **no `sep=";"` / `delimiter=";"`** on any read or write — the only `pandas` left in the tree is
+in `tests/test_taxonomy_lookup_equivalence.py`, which is the verbatim copy of the deleted reader
+this entry describes as the pin, and the only `";"` left are joined VALUES (`ecotaxa_ID`
+multi-values, NCBI `Lineage`), which *Verified non-issues* already records as by design.
+
+`pandas` is still a declared dependency in `pyproject.toml`, for that one test. Nothing here is
+gated any more, so the `HARDEN-01` pointer this entry used to carry is withdrawn.
 
 ## KI-16 — The split probe in the build path reads the repository root, not the imagefolder
 
@@ -631,7 +716,7 @@ Row numbers are **0-based data rows** (CSV line = row + 2).
 **Today:** a taxon name is placed in a rank column that its own name-suffix contradicts,
 disagreeing with the same name's placement in dozens–hundreds of other rows:
 
-- row 945: `bacillariophyceae` (a `-phyceae` **class**, correctly in `Class` in 225 other
+- row 945: `bacillariophyceae` (a `-phyceae` **class**, correctly in `Class` in 224 other
   rows) is duplicated into both `Order` **and** `Family`.
 - row 153: `dinophyceae` (**class**) appears in `Order` as well as `Class`.
 - row 1126: `florenciellales` (an `-ales` **order**) appears in `Family` as well as `Order`.
@@ -679,28 +764,98 @@ integers / `;`-joined lists. Extends **KI-7** (pandas-vs-polars null/dtype handl
 **Frozen-output risk: HIGH (systematic).** Re-serializing as ints rewrites every ID cell's
 string form in the published CSV. Document only; if fixed, gate on a golden diff. → `HARDEN-01`.
 
+**Confined to the legacy render (step 6 onward).** The source of record is no longer the CSV:
+`taxonomy/data/identifier.tsv` holds **zero** float-suffixed ids, because the write API strips the
+suffix on the way in (`_bare_id`), and every new id is minted clean. The 5,854 `.0` cells in
+`planktonzilla_taxonomy.csv` are re-added by the renderer alone — `render._legacy_id_cell`,
+deliberately, to reproduce the frozen bytes — and `render._as_decimal_free_string` parses them back
+off on the way in. (Named, not numbered: these were cited as `render.py:86` / `:164` and the code
+review that followed shifted both. Line citations in this file rot within a commit.)
+
+So the defect no longer LIVES anywhere; it is a rendering step kept only for byte-compatibility with
+the published artifact, and it is one line to delete once the golden-diff gate exists. Nothing else
+needs finding first. **Still gated**, because deleting that line rewrites every ID cell in the
+published CSV.
+
 ## KI-13 — External ID reused across distinct taxa
 
-**Where:** `NCBI_ID` `418941.0` (`discosphaera tubifera` + `rhabdosphaera clavigera`),
-`418932.0` (`calciopappus caudatus` + `ophiaster`), `2723146.0` (`gonyaulax verior` +
-`sourniaea diacantha`); `wikidata_ID` `Q25364681` (1 genuine collision).
+**Where:** listed by `pz_taxonomy check` — 14 `BOLD_ID`, 4 `NCBI_ID`, 1 `wikidata_ID`, each
+adjudicated in [`taxonomy/data/waivers/structural.tsv`](../taxonomy/data/waivers/structural.tsv)
+and keyed by the finding id the CLI prints.
 
-**Today:** these taxid / QID values are stamped on genuinely different taxa (their other ID
-columns differ, confirming distinctness). A larger bucket — ~25 NCBI, 5 aphia, 6 wikidata
-cases — is **coarse-rank propagation**: a parent's ID reused on descendant/species rows (e.g.
-the genus `chaetoceros` taxid on `chaetoceros dadayi`), an ID-**precision** limitation rather
-than a hard error; and a few apparent collisions are real taxonomic **synonyms** correctly
-sharing one taxid (e.g. `ceratoneis closterium` ≡ `cylindrotheca closterium`). The **forward**
+**Today:** an id is held as `skos:exactMatch` by two or more concepts that are not each other's
+ancestors. A larger bucket — 147 coarse ids — is **coarse-rank propagation**: a parent's ID reused
+on descendant/species rows (e.g. the genus `chaetoceros` taxid on `chaetoceros dadayi`), an
+ID-**precision** limitation rather than a hard error, and resolved below. The **forward**
 direction is clean — no taxon carries two IDs in any column.
+
+*The four examples this entry used to name were re-examined on 2026-09-13 against the committed
+authority snapshot, and three of them are not what it said.* `418932.0` and `418941.0` were called
+collisions of distinct taxa; NCBI's own records make them the **families** Syracosphaeraceae and
+Rhabdosphaeraceae, which is exactly the common ancestor of each pair — coarse propagation, now
+fixed. `2723146.0` was called a collision too; WoRMS has aphia 110045 (`gonyaulax verior`) as a
+junior subjective synonym of `sourniaea diacantha`, so it is one organism under two names and the
+taxid is correct on both rows. Only `Q25364681` survives as stated, and the snapshot now names the
+wrong side of it: Wikidata's record for that QID is the genus *Torodinium*, so it is
+`kapelodinium vestifici` that carries it wrongly.
 
 **Frozen-output risk: data-side.** Correcting an ID changes the published `*_ID` columns.
 Document only.
+
+**Partially resolved (the coarse-rank half).** That larger bucket is no longer an undifferentiated
+"precision limitation": step 7 of `docs/TAXONOMY_IMPLEMENTATION_PLAN.md` re-predicated all 147 of
+them to `skos:broadMatch` in `taxonomy/data/identifier.tsv` — **449 identifier rows**, one per
+`(finer concept, authority)` pair, over 235 finer concepts — with `semapv:LogicalReasoning`
+recording that the claim was inferred from the hierarchy rather than looked up. (The 147 are the
+distinct COARSE ids being propagated; a species inheriting its genus's NCBI, BOLD and WoRMS ids
+contributes three rows. Counted 2026-09-12: 449 rows, 449 distinct pairs, 235 subjects, 147
+objects — bold 212, ncbi 99, wikidata 74, worms 64.) A species carrying its genus's id now SAYS it is carrying its
+genus's id.
+
+No published byte moved: the renderer never reads the predicate, because the 19-column CSV has no
+way to express "broader than", and withdrawing 449 published ids to state a nuance the format
+cannot carry would be the worse answer. `pz_taxonomy check` reported 168 findings before and 21
+after, and `unjustified_broad_match` now guards the re-predication — relabelling a real
+cross-branch collision as a broad match is an ERROR, so this cannot be used to make a collision
+disappear.
+
+**Two more resolved (2026-09-13), and the rest adjudicated.** Of the 21 that step 7 left:
+
+- **2 were fixed.** `ncbi:418932` and `ncbi:418941` are family taxids by NCBI's own record in the
+  committed snapshot, and each family is the common ancestor of the two concepts holding it. They
+  were the same coarse propagation as the other 147, missed only because no concept held the id for
+  the finer ones to be broader THAN. Anchoring the id on the family (`pzt:000868`, `pzt:000863`) and
+  re-predicating the four holders brings them into the resolved bucket: **453 broad matches now**,
+  and again **no published byte moved** — neither family is a `proposed_label`, and `pz_taxonomy
+  diff` reports no published cell changed.
+- **19 are adjudicated**, in `waivers/structural.tsv`, from committed evidence alone:
+  - **14 `coarse_identifier_no_anchor`** (all BOLD) — the same shape as the two above: 2–8 concepts
+    on different branches beneath one common ancestor that does not hold the id. What committed
+    evidence cannot settle is *which* concept each BOLD id names — no row in the Wikidata snapshot
+    claims any of the fourteen — so BOLD itself has to be asked. Each waiver names the anchor
+    concept the correction would use and says whether attaching the id there moves a published
+    cell: for **12 of the 14 it does not**, because the ancestor has no published row.
+  - **4 `nomenclature_drift`** (all NCBI: `2723146`, `2856`, `655800`, `66468`) — one organism under
+    two names. The taxid is right on both rows; what differs is the two names and their lineages.
+    Normalising onto the accepted name is a published-lineage change and stays gated.
+  - **1 `defect_wrong_identifier`** (`wikidata:Q25364681`) — the only one where a register names the
+    wrong side outright. Correcting it means clearing one published cell, so it stays gated.
+
+**Still open:** the 19 above. A waiver records a decision, it does not fix the data — but the
+decision, the evidence and the exact correction are now written down for each, `pz_taxonomy check`
+reports **0 errors and 0 unadjudicated findings**, and a NEW collision arrives unwaived against a
+clean report instead of hiding in a list of 21. `tests/test_taxonomy_validate.py` re-derives each
+reason's holder count, anchor concept and published-or-not verdict from the package, so an
+adjudication that stops describing the data fails rather than rots.
 
 ---
 
 ## KI-31 — One source label, two different taxa: `Raw_Labels` disagreements across datasets
 
-**Where:** 20 of the 1,622 distinct `Raw_Labels` values, touching 80 rows. Enumerated with their
+**Where:** 20 of the 1,622 `Raw_Labels` groups, touching 80 rows. (1,622 is the count AFTER
+`group_by_raw_label` case-folds — `Harpacticoida` and `harpacticoida` are one source label wearing
+two conventions. The byte-exact distinct count is 1,627, which is the figure
+`docs/TAXONOMY_REPRESENTATION.md` reports; both are right, they measure different things.) Enumerated with their
 adjudication in [`LABEL_CONSISTENCY_WAIVERS.json`](LABEL_CONSISTENCY_WAIVERS.json); reported by
 `utils/verify_label_consistency.py` and gated by `tests/test_taxonomy_label_consistency.py`.
 

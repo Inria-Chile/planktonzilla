@@ -17,9 +17,11 @@ Prerequisites:
     (wikidata_ID, ecotaxa_ID, aphia_ID, NCBI_ID, BOLD_ID), indexed by
     (Dataset, Raw_Labels).
 
-  - Three sources are omitted from ``cfg.datasets``, long described as needing a
+  - Three sources were once omitted from ``cfg.datasets``, long described as needing a
     hand-downloaded .zip because of "anti-bot protection". Checked against the live
-    services on 2026-08-01: none of them does.
+    services on 2026-08-01: none of them does, and all three are ACTIVE registry
+    entries today (``constants.DATASET_REGISTRY``). The findings are kept because they
+    are why the automatic path is trusted for each:
 
       * Zoolake — `download_uris` already pointed straight at the .zip and there was
         no manual override. Serves a 492 MB application/zip. It is simply not in the
@@ -31,8 +33,9 @@ Prerequisites:
         packages on demand. `SYKEZooScan2024DatasetImporter` resolves that through
         the Download API (`fairdata_pid`), verified end to end.
 
-    Adding any of them to ``cfg.datasets`` is a separate decision: JEDI is
-    CC-BY-SA-4.0, which does not combine with the CC-BY-NC-4.0 sources already there.
+    Their licence mix was, and remains, a separate decision from their reachability:
+    JEDI is CC-BY-SA-4.0, which does not combine with the CC-BY-NC-4.0 sources already
+    there — see KI-24.
 
     A missing hand-downloaded archive, wherever one is still used, is now reported up
     front — by ``pz_planktonzilla dry_run=true`` for a whole build, and by the importer
@@ -48,13 +51,12 @@ import os
 import shutil
 from collections import Counter
 from datetime import datetime
-from functools import lru_cache, partial
+from functools import partial
 from pathlib import Path
 
 import hydra
 import numpy as np
 import orjson
-import polars as pl
 import pyrootutils
 import requests
 from datasets import (
@@ -83,6 +85,9 @@ from planktonzilla.planktonzilla_dataset.frepj_tables import (
     read_per_image_site_index,
     read_site_sampling_dates,
 )
+from planktonzilla.planktonzilla_dataset.taxonomy import loader as taxonomy_loader
+from planktonzilla.planktonzilla_dataset.taxonomy import model as taxonomy_model
+from planktonzilla.planktonzilla_dataset.taxonomy import render as taxonomy_render
 from planktonzilla.planktonzilla_dataset.timestamps import extract_path_timestamp, merge_timestamp
 from planktonzilla.utils.logger import get_pylogger
 
@@ -102,74 +107,41 @@ num_proc = constants.default_num_proc()
 
 
 # Reading the taxonomy CSV
-LOOKUP_COLS = (
-    *constants.TAXONOMY_RANKS,
-    *constants.EXTRA_COLS,
-    *constants.ID_STR_COLS,
-    *constants.ID_NUM_COLS,
-)
-
-
-def _norm(v):
-    """Empty or blank strings become None; everything else is left as is."""
-    if isinstance(v, str):
-        v = v.strip()
-        return v or None
-    return v
-
-
-@lru_cache(maxsize=4)
-def _build_taxonomy_lookup_cached(csv_path: str) -> dict:
-    """Cached body of :func:`build_taxonomy_lookup`, keyed by resolved path string."""
-    df = pl.read_csv(csv_path)
-
-    # Numeric IDs are stored as text without decimals (135336.0 -> "135336").
-    for c in constants.ID_NUM_COLS:
-        if c in df.columns:
-            df = df.with_columns(pl.col(c).cast(pl.Int64, strict=False).cast(pl.Utf8).alias(c))
-
-    present = [c for c in LOOKUP_COLS if c in df.columns]
-    keys = list(zip(df["Dataset"].to_list(), df["Raw_Labels"].to_list()))
-    rows = df.select(present).to_dicts()
-
-    # A duplicate key silently kept the LAST row here and hard-raised in the pandas
-    # reader this replaced. Warn and keep last-wins so the two agree, and so a CSV that
-    # grows a duplicate says so instead of quietly picking a winner. (The shipped CSV
-    # has none — pinned by tests/test_taxonomy_lookup_equivalence.py.)
-    seen = {}
-    for key in keys:
-        seen[key] = seen.get(key, 0) + 1
-    duplicates = sorted(key for key, n in seen.items() if n > 1)
-    if duplicates:
-        shown = ", ".join(f"{dataset}/{label}" for dataset, label in duplicates[:10])
-        more = f" (+{len(duplicates) - 10} more)" if len(duplicates) > 10 else ""
-        logger.warning(f"Taxonomy CSV has {len(duplicates)} duplicate (Dataset, Raw_Labels) keys; keeping last: {shown}{more}")
-
-    lookup = {}
-    for key, row in zip(keys, rows):
-        lookup[key] = {col: _norm(row.get(col)) for col in LOOKUP_COLS}
-    return lookup
+#
+# The 68-line polars reader that lived here is gone: `planktonzilla.planktonzilla_dataset.taxonomy`
+# is the one reader now, and this module delegates. What it did is unchanged and pinned -- the
+# lookup it returns is value- AND Python-type-identical on all 2358 keys
+# (tests/test_taxonomy_render_golden.py), which is the evidence that let this deletion happen at
+# all rather than a second implementation being kept "just in case".
+#
+# ONE name survives the deletion because a caller reaches for it:
+#   LOOKUP_COLS  imported by make_planktonzilla.check_taxonomy_csv
+#
+# Two others were kept as aliases while the readers moved and are now gone, for the same reason
+# each time: neither had a production caller left, only tests reaching through this module for
+# something the taxonomy package owns.
+#   `_build_taxonomy_lookup_cached`  the cache is the loader's; `taxonomy.loader.cache_clear()`.
+#   `_norm`                          the normaliser is the renderer's; `RedefineDataset._norm` is
+#                                    bound straight from it below, so nothing needs the alias.
+LOOKUP_COLS = taxonomy_model.LOOKUP_COLUMNS
 
 
 def build_taxonomy_lookup(csv_path) -> dict:
     """Build the ``(Dataset, Raw_Labels) -> {column: value}`` lookup from the CSV.
 
-    The single taxonomy-CSV reader for the repo: the generation path (via
+    A delegating alias for :func:`planktonzilla.planktonzilla_dataset.taxonomy.load_taxonomy`,
+    kept so no caller changes its import. The generation path (via
     ``RedefineDataset._build_lookup``) and the re-sync path (via
-    ``update_planktonzilla.build_sync_dict``) both go through here, so the two cannot
-    drift in how they stringify IDs or represent blanks. That divergence — polars on
-    one side, pandas on the other — was recorded as KI-7/KI-12; unifying is provably
-    value-identical on the shipped CSV, which
-    ``tests/test_taxonomy_lookup_equivalence.py`` pins against a verbatim copy of the
-    replaced pandas implementation.
+    ``update_planktonzilla.build_sync_dict``) both still arrive here, so the two cannot drift in
+    how they stringify IDs or represent blanks -- the divergence recorded as KI-7/KI-12.
 
-    Numeric ID columns are normalised to decimal-free strings and blank values to
-    ``None`` so every example resolves to a consistent set of taxonomy/ID fields.
+    Numeric ID columns are normalised to decimal-free strings and blank values to ``None``, and
+    results are cached per resolved path so a run that builds N redefiners reads the taxonomy once
+    rather than N times (measured: 20x on a 21-source build).
 
-    Results are cached per resolved path, so a run that builds N redefiners reads the
-    CSV once rather than N times.
+    Accepts a wide CSV or the normalised package directory, because the loader does.
     """
-    return _build_taxonomy_lookup_cached(str(Path(csv_path).resolve()))
+    return taxonomy_loader.load_taxonomy(csv_path).lookup()
 
 
 # Cleaning up corrupt examples
@@ -379,10 +351,11 @@ class RedefineDataset:
             "timestamp",
         ]
 
-    # _norm and _build_lookup were hoisted to module level as _norm /
-    # build_taxonomy_lookup so the re-sync path shares one CSV reader; these keep the
-    # former method names working for any external caller.
-    _norm = staticmethod(_norm)
+    # _norm and _build_lookup were hoisted out of this class so the re-sync path shares one CSV
+    # reader; these keep the former method names working for any external caller. Bound straight
+    # from the renderer, which owns the implementation — an alias in this module would only be a
+    # second name for it, reachable by nothing but the binding on this line.
+    _norm = staticmethod(taxonomy_render._norm)
 
     def _build_lookup(self, csv_path):
         """Build the ``(Dataset, Raw_Labels) -> {column: value}`` lookup from the CSV."""
@@ -1128,7 +1101,11 @@ def import_and_redefine_source(
     # filled one network fetch at a time (Tara Pacific): an interrupted run leaves it
     # non-empty but PARTIAL, and "non-empty" would carry a fraction of the source into the
     # output as though it were the whole of it. Asking lets that source resume instead.
-    if dataset_importer.imagefolder_is_complete():
+    # `force_imagefolder_preparation` is consulted HERE, not only inside import_dataset:
+    # refresh=rebuild appends it via build_overrides, but this branch short-circuited the
+    # import entirely whenever the imagefolder was complete, so the flag never reached the
+    # gate it was set for and `refresh=rebuild` was a silent no-op.
+    if dataset_importer.imagefolder_is_complete() and not dataset_importer.force_imagefolder_preparation:
         num_items = len(os.listdir(imagefolder_dir))
         logger.info(f"╰─ Using existing imagefolder with {num_items} categories in {imagefolder_dir}.")
     else:
@@ -1149,12 +1126,28 @@ def import_and_redefine_source(
     # carried ones. (Splicing is whole-source, keyed on the `dataset` column, so the
     # disagreement is ACROSS sources in one artifact — never two identities for one
     # row.) One consequence remains live: a stray `train/` at the repo root would
-    # hijack `data_files` for every source at once.
+    # hijack `data_files` for every source at once. That one IS guarded, immediately below —
+    # guarding it changes nothing about the paths this function produces (no such directory
+    # exists, which is why the probe has always fallen through), so the freeze is untouched.
     split_aliases = {
         "train": ["train"],
         "validation": ["validation", "val"],
         "test": ["test"],
     }
+    # Refused, not warned. Because `root` is the REPOSITORY root rather than this source's
+    # imagefolder, one directory named train/, validation/, val/ or test/ at the top of the repo
+    # silently redirects EVERY source's data_files at once — every image in the corpus would load
+    # from that one tree. The repo already contains `tests/`, one character from the trigger.
+    # A build that quietly changed every source is worse than a build that refuses to start.
+    hijackers = sorted(alias for aliases in split_aliases.values() for alias in aliases if (root / alias).is_dir())
+    if hijackers:
+        raise RuntimeError(
+            f"refusing to build: {', '.join(repr(name) for name in hijackers)} exists at the repository "
+            f"root ({root}). This probe is rooted there rather than at the source's imagefolder (a frozen "
+            f"defect — see KI-16), so such a directory would redirect data_files for EVERY source at once "
+            f"and load the whole corpus from it. Rename or remove it before building."
+        )
+
     data_files = {}
     for canonical_split, aliases in split_aliases.items():
         for alias in aliases:

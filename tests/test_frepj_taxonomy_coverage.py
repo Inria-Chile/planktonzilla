@@ -4,11 +4,16 @@
 Network-free tests pinning the curated FREPJ taxonomy rows appended to
 ``planktonzilla_taxonomy.csv`` (Plan 18-01).
 
-These five tests close TAX-05 (coverage / the silent left-join guard), TAX-06
-(cross-source spelling consistency + the sentinel-cascade fix), and the
-append-only / output-preserving milestone invariant. They are offline BY
-CONSTRUCTION: every assertion reads only the committed TSV fixture and the
+These tests close TAX-06 (cross-source spelling consistency + the sentinel-cascade
+fix) and the append-only / output-preserving milestone invariant. They are offline
+BY CONSTRUCTION: every assertion reads only the committed TSV fixture and the
 committed CSV — no HTTP, no ``build_frepj_taxonomy`` call, no live lookup.
+
+TAX-05 — coverage against the frozen class-dir list, the silent left-join guard —
+moved to ``tests/test_taxonomy_source_coverage.py`` in step 5.5a, which runs it over
+all six sources with independent evidence rather than this one. What stays here is
+what is specific to FREPJ: the ``Ge._unk`` sentinel cascade, whose 229 labels have a
+grammar no other source shares.
 
 They must stay green after BOTH Plan 18-01 (this append) and Plan 18-02 (the
 external-ID fill), so nothing here asserts anything about the four external-ID
@@ -80,21 +85,18 @@ def _frepj_rows() -> list[dict]:
     return [r for r in _read_csv_rows() if r["Dataset"] == DATASET]
 
 
-def test_frepj_coverage_matches_frozen_class_dirs():
-    """TAX-05: frepj Raw_Labels set == frozen class-dir set, byte-exact, 229, unique."""
-    class_dirs = _load_frozen_class_dirs()
-    assert len(class_dirs) == 229
+def test_the_join_keys_are_unique():
+    """A duplicate ``Raw_Labels`` would silently over- or under-count examples.
 
-    frepj = _frepj_rows()
-    raw_labels = [r["Raw_Labels"] for r in frepj]
+    Set equality against the frozen class-dir list moved to
+    ``tests/test_taxonomy_source_coverage.py``, which runs the same check over all six sources whose
+    class dirs are independently known. This is the half of TAX-05 that is about this source's rows
+    rather than about the contract every source shares.
+    """
+    raw_labels = [row["Raw_Labels"] for row in _frepj_rows()]
 
-    # No duplicate join keys — a duplicate would silently over/under-count examples.
     assert len(raw_labels) == len(set(raw_labels)), "duplicate frepj Raw_Labels found"
     assert len(raw_labels) == 229
-
-    # Byte-exact set equality (commas and the 6-tuple anomaly preserved). This is the
-    # guard against the silent left-join at generate_planktonzilla.py:215.
-    assert set(raw_labels) == set(class_dirs)
 
 
 def test_no_null_proposed_label_for_frepj():

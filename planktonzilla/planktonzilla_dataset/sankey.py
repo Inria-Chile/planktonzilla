@@ -56,7 +56,6 @@ from __future__ import annotations
 
 import argparse
 import base64
-import csv
 import json
 import logging
 import re
@@ -73,6 +72,7 @@ from planktonzilla.planktonzilla_dataset.constants import (
     DEFAULT_TAXONOMY_CSV_FILENAME,
     TAXONOMY_RANKS,
 )
+from planktonzilla.planktonzilla_dataset.taxonomy import load_taxonomy
 from planktonzilla.utils.logger import get_pylogger
 
 logger = get_pylogger(__name__)
@@ -574,8 +574,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.csv.exists():
         raise SystemExit(f"error: taxonomy CSV not found: {args.csv}")
-    with args.csv.open(newline="", encoding="utf-8") as fh:
-        rows = list(csv.DictReader(fh))
+    # Through the one loader rather than a private csv.DictReader: identical rows, and --csv now
+    # accepts the normalised package directory as well as a wide CSV.
+    rows = load_taxonomy(args.csv).rows()
     logger.info("Read %d taxonomy rows from %s.", len(rows), args.csv)
 
     counts = resolve_counts(args)

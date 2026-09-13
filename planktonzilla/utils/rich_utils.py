@@ -5,6 +5,7 @@ Rich-based helpers for pretty-printing the Hydra config tree, enforcing run tags
 rendering docstrings as Markdown in the terminal.
 """
 
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,51 @@ from planktonzilla.utils.logger import get_pylogger
 
 log = get_pylogger(__name__)
 
+# Keys whose VALUE is a credential. Anchored at a word boundary on both sides so
+# `hf_token` and `hub_token` match while `tokenizer` and `include_tokens_per_second`
+# — real keys in configs/training_arguments — do not.
+SECRET_KEY = re.compile(r"(?:^|_)(?:token|secret|password|passwd|api_key|apikey|credential|credentials)$", re.IGNORECASE)
+REDACTED = "<redacted>"
+
+
+def redact_secrets(cfg: DictConfig) -> DictConfig:
+    """Return a copy of ``cfg`` with every credential-valued key masked.
+
+    :func:`print_config_tree` renders with ``resolve=True`` and writes the result to
+    ``config_tree.log``, and ``configs/extras/default.yaml`` turns that on by default. So
+    without this, `hf_token: ${oc.env:HF_TOKEN, null}` is expanded to the live token,
+    echoed to the terminal, and persisted into the output dir — where on CI or a shared
+    HPC filesystem it outlives the run.
+
+    A key that resolves to ``None`` is left as ``None`` rather than masked: "no token is
+    set" is a genuinely useful thing to read in the tree, and printing ``<redacted>``
+    there would state the opposite. The config the job actually runs on is untouched —
+    only this rendered copy is masked.
+    """
+    unresolved = OmegaConf.to_container(cfg, resolve=False)
+    _mask(unresolved, cfg, "")
+    return OmegaConf.create(unresolved)
+
+
+def _mask(node: Any, source: DictConfig, path: str) -> None:
+    """Replace secret leaves in ``node`` in place, deciding each from ``source``."""
+    if isinstance(node, dict):
+        entries = node.items()
+    elif isinstance(node, list):
+        entries = enumerate(node)
+    else:
+        return
+
+    for key, value in entries:
+        here = f"{path}.{key}" if path else str(key)
+        if isinstance(key, str) and SECRET_KEY.search(key):
+            # Resolved against the ORIGINAL, so an interpolation that yields no token
+            # reads as null instead of as a mask over nothing.
+            resolved = OmegaConf.select(source, here, throw_on_resolution_failure=False)
+            node[key] = None if resolved is None else REDACTED
+        else:
+            _mask(value, source, here)
+
 
 # @rank_zero_only
 def print_config_tree(
@@ -38,6 +84,10 @@ def print_config_tree(
         save_to_file (bool, optional): Whether to also export the tree to ``config_tree.log`` in
             ``cfg.paths.output_dir``.
     """
+
+    # Before anything is rendered: `resolve=True` below expands credentials, and the
+    # rendered tree is both printed and saved to disk.
+    cfg = redact_secrets(cfg)
 
     style = "dim"
     tree = rich.tree.Tree("CONFIG", style=style, guide_style=style)
@@ -74,6 +124,7 @@ def print_config_tree(
 
     # save config tree to file
     if save_to_file:
+        # `cfg` is the redacted copy; paths carry no credentials, so it names the same dir.
         with open(Path(cfg.paths.output_dir, "config_tree.log"), "w") as file:
             rich.print(tree, file=file)
 

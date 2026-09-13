@@ -1,0 +1,11 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+lensless	ACTINOSPHAERIUM NUCLEOFILUM	pzt:001258	actinosphaerium nucleofilum	living	full_body	true	accepted							
+lensless	ARCELLA VULGARIS	pzt:001333	arcella vulgaris	living	full_body	true	accepted							
+lensless	BLEPHARISMA AMERICANUM	pzt:000704	blepharisma americanum	living	full_body	true	accepted							
+lensless	DIDINIUM NASUTUM	pzt:000719	didinium nasutum	living	full_body	true	accepted							
+lensless	DILEPTUS	pzt:000723	dileptus	living	full_body	true	accepted							
+lensless	EUPLOTES EURYSTOMUS	pzt:000812	euplotes eurystomus	living	full_body	true	accepted							
+lensless	PARAMECIUM  BURSARIA	pzt:000729	paramecium bursaria	living	full_body	true	accepted							
+lensless	SPIROSTOMUM AMBIGUUM	pzt:000707	spirostomum ambiguum	living	full_body	true	accepted							
+lensless	STENTOR COERULEUS	pzt:000710	stentor coeruleus	living	full_body	true	accepted							
+lensless	VOLVOX	pzt:001290	volvox	living	full_body	true	accepted							

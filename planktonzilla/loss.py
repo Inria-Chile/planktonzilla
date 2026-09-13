@@ -381,9 +381,21 @@ class RobustAsymmetricLoss(AbstractHFLoss):
     Args:
         gamma_pos: Focusing exponent for positive classes.
         gamma_neg: Focusing exponent for negative classes.
-        eps: Label-smoothing strength and probability floor used when clamping log-probabilities.
+        eps: Probability floor used when clamping log-probabilities — upstream ``Ralloss``'s ``eps``,
+            and only that. It is NOT label smoothing: see the note below.
         epsilon_pos_pow: Coefficient of the second-order (squared) positive correction term.
         reduction: ``"mean"`` to average over the batch, otherwise summed over classes per example.
+
+    *No label smoothing.* The sibling :class:`AsymmetricLoss` smooths, and this class used to as
+    well, reusing ``eps`` for both that and the log floor. Neither survives contact with RAL's
+    terms. Smoothing works in ASL because its whole loss is ``-(smoothed_target · weighted_logp)``
+    — spreading target mass over well-behaved ``-log p`` terms. RAL has no such single term: its
+    per-class contributions are the masked Taylor polynomials, and a soft mask leaks the NEGATIVE
+    polynomial onto the target column, where it is large and GROWS with confidence. Measured at
+    ``eps=0.1`` over 100 classes, the loss stopped being monotonic in the true-class logit —
+    0.158 at logit 4, rising to 0.999 at logit 16. With the hard indicator upstream uses, the same
+    sweep falls 0.0709 → 3.6e-12. A 0.1 probability floor was the second half of the same mistake:
+    it clipped every ``log`` below ``p = 0.1`` rather than guarding underflow.
 
     *Source:* Wongi Park, Inhyuk Park, Sungeun Kim, and Jongbin Ryu. (2023). **Robust Asymmetric Loss
     for Multi-Label Long-Tailed Learning.** arXiv preprint arXiv:2308.05542.
@@ -396,12 +408,14 @@ class RobustAsymmetricLoss(AbstractHFLoss):
         self,
         gamma_pos=0,
         gamma_neg=4,
-        eps: float = 0.1,
+        eps: float = 1e-8,
         epsilon_pos_pow=-2.5,
         reduction="mean",
     ):
         super().__init__()
 
+        # Upstream Ralloss's eps: a log-clamp floor. It was 0.1 here, doubling as label-smoothing
+        # strength, which clipped every log below p = 0.1.
         self.eps = eps
         self.logsoftmax = nn.LogSoftmax(dim=-1)
         self.targets_classes = []
@@ -419,66 +433,50 @@ class RobustAsymmetricLoss(AbstractHFLoss):
         Variant of Asymmetric loss with additional robustness terms.
         """
         inputs = output.logits
-        num_classes = inputs.size()[-1]
         log_preds = self.logsoftmax(inputs)
         self.targets_classes = torch.zeros_like(inputs).scatter_(1, target.long().unsqueeze(1), 1)
 
-        # ASL weights.
-        #
-        # KNOWN DEFECT, deliberately NOT "fixed" here — see
-        # `tests/test_loss.py::test_robust_asymmetric_loss_does_not_yet_suppress_easy_negatives`,
-        # which is a strict xfail carrying the measurement. Unlike the sibling
-        # `AsymmetricLoss` (lines 332-333), neither robustness term is masked by its label
-        # indicator, so the focusing base `1 - xs_pos - xs_neg` does not reduce to `1-p` on
-        # the target column and `p` on the negatives. Measured with the shipped defaults,
-        # the weight on a confidently-correct negative (p=1e-6) is ~1.0 where the intended
-        # `p ** gamma_neg` is ~1e-24, and RAL returns ~1870x the loss ASL gives on the same
-        # well-classified batch.
-        #
-        # Masking the two terms the way ASL does does NOT repair it: this negative term
-        # tends to 0 as p -> 0 (`q*log(q)*-(lamb-q)*q**2` with `q = 1-p`), so the base
-        # tends to 1 either way — measured 0.999999 at p=1e-6. The defect is in the terms
-        # themselves, not the mask, so repairing it needs the published RAL formulation
-        # rather than an analogy to ASL. Guessing here would change the objective silently.
-        #
-        # One strictly-local robustness fix IS applied: the trailing `torch.log(xs_pos)`
-        # was unclamped and returns -inf once p underflows to 0 (routine under fp16 softmax
-        # over ~1000 classes), which makes the whole term NaN. It now has a dtype-tiny
-        # floor, chosen instead of `self.eps` (0.1) precisely so it bites only at that
-        # degenerate point rather than for every p < 0.1. Swept over p in (0, 1) at 200k
-        # points the focusing base stays in [0.409, 1.0] -- minimum 0.409365 at p=0.1348,
-        # never negative -- so no clamp is needed before `torch.pow`.
+        # Two separate things, which this class used to conflate into one: the Taylor
+        # polynomials are the per-class LOSS TERMS, and the focusing weight is built from the
+        # BARE probabilities. The previous version substituted the polynomials for the
+        # probabilities inside the focusing base and then multiplied `log_preds` by the result,
+        # which inverted the weight exactly where `gamma_neg` is supposed to bite: a
+        # confidently-rejected negative (p=1e-6) kept weight ~1.0 instead of ~p**4 = 1e-24, and
+        # RAL returned ~1870x what AsymmetricLoss returns on the same well-classified batch.
+        # Restored to the structure of upstream `Ralloss.forward` (`los_pos`/`los_neg` masked by
+        # the label indicator, `one_sided_w` from `pt`).
         targets = self.targets_classes
         anti_targets = 1 - targets
         xs_pos = torch.exp(log_preds)
         xs_neg = 1 - xs_pos
-        log_floor = torch.finfo(xs_pos.dtype).tiny
-        xs_pos = (
-            torch.exp(log_preds)
-            * (
-                torch.log(xs_pos.clamp(min=self.eps))
-                + self.epsilon_pos * (1 - xs_pos.clamp(min=self.eps))
-                + self.epsilon_pos_pow * 0.5 * torch.pow(1 - xs_pos.clamp(min=self.eps), 2)
-            )
-            * torch.log(xs_pos.clamp(min=log_floor))
-        )
-        xs_neg = (
-            (1 - xs_pos)
-            * (torch.log(xs_neg.clamp(min=self.eps)) + self.epsilon_neg * (xs_neg.clamp(min=self.eps)))
-            * -(self.lamb - xs_neg)
-            * xs_neg**2
-        )
-        asymmetric_w = torch.pow(
-            1 - xs_pos - xs_neg,
-            self.gamma_pos * targets + self.gamma_neg * anti_targets,
-        )
-        log_preds = log_preds * asymmetric_w
 
-        if self.eps > 0:  # label smoothing
-            self.targets_classes = self.targets_classes.mul(1 - self.eps).add(self.eps / num_classes)
+        # Basic Taylor expansion polynomials — each masked by ITS OWN label indicator, so the
+        # positive term contributes only on the target column and the negative term only off it.
+        # The mask is the hard one-hot on purpose; see the class docstring on label smoothing.
+        los_pos = targets * (
+            torch.log(xs_pos.clamp(min=self.eps))
+            + self.epsilon_pos * (1 - xs_pos.clamp(min=self.eps))
+            + self.epsilon_pos_pow * 0.5 * torch.pow(1 - xs_pos.clamp(min=self.eps), 2)
+        )
+        los_neg = (
+            anti_targets
+            * (torch.log(xs_neg.clamp(min=self.eps)) + self.epsilon_neg * xs_neg.clamp(min=self.eps))
+            * (self.lamb - xs_pos)
+            * xs_pos**2
+            * (self.lamb - xs_neg)
+        )
+
+        # Asymmetric focusing, identical to the sibling ASL: `pt` is p on the target column and
+        # 1-p off it, so the base `1 - pt` is (1-p) on the target and p on the negatives — which
+        # is what makes `p ** gamma_neg` suppress the negatives the model already rejects.
+        # Upstream's `clip` is omitted, as it is in AsymmetricLoss: it shifts the negative
+        # probability in the multi-label sigmoid setting and has no counterpart under softmax.
+        pt = xs_pos * targets + xs_neg * anti_targets
+        one_sided_gamma = self.gamma_pos * targets + self.gamma_neg * anti_targets
+        one_sided_w = torch.pow(1 - pt, one_sided_gamma)
 
         # loss calculation
-        loss = -self.targets_classes.mul(log_preds)
+        loss = -(los_pos + los_neg) * one_sided_w
 
         loss = loss.sum(dim=-1)
         if self.reduction == "mean":

@@ -1,0 +1,1353 @@
+taxonID	parentNameUsageID	taxonRank	scientificName	taxonomicStatus	acceptedNameUsageID	nameAccordingTo	kind	taxonRemarks
+pzt:000001		unranked	Eukaryota	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000002		unranked	artefact	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000003		unranked	bad focus	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000004		unranked	bead	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000005		unranked	bubble	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000006		unranked	crystal	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000007		unranked	cyst	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000008		unranked	detritus	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000009		unranked	dirt	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000010		unranked	egg	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000011		unranked	elongated stick	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000012		unranked	error	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000013		unranked	feces	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000014		unranked	fiber	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000015		unranked	filament	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000016		unranked	fish egg	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000017		unranked	invertebrate_larvae	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000018		unranked	larvae	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000019		unranked	marine snow	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000020		unranked	mineral	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000021		unranked	mix	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000022		unranked	molt	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000023		unranked	moving	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000024		unranked	other	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000025		unranked	other plastic	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000026		unranked	part diatom	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000027		unranked	plastic	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000028		unranked	plastic fiber	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000029		unranked	plastic filament	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000030		unranked	plastic film	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000031		unranked	plastic fragment	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000032		unranked	plastic pellet	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000033		unranked	plastic rod	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000034		unranked	pollen	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000035		unranked	polystyrene	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000036		unranked	reflection	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000037		unranked	sand	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000038		unranked	seaweed	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000039		unranked	shape	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000040		unranked	spore	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000041		unranked	stellate hairs	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000042		unranked	unknown	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000043		unranked	zooplankton	accepted			bucket	no lineage in the source table; sub-classification is a curation act
+pzt:000044		kingdom	animalia	accepted			taxon	
+pzt:000045	pzt:000044	phylum	annelida	accepted			taxon	
+pzt:000046	pzt:000045	class	polychaeta	accepted			taxon	
+pzt:000047	pzt:000046	order	phyllodocida	accepted			taxon	
+pzt:000048	pzt:000047	family	phyllodocidae	accepted			taxon	
+pzt:000049	pzt:000048	unranked	alciopini	accepted			taxon	finer than its deepest legacy rank; true rank unassigned
+pzt:000050	pzt:000047	family	tomopteridae	accepted			taxon	
+pzt:000051	pzt:000050	genus	tomopteris	accepted			taxon	
+pzt:000052	pzt:000046	order	sabellida	accepted			taxon	
+pzt:000053	pzt:000052	family	serpulidae	accepted			taxon	
+pzt:000054	pzt:000053	genus	spirorbis	accepted			taxon	
+pzt:000055	pzt:000046	order	terebellida	accepted			taxon	
+pzt:000056	pzt:000055	family	acrocirridae	accepted			taxon	
+pzt:000057	pzt:000056	genus	swima	accepted			taxon	
+pzt:000058	pzt:000055	family	flabelligeridae	accepted			taxon	
+pzt:000059	pzt:000058	genus	flota	accepted			taxon	
+pzt:000060	pzt:000058	genus	poeobius	accepted			taxon	
+pzt:000061	pzt:000055	family	terebellidae	accepted			taxon	
+pzt:000062	pzt:000044	phylum	arthropoda	accepted			taxon	
+pzt:000063	pzt:000062	class	arachnida	accepted			taxon	
+pzt:000064	pzt:000063	order	trombidiformes	accepted			taxon	
+pzt:000065	pzt:000064	family	halacaridae	accepted			taxon	
+pzt:000066	pzt:000064	family	hydrachnidia	accepted			taxon	
+pzt:000067	pzt:000062	class	branchiopoda	accepted			taxon	
+pzt:000068	pzt:000067	order	anomopoda	accepted			taxon	
+pzt:000069	pzt:000068	family	bosminidae	accepted			taxon	
+pzt:000070	pzt:000069	genus	bosmina	accepted			taxon	
+pzt:000071	pzt:000070	species	bosmina fatalis	accepted			taxon	
+pzt:000072	pzt:000070	species	bosmina freyi	accepted			taxon	
+pzt:000073	pzt:000070	species	bosmina longirostris	accepted			taxon	
+pzt:000074	pzt:000070	species	bosmina tanakai	accepted			taxon	
+pzt:000075	pzt:000068	family	daphniidae	accepted			taxon	
+pzt:000076	pzt:000075	genus	ceriodaphnia	accepted			taxon	
+pzt:000077	pzt:000076	species	ceriodaphnia cornuta	accepted			taxon	
+pzt:000078	pzt:000076	species	ceriodaphnia dubia	accepted			taxon	
+pzt:000079	pzt:000076	species	ceriodaphnia pulchella	accepted			taxon	
+pzt:000080	pzt:000075	genus	daphnia	accepted			taxon	
+pzt:000081	pzt:000080	species	daphnia ambigua	accepted			taxon	
+pzt:000082	pzt:000080	species	daphnia cristata	accepted			taxon	
+pzt:000083	pzt:000080	species	daphnia dentifera	accepted			taxon	
+pzt:000084	pzt:000080	species	daphnia galeata	accepted			taxon	
+pzt:000085	pzt:000080	species	daphnia longiremis	accepted			taxon	
+pzt:000086	pzt:000080	species	daphnia mitsukuri	accepted			taxon	
+pzt:000087	pzt:000080	species	daphnia pulex	accepted			taxon	
+pzt:000088	pzt:000080	species	daphnia tanakai	accepted			taxon	
+pzt:000089	pzt:000067	order	ctenopoda	accepted			taxon	
+pzt:000090	pzt:000089	family	sididae	accepted			taxon	
+pzt:000091	pzt:000090	genus	diaphanosoma	accepted			taxon	
+pzt:000092	pzt:000091	species	diaphanosoma brachyurum	accepted			taxon	
+pzt:000093	pzt:000091	species	diaphanosoma dubium	accepted			taxon	
+pzt:000094	pzt:000091	species	diaphanosoma macrophthalma	accepted			taxon	
+pzt:000095	pzt:000091	species	diaphanosoma nipponica	accepted			taxon	
+pzt:000096	pzt:000091	species	diaphanosoma orientalis	accepted			taxon	
+pzt:000097	pzt:000090	genus	penilia	accepted			taxon	
+pzt:000098	pzt:000097	species	penilia avirostris	accepted			taxon	
+pzt:000099	pzt:000067	order	diplostraca	accepted			taxon	
+pzt:000100	pzt:000099	family	bosminidae	accepted			taxon	
+pzt:000101	pzt:000100	genus	bosminopsis	accepted			taxon	
+pzt:000102	pzt:000101	species	bosminopsis deitersi	accepted			taxon	
+pzt:000103	pzt:000099	family	chydoridae	accepted			taxon	
+pzt:000104	pzt:000103	genus	alona	accepted			taxon	
+pzt:000105	pzt:000104	species	alona affinis	accepted			taxon	
+pzt:000106	pzt:000104	species	alona costata	accepted			taxon	
+pzt:000107	pzt:000104	species	alona guttata	accepted			taxon	
+pzt:000108	pzt:000104	species	alona intermedia	accepted			taxon	
+pzt:000109	pzt:000103	genus	alonella	accepted			taxon	
+pzt:000110	pzt:000109	species	alonella excisa	accepted			taxon	
+pzt:000111	pzt:000103	genus	camptocercus	accepted			taxon	
+pzt:000112	pzt:000111	species	camptocercus australis	accepted			taxon	
+pzt:000113	pzt:000103	genus	chydorus	accepted			taxon	
+pzt:000114	pzt:000113	species	chydorus brevilabris	accepted			taxon	
+pzt:000115	pzt:000113	species	chydorus sphaericus	accepted			taxon	
+pzt:000116	pzt:000103	genus	disparalona	accepted			taxon	
+pzt:000117	pzt:000116	species	disparalona rostrata	accepted			taxon	
+pzt:000118	pzt:000103	genus	leydigia	accepted			taxon	
+pzt:000119	pzt:000118	species	leydigia cliata	accepted			taxon	
+pzt:000120	pzt:000118	species	leydigia leydigi	accepted			taxon	
+pzt:000121	pzt:000103	genus	monospilus	accepted			taxon	
+pzt:000122	pzt:000121	species	monospilus dispar	accepted			taxon	
+pzt:000123	pzt:000103	genus	pleuroxus	accepted			taxon	
+pzt:000124	pzt:000123	species	pleuroxus hamulatus	accepted			taxon	
+pzt:000125	pzt:000123	species	pleuroxus laevis	accepted			taxon	
+pzt:000126	pzt:000099	family	daphniida	accepted			taxon	
+pzt:000127	pzt:000126	genus	simocephalus	accepted			taxon	
+pzt:000128	pzt:000127	species	simocephalus serrulatus	accepted			taxon	
+pzt:000129	pzt:000127	species	simocephalus vetulus	accepted			taxon	
+pzt:000130	pzt:000099	family	daphniidae	accepted			taxon	
+pzt:000131	pzt:000130	genus	scapholeberis	accepted			taxon	
+pzt:000132	pzt:000131	species	scapholeberis smirnovi	accepted			taxon	
+pzt:000133	pzt:000099	family	holopediidae	accepted			taxon	
+pzt:000134	pzt:000133	genus	holopedium	accepted			taxon	
+pzt:000135	pzt:000134	species	holopedium gibberum	accepted			taxon	
+pzt:000136	pzt:000099	family	macrothricidae	accepted			taxon	
+pzt:000137	pzt:000136	genus	macrothrix	accepted			taxon	
+pzt:000138	pzt:000099	family	moinidae	accepted			taxon	
+pzt:000139	pzt:000138	genus	moina	accepted			taxon	
+pzt:000140	pzt:000139	species	moina affinis	accepted			taxon	
+pzt:000141	pzt:000139	species	moina micrura	accepted			taxon	
+pzt:000142	pzt:000099	family	sididae	accepted			taxon	
+pzt:000143	pzt:000142	genus	sida	accepted			taxon	
+pzt:000144	pzt:000067	order	haplopoda	accepted			taxon	
+pzt:000145	pzt:000144	family	leptodoridae	accepted			taxon	
+pzt:000146	pzt:000145	genus	leptodora	accepted			taxon	
+pzt:000147	pzt:000146	species	leptodora kindtii	accepted			taxon	
+pzt:000148	pzt:000067	order	onychopoda	accepted			taxon	
+pzt:000149	pzt:000148	family	podonidae	accepted			taxon	
+pzt:000150	pzt:000149	genus	evadne	accepted			taxon	
+pzt:000151	pzt:000149	genus	podon	accepted			taxon	
+pzt:000152	pzt:000062	class	copepoda	accepted			taxon	
+pzt:000153	pzt:000152	order	calanoida	accepted			taxon	
+pzt:000154	pzt:000153	family	acartiidae	accepted			taxon	
+pzt:000155	pzt:000153	family	augaptilidae	accepted			taxon	
+pzt:000156	pzt:000155	genus	haloptilus	accepted			taxon	
+pzt:000157	pzt:000153	family	calanidae	accepted			taxon	
+pzt:000158	pzt:000153	family	candaciidae	accepted			taxon	
+pzt:000159	pzt:000153	family	centropagidae	accepted			taxon	
+pzt:000160	pzt:000159	genus	centropages	accepted			taxon	
+pzt:000161	pzt:000159	genus	isias	accepted			taxon	
+pzt:000162	pzt:000159	genus	sinocalanus	accepted			taxon	
+pzt:000163	pzt:000162	species	sinocalanus tenellus	accepted			taxon	
+pzt:000164	pzt:000153	family	clausocalanidae	accepted			taxon	
+pzt:000165	pzt:000164	genus	ctenocalanus	accepted			taxon	
+pzt:000166	pzt:000164	genus	pseudocalanus	accepted			taxon	
+pzt:000167	pzt:000153	family	diaptomidae	accepted			taxon	
+pzt:000168	pzt:000167	genus	acanthodiaptomus	accepted			taxon	
+pzt:000169	pzt:000168	species	acanthodiaptomus pacificus	accepted			taxon	
+pzt:000170	pzt:000167	genus	eodiaptomus	accepted			taxon	
+pzt:000171	pzt:000170	species	eodiaptomus japonicus	accepted			taxon	
+pzt:000172	pzt:000167	genus	eudiaptomus	accepted			taxon	
+pzt:000173	pzt:000167	genus	heliodiaptomus	accepted			taxon	
+pzt:000174	pzt:000173	species	heliodiaptomus kikuchii	accepted			taxon	
+pzt:000175	pzt:000173	species	heliodiaptomus nipponicus	accepted			taxon	
+pzt:000176	pzt:000167	genus	neodiaptomus	accepted			taxon	
+pzt:000177	pzt:000176	species	neodiaptomus schmackeri	accepted			taxon	
+pzt:000178	pzt:000167	genus	neutrodiaptomus	accepted			taxon	
+pzt:000179	pzt:000178	species	neutrodiaptomus formosus	accepted			taxon	
+pzt:000180	pzt:000167	genus	sinodiaptomus	accepted			taxon	
+pzt:000181	pzt:000180	species	sinodiaptomus sarsi	accepted			taxon	
+pzt:000182	pzt:000180	species	sinodiaptomus valkano	accepted			taxon	
+pzt:000183	pzt:000153	family	eucalanidae	accepted			taxon	
+pzt:000184	pzt:000183	genus	eucalanus	accepted			taxon	
+pzt:000185	pzt:000153	family	euchaetidae	accepted			taxon	
+pzt:000186	pzt:000185	genus	euchaeta	accepted			taxon	
+pzt:000187	pzt:000153	family	heterorhabdidae	accepted			taxon	
+pzt:000188	pzt:000153	family	metridinidae	accepted			taxon	
+pzt:000189	pzt:000188	genus	pleuromamma	accepted			taxon	
+pzt:000190	pzt:000189	species	pleuromamma abdominalis	accepted			taxon	
+pzt:000191	pzt:000153	family	paracalanidae	accepted			taxon	
+pzt:000192	pzt:000191	genus	calocalanus	accepted			taxon	
+pzt:000193	pzt:000192	species	calocalanus pavo	accepted			taxon	
+pzt:000194	pzt:000153	family	pontellidae	accepted			taxon	
+pzt:000195	pzt:000194	genus	pontellina	accepted			taxon	
+pzt:000196	pzt:000195	species	pontellina plumata	accepted			taxon	
+pzt:000197	pzt:000153	family	rhincalanidae	accepted			taxon	
+pzt:000198	pzt:000153	family	temoridae	accepted			taxon	
+pzt:000199	pzt:000198	genus	eurytemora	accepted			taxon	
+pzt:000200	pzt:000199	species	eurytemora affinis	accepted			taxon	
+pzt:000201	pzt:000198	genus	temora	accepted			taxon	
+pzt:000202	pzt:000152	order	cyclopoida	accepted			taxon	
+pzt:000203	pzt:000202	family	corycaeidae	accepted			taxon	
+pzt:000204	pzt:000202	family	cyclopidae	accepted			taxon	
+pzt:000205	pzt:000204	genus	acanthocyclops	accepted			taxon	
+pzt:000206	pzt:000204	genus	cyclops	accepted			taxon	
+pzt:000207	pzt:000206	species	cyclops kikuchii	accepted			taxon	
+pzt:000208	pzt:000206	species	cyclops vicinus	accepted			taxon	
+pzt:000209	pzt:000204	genus	diacyclops	accepted			taxon	
+pzt:000210	pzt:000209	species	diacyclops biscuspidatus	accepted			taxon	
+pzt:000211	pzt:000204	genus	eucyclops	accepted			taxon	
+pzt:000212	pzt:000204	genus	macrocyclops	accepted			taxon	
+pzt:000213	pzt:000204	genus	megacyclops	accepted			taxon	
+pzt:000214	pzt:000213	species	megacyclops viridis	accepted			taxon	
+pzt:000215	pzt:000204	genus	mesocyclops	accepted			taxon	
+pzt:000216	pzt:000215	species	mesocyclops dissimilis	accepted			taxon	
+pzt:000217	pzt:000204	genus	microcyclops	accepted			taxon	
+pzt:000218	pzt:000204	genus	thermocyclops	accepted			taxon	
+pzt:000219	pzt:000218	species	thermocyclops crassus	accepted			taxon	
+pzt:000220	pzt:000218	species	thermocyclops taihokuensis	accepted			taxon	
+pzt:000221	pzt:000204	genus	tropocyclops	accepted			taxon	
+pzt:000222	pzt:000202	family	ergasilidae	accepted			taxon	
+pzt:000223	pzt:000222	genus	ergasilus	accepted			taxon	
+pzt:000224	pzt:000202	family	lubbockiidae	accepted			taxon	
+pzt:000225	pzt:000224	genus	lubbockia	accepted			taxon	
+pzt:000226	pzt:000202	family	oithonidae	accepted			taxon	
+pzt:000227	pzt:000226	genus	oithona	accepted			taxon	
+pzt:000228	pzt:000202	family	oncaeidae	accepted			taxon	
+pzt:000229	pzt:000228	genus	oncaea	accepted			taxon	
+pzt:000230	pzt:000202	family	sapphirinidae	accepted			taxon	
+pzt:000231	pzt:000230	genus	copilia	accepted			taxon	
+pzt:000232	pzt:000152	order	harpacticoida	accepted			taxon	
+pzt:000233	pzt:000232	family	ectinosomatidae	accepted			taxon	
+pzt:000234	pzt:000233	genus	microsetella	accepted			taxon	
+pzt:000235	pzt:000232	family	miraciidae	accepted			taxon	
+pzt:000236	pzt:000232	family	tachidiidae	accepted			taxon	
+pzt:000237	pzt:000236	genus	euterpina	accepted			taxon	
+pzt:000238	pzt:000152	order	monstrilloida	accepted			taxon	
+pzt:000239	pzt:000152	order	siphonostomatoida	accepted			taxon	
+pzt:000240	pzt:000062	class	diplopoda	accepted			taxon	
+pzt:000241	pzt:000240	order	polydesmida	accepted			taxon	
+pzt:000242	pzt:000241	family	paradoxosomatidae	accepted			taxon	
+pzt:000243	pzt:000242	genus	shelleyomorpha	accepted			taxon	
+pzt:000244	pzt:000240	order	siphonophorida	accepted			taxon	
+pzt:000245	pzt:000244	family	siphonophoridae	accepted			taxon	
+pzt:000246	pzt:000245	genus	siphonophora	accepted			taxon	
+pzt:000247	pzt:000062	class	hexapoda	accepted			taxon	
+pzt:000248	pzt:000247	order	ephemeroptera	accepted			taxon	
+pzt:000249	pzt:000248	family	ephemeridae	accepted			taxon	
+pzt:000250	pzt:000249	genus	ephemera	accepted			taxon	
+pzt:000251	pzt:000247	order	hemiptera	accepted			taxon	
+pzt:000252	pzt:000251	family	gerridae	accepted			taxon	
+pzt:000253	pzt:000252	genus	halobates	accepted			taxon	
+pzt:000254	pzt:000247	order	siphonaptera	accepted			taxon	
+pzt:000255	pzt:000254	family	pulicidae	accepted			taxon	
+pzt:000256	pzt:000255	genus	echidnophaga	accepted			taxon	
+pzt:000257	pzt:000062	class	insecta	accepted			taxon	
+pzt:000258	pzt:000257	order	diptera	accepted			taxon	
+pzt:000259	pzt:000258	family	chaoboridae	accepted			taxon	
+pzt:000260	pzt:000259	genus	chaoborus	accepted			taxon	
+pzt:000261	pzt:000258	family	chironomidae	accepted			taxon	
+pzt:000262	pzt:000062	class	malacostraca	accepted			taxon	
+pzt:000263	pzt:000262	order	amphipoda	accepted			taxon	
+pzt:000264	pzt:000263	family	caprellidae	accepted			taxon	
+pzt:000265	pzt:000263	family	oxycephalidae	accepted			taxon	
+pzt:000266	pzt:000263	family	phronimidae	accepted			taxon	
+pzt:000267	pzt:000266	genus	phronima	accepted			taxon	
+pzt:000268	pzt:000263	family	stegocephalidae	accepted			taxon	
+pzt:000269	pzt:000268	genus	stegocephalus	accepted			taxon	
+pzt:000270	pzt:000269	species	stegocephalus inflatus	accepted			taxon	
+pzt:000271	pzt:000263	unranked	gammaridea	accepted			taxon	finer than its deepest legacy rank; true rank unassigned
+pzt:000272	pzt:000262	order	cumacea	accepted			taxon	
+pzt:000273	pzt:000262	order	decapoda	accepted			taxon	
+pzt:000274	pzt:000273	family	galatheidae	accepted			taxon	
+pzt:000275	pzt:000273	family	laomediidae	accepted			taxon	
+pzt:000276	pzt:000273	family	luciferidae	accepted			taxon	
+pzt:000277	pzt:000273	family	munididae	accepted			taxon	
+pzt:000278	pzt:000277	genus	grimothea	accepted			taxon	
+pzt:000279	pzt:000273	family	penaeidae	accepted			taxon	
+pzt:000280	pzt:000273	family	porcellanidae	accepted			taxon	
+pzt:000281	pzt:000273	family	sergestidae	accepted			taxon	
+pzt:000282	pzt:000273	unranked	achelata	accepted			taxon	finer than its deepest legacy rank; true rank unassigned
+pzt:000283	pzt:000273	unranked	brachyura	accepted			taxon	finer than its deepest legacy rank; true rank unassigned
+pzt:000284	pzt:000262	order	euphausiacea	accepted			taxon	
+pzt:000285	pzt:000262	order	isopoda	accepted			taxon	
+pzt:000286	pzt:000285	family	cirolanidae	accepted			taxon	
+pzt:000287	pzt:000286	genus	eurydice	accepted			taxon	
+pzt:000288	pzt:000285	family	munnopsidae	accepted			taxon	
+pzt:000289	pzt:000288	genus	munnopsis	accepted			taxon	
+pzt:000290	pzt:000262	order	mysida	accepted			taxon	
+pzt:000291	pzt:000290	family	mysidae	accepted			taxon	
+pzt:000292	pzt:000291	genus	mysis	accepted			taxon	
+pzt:000293	pzt:000262	order	stomatopoda	accepted			taxon	
+pzt:000294	pzt:000293	family	nannosquillidae	accepted			taxon	
+pzt:000295	pzt:000293	family	squillidae	accepted			taxon	
+pzt:000296	pzt:000062	class	ostracoda	accepted			taxon	
+pzt:000297	pzt:000296	order	podocopida	accepted			taxon	
+pzt:000298	pzt:000297	family	hemicytheridae	accepted			taxon	
+pzt:000299	pzt:000298	genus	favella	accepted			taxon	
+pzt:000300	pzt:000062	class	thecostraca	accepted			taxon	
+pzt:000301	pzt:000300	order	sessilia	accepted			taxon	
+pzt:000302	pzt:000300	unranked	cirripedia	accepted			taxon	finer than its deepest legacy rank; true rank unassigned
+pzt:000303	pzt:000044	phylum	bryozoa	accepted			taxon	
+pzt:000304	pzt:000044	phylum	chaetognatha	accepted			taxon	
+pzt:000305	pzt:000304	class	sagittoidea	accepted			taxon	
+pzt:000306	pzt:000305	order	aphragmophora	accepted			taxon	
+pzt:000307	pzt:000306	family	sagittidae	accepted			taxon	
+pzt:000308	pzt:000307	genus	sagitta	accepted			taxon	
+pzt:000309	pzt:000305	order	phragmophora	accepted			taxon	
+pzt:000310	pzt:000309	family	eukrohniidae	accepted			taxon	
+pzt:000311	pzt:000310	genus	eukrohnia	accepted			taxon	
+pzt:000312	pzt:000044	phylum	chordata	accepted			taxon	
+pzt:000313	pzt:000312	class	appendicularia	accepted			taxon	
+pzt:000314	pzt:000313	order	copelata	accepted			taxon	
+pzt:000315	pzt:000314	family	fritillariidae	accepted			taxon	
+pzt:000316	pzt:000315	genus	fritillaria	accepted			taxon	
+pzt:000317	pzt:000314	family	oikopleuridae	accepted			taxon	
+pzt:000318	pzt:000312	class	ascidiacea	accepted			taxon	
+pzt:000319	pzt:000318	order	aplousobranchia	accepted			taxon	
+pzt:000320	pzt:000319	family	holozoidae	accepted			taxon	
+pzt:000321	pzt:000320	genus	distaplia	accepted			taxon	
+pzt:000322	pzt:000312	class	leptocardii	accepted			taxon	
+pzt:000323	pzt:000322	order	amphioxiformes	accepted			taxon	
+pzt:000324	pzt:000323	family	branchiostomatidae	accepted			taxon	
+pzt:000325	pzt:000324	genus	branchiostoma	accepted			taxon	
+pzt:000326	pzt:000325	species	branchiostoma lanceolatum	accepted			taxon	
+pzt:000327	pzt:000312	class	teleostei	accepted			taxon	
+pzt:000328	pzt:000327	order	anguilliformes	accepted			taxon	
+pzt:000329	pzt:000328	family	eurypharyngidae	accepted			taxon	
+pzt:000330	pzt:000329	genus	eurypharynx	accepted			taxon	
+pzt:000331	pzt:000330	species	eurypharynx pelecanoides	accepted			taxon	
+pzt:000332	pzt:000328	family	nettastomatidae	accepted			taxon	
+pzt:000333	pzt:000332	genus	leptocephalus	accepted			taxon	
+pzt:000334	pzt:000327	order	clupeiformes	accepted			taxon	
+pzt:000335	pzt:000334	family	clupeidae	accepted			taxon	
+pzt:000336	pzt:000334	family	engraulidae	accepted			taxon	
+pzt:000337	pzt:000327	order	myctophiformes	accepted			taxon	
+pzt:000338	pzt:000337	family	myctophidae	accepted			taxon	
+pzt:000339	pzt:000312	class	thaliacea	accepted			taxon	
+pzt:000340	pzt:000339	order	doliolida	accepted			taxon	
+pzt:000341	pzt:000339	order	pyrosomatida	accepted			taxon	
+pzt:000342	pzt:000341	family	pyrosomatidae	accepted			taxon	
+pzt:000343	pzt:000342	genus	pyrosoma	accepted			taxon	
+pzt:000344	pzt:000339	order	salpida	accepted			taxon	
+pzt:000345	pzt:000344	family	salpidae	accepted			taxon	
+pzt:000346	pzt:000044	phylum	cnidaria	accepted			taxon	
+pzt:000347	pzt:000346	class	cubozoa	accepted			taxon	
+pzt:000348	pzt:000346	class	hexacorallia	accepted			taxon	
+pzt:000349	pzt:000348	order	actiniaria	accepted			taxon	
+pzt:000350	pzt:000348	order	ceriantharia	accepted			taxon	
+pzt:000351	pzt:000348	order	zoantharia	accepted			taxon	
+pzt:000352	pzt:000346	class	hydrozoa	accepted			taxon	
+pzt:000353	pzt:000352	order	anthoathecata	accepted			taxon	
+pzt:000354	pzt:000353	family	bythotiaridae	accepted			taxon	
+pzt:000355	pzt:000353	family	corynidae	accepted			taxon	
+pzt:000356	pzt:000355	genus	sarsia	accepted			taxon	
+pzt:000357	pzt:000353	family	hydridae	accepted			taxon	
+pzt:000358	pzt:000357	genus	hydra	accepted			taxon	
+pzt:000359	pzt:000353	family	porpitidae	accepted			taxon	
+pzt:000360	pzt:000359	genus	porpita	accepted			taxon	
+pzt:000361	pzt:000360	species	porpita porpita	accepted			taxon	
+pzt:000362	pzt:000359	genus	velella	accepted			taxon	
+pzt:000363	pzt:000352	order	leptothecata	accepted			taxon	
+pzt:000364	pzt:000363	family	aequoreidae	accepted			taxon	
+pzt:000365	pzt:000364	genus	aequorea	accepted			taxon	
+pzt:000366	pzt:000363	family	campanulariidae	accepted			taxon	
+pzt:000367	pzt:000366	genus	obelia	accepted			taxon	
+pzt:000368	pzt:000352	order	limnomedusae	accepted			taxon	
+pzt:000369	pzt:000368	family	geryoniidae	accepted			taxon	
+pzt:000370	pzt:000369	genus	liriope	accepted			taxon	
+pzt:000371	pzt:000368	family	olindiidae	accepted			taxon	
+pzt:000372	pzt:000352	order	narcomedusae	accepted			taxon	
+pzt:000373	pzt:000372	family	aeginidae	accepted			taxon	
+pzt:000374	pzt:000373	genus	aegina	accepted			taxon	
+pzt:000375	pzt:000374	species	aegina citrea	accepted			taxon	
+pzt:000376	pzt:000372	family	solmarisidae	accepted			taxon	
+pzt:000377	pzt:000376	genus	solmaris	accepted			taxon	
+pzt:000378	pzt:000372	family	solmundaeginidae	accepted			taxon	
+pzt:000379	pzt:000378	genus	solmundella	accepted			taxon	
+pzt:000380	pzt:000379	species	solmundella bitentaculata	accepted			taxon	
+pzt:000381	pzt:000352	order	siphonophorae	accepted			taxon	
+pzt:000382	pzt:000381	family	abylidae	accepted			taxon	
+pzt:000383	pzt:000382	genus	abylopsis	accepted			taxon	
+pzt:000384	pzt:000383	species	abylopsis tetragona	accepted			taxon	
+pzt:000385	pzt:000382	genus	bassia	accepted			taxon	
+pzt:000386	pzt:000385	species	bassia bassensis	accepted			taxon	
+pzt:000387	pzt:000381	family	diphyidae	accepted			taxon	
+pzt:000388	pzt:000387	genus	chelophyes	accepted			taxon	
+pzt:000389	pzt:000387	genus	eudoxoides	accepted			taxon	
+pzt:000390	pzt:000389	species	eudoxoides spiralis	accepted			taxon	
+pzt:000391	pzt:000381	family	hippopodiidae	accepted			taxon	
+pzt:000392	pzt:000381	family	physaliidae	accepted			taxon	
+pzt:000393	pzt:000392	genus	physalia	accepted			taxon	
+pzt:000394	pzt:000381	family	sphaeronectidae	accepted			taxon	
+pzt:000395	pzt:000394	genus	sphaeronectes	accepted			taxon	
+pzt:000396	pzt:000352	order	trachymedusae	accepted			taxon	
+pzt:000397	pzt:000396	family	halicreatidae	accepted			taxon	
+pzt:000398	pzt:000397	genus	botrynema	accepted			taxon	
+pzt:000399	pzt:000398	species	botrynema brucei	accepted			taxon	
+pzt:000400	pzt:000397	genus	halicreas	accepted			taxon	
+pzt:000401	pzt:000400	species	halicreas minimum	accepted			taxon	
+pzt:000402	pzt:000397	genus	haliscera	accepted			taxon	
+pzt:000403	pzt:000396	family	rhopalonematidae	accepted			taxon	
+pzt:000404	pzt:000403	genus	aglantha	accepted			taxon	
+pzt:000405	pzt:000404	species	aglantha digitale	accepted			taxon	
+pzt:000406	pzt:000403	genus	aglaura	accepted			taxon	
+pzt:000407	pzt:000406	species	aglaura hemistoma	accepted			taxon	
+pzt:000408	pzt:000403	genus	rhopalonema	accepted			taxon	
+pzt:000409	pzt:000408	species	rhopalonema velatum	accepted			taxon	
+pzt:000410	pzt:000403	genus	sminthea	accepted			taxon	
+pzt:000411	pzt:000346	class	scyphozoa	accepted			taxon	
+pzt:000412	pzt:000411	order	coronatae	accepted			taxon	
+pzt:000413	pzt:000412	family	atollidae	accepted			taxon	
+pzt:000414	pzt:000413	genus	atolla	accepted			taxon	
+pzt:000415	pzt:000411	order	rhizostomeae	accepted			taxon	
+pzt:000416	pzt:000411	order	semaeostomeae	accepted			taxon	
+pzt:000417	pzt:000346	unranked	anthozoa	accepted			taxon	finer than its deepest legacy rank; true rank unassigned
+pzt:000418	pzt:000044	phylum	ctenophora	accepted			taxon	
+pzt:000419	pzt:000418	class	nuda	accepted			taxon	
+pzt:000420	pzt:000419	order	beroida	accepted			taxon	
+pzt:000421	pzt:000420	family	beroidae	accepted			taxon	
+pzt:000422	pzt:000421	genus	beroe	accepted			taxon	
+pzt:000423	pzt:000418	class	tentaculata	accepted			taxon	
+pzt:000424	pzt:000423	order	cestida	accepted			taxon	
+pzt:000425	pzt:000424	family	cestidae	accepted			taxon	
+pzt:000426	pzt:000423	order	cydippida	accepted			taxon	
+pzt:000427	pzt:000423	order	lobata	accepted			taxon	
+pzt:000428	pzt:000044	phylum	echinodermata	accepted			taxon	
+pzt:000429	pzt:000428	class	asteroidea	accepted			taxon	
+pzt:000430	pzt:000429	order	paxillosida	accepted			taxon	
+pzt:000431	pzt:000430	family	luidiidae	accepted			taxon	
+pzt:000432	pzt:000428	class	crinoidea	accepted			taxon	
+pzt:000433	pzt:000428	class	echinoidea	accepted			taxon	
+pzt:000434	pzt:000428	class	holothuroidea	accepted			taxon	
+pzt:000435	pzt:000428	class	ophiuroidea	accepted			taxon	
+pzt:000436	pzt:000044	phylum	hemichordata	accepted			taxon	
+pzt:000437	pzt:000436	class	enteropneusta	accepted			taxon	
+pzt:000438	pzt:000044	phylum	mollusca	accepted			taxon	
+pzt:000439	pzt:000438	class	bivalvia	accepted			taxon	
+pzt:000440	pzt:000439	order	pteriida	accepted			taxon	
+pzt:000441	pzt:000440	family	inoceramidae	accepted			taxon	
+pzt:000442	pzt:000441	genus	cladoceramus	accepted			taxon	
+pzt:000443	pzt:000438	class	cephalopoda	accepted			taxon	
+pzt:000444	pzt:000438	class	gastropoda	accepted			taxon	
+pzt:000445	pzt:000444	order	littorinimorpha	accepted			taxon	
+pzt:000446	pzt:000445	family	atlantidae	accepted			taxon	
+pzt:000447	pzt:000445	family	pterotracheidae	accepted			taxon	
+pzt:000448	pzt:000447	genus	pterotrachea	accepted			taxon	
+pzt:000449	pzt:000444	order	nudibranchia	accepted			taxon	
+pzt:000450	pzt:000444	order	pteropoda	accepted			taxon	
+pzt:000451	pzt:000450	family	cavoliniidae	accepted			taxon	
+pzt:000452	pzt:000451	genus	cavolinia	accepted			taxon	
+pzt:000453	pzt:000452	species	cavolinia inflexa	accepted			taxon	
+pzt:000454	pzt:000451	genus	diacavolinia	accepted			taxon	
+pzt:000455	pzt:000451	genus	diacria	accepted			taxon	
+pzt:000456	pzt:000455	species	diacria trispinosa	accepted			taxon	
+pzt:000457	pzt:000450	family	cliidae	accepted			taxon	departs from EcoTaxa's «creseidae»: **A defect, and the only one in this table — inherited, not introduced here.** It is the second case of docs/CODE_REVIEW.md finding 1.6, and KI-31 reports it from the other side. EcoTaxa places the `Creseidae` folder in the family Creseidae, and so do three pre-existing rows (`global_uvp5/Creseidae`, `uvp6net/Creseis acicula`, `zooscan/Creseidae acicula`). The one row that does not is `zooscan/Creseidae`, which maps the folder to `clio pyramidata` — family Cliidae — and the `verbatim` rule copies it here because it shares the class-dir name. zooscan is therefore inconsistent with itself, and the copy carries that inconsistency into this block. Recorded rather than corrected: fixing it changes published lineages, so it is gated on a golden diff like every KNOWN_ISSUES data item.
+pzt:000458	pzt:000457	genus	clio	accepted			taxon	
+pzt:000459	pzt:000458	species	clio pyramidata	accepted			taxon	
+pzt:000460	pzt:000450	family	creseidae	accepted			taxon	
+pzt:000461	pzt:000460	genus	creseis	accepted			taxon	
+pzt:000462	pzt:000461	species	creseis acicula	accepted			taxon	
+pzt:000463	pzt:000461	species	creseis virgula	accepted			taxon	
+pzt:000464	pzt:000450	family	cymbuliidae	accepted			taxon	
+pzt:000465	pzt:000464	genus	cymbulia	accepted			taxon	
+pzt:000466	pzt:000465	species	cymbulia peronii	accepted			taxon	
+pzt:000467	pzt:000450	family	limacinidae	accepted			taxon	
+pzt:000468	pzt:000467	genus	limacina	accepted			taxon	
+pzt:000469	pzt:000468	species	limacina helicina	accepted			taxon	
+pzt:000470	pzt:000444	order	pylopulmonata	accepted			taxon	
+pzt:000471	pzt:000470	family	pyramidellidae	accepted			taxon	
+pzt:000472	pzt:000471	genus	microstellaria	accepted			taxon	
+pzt:000473	pzt:000444	order	stylommatophora	accepted			taxon	
+pzt:000474	pzt:000473	family	helicidae	accepted			taxon	
+pzt:000475	pzt:000474	genus	helix	accepted			taxon	
+pzt:000476	pzt:000475	species	helix aspersa	accepted			taxon	
+pzt:000477	pzt:000444	order	thecosomata	accepted			taxon	
+pzt:000478	pzt:000044	phylum	nematoda	accepted			taxon	
+pzt:000479	pzt:000044	phylum	phoronida	accepted			taxon	
+pzt:000480	pzt:000044	phylum	platyhelminthes	accepted			taxon	
+pzt:000481	pzt:000480	class	trematoda	accepted			taxon	
+pzt:000482	pzt:000481	order	plagiorchiida	accepted			taxon	
+pzt:000483	pzt:000482	family	cryptogonimidae	accepted			taxon	
+pzt:000484	pzt:000483	genus	siphodera	accepted			taxon	
+pzt:000485	pzt:000044	phylum	porifera	accepted			taxon	
+pzt:000486	pzt:000044	phylum	rotifera	accepted			taxon	
+pzt:000487	pzt:000486	class	eurotatoria	accepted			taxon	
+pzt:000488	pzt:000487	order	bdelloidea	accepted			taxon	
+pzt:000489	pzt:000488	family	habrotrochidae	accepted			taxon	
+pzt:000490	pzt:000488	family	philodinidae	accepted			taxon	
+pzt:000491	pzt:000490	genus	dissotrocha	accepted			taxon	
+pzt:000492	pzt:000490	genus	rotaria	accepted			taxon	
+pzt:000493	pzt:000492	species	rotaria neptunia	accepted			taxon	
+pzt:000494	pzt:000487	order	collothecacea	accepted			taxon	
+pzt:000495	pzt:000494	family	collothecidae	accepted			taxon	
+pzt:000496	pzt:000495	genus	collotheca	accepted			taxon	
+pzt:000497	pzt:000487	order	flosculariaceae	accepted			taxon	
+pzt:000498	pzt:000497	family	conochilidae	accepted			taxon	
+pzt:000499	pzt:000498	genus	conochiloides	accepted			taxon	
+pzt:000500	pzt:000499	species	conochiloides dossuarius	accepted			taxon	
+pzt:000501	pzt:000498	genus	conochilus	accepted			taxon	
+pzt:000502	pzt:000501	species	conochilus unicornis	accepted			taxon	
+pzt:000503	pzt:000497	family	flosculariidae	accepted			taxon	
+pzt:000504	pzt:000503	genus	floscularia	accepted			taxon	
+pzt:000505	pzt:000503	genus	lacinularia	accepted			taxon	
+pzt:000506	pzt:000505	species	lacinularia flosculosa	accepted			taxon	
+pzt:000507	pzt:000497	family	hexarthridae	accepted			taxon	
+pzt:000508	pzt:000507	genus	hexarthra	accepted			taxon	
+pzt:000509	pzt:000497	family	testudinellidae	accepted			taxon	
+pzt:000510	pzt:000509	genus	pompholyx	accepted			taxon	
+pzt:000511	pzt:000510	species	pompholyx complanata	accepted			taxon	
+pzt:000512	pzt:000510	species	pompholyx sulcata	accepted			taxon	
+pzt:000513	pzt:000509	genus	testudinella	accepted			taxon	
+pzt:000514	pzt:000513	species	testudinella brevicaudata	accepted			taxon	
+pzt:000515	pzt:000513	species	testudinella patina	accepted			taxon	
+pzt:000516	pzt:000497	family	trochosphaeridae	accepted			taxon	
+pzt:000517	pzt:000516	genus	filinia	accepted			taxon	
+pzt:000518	pzt:000517	species	filinia longiseta	accepted			taxon	
+pzt:000519	pzt:000516	genus	tetramastix	accepted			taxon	
+pzt:000520	pzt:000519	species	tetramastix opoliensis	accepted			taxon	
+pzt:000521	pzt:000487	order	ploima	accepted			taxon	
+pzt:000522	pzt:000521	family	asplanchnidae	accepted			taxon	
+pzt:000523	pzt:000522	genus	asplanchna	accepted			taxon	
+pzt:000524	pzt:000523	species	asplanchna priodonta	accepted			taxon	
+pzt:000525	pzt:000523	species	asplanchna sieboldi	accepted			taxon	
+pzt:000526	pzt:000522	genus	asplanchnopus	accepted			taxon	
+pzt:000527	pzt:000521	family	brachionidae	accepted			taxon	
+pzt:000528	pzt:000527	genus	anuraeopsis	accepted			taxon	
+pzt:000529	pzt:000528	species	anuraeopsis fissa	accepted			taxon	
+pzt:000530	pzt:000527	genus	brachionus	accepted			taxon	
+pzt:000531	pzt:000530	species	brachionus angularis	accepted			taxon	
+pzt:000532	pzt:000530	species	brachionus budapestinensis	accepted			taxon	
+pzt:000533	pzt:000530	species	brachionus calyciflorus	accepted			taxon	
+pzt:000534	pzt:000530	species	brachionus caudatus	accepted			taxon	
+pzt:000535	pzt:000530	species	brachionus dimidiatus	accepted			taxon	
+pzt:000536	pzt:000530	species	brachionus diversicornis	accepted			taxon	
+pzt:000537	pzt:000530	species	brachionus falcatus	accepted			taxon	
+pzt:000538	pzt:000530	species	brachionus forficula	accepted			taxon	
+pzt:000539	pzt:000530	species	brachionus plicatilis	accepted			taxon	
+pzt:000540	pzt:000530	species	brachionus quadridentatus	accepted			taxon	
+pzt:000541	pzt:000530	species	brachionus sessilis	accepted			taxon	
+pzt:000542	pzt:000530	species	brachionus urceolaris	accepted			taxon	
+pzt:000543	pzt:000527	genus	kellicottia	accepted			taxon	
+pzt:000544	pzt:000543	species	kellicottia bostoniensis	accepted			taxon	
+pzt:000545	pzt:000543	species	kellicottia longispina	accepted			taxon	
+pzt:000546	pzt:000527	genus	keratella	accepted			taxon	
+pzt:000547	pzt:000546	species	keratella cochlearis	accepted			taxon	
+pzt:000548	pzt:000546	species	keratella quadrata	accepted			taxon	
+pzt:000549	pzt:000527	genus	notholca	accepted			taxon	
+pzt:000550	pzt:000549	species	notholca labis	accepted			taxon	
+pzt:000551	pzt:000527	genus	platyias	accepted			taxon	
+pzt:000552	pzt:000551	species	platyias patulus	accepted			taxon	
+pzt:000553	pzt:000551	species	platyias quadricornis	accepted			taxon	
+pzt:000554	pzt:000521	family	dicranophoridae	accepted			taxon	
+pzt:000555	pzt:000554	genus	dicranophorus	accepted			taxon	
+pzt:000556	pzt:000555	species	dicranophorus uncinatus	accepted			taxon	
+pzt:000557	pzt:000554	genus	encentrum	accepted			taxon	
+pzt:000558	pzt:000521	family	epiphanidae	accepted			taxon	
+pzt:000559	pzt:000558	genus	epiphanes	accepted			taxon	
+pzt:000560	pzt:000521	family	euchlanidae	accepted			taxon	
+pzt:000561	pzt:000560	genus	dipleuchlanis	accepted			taxon	
+pzt:000562	pzt:000561	species	dipleuchlanis propatula	accepted			taxon	
+pzt:000563	pzt:000560	genus	euchlanis	accepted			taxon	
+pzt:000564	pzt:000563	species	euchlanis pyriformis	accepted			taxon	
+pzt:000565	pzt:000560	genus	eudactylota	accepted			taxon	
+pzt:000566	pzt:000565	species	eudactylota eudactylota	accepted			taxon	
+pzt:000567	pzt:000521	family	gastropoidae	accepted			taxon	
+pzt:000568	pzt:000567	genus	ascomorpha	accepted			taxon	
+pzt:000569	pzt:000567	genus	gastropus	accepted			taxon	
+pzt:000570	pzt:000569	species	gastropus stylifer	accepted			taxon	
+pzt:000571	pzt:000521	family	lecanidae	accepted			taxon	
+pzt:000572	pzt:000571	genus	lecane	accepted			taxon	
+pzt:000573	pzt:000572	species	lecane curvicornis	accepted			taxon	
+pzt:000574	pzt:000572	species	lecane flexilis	accepted			taxon	
+pzt:000575	pzt:000572	species	lecane hastata	accepted			taxon	
+pzt:000576	pzt:000572	species	lecane hornemanni	accepted			taxon	
+pzt:000577	pzt:000572	species	lecane infula	accepted			taxon	
+pzt:000578	pzt:000572	species	lecane latissima	accepted			taxon	
+pzt:000579	pzt:000572	species	lecane leontina	accepted			taxon	
+pzt:000580	pzt:000572	species	lecane luna	accepted			taxon	
+pzt:000581	pzt:000572	species	lecane nana	accepted			taxon	
+pzt:000582	pzt:000572	species	lecane papuana	accepted			taxon	
+pzt:000583	pzt:000572	species	lecane stichaea	accepted			taxon	
+pzt:000584	pzt:000572	species	lecane ungulata	accepted			taxon	
+pzt:000585	pzt:000571	genus	monostyla	accepted			taxon	
+pzt:000586	pzt:000585	species	monostyla acus	accepted			taxon	
+pzt:000587	pzt:000585	species	monostyla bulla	accepted			taxon	
+pzt:000588	pzt:000585	species	monostyla closterocerca	accepted			taxon	
+pzt:000589	pzt:000585	species	monostyla furcata	accepted			taxon	
+pzt:000590	pzt:000585	species	monostyla hamata	accepted			taxon	
+pzt:000591	pzt:000585	species	monostyla lunaris	accepted			taxon	
+pzt:000592	pzt:000585	species	monostyla opias	accepted			taxon	
+pzt:000593	pzt:000585	species	monostyla pyriformis	accepted			taxon	
+pzt:000594	pzt:000585	species	monostyla quadridentata	accepted			taxon	
+pzt:000595	pzt:000521	family	lepadellidae	accepted			taxon	
+pzt:000596	pzt:000595	genus	colurella	accepted			taxon	
+pzt:000597	pzt:000595	genus	lepadella	accepted			taxon	
+pzt:000598	pzt:000597	species	lepadella acuminata	accepted			taxon	
+pzt:000599	pzt:000597	species	lepadella oblonga	accepted			taxon	
+pzt:000600	pzt:000597	species	lepadella ovalis	accepted			taxon	
+pzt:000601	pzt:000597	species	lepadella patella	accepted			taxon	
+pzt:000602	pzt:000521	family	mytilinidae	accepted			taxon	
+pzt:000603	pzt:000602	genus	mytilina	accepted			taxon	
+pzt:000604	pzt:000603	species	mytilina compressa	accepted			taxon	
+pzt:000605	pzt:000603	species	mytilina trigona	accepted			taxon	
+pzt:000606	pzt:000603	species	mytilina ventralis	accepted			taxon	
+pzt:000607	pzt:000521	family	notommatidae	accepted			taxon	
+pzt:000608	pzt:000607	genus	cephalodella	accepted			taxon	
+pzt:000609	pzt:000607	genus	notommata	accepted			taxon	
+pzt:000610	pzt:000521	family	scaridiidae	accepted			taxon	
+pzt:000611	pzt:000610	genus	scaridium	accepted			taxon	
+pzt:000612	pzt:000611	species	scaridium longicaudum	accepted			taxon	
+pzt:000613	pzt:000521	family	synchaetidae	accepted			taxon	
+pzt:000614	pzt:000613	genus	ploesoma	accepted			taxon	
+pzt:000615	pzt:000614	species	ploesoma hudsoni	accepted			taxon	
+pzt:000616	pzt:000614	species	ploesoma lenticulare	accepted			taxon	
+pzt:000617	pzt:000614	species	ploesoma truncatum	accepted			taxon	
+pzt:000618	pzt:000613	genus	polyarthra	accepted			taxon	
+pzt:000619	pzt:000618	species	polyarthra euryptera	accepted			taxon	
+pzt:000620	pzt:000618	species	polyarthra remata	accepted			taxon	
+pzt:000621	pzt:000618	species	polyarthra vulgaris	accepted			taxon	
+pzt:000622	pzt:000613	genus	synchaeta	accepted			taxon	
+pzt:000623	pzt:000622	species	synchaeta oblonga	accepted			taxon	
+pzt:000624	pzt:000622	species	synchaeta stylata	accepted			taxon	
+pzt:000625	pzt:000622	species	synchaeta tremula	accepted			taxon	
+pzt:000626	pzt:000521	family	trichocercidae	accepted			taxon	
+pzt:000627	pzt:000626	genus	diurella	accepted			taxon	
+pzt:000628	pzt:000627	species	diurella collaris	accepted			taxon	
+pzt:000629	pzt:000627	species	diurella dixon-nuttalli	accepted			taxon	
+pzt:000630	pzt:000627	species	diurella porcellus	accepted			taxon	
+pzt:000631	pzt:000627	species	diurella rousseleti	accepted			taxon	
+pzt:000632	pzt:000626	genus	trichocerca	accepted			taxon	
+pzt:000633	pzt:000632	species	trichocerca bicristata	accepted			taxon	
+pzt:000634	pzt:000632	species	trichocerca birostris	accepted			taxon	
+pzt:000635	pzt:000632	species	trichocerca capucina	accepted			taxon	
+pzt:000636	pzt:000632	species	trichocerca cylindrica	accepted			taxon	
+pzt:000637	pzt:000632	species	trichocerca elongata	accepted			taxon	
+pzt:000638	pzt:000632	species	trichocerca longiseta	accepted			taxon	
+pzt:000639	pzt:000632	species	trichocerca mucosa	accepted			taxon	
+pzt:000640	pzt:000632	species	trichocerca pusilla	accepted			taxon	
+pzt:000641	pzt:000632	species	trichocerca rattus	accepted			taxon	
+pzt:000642	pzt:000521	family	trichotriidae	accepted			taxon	
+pzt:000643	pzt:000642	genus	trichotria	accepted			taxon	
+pzt:000644	pzt:000643	species	trichotria tetractis	accepted			taxon	
+pzt:000645		kingdom	bacteria	accepted			taxon	
+pzt:000646	pzt:000645	phylum	cyanobacteria	accepted			taxon	departs from EcoTaxa's «proteobacteria»: A repair of an upstream misplacement, not a spelling. EcoTaxa hangs its `Cyanobacteria` node under `Bacteria > Proteobacteria`, which is not where cyanobacteria sit; the table records Cyanobacteria as the phylum in all 48 pre-existing rows that name it, and none name Proteobacteria.
+pzt:000647	pzt:000646	class	cyanophyceae	accepted			taxon	
+pzt:000648	pzt:000647	order	chroococcales	accepted			taxon	
+pzt:000649	pzt:000648	family	chroococcaceae	accepted			taxon	
+pzt:000650	pzt:000649	genus	chroococcus	accepted			taxon	
+pzt:000651	pzt:000648	family	microcystaceae	accepted			taxon	
+pzt:000652	pzt:000651	genus	aphanothece	accepted			taxon	
+pzt:000653	pzt:000652	species	aphanothece parallelliformis	accepted			taxon	
+pzt:000654	pzt:000651	genus	merismopedia	accepted			taxon	
+pzt:000655	pzt:000647	order	gomontiellales	accepted			taxon	
+pzt:000656	pzt:000655	family	gomontiellaceae	accepted			taxon	
+pzt:000657	pzt:000656	genus	katagnymene	accepted			taxon	
+pzt:000658	pzt:000657	species	katagnymene spiralis	accepted			taxon	
+pzt:000659	pzt:000647	order	nostocales	accepted			taxon	
+pzt:000660	pzt:000659	family	aphanizomenonaceae	accepted			taxon	
+pzt:000661	pzt:000660	genus	aphanizomenon	accepted			taxon	
+pzt:000662	pzt:000660	genus	dolichospermum	accepted			taxon	
+pzt:000663	pzt:000659	family	nodulariaceae	accepted			taxon	
+pzt:000664	pzt:000663	genus	anabaenopsis	accepted			taxon	
+pzt:000665	pzt:000663	genus	nodularia	accepted			taxon	
+pzt:000666	pzt:000665	species	nodularia spumigena	accepted			taxon	
+pzt:000667	pzt:000659	family	rivulariaceae	accepted			taxon	
+pzt:000668	pzt:000667	genus	richelia	accepted			taxon	
+pzt:000669	pzt:000647	order	oscillatoriales	accepted			taxon	
+pzt:000670	pzt:000669	family	microcoleaceae	accepted			taxon	
+pzt:000671	pzt:000670	genus	trichodesmium	accepted			taxon	
+pzt:000672	pzt:000647	order	synechococcales	accepted			taxon	
+pzt:000673	pzt:000672	family	coelosphaeriaceae	accepted			taxon	
+pzt:000674	pzt:000673	genus	woronichinia	accepted			taxon	
+pzt:000675		kingdom	chromista	accepted			taxon	
+pzt:000676	pzt:000675	phylum	bacillariophyta	accepted			taxon	
+pzt:000677	pzt:000676	unranked	coscinodiscids	accepted			taxon	finer than its deepest legacy rank; true rank unassigned
+pzt:000678	pzt:000675	phylum	cercozoa	accepted			taxon	
+pzt:000679	pzt:000678	class	thecofilosea	accepted			taxon	
+pzt:000680	pzt:000679	order	phaeocalpida	accepted			taxon	
+pzt:000681	pzt:000680	family	castanellidae	accepted			taxon	
+pzt:000682	pzt:000680	family	circoporidae	accepted			taxon	
+pzt:000683	pzt:000680	family	tuscaroridae	accepted			taxon	
+pzt:000684	pzt:000679	order	phaeocystida	accepted			taxon	
+pzt:000685	pzt:000684	family	aulacanthidae	accepted			taxon	
+pzt:000686	pzt:000685	genus	aulacantha	accepted			taxon	
+pzt:000687	pzt:000685	genus	aulographis	accepted			taxon	
+pzt:000688	pzt:000679	order	phaeodendrida	accepted			taxon	
+pzt:000689	pzt:000688	family	coelodendridae	accepted			taxon	
+pzt:000690	pzt:000689	genus	coelodendrum	accepted			taxon	
+pzt:000691	pzt:000679	order	phaeogromida	accepted			taxon	
+pzt:000692	pzt:000691	family	challengeridae	accepted			taxon	
+pzt:000693	pzt:000692	genus	challengeron	accepted			taxon	
+pzt:000694	pzt:000691	family	medusettidae	accepted			taxon	
+pzt:000695	pzt:000694	genus	euphysetta	accepted			taxon	
+pzt:000696	pzt:000679	order	phaeosphaerida	accepted			taxon	
+pzt:000697	pzt:000696	family	aulosphaeridae	accepted			taxon	
+pzt:000698	pzt:000696	family	cannosphaeridae	accepted			taxon	
+pzt:000699	pzt:000675	phylum	ciliophora	accepted			taxon	
+pzt:000700	pzt:000699	class	heterotrichea	accepted			taxon	
+pzt:000701	pzt:000700	order	heterotrichida	accepted			taxon	
+pzt:000702	pzt:000701	family	blepharismidae	accepted			taxon	
+pzt:000703	pzt:000702	genus	blepharisma	accepted			taxon	
+pzt:000704	pzt:000703	species	blepharisma americanum	accepted			taxon	
+pzt:000705	pzt:000701	family	spirostomidae	accepted			taxon	
+pzt:000706	pzt:000705	genus	spirostomum	accepted			taxon	
+pzt:000707	pzt:000706	species	spirostomum ambiguum	accepted			taxon	
+pzt:000708	pzt:000701	family	stentoridae	accepted			taxon	
+pzt:000709	pzt:000708	genus	stentor	accepted			taxon	
+pzt:000710	pzt:000709	species	stentor coeruleus	accepted			taxon	
+pzt:000711	pzt:000699	class	litostomatea	accepted			taxon	
+pzt:000712	pzt:000711	order	cyclotrichiida	accepted			taxon	
+pzt:000713	pzt:000712	family	mesodiniidae	accepted			taxon	
+pzt:000714	pzt:000713	genus	mesodinium	accepted			taxon	
+pzt:000715	pzt:000714	species	mesodinium rubrum	accepted			taxon	
+pzt:000716	pzt:000711	order	haptorida	accepted			taxon	
+pzt:000717	pzt:000716	family	didiniidae	accepted			taxon	
+pzt:000718	pzt:000717	genus	didinium	accepted			taxon	
+pzt:000719	pzt:000718	species	didinium nasutum	accepted			taxon	
+pzt:000720	pzt:000716	family	lacrymariidae	accepted			taxon	
+pzt:000721	pzt:000720	genus	lacrymaria	accepted			taxon	
+pzt:000722	pzt:000716	family	tracheliidae	accepted			taxon	
+pzt:000723	pzt:000722	genus	dileptus	accepted			taxon	
+pzt:000724	pzt:000722	genus	paradileptus	accepted			taxon	
+pzt:000725	pzt:000699	class	oligohymenophorea	accepted			taxon	
+pzt:000726	pzt:000725	order	peniculida	accepted			taxon	
+pzt:000727	pzt:000726	family	parameciidae	accepted			taxon	
+pzt:000728	pzt:000727	genus	paramecium	accepted			taxon	
+pzt:000729	pzt:000728	species	paramecium bursaria	accepted			taxon	
+pzt:000730	pzt:000725	order	peritrichida	accepted			taxon	departs from EcoTaxa's «sessilida»: A rank-slot difference of the KI-8 shape, not a different organism. EcoTaxa puts Sessilida in the Order slot beneath a subclass it calls Peritrichia; the donor row — `frepj`, whose own source label path reads `Oligophymenophorea,Peritrichida,Vorticellidae,Vorticella` — records the ordinal spelling of that higher group instead. Sessilida sits inside it. The table is evenly split (one row each), so this follows the donor rather than a house majority.
+pzt:000731	pzt:000730	family	vorticellidae	accepted			taxon	
+pzt:000732	pzt:000731	genus	vorticella	accepted			taxon	
+pzt:000733	pzt:000725	order	pleuronematida	accepted			taxon	
+pzt:000734	pzt:000733	family	pleuronematidae	accepted			taxon	
+pzt:000735	pzt:000734	genus	pleuronema	accepted			taxon	
+pzt:000736	pzt:000725	order	sessilida	accepted			taxon	
+pzt:000737	pzt:000736	family	zoothamniidae	accepted			taxon	
+pzt:000738	pzt:000699	class	oligotrichea	accepted			taxon	
+pzt:000739	pzt:000738	order	choreotrichida	accepted			taxon	
+pzt:000740	pzt:000739	family	codonellidae	accepted			taxon	
+pzt:000741	pzt:000740	genus	codonaria	accepted			taxon	
+pzt:000742	pzt:000740	genus	codonella	accepted			taxon	
+pzt:000743	pzt:000742	species	codonella amphorella	accepted			taxon	
+pzt:000744	pzt:000740	genus	poroecus	accepted			taxon	
+pzt:000745	pzt:000740	genus	tintinnopsis	accepted			taxon	
+pzt:000746	pzt:000739	family	codonellopsidae	accepted			taxon	departs from EcoTaxa's «tintinnidiidae»: EcoTaxa hangs the genus `Codonellopsis` directly under Tintinnidiidae. All three pre-existing rows carrying this genus place it in Codonellopsidae; the single Tintinnidiidae row is a different genus (`leprotintinnus`). Following the table keeps one lineage per label.
+pzt:000747	pzt:000746	genus	codonellopsis	accepted			taxon	
+pzt:000748	pzt:000747	species	codonellopsis morchella	accepted			taxon	
+pzt:000749	pzt:000747	species	codonellopsis orthoceras	accepted			taxon	
+pzt:000750	pzt:000739	family	cyttarocylididae	accepted			taxon	
+pzt:000751	pzt:000750	genus	cyttarocylis	accepted			taxon	
+pzt:000752	pzt:000739	family	dictyocystidae	accepted			taxon	
+pzt:000753	pzt:000752	genus	dictyocysta	accepted			taxon	
+pzt:000754	pzt:000739	family	epiplocylididae	accepted			taxon	
+pzt:000755	pzt:000754	genus	epicancella	accepted			taxon	
+pzt:000756	pzt:000754	genus	epiplocylis	accepted			taxon	
+pzt:000757	pzt:000739	family	eutintinnidae	accepted			taxon	
+pzt:000758	pzt:000757	genus	eutintinnus	accepted			taxon	
+pzt:000759	pzt:000739	family	leegaardiellidae	accepted			taxon	
+pzt:000760	pzt:000759	genus	leegaardiella	accepted			taxon	
+pzt:000761	pzt:000760	species	leegaardiella ovalis	accepted			taxon	
+pzt:000762	pzt:000739	family	metacylididae	accepted			taxon	
+pzt:000763	pzt:000762	genus	climacocylis	accepted			taxon	
+pzt:000764	pzt:000762	genus	metacylis	accepted			taxon	
+pzt:000765	pzt:000739	family	ptychocylididae	accepted			taxon	
+pzt:000766	pzt:000765	genus	ptychocylis	accepted			taxon	
+pzt:000767	pzt:000739	family	rhabdonellidae	accepted			taxon	
+pzt:000768	pzt:000767	genus	rhabdonella	accepted			taxon	
+pzt:000769	pzt:000767	genus	rhabdonellopsis	accepted			taxon	
+pzt:000770	pzt:000739	family	strobilidiidae	accepted			taxon	
+pzt:000771	pzt:000770	genus	strobilidium	accepted			taxon	
+pzt:000772	pzt:000739	family	tintinnidae	accepted			taxon	
+pzt:000773	pzt:000772	genus	amphorellopsis	accepted			taxon	
+pzt:000774	pzt:000772	genus	amphorides	accepted			taxon	
+pzt:000775	pzt:000772	genus	dadayiella	accepted			taxon	
+pzt:000776	pzt:000772	genus	salpingella	accepted			taxon	
+pzt:000777	pzt:000772	genus	steenstrupiella	accepted			taxon	
+pzt:000778	pzt:000739	family	tintinnidiidae	accepted			taxon	
+pzt:000779	pzt:000778	genus	leprotintinnus	accepted			taxon	
+pzt:000780	pzt:000739	family	undellidae	accepted			taxon	
+pzt:000781	pzt:000780	genus	amplectella	accepted			taxon	
+pzt:000782	pzt:000780	genus	parundella	accepted			taxon	
+pzt:000783	pzt:000780	genus	proplectella	accepted			taxon	
+pzt:000784	pzt:000739	family	xystonellidae	accepted			taxon	
+pzt:000785	pzt:000784	genus	parafavella	accepted			taxon	
+pzt:000786	pzt:000784	genus	xystonella	accepted			taxon	
+pzt:000787	pzt:000784	genus	xystonellopsis	accepted			taxon	
+pzt:000788	pzt:000787	species	xystonellopsis paradoxa	accepted			taxon	
+pzt:000789	pzt:000738	order	oligotrichida	accepted			taxon	
+pzt:000790	pzt:000789	family	strombidiidae	accepted			taxon	
+pzt:000791	pzt:000790	genus	strombidium	accepted			taxon	
+pzt:000792	pzt:000791	species	strombidium capitatum	accepted			taxon	
+pzt:000793	pzt:000791	species	strombidium conicum	accepted			taxon	
+pzt:000794	pzt:000791	species	strombidium inclinatum	accepted			taxon	
+pzt:000795	pzt:000791	species	strombidium oculatum	accepted			taxon	
+pzt:000796	pzt:000791	species	strombidium wulffi	accepted			taxon	
+pzt:000797	pzt:000789	family	tontoniidae	accepted			taxon	
+pzt:000798	pzt:000797	genus	laboea	accepted			taxon	
+pzt:000799	pzt:000798	species	laboea strobila	accepted			taxon	
+pzt:000800	pzt:000797	genus	tontonia	accepted			taxon	
+pzt:000801	pzt:000800	species	tontonia appendiculariformis	accepted			taxon	
+pzt:000802	pzt:000800	species	tontonia gracillima	accepted			taxon	
+pzt:000803	pzt:000699	class	prostomatea	accepted			taxon	
+pzt:000804	pzt:000803	order	prorodontida	accepted			taxon	
+pzt:000805	pzt:000804	family	colepidae	accepted			taxon	
+pzt:000806	pzt:000805	genus	tiarina	accepted			taxon	
+pzt:000807	pzt:000806	species	tiarina fusus	accepted			taxon	
+pzt:000808	pzt:000699	class	spirotrichea	accepted			taxon	
+pzt:000809	pzt:000808	order	euplotida	accepted			taxon	
+pzt:000810	pzt:000809	family	euplotidae	accepted			taxon	
+pzt:000811	pzt:000810	genus	euplotes	accepted			taxon	
+pzt:000812	pzt:000811	species	euplotes eurystomus	accepted			taxon	
+pzt:000813	pzt:000808	order	tintinnida	accepted			taxon	
+pzt:000814	pzt:000675	phylum	cryptophyta	accepted			taxon	
+pzt:000815	pzt:000814	class	cryptophyceae	accepted			taxon	
+pzt:000816	pzt:000815	order	cryptomonadales	accepted			taxon	
+pzt:000817	pzt:000815	order	pyrenomonadales	accepted			taxon	
+pzt:000818	pzt:000817	family	geminigeraceae	accepted			taxon	
+pzt:000819	pzt:000818	genus	teleaulax	accepted			taxon	
+pzt:000820	pzt:000819	species	teleaulax acuta	accepted			taxon	
+pzt:000821	pzt:000817	family	pyrenomonadaceae	accepted			taxon	
+pzt:000822	pzt:000821	genus	rhinomonas	accepted			taxon	
+pzt:000823	pzt:000822	species	rhinomonas nottbeckii	accepted			taxon	
+pzt:000824	pzt:000821	genus	rhodomonas	accepted			taxon	
+pzt:000825	pzt:000824	species	rhodomonas salina	accepted			taxon	
+pzt:000826	pzt:000814	class	cryptophyta	accepted			taxon	
+pzt:000827	pzt:000826	order	kathablepharidacea	accepted			taxon	
+pzt:000828	pzt:000827	family	katablepharidaceae	accepted			taxon	
+pzt:000829	pzt:000828	genus	katablepharis	accepted			taxon	
+pzt:000830	pzt:000829	species	katablepharis remigera	accepted			taxon	
+pzt:000831	pzt:000675	phylum	foraminifera	accepted			taxon	
+pzt:000832	pzt:000831	class	globothalamea	accepted			taxon	
+pzt:000833	pzt:000832	order	rotaliida	accepted			taxon	
+pzt:000834	pzt:000833	family	globigerinidae	accepted			taxon	
+pzt:000835	pzt:000834	genus	orbulina	accepted			taxon	
+pzt:000836	pzt:000831	unranked	globorotalidae	accepted			taxon	finer than its deepest legacy rank; true rank unassigned
+pzt:000837	pzt:000675	phylum	haptophyta	accepted			taxon	
+pzt:000838	pzt:000837	class	coccolithophyceae	accepted			taxon	
+pzt:000839	pzt:000838	order	coccolithales	accepted			taxon	
+pzt:000840	pzt:000839	family	calcidiscaceae	accepted			taxon	
+pzt:000841	pzt:000840	genus	umbilicosphaera	accepted			taxon	
+pzt:000842	pzt:000841	species	umbilicosphaera sibogae	accepted			taxon	
+pzt:000843	pzt:000838	order	isochrysidales	accepted			taxon	
+pzt:000844	pzt:000843	family	isochrysidaceae	accepted			taxon	
+pzt:000845	pzt:000844	genus	chrysotila	accepted			taxon	
+pzt:000846	pzt:000845	species	chrysotila roscoffensis	accepted			taxon	
+pzt:000847	pzt:000843	family	noelaerhabdaceae	accepted			taxon	
+pzt:000848	pzt:000847	genus	gephyrocapsa	accepted			taxon	
+pzt:000849	pzt:000848	species	gephyrocapsa huxleyi	accepted			taxon	
+pzt:000850	pzt:000838	order	phaeocystales	accepted			taxon	
+pzt:000851	pzt:000850	family	phaeocystaceae	accepted			taxon	
+pzt:000852	pzt:000851	genus	phaeocystis	accepted			taxon	
+pzt:000853	pzt:000852	species	phaeocystis jahnii	accepted			taxon	
+pzt:000854	pzt:000838	order	prymnesiales	accepted			taxon	
+pzt:000855	pzt:000854	family	chrysochromulinaceae	accepted			taxon	
+pzt:000856	pzt:000855	genus	chrysochromulina	accepted			taxon	
+pzt:000857	pzt:000856	species	chrysochromulina lanceolata	accepted			taxon	
+pzt:000858	pzt:000856	species	chrysochromulina parkeae	accepted			taxon	
+pzt:000859	pzt:000838	order	syracosphaerales	accepted			taxon	
+pzt:000860	pzt:000859	family	calciosoleniaceae	accepted			taxon	
+pzt:000861	pzt:000860	genus	calciosolenia	accepted			taxon	
+pzt:000862	pzt:000861	species	calciosolenia brasiliensis	accepted			taxon	
+pzt:000863	pzt:000859	family	rhabdosphaeraceae	accepted			taxon	
+pzt:000864	pzt:000863	genus	discosphaera	accepted			taxon	
+pzt:000865	pzt:000864	species	discosphaera tubifera	accepted			taxon	
+pzt:000866	pzt:000863	genus	rhabdosphaera	accepted			taxon	
+pzt:000867	pzt:000866	species	rhabdosphaera clavigera	accepted			taxon	
+pzt:000868	pzt:000859	family	syracosphaeraceae	accepted			taxon	
+pzt:000869	pzt:000868	genus	calciopappus	accepted			taxon	
+pzt:000870	pzt:000869	species	calciopappus caudatus	accepted			taxon	
+pzt:000871	pzt:000868	genus	ophiaster	accepted			taxon	
+pzt:000872	pzt:000868	genus	syracosphaera	accepted			taxon	
+pzt:000873	pzt:000872	species	syracosphaera pulchra	accepted			taxon	
+pzt:000874	pzt:000838	order	zygodiscales	accepted			taxon	
+pzt:000875	pzt:000874	family	pontosphaeraceae	accepted			taxon	
+pzt:000876	pzt:000875	genus	scyphosphaera	accepted			taxon	
+pzt:000877	pzt:000876	species	scyphosphaera apsteinii	accepted			taxon	
+pzt:000878	pzt:000675	phylum	heterokontophyta	accepted			taxon	departs from EcoTaxa's «bacillariophyta»: This table's diatom phylum is Heterokontophyta — 233 pre-existing rows name it, none name Bacillariophyta — with `bacillariophyceae` as the class below it. Same lineage, one rank renamed; see the `Odontella sp.` note above, which relies on the same convention.
+pzt:000879	pzt:000878	class	bacillariophyceae	accepted			taxon	
+pzt:000880	pzt:000879	order	asterolamprales	accepted			taxon	
+pzt:000881	pzt:000880	family	asterolampraceae	accepted			taxon	
+pzt:000882	pzt:000881	genus	asteromphalus	accepted			taxon	
+pzt:000883	pzt:000882	species	asteromphalus sarcophagus	accepted			taxon	
+pzt:000884	pzt:000879	order	bacillariales	accepted			taxon	
+pzt:000885	pzt:000884	family	bacillariaceae	accepted			taxon	
+pzt:000886	pzt:000885	genus	bacillaria	accepted			taxon	
+pzt:000887	pzt:000885	genus	cylindrotheca	accepted			taxon	
+pzt:000888	pzt:000887	species	cylindrotheca closterium	accepted			taxon	
+pzt:000889	pzt:000885	genus	fragilariopsis	accepted			taxon	
+pzt:000890	pzt:000885	genus	nitzschia	accepted			taxon	
+pzt:000891	pzt:000890	species	nitzschia paleacea	accepted			taxon	
+pzt:000892	pzt:000885	genus	pseudo-nitzschia	accepted			taxon	
+pzt:000893	pzt:000879	order	bacillariophyceae	accepted			taxon	
+pzt:000894	pzt:000893	family	bacillariophyceae	accepted			taxon	
+pzt:000895	pzt:000894	genus	neomoelleria	accepted			taxon	
+pzt:000896	pzt:000895	species	neomoelleria cornuta	accepted			taxon	
+pzt:000897	pzt:000879	order	biddulphiales	accepted			taxon	
+pzt:000898	pzt:000897	family	biddulphiaceae	accepted			taxon	
+pzt:000899	pzt:000898	genus	biddulphia	accepted			taxon	
+pzt:000900	pzt:000898	genus	isthmia	accepted			taxon	
+pzt:000901	pzt:000898	genus	neobrightwellia	accepted			taxon	
+pzt:000902	pzt:000901	species	neobrightwellia alternans	accepted			taxon	
+pzt:000903	pzt:000898	genus	trigonium	accepted			taxon	
+pzt:000904	pzt:000879	order	centrales	accepted			taxon	
+pzt:000905	pzt:000879	order	chaetocerotanae	accepted			taxon	departs from EcoTaxa's «chaetocerotanae incertae sedis»: EcoTaxa's order node carries the *incertae sedis* uncertainty marker inside its name. All 33 pre-existing rows that name this order spell it without the marker, and none spell it with. Same taxon, this table's spelling.
+pzt:000906	pzt:000905	family	chaetocerotaceae	accepted			taxon	
+pzt:000907	pzt:000906	genus	bacteriastrum	accepted			taxon	
+pzt:000908	pzt:000906	genus	chaetoceros	accepted			taxon	
+pzt:000909	pzt:000908	species	chaetoceros affinis	accepted			taxon	
+pzt:000910	pzt:000908	species	chaetoceros anastomosans	accepted			taxon	
+pzt:000911	pzt:000908	species	chaetoceros dadayi	accepted			taxon	
+pzt:000912	pzt:000908	species	chaetoceros danicus	accepted			taxon	
+pzt:000913	pzt:000908	species	chaetoceros decipiens	accepted			taxon	
+pzt:000914	pzt:000908	species	chaetoceros didymus	accepted			taxon	
+pzt:000915	pzt:000908	species	chaetoceros diversus	accepted			taxon	
+pzt:000916	pzt:000908	species	chaetoceros peruvianus	accepted			taxon	
+pzt:000917	pzt:000908	species	chaetoceros protuberans	accepted			taxon	
+pzt:000918	pzt:000908	species	chaetoceros socialis	accepted			taxon	
+pzt:000919	pzt:000908	species	chaetoceros tortissimus	accepted			taxon	
+pzt:000920	pzt:000908	unranked	chaetoceros inter ciliate	accepted			taxon	finer than its deepest legacy rank; true rank unassigned
+pzt:000921	pzt:000908	unranked	chaetoceros inter. calothrix	accepted			taxon	finer than its deepest legacy rank; true rank unassigned
+pzt:000922	pzt:000879	order	climacospheniales	accepted			taxon	
+pzt:000923	pzt:000922	family	climacospheniaceae	accepted			taxon	
+pzt:000924	pzt:000923	genus	climacosphenia	accepted			taxon	
+pzt:000925	pzt:000879	order	corethrales	accepted			taxon	
+pzt:000926	pzt:000925	family	corethraceae	accepted			taxon	
+pzt:000927	pzt:000926	genus	corethron	accepted			taxon	
+pzt:000928	pzt:000879	order	coscinodiscales	accepted			taxon	
+pzt:000929	pzt:000928	family	coscinodiscaceae	accepted			taxon	
+pzt:000930	pzt:000929	genus	coscinodiscus	accepted			taxon	
+pzt:000931	pzt:000928	family	gossleriellaceae	accepted			taxon	
+pzt:000932	pzt:000931	genus	gossleriella	accepted			taxon	
+pzt:000933	pzt:000928	family	hemidiscaceae	accepted			taxon	
+pzt:000934	pzt:000933	genus	hemidiscus	accepted			taxon	
+pzt:000935	pzt:000934	species	hemidiscus cuneiformis	accepted			taxon	
+pzt:000936	pzt:000879	order	ethmodiscales	accepted			taxon	
+pzt:000937	pzt:000936	family	ethmodiscaceae	accepted			taxon	
+pzt:000938	pzt:000937	genus	ethmodiscus	accepted			taxon	
+pzt:000939	pzt:000938	species	ethmodiscus gazellae	accepted			taxon	
+pzt:000940	pzt:000879	order	fragilariales	accepted			taxon	
+pzt:000941	pzt:000940	family	fragilariaceae	accepted			taxon	
+pzt:000942	pzt:000941	genus	asterionella	accepted			taxon	
+pzt:000943	pzt:000942	species	asterionella bleakeleyi	accepted			taxon	
+pzt:000944	pzt:000941	genus	asterionellopsis	accepted			taxon	
+pzt:000945	pzt:000944	species	asterionellopsis glacialis	accepted			taxon	
+pzt:000946	pzt:000941	genus	bleakeleya	accepted			taxon	
+pzt:000947	pzt:000941	genus	ceratoneis	accepted			taxon	
+pzt:000948	pzt:000947	species	ceratoneis closterium	accepted			taxon	
+pzt:000949	pzt:000941	genus	ctenophora	accepted			taxon	
+pzt:000950	pzt:000941	genus	diatoma	accepted			taxon	
+pzt:000951	pzt:000950	species	diatoma tenuis	accepted			taxon	
+pzt:000952	pzt:000941	genus	fragilaria	accepted			taxon	
+pzt:000953	pzt:000941	genus	synedra	accepted			taxon	
+pzt:000954	pzt:000879	order	hemiaulales	accepted			taxon	
+pzt:000955	pzt:000954	family	bellerocheaceae	accepted			taxon	
+pzt:000956	pzt:000955	genus	bellerochea	accepted			taxon	
+pzt:000957	pzt:000954	family	hemiaulaceae	accepted			taxon	
+pzt:000958	pzt:000957	genus	cerataulina	accepted			taxon	
+pzt:000959	pzt:000958	species	cerataulina pelagica	accepted			taxon	
+pzt:000960	pzt:000957	genus	climacodium	accepted			taxon	
+pzt:000961	pzt:000960	species	climacodium crocosphaera	accepted			taxon	
+pzt:000962	pzt:000957	genus	eucampia	accepted			taxon	
+pzt:000963	pzt:000962	species	eucampia cornuta	accepted			taxon	
+pzt:000964	pzt:000957	genus	hemiaulus	accepted			taxon	
+pzt:000965	pzt:000879	order	leptocylindrales	accepted			taxon	
+pzt:000966	pzt:000965	family	leptocylindraceae	accepted			taxon	
+pzt:000967	pzt:000966	genus	leptocylindrus	accepted			taxon	
+pzt:000968	pzt:000967	species	leptocylindrus mediterraneus	accepted			taxon	
+pzt:000969	pzt:000966	genus	tenuicylindrus	accepted			taxon	
+pzt:000970	pzt:000969	species	tenuicylindrus belgicus	accepted			taxon	
+pzt:000971	pzt:000879	order	licmophorales	accepted			taxon	
+pzt:000972	pzt:000971	family	licmophoraceae	accepted			taxon	
+pzt:000973	pzt:000972	genus	licmophora	accepted			taxon	
+pzt:000974	pzt:000879	order	lithodesmiales	accepted			taxon	
+pzt:000975	pzt:000974	family	lithodesmiaceae	accepted			taxon	
+pzt:000976	pzt:000975	genus	ditylum	accepted			taxon	
+pzt:000977	pzt:000975	genus	helicotheca	accepted			taxon	
+pzt:000978	pzt:000977	species	helicotheca tamesis	accepted			taxon	
+pzt:000979	pzt:000975	genus	lithodesmium	accepted			taxon	
+pzt:000980	pzt:000979	species	lithodesmium variabile	accepted			taxon	
+pzt:000981	pzt:000975	genus	mediopyxis	accepted			taxon	
+pzt:000982	pzt:000975	genus	pauliella	accepted			taxon	
+pzt:000983	pzt:000982	species	pauliella taeniata	accepted			taxon	
+pzt:000984	pzt:000879	order	mastogloiales	accepted			taxon	
+pzt:000985	pzt:000984	family	mastogloiaceae	accepted			taxon	
+pzt:000986	pzt:000985	genus	mastogloia	accepted			taxon	
+pzt:000987	pzt:000879	order	melosirales	accepted			taxon	
+pzt:000988	pzt:000987	family	melosiraceae	accepted			taxon	
+pzt:000989	pzt:000988	genus	melosira	accepted			taxon	
+pzt:000990	pzt:000989	species	melosira arctica	accepted			taxon	
+pzt:000991	pzt:000987	family	stephanopyxidaceae	accepted			taxon	
+pzt:000992	pzt:000991	genus	stephanopyxis	accepted			taxon	
+pzt:000993	pzt:000879	order	naviculales	accepted			taxon	
+pzt:000994	pzt:000993	family	naviculaceae	accepted			taxon	
+pzt:000995	pzt:000994	genus	haslea	accepted			taxon	
+pzt:000996	pzt:000995	species	haslea silbo	accepted			taxon	
+pzt:000997	pzt:000993	family	plagiotropidaceae	accepted			taxon	
+pzt:000998	pzt:000997	genus	plagiotropis	accepted			taxon	
+pzt:000999	pzt:000993	family	pleurosigmataceae	accepted			taxon	
+pzt:001000	pzt:000999	genus	pleurosigma	accepted			taxon	
+pzt:001001	pzt:000879	order	paraliales	accepted			taxon	
+pzt:001002	pzt:001001	family	paraliaceae	accepted			taxon	
+pzt:001003	pzt:001002	genus	paralia	accepted			taxon	
+pzt:001004	pzt:000879	order	pennales	accepted			taxon	
+pzt:001005	pzt:000879	order	rhaponeidales	accepted			taxon	
+pzt:001006	pzt:001005	family	rhaphoneidaceae	accepted			taxon	
+pzt:001007	pzt:001006	genus	delphineis	accepted			taxon	
+pzt:001008	pzt:000879	order	rhizosoleniales	accepted			taxon	
+pzt:001009	pzt:001008	family	rhizosoleniaceae	accepted			taxon	
+pzt:001010	pzt:001009	genus	dactyliosolen	accepted			taxon	
+pzt:001011	pzt:001010	species	dactyliosolen blavyanus	accepted			taxon	
+pzt:001012	pzt:001010	species	dactyliosolen fragilissimus	accepted			taxon	
+pzt:001013	pzt:001009	genus	guinardia	accepted			taxon	
+pzt:001014	pzt:001013	species	guinardia delicatula	accepted			taxon	
+pzt:001015	pzt:001013	species	guinardia flaccida	accepted			taxon	
+pzt:001016	pzt:001013	species	guinardia striata	accepted			taxon	
+pzt:001017	pzt:001009	genus	neocalyptrella	accepted			taxon	
+pzt:001018	pzt:001009	genus	proboscia	accepted			taxon	
+pzt:001019	pzt:001009	genus	pseudosolenia	accepted			taxon	
+pzt:001020	pzt:001019	species	pseudosolenia calcar-avis	accepted			taxon	
+pzt:001021	pzt:001009	genus	rhizosolenia	accepted			taxon	
+pzt:001022	pzt:001021	species	rhizosolenia bergonii	accepted			taxon	
+pzt:001023	pzt:000879	order	striatellales	accepted			taxon	
+pzt:001024	pzt:001023	family	striatellaceae	accepted			taxon	
+pzt:001025	pzt:001024	genus	striatella	accepted			taxon	
+pzt:001026	pzt:000879	order	surirellales	accepted			taxon	
+pzt:001027	pzt:001026	family	entomoneidaceae	accepted			taxon	
+pzt:001028	pzt:001027	genus	entomoneis	accepted			taxon	
+pzt:001029	pzt:000879	order	thalassionematales	accepted			taxon	
+pzt:001030	pzt:001029	family	thalassionemataceae	accepted			taxon	
+pzt:001031	pzt:001030	genus	lioloma	accepted			taxon	
+pzt:001032	pzt:001031	species	lioloma pacificum	accepted			taxon	
+pzt:001033	pzt:001030	genus	thalassionema	accepted			taxon	
+pzt:001034	pzt:000879	order	thalassiosirales	accepted			taxon	
+pzt:001035	pzt:001034	family	lauderiaceae	accepted			taxon	
+pzt:001036	pzt:001035	genus	lauderia	accepted			taxon	
+pzt:001037	pzt:001036	species	lauderia annulata	accepted			taxon	
+pzt:001038	pzt:001034	family	skeletonemaceae	accepted			taxon	
+pzt:001039	pzt:001038	genus	skeletonema	accepted			taxon	
+pzt:001040	pzt:001039	species	skeletonema marinoi	accepted			taxon	
+pzt:001041	pzt:001039	species	skeletonema menzelii	accepted			taxon	
+pzt:001042	pzt:001034	family	stephanodiscaceae	accepted			taxon	
+pzt:001043	pzt:001042	genus	cyclotella	accepted			taxon	
+pzt:001044	pzt:001043	species	cyclotella choctawhatcheeana	accepted			taxon	
+pzt:001045	pzt:001034	family	thalassiosiraceae	accepted			taxon	
+pzt:001046	pzt:001045	genus	planktoniella	accepted			taxon	
+pzt:001047	pzt:001046	species	planktoniella sol	accepted			taxon	
+pzt:001048	pzt:001045	genus	thalassiosira	accepted			taxon	
+pzt:001049	pzt:001048	species	thalassiosira gravida	accepted			taxon	
+pzt:001050	pzt:001048	species	thalassiosira levanderi	accepted			taxon	
+pzt:001051	pzt:000879	order	triceratiales	accepted			taxon	
+pzt:001052	pzt:001051	family	triceratiaceae	accepted			taxon	
+pzt:001053	pzt:001052	genus	amphitetras	accepted			taxon	
+pzt:001054	pzt:001052	genus	odontella	accepted			taxon	
+pzt:001055	pzt:001054	species	odontella mobiliensis	accepted			taxon	
+pzt:001056	pzt:001054	species	odontella sinensis	accepted			taxon	
+pzt:001057	pzt:001054	unranked	odontella sp.	accepted			taxon	finer than its deepest legacy rank; true rank unassigned
+pzt:001058	pzt:001052	genus	triceratium	accepted			taxon	
+pzt:001059	pzt:001052	genus	trieres	accepted			taxon	
+pzt:001060	pzt:001059	species	trieres mobiliensis	accepted			taxon	
+pzt:001061	pzt:000675	phylum	myzozoa	accepted			taxon	
+pzt:001062	pzt:001061	class	dinophyceae	accepted			taxon	
+pzt:001063	pzt:001062	order	amphidiniales	accepted			taxon	
+pzt:001064	pzt:001063	family	amphidiniaceae	accepted			taxon	
+pzt:001065	pzt:001064	genus	amphidinium	accepted			taxon	
+pzt:001066	pzt:001062	order	dinophyceae	accepted			taxon	
+pzt:001067	pzt:001066	family	amphidomataceae	accepted			taxon	
+pzt:001068	pzt:001067	genus	azadinium	accepted			taxon	
+pzt:001069	pzt:001068	species	azadinium caudatum	accepted			taxon	
+pzt:001070	pzt:001062	order	dinophysales	accepted			taxon	
+pzt:001071	pzt:001070	family	amphisoleniaceae	accepted			taxon	
+pzt:001072	pzt:001071	genus	amphisolenia	accepted			taxon	
+pzt:001073	pzt:001071	genus	triposolenia	accepted			taxon	
+pzt:001074	pzt:001070	family	dinophysaceae	accepted			taxon	
+pzt:001075	pzt:001074	genus	dinophysis	accepted			taxon	
+pzt:001076	pzt:001075	species	dinophysis acuminata	accepted			taxon	
+pzt:001077	pzt:001075	species	dinophysis caudata	accepted			taxon	
+pzt:001078	pzt:001075	species	dinophysis parva	accepted			taxon	
+pzt:001079	pzt:001075	species	dinophysis sacculus	accepted			taxon	
+pzt:001080	pzt:001075	species	dinophysis tripos	accepted			taxon	
+pzt:001081	pzt:001074	genus	ornithocercus	accepted			taxon	
+pzt:001082	pzt:001081	species	ornithocercus heteroporus	accepted			taxon	
+pzt:001083	pzt:001081	species	ornithocercus magnificus	accepted			taxon	
+pzt:001084	pzt:001081	species	ornithocercus quadratus	accepted			taxon	
+pzt:001085	pzt:001081	species	ornithocercus splendidus	accepted			taxon	
+pzt:001086	pzt:001081	species	ornithocercus steinii	accepted			taxon	
+pzt:001087	pzt:001070	family	oxyphysaceae	accepted			taxon	
+pzt:001088	pzt:001087	genus	phalacroma	accepted			taxon	
+pzt:001089	pzt:001088	species	phalacroma oxytoxoides	accepted			taxon	
+pzt:001090	pzt:001062	order	gonyaulacales	accepted			taxon	
+pzt:001091	pzt:001090	family	ceratiaceae	accepted			taxon	
+pzt:001092	pzt:001091	genus	ceratium	accepted			taxon	
+pzt:001093	pzt:001092	species	ceratium hirundinella	accepted			taxon	
+pzt:001094	pzt:001091	genus	neoceratium	accepted			taxon	
+pzt:001095	pzt:001091	genus	tripos	accepted			taxon	departs from EcoTaxa's «neoceratium»: The table records this genus as Tripos in 51 pre-existing rows and as EcoTaxa's Neoceratium in 5. Worth reading with KI-31: this leaves a seam INSIDE the appended block, because the five `Neoceratium <species>` folders find a `tripos <epithet>` donor and publish Tripos while the bare `Neoceratium` folder finds the `neoceratium` donor and publishes Neoceratium. Which name is correct is not settled here — the committed authority snapshot has both as accepted WoRMS records with distinct NCBI taxids.
+pzt:001096	pzt:001095	species	tripos arcticus	accepted			taxon	
+pzt:001097	pzt:001095	species	tripos arietinus	accepted			taxon	
+pzt:001098	pzt:001095	species	tripos azoricus	accepted			taxon	
+pzt:001099	pzt:001095	species	tripos belone	accepted			taxon	
+pzt:001100	pzt:001095	species	tripos brevis	accepted			taxon	
+pzt:001101	pzt:001095	species	tripos candelabrum	accepted			taxon	
+pzt:001102	pzt:001095	species	tripos concilians	accepted			taxon	
+pzt:001103	pzt:001095	species	tripos contortus	accepted			taxon	
+pzt:001104	pzt:001095	species	tripos declinatus	accepted			taxon	
+pzt:001105	pzt:001095	species	tripos euarcuatus	accepted			taxon	
+pzt:001106	pzt:001095	species	tripos extensus	accepted			taxon	
+pzt:001107	pzt:001095	species	tripos furca	accepted			taxon	
+pzt:001108	pzt:001095	species	tripos fusus	accepted			taxon	
+pzt:001109	pzt:001095	species	tripos geniculatus	accepted			taxon	
+pzt:001110	pzt:001095	species	tripos gravidus	accepted			taxon	
+pzt:001111	pzt:001095	species	tripos hexacanthus	accepted			taxon	
+pzt:001112	pzt:001095	species	tripos horridus	accepted			taxon	
+pzt:001113	pzt:001095	species	tripos incisus	accepted			taxon	
+pzt:001114	pzt:001095	species	tripos limulus	accepted			taxon	
+pzt:001115	pzt:001095	species	tripos lineatus	accepted			taxon	
+pzt:001116	pzt:001095	species	tripos macroceros	accepted			taxon	
+pzt:001117	pzt:001095	species	tripos massiliensis	accepted			taxon	
+pzt:001118	pzt:001095	species	tripos minutus	accepted			taxon	
+pzt:001119	pzt:001095	species	tripos paradoxides	accepted			taxon	
+pzt:001120	pzt:001095	species	tripos pentagonus	accepted			taxon	
+pzt:001121	pzt:001095	species	tripos petersii	accepted			taxon	
+pzt:001122	pzt:001095	species	tripos platycornis	accepted			taxon	
+pzt:001123	pzt:001095	species	tripos pulchellus	accepted			taxon	
+pzt:001124	pzt:001095	species	tripos ranipes	accepted			taxon	
+pzt:001125	pzt:001095	species	tripos symmetricus	accepted			taxon	
+pzt:001126	pzt:001095	species	tripos teres	accepted			taxon	
+pzt:001127	pzt:001095	species	tripos trichoceros	accepted			taxon	
+pzt:001128	pzt:001090	family	ceratocoryaceae	accepted			taxon	
+pzt:001129	pzt:001128	genus	ceratocorys	accepted			taxon	
+pzt:001130	pzt:001129	species	ceratocorys horrida	accepted			taxon	
+pzt:001131	pzt:001090	family	cladopyxidaceae	accepted			taxon	
+pzt:001132	pzt:001131	genus	cladopyxis	accepted			taxon	
+pzt:001133	pzt:001132	species	cladopyxis brachiolata	accepted			taxon	
+pzt:001134	pzt:001132	species	cladopyxis quadrispina	accepted			taxon	
+pzt:001135	pzt:001131	genus	peridiniella	accepted			taxon	
+pzt:001136	pzt:001135	species	peridiniella catenata	accepted			taxon	
+pzt:001137	pzt:001090	family	gonyaulacaceae	accepted			taxon	
+pzt:001138	pzt:001137	genus	amylax	accepted			taxon	
+pzt:001139	pzt:001138	species	amylax triacantha	accepted			taxon	
+pzt:001140	pzt:001137	genus	gonyaulax	accepted			taxon	
+pzt:001141	pzt:001140	species	gonyaulax polygramma	accepted			taxon	
+pzt:001142	pzt:001140	species	gonyaulax verior	accepted			taxon	
+pzt:001143	pzt:001090	family	lingulodiniaceae	accepted			taxon	
+pzt:001144	pzt:001143	genus	sourniaea	accepted			taxon	
+pzt:001145	pzt:001144	species	sourniaea diacantha	accepted			taxon	
+pzt:001146	pzt:001090	family	protoceratiaceae	accepted			taxon	
+pzt:001147	pzt:001146	genus	protoceratium	accepted			taxon	
+pzt:001148	pzt:001147	species	protoceratium reticulatum	accepted			taxon	
+pzt:001149	pzt:001090	family	pyrocystaceae	accepted			taxon	
+pzt:001150	pzt:001149	genus	alexandrium	accepted			taxon	
+pzt:001151	pzt:001149	genus	pyrocystis	accepted			taxon	
+pzt:001152	pzt:001151	species	pyrocystis fusiformis	accepted			taxon	
+pzt:001153	pzt:001151	species	pyrocystis hamulus	accepted			taxon	
+pzt:001154	pzt:001151	species	pyrocystis lunula	accepted			taxon	
+pzt:001155	pzt:001151	species	pyrocystis pseudonoctiluca	accepted			taxon	
+pzt:001156	pzt:001090	family	pyrophacaceae	accepted			taxon	
+pzt:001157	pzt:001156	genus	pyrophacus	accepted			taxon	
+pzt:001158	pzt:001157	species	pyrophacus horologium	accepted			taxon	
+pzt:001159	pzt:001062	order	gymnodiniales	accepted			taxon	
+pzt:001160	pzt:001159	family	gymnodiniaceae	accepted			taxon	
+pzt:001161	pzt:001160	genus	akashiwo	accepted			taxon	
+pzt:001162	pzt:001161	species	akashiwo sanguinea	accepted			taxon	
+pzt:001163	pzt:001160	genus	cochlodinium	accepted			taxon	
+pzt:001164	pzt:001160	genus	gymnodinium	accepted			taxon	
+pzt:001165	pzt:001164	species	gymnodinium corollarium	accepted			taxon	
+pzt:001166	pzt:001160	genus	torodinium	accepted			taxon	
+pzt:001167	pzt:001159	family	gyrodiniaceae	accepted			taxon	
+pzt:001168	pzt:001167	genus	gyrodinium	accepted			taxon	
+pzt:001169	pzt:001159	family	kareniaceae	accepted			taxon	
+pzt:001170	pzt:001169	genus	karenia	accepted			taxon	
+pzt:001171	pzt:001170	species	karenia papilionacea	accepted			taxon	
+pzt:001172	pzt:001159	family	polykrikaceae	accepted			taxon	
+pzt:001173	pzt:001172	genus	polykrikos	accepted			taxon	
+pzt:001174	pzt:001173	species	polykrikos kofoidii	accepted			taxon	
+pzt:001175	pzt:001159	family	warnowiaceae	accepted			taxon	
+pzt:001176	pzt:001175	genus	ceratoperidinium	accepted			taxon	
+pzt:001177	pzt:001176	species	ceratoperidinium margalefii	accepted			taxon	
+pzt:001178	pzt:001175	genus	proterythropsis	accepted			taxon	
+pzt:001179	pzt:001175	genus	warnowia	accepted			taxon	
+pzt:001180	pzt:001179	species	warnowia polyphemus	accepted			taxon	
+pzt:001181	pzt:001062	order	noctilucales	accepted			taxon	
+pzt:001182	pzt:001181	family	noctilucaceae	accepted			taxon	
+pzt:001183	pzt:001182	genus	noctiluca	accepted			taxon	
+pzt:001184	pzt:001183	species	noctiluca scintillans	accepted			taxon	
+pzt:001185	pzt:001062	order	peridiniales	accepted			taxon	
+pzt:001186	pzt:001185	family	ceratoperidiniaceae	accepted			taxon	
+pzt:001187	pzt:001186	genus	pseliodinium	accepted			taxon	
+pzt:001188	pzt:001187	species	pseliodinium fusus	accepted			taxon	
+pzt:001189	pzt:001185	family	heterocapsaceae	accepted			taxon	
+pzt:001190	pzt:001189	genus	heterocapsa	accepted			taxon	
+pzt:001191	pzt:001190	species	heterocapsa rotundata	accepted			taxon	
+pzt:001192	pzt:001190	species	heterocapsa triquetra	accepted			taxon	
+pzt:001193	pzt:001185	family	oxytoxaceae	accepted			taxon	
+pzt:001194	pzt:001193	genus	corythodinium	accepted			taxon	
+pzt:001195	pzt:001194	species	corythodinium constrictum	accepted			taxon	
+pzt:001196	pzt:001194	species	corythodinium milneri	accepted			taxon	
+pzt:001197	pzt:001194	species	corythodinium tesselatum	accepted			taxon	
+pzt:001198	pzt:001193	genus	oxytoxum	accepted			taxon	
+pzt:001199	pzt:001198	species	oxytoxum caudatum	accepted			taxon	
+pzt:001200	pzt:001198	species	oxytoxum scolopax	accepted			taxon	
+pzt:001201	pzt:001198	species	oxytoxum variabile	accepted			taxon	
+pzt:001202	pzt:001185	family	peridiniaceae	accepted			taxon	
+pzt:001203	pzt:001202	genus	kryptoperidinium	accepted			taxon	
+pzt:001204	pzt:001203	species	kryptoperidinium foliaceum	accepted			taxon	
+pzt:001205	pzt:001203	species	kryptoperidinium triquetrum	accepted			taxon	
+pzt:001206	pzt:001185	family	podolampadaceae	accepted			taxon	
+pzt:001207	pzt:001206	genus	podolampas	accepted			taxon	
+pzt:001208	pzt:001207	species	podolampas bipes	accepted			taxon	
+pzt:001209	pzt:001207	species	podolampas palmipes	accepted			taxon	
+pzt:001210	pzt:001185	family	protoperidiniaceae	accepted			taxon	
+pzt:001211	pzt:001210	genus	protoperidinium	accepted			taxon	
+pzt:001212	pzt:001211	species	protoperidinium diabolus	accepted			taxon	
+pzt:001213	pzt:001211	species	protoperidinium divergens	accepted			taxon	
+pzt:001214	pzt:001062	order	prorocentrales	accepted			taxon	
+pzt:001215	pzt:001214	family	prorocentraceae	accepted			taxon	
+pzt:001216	pzt:001215	genus	prorocentrum	accepted			taxon	
+pzt:001217	pzt:001216	species	prorocentrum cordatum	accepted			taxon	
+pzt:001218	pzt:001216	species	prorocentrum gracile	accepted			taxon	
+pzt:001219	pzt:001216	species	prorocentrum redfieldii	accepted			taxon	
+pzt:001220	pzt:001062	order	thoracosphaerales	accepted			taxon	
+pzt:001221	pzt:001220	family	thoracosphaeraceae	accepted			taxon	
+pzt:001222	pzt:001221	genus	apocalathium	accepted			taxon	
+pzt:001223	pzt:001222	species	apocalathium malmogiense	accepted			taxon	
+pzt:001224	pzt:001221	genus	scrippsiella	accepted			taxon	
+pzt:001225	pzt:001062	order	torodiniales	accepted			taxon	
+pzt:001226	pzt:001225	family	kapelodiniaceae	accepted			taxon	
+pzt:001227	pzt:001226	genus	kapelodinium	accepted			taxon	
+pzt:001228	pzt:001227	species	kapelodinium vestifici	accepted			taxon	
+pzt:001229	pzt:001062	unranked	dinophyceae x	accepted			taxon	finer than its deepest legacy rank; true rank unassigned
+pzt:001230	pzt:000675	phylum	ochrophyta	accepted			taxon	
+pzt:001231	pzt:001230	class	chrysophyceae	accepted			taxon	
+pzt:001232	pzt:001231	order	chromulinales	accepted			taxon	
+pzt:001233	pzt:001232	family	dinobryaceae	accepted			taxon	
+pzt:001234	pzt:001233	genus	dinobryon	accepted			taxon	
+pzt:001235	pzt:001234	species	dinobryon coalescens	accepted			taxon	
+pzt:001236	pzt:001231	order	ochromonadales	accepted			taxon	
+pzt:001237	pzt:001236	family	ochromonadaceae	accepted			taxon	
+pzt:001238	pzt:001237	genus	uroglena	accepted			taxon	
+pzt:001239	pzt:001237	genus	uroglenopsis	accepted			taxon	
+pzt:001240	pzt:001230	class	dictyochophyceae	accepted			taxon	
+pzt:001241	pzt:001240	order	dictyochales	accepted			taxon	
+pzt:001242	pzt:001241	family	dictyochaceae	accepted			taxon	
+pzt:001243	pzt:001242	genus	dictyocha	accepted			taxon	
+pzt:001244	pzt:001243	species	dictyocha fibula	accepted			taxon	
+pzt:001245	pzt:001242	genus	octactis	accepted			taxon	
+pzt:001246	pzt:001245	species	octactis octonaria	accepted			taxon	
+pzt:001247	pzt:001240	order	florenciellales	accepted			taxon	
+pzt:001248	pzt:001247	family	florenciellales	accepted			taxon	
+pzt:001249	pzt:001248	genus	pseudochattonella	accepted			taxon	
+pzt:001250	pzt:001249	species	pseudochattonella farcimen	accepted			taxon	
+pzt:001251	pzt:001240	order	pedinellales	accepted			taxon	
+pzt:001252	pzt:001251	family	actinomonadaceae	accepted			taxon	
+pzt:001253	pzt:001252	genus	pseudopedinella	accepted			taxon	
+pzt:001254	pzt:001230	class	raphidophyceae	accepted			taxon	
+pzt:001255	pzt:001254	order	actinophryida	accepted			taxon	
+pzt:001256	pzt:001255	family	actinosphaeriidae	accepted			taxon	
+pzt:001257	pzt:001256	genus	actinosphaerium	accepted			taxon	
+pzt:001258	pzt:001257	species	actinosphaerium nucleofilum	accepted			taxon	
+pzt:001259	pzt:001230	class	xanthophyceae	accepted			taxon	
+pzt:001260	pzt:001259	order	mischococcales	accepted			taxon	
+pzt:001261	pzt:001260	family	pleurochloridaceae	accepted			taxon	
+pzt:001262	pzt:001261	genus	meringosphaera	accepted			taxon	
+pzt:001263	pzt:001262	species	meringosphaera mediterranea	accepted			taxon	
+pzt:001264	pzt:000675	phylum	radiozoa	accepted			taxon	
+pzt:001265	pzt:001264	class	acantharia	accepted			taxon	
+pzt:001266	pzt:001265	order	symphyacanthida	accepted			taxon	
+pzt:001267	pzt:001266	family	amphilithidae	accepted			taxon	
+pzt:001268	pzt:001267	genus	amphibelone	accepted			taxon	
+pzt:001269	pzt:001264	class	polycystina	accepted			taxon	
+pzt:001270	pzt:001269	order	nassellaria	accepted			taxon	
+pzt:001271	pzt:001270	family	collozoidae	accepted			taxon	
+pzt:001272	pzt:001271	genus	collozoum	accepted			taxon	
+pzt:001273	pzt:001270	family	plagiacanthidae	accepted			taxon	
+pzt:001274	pzt:001273	genus	callimitra	accepted			taxon	
+pzt:001275	pzt:001269	order	spumellaria	accepted			taxon	
+pzt:001276	pzt:001275	family	actinommidae	accepted			taxon	
+pzt:001277	pzt:001275	family	coccodiscidae	accepted			taxon	
+pzt:001278	pzt:001275	family	spongodiscidae	accepted			taxon	
+pzt:001279	pzt:001264	class	sticholonchea	accepted			taxon	
+pzt:001280	pzt:001279	order	sticholonchida	accepted			taxon	
+pzt:001281		kingdom	plantae	accepted			taxon	
+pzt:001282	pzt:001281	phylum	chlorophyta	accepted			taxon	
+pzt:001283	pzt:001282	class	chlorodendrophyceae	accepted			taxon	
+pzt:001284	pzt:001283	order	chlorodendrales	accepted			taxon	
+pzt:001285	pzt:001284	family	chlorodendraceae	accepted			taxon	
+pzt:001286	pzt:001285	genus	tetraselmis	accepted			taxon	
+pzt:001287	pzt:001282	class	chlorophyceae	accepted			taxon	
+pzt:001288	pzt:001287	order	chlamydomonadales	accepted			taxon	
+pzt:001289	pzt:001288	family	volvocaceae	accepted			taxon	
+pzt:001290	pzt:001289	genus	volvox	accepted			taxon	
+pzt:001291	pzt:001287	order	chlorococcales	accepted			taxon	
+pzt:001292	pzt:001287	order	sphaeropleales	accepted			taxon	
+pzt:001293	pzt:001292	family	hydrodictyaceae	accepted			taxon	
+pzt:001294	pzt:001293	genus	pediastrum	accepted			taxon	
+pzt:001295	pzt:001292	family	selenastraceae	accepted			taxon	
+pzt:001296	pzt:001295	genus	monoraphidium	accepted			taxon	
+pzt:001297	pzt:001296	species	monoraphidium contortum	accepted			taxon	
+pzt:001298	pzt:001282	class	nephroselmidophyceae	accepted			taxon	
+pzt:001299	pzt:001298	order	nephroselmidales	accepted			taxon	
+pzt:001300	pzt:001299	family	nephroselmidaceae	accepted			taxon	
+pzt:001301	pzt:001300	genus	nephroselmis	accepted			taxon	
+pzt:001302	pzt:001301	species	nephroselmis pyriformis	accepted			taxon	
+pzt:001303	pzt:001282	class	pyramimonadophyceae	accepted			taxon	
+pzt:001304	pzt:001303	order	pyramimonadales	accepted			taxon	
+pzt:001305	pzt:001304	family	pterospermataceae	accepted			taxon	
+pzt:001306	pzt:001305	genus	pterosperma	accepted			taxon	
+pzt:001307	pzt:001304	family	pyramimonadaceae	accepted			taxon	
+pzt:001308	pzt:001307	genus	cymbomonas	accepted			taxon	
+pzt:001309	pzt:001308	species	cymbomonas tetramitiformis	accepted			taxon	
+pzt:001310	pzt:001307	genus	halosphaera	accepted			taxon	
+pzt:001311	pzt:001307	genus	pyramimonas	accepted			taxon	
+pzt:001312	pzt:001311	species	pyramimonas longicauda	accepted			taxon	
+pzt:001313	pzt:001282	class	trebouxiophyceae	accepted			taxon	
+pzt:001314	pzt:001313	order	chlorellales	accepted			taxon	
+pzt:001315	pzt:001314	family	oocystaceae	accepted			taxon	
+pzt:001316	pzt:001315	genus	oocystis	accepted			taxon	
+pzt:001317	pzt:001282	class	ulvophyceae	accepted			taxon	
+pzt:001318	pzt:001317	order	oltmannsiellopsidales	accepted			taxon	
+pzt:001319	pzt:001318	family	oltmannsiellopsidaceae	accepted			taxon	
+pzt:001320	pzt:001319	genus	oltmannsiellopsis	accepted			taxon	
+pzt:001321	pzt:001320	species	oltmannsiellopsis viridis	accepted			taxon	
+pzt:001322		kingdom	protozoa	accepted			taxon	
+pzt:001323	pzt:001322	phylum	amoebozoa	accepted			taxon	
+pzt:001324	pzt:001323	class	lobosa	accepted			taxon	
+pzt:001325	pzt:001324	order	arcellinida	accepted			taxon	
+pzt:001326	pzt:001325	family	centropyxidae	accepted			taxon	
+pzt:001327	pzt:001326	genus	centropyxis	accepted			taxon	
+pzt:001328	pzt:001327	species	centropyxis discoides	accepted			taxon	
+pzt:001329	pzt:001323	class	tubulinea	accepted			taxon	
+pzt:001330	pzt:001329	order	arcellinida	accepted			taxon	
+pzt:001331	pzt:001330	family	arcellidae	accepted			taxon	
+pzt:001332	pzt:001331	genus	arcella	accepted			taxon	
+pzt:001333	pzt:001332	species	arcella vulgaris	accepted			taxon	
+pzt:001334	pzt:001329	order	euamoebida	accepted			taxon	
+pzt:001335	pzt:001334	family	amoebidae	accepted			taxon	
+pzt:001336	pzt:001335	genus	amoeba	accepted			taxon	
+pzt:001337	pzt:001322	phylum	choanozoa	accepted			taxon	
+pzt:001338	pzt:001337	class	choanoflagellatea	accepted			taxon	
+pzt:001339	pzt:001338	order	acanthoecida	accepted			taxon	
+pzt:001340	pzt:001339	family	acanthoecidae	accepted			taxon	
+pzt:001341	pzt:001340	genus	parvicorbicula	accepted			taxon	
+pzt:001342	pzt:001341	species	parvicorbicula socialis	accepted			taxon	
+pzt:001343	pzt:001322	phylum	euglenozoa	accepted			taxon	
+pzt:001344	pzt:001343	class	euglenophyceae	accepted			taxon	
+pzt:001345	pzt:001344	order	euglenales	accepted			taxon	
+pzt:001346	pzt:001345	family	euglenaceae	accepted			taxon	
+pzt:001347	pzt:001346	genus	euglena	accepted			taxon	
+pzt:001348	pzt:001344	order	eutreptiales	accepted			taxon	
+pzt:001349	pzt:001348	family	eutreptiaceae	accepted			taxon	
+pzt:001350	pzt:001349	genus	eutreptiella	accepted			taxon	
+pzt:001351	pzt:001343	class	kinetoplastea	accepted			taxon	
+pzt:001352	pzt:001351	order	bodonida	accepted			taxon	

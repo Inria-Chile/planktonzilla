@@ -35,7 +35,7 @@ from unittest.mock import MagicMock
 
 import hydra
 import pytest
-from datasets import Dataset
+from datasets import Dataset, load_from_disk
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import OmegaConf
 
@@ -743,7 +743,9 @@ def test_conform_schema_does_not_cast_when_features_already_match(monkeypatch):
 def test_atomic_replace_cleans_up_staging_when_the_save_fails(tmp_path, monkeypatch):
     """A failed save leaves no .new-<pid> residue and does not touch the existing output."""
     output_dir = tmp_path / "planktonzilla-17M"
-    output_dir.mkdir()
+    # A real saved dataset, because `atomic_replace` now refuses to replace anything else
+    # (finding 1.2) — and this test is about the staging failure, not about that refusal.
+    Dataset.from_dict({"a": [1]}).save_to_disk(str(output_dir))
     (output_dir / "marker.txt").write_text("original")
 
     ds = Dataset.from_dict({"a": [1]})
@@ -762,6 +764,102 @@ def test_atomic_replace_cleans_up_staging_when_the_save_fails(tmp_path, monkeypa
     residue = [p.name for p in tmp_path.iterdir() if ".new-" in p.name or ".old-" in p.name]
     assert residue == [], f"staging left behind: {residue}"
     assert (output_dir / "marker.txt").read_text() == "original", "existing output must be intact"
+
+
+# --- atomic_replace refuses a target it would have to delete (finding 1.2) ----------
+
+
+def test_atomic_replace_refuses_a_target_that_is_not_a_saved_dataset(tmp_path):
+    """The swap ends in ``rmtree``, so the target has to BE a dataset before it starts.
+
+    This reproduces the data_dir wipe: the three trees below are what a real data_dir
+    holds, and ``manual_downloads/`` is the one that cannot be re-fetched automatically.
+    Before the refusal, `atomic_replace` renamed all of it aside, moved the new dataset
+    in, deleted the rename, and logged success.
+    """
+    output_dir = tmp_path / "data"
+    for name in ("manual_downloads", "whoi_imagefolder", "zooscan_raw_download"):
+        (output_dir / name).mkdir(parents=True)
+    (output_dir / "manual_downloads" / "hand-fetched.zip").write_bytes(b"cannot be re-downloaded")
+
+    with pytest.raises(ValueError, match="not a saved dataset"):
+        mk.atomic_replace(Dataset.from_dict({"a": [1]}), output_dir)
+
+    assert sorted(entry.name for entry in output_dir.iterdir()) == [
+        "manual_downloads",
+        "whoi_imagefolder",
+        "zooscan_raw_download",
+    ]
+    assert (output_dir / "manual_downloads" / "hand-fetched.zip").read_bytes() == b"cannot be re-downloaded"
+
+
+def test_atomic_replace_still_swaps_a_real_saved_dataset(tmp_path):
+    """The control: refusing the wrong target must not cost the case this exists for."""
+    output_dir = tmp_path / "planktonzilla-17M"
+    Dataset.from_dict({"a": [1, 2]}).save_to_disk(str(output_dir))
+
+    mk.atomic_replace(Dataset.from_dict({"a": [1, 2, 3]}), output_dir)
+
+    assert len(load_from_disk(str(output_dir))) == 3
+    assert [entry.name for entry in tmp_path.iterdir() if ".new-" in entry.name or ".old-" in entry.name] == []
+
+
+def test_the_run_refuses_an_output_dir_that_is_the_data_dir(monkeypatch, tmp_path):
+    """Refused up front — the answer does not improve after several hours of importing."""
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "x", "y")
+
+    cfg = _compose(
+        [
+            f"taxonomy_csv_path={csv_path}",
+            f"data_dir={tmp_path}",
+            f"output_dir={tmp_path}",
+            "sources=[lensless]",
+        ],
+        job_name="test_make_output_is_data_dir",
+    )
+    GlobalHydra.instance().clear()
+
+    monkeypatch.setattr(mk, "atomic_replace", lambda ds, path: pytest.fail("nothing may be written"))
+    with pytest.raises(ValueError, match="resolves to data_dir"):
+        _drive(monkeypatch, cfg, tmp_path, mk.main)
+
+
+# --- a released artifact stays readable by the next run (finding 1.3) ---------------
+
+
+def test_a_released_artifact_can_still_be_read_by_the_next_run(tmp_path):
+    """End to end, the way the bug bites: stamp a version, save, then pre-flight it.
+
+    ``apply_version`` used to assign a bare ``str``, which bypasses ``DatasetInfo``'s
+    ``__post_init__`` coercion and serialises as a string. ``check_base_on_disk`` — the
+    unconditional pre-build guard — then did ``.get`` on that string, so EVERY run after
+    a release died with ``AttributeError`` naming neither the file nor the reason.
+    """
+    saved = tmp_path / "planktonzilla-17M"
+    mk.apply_version(Dataset.from_dict({"dataset": ["whoi"] * 3}), "1.4.0", True).save_to_disk(str(saved))
+
+    assert json.loads((saved / "dataset_info.json").read_text())["version"]["version_str"] == "1.4.0"
+
+    check = mk.check_base_on_disk(saved)[0]
+    assert check.ok
+    assert "version 1.4.0" in check.detail
+
+
+def test_the_version_reader_accepts_the_shape_already_on_disk(tmp_path):
+    """Artifacts released before the fix carry the bare string; they are still readable."""
+    assert mk.embedded_version_str({"version_str": "1.4.0"}) == "1.4.0"
+    assert mk.embedded_version_str("1.4.0") == "1.4.0"
+    assert mk.embedded_version_str(None) is None
+
+    saved = tmp_path / "released-before-the-fix"
+    Dataset.from_dict({"dataset": ["whoi"]}).save_to_disk(str(saved))
+    info_file = saved / "dataset_info.json"
+    info = json.loads(info_file.read_text())
+    info["version"] = "1.4.0"
+    info_file.write_text(json.dumps(info))
+
+    assert "version 1.4.0" in mk.check_base_on_disk(saved)[0].detail
 
 
 def test_assemble_conforms_to_the_largest_part_not_the_first(tmp_path):
@@ -817,6 +915,14 @@ class _StubImporter:
         self._missing_sidecars = list(missing_sidecars)
         self.probes = []
         self.ensured = 0
+        self.complete = None
+
+    def imagefolder_is_complete(self):
+        """The real default: holds at least one FILE. A bool on the stub forces it."""
+        if self.complete is not None:
+            return self.complete
+        folder = Path(self.imagefolder_dir)
+        return folder.exists() and any(path.is_file() for path in folder.rglob("*"))
 
     def missing_manual_downloads(self):
         return []
@@ -1044,12 +1150,20 @@ def test_an_unreachable_download_stops_a_real_run_before_any_import(monkeypatch,
     assert saves == []
 
 
-def test_a_warning_alone_does_not_stop_the_run(monkeypatch, tmp_path):
-    """An HTML body is reported loudly but is not a verdict a machine can make."""
+def test_a_warning_alone_does_not_stop_the_run(monkeypatch, tmp_path, caplog):
+    """An HTML body is reported loudly but is not a verdict a machine can make.
+
+    Both halves are asserted, because either alone is satisfied by a bug: a run that
+    never noticed the warning also "does not stop", and a warning that stops the run also
+    "reports loudly".
+    """
     cfg = _preflight_cfg(tmp_path, ["dry_run=true", "check_downloads=all"], "test_make_preflight_warn")
     _stub_importers(monkeypatch, tmp_path, results=[_probe(warning="the server returned an HTML page")], built=True)
 
-    mk.main(cfg)
+    with caplog.at_level("WARNING"):
+        mk.main(cfg)
+
+    assert "the server returned an HTML page" in caplog.text, "the warning was staged and never surfaced"
 
 
 def test_needed_scope_skips_the_sources_that_are_already_built():
@@ -1343,6 +1457,43 @@ def test_a_drifted_sidecar_is_a_warning_not_a_failure(tmp_path):
     assert fetch_names == ["src"]
     warnings = [c for c in checks if c.name == "sidecars:src" and not c.ok]
     assert len(warnings) == 1 and not warnings[0].blocking and "fails verification" in warnings[0].detail
+
+
+def test_the_preflight_calls_a_half_built_imagefolder_a_source_this_run_fetches(tmp_path, caplog):
+    """The pre-flight promised, in its own docstring, to decide the way the run decides.
+
+    It asked ``os.listdir`` while the run asks ``imagefolder_is_complete()``. A source
+    left half-built by an interruption is non-empty, so the pre-flight called it "already
+    built" and ``check_downloads=needed`` — the scope a real build uses — skipped its
+    probes entirely, on exactly the source the run was about to re-import.
+    """
+    stub = _built_stub(tmp_path)
+    stub.complete = False
+
+    _, fetch_names = mk.report_source_state([(_SRC, stub)], SimpleNamespace(refresh="reuse"))
+
+    assert fetch_names == ["src"], "a source the run would re-import is a source this run fetches"
+
+    _, _ = mk.check_source_downloads([(_SRC, stub)], fetch_names, scope="needed", timeout=1, audit=True)
+    assert stub.probes == [1], "and its downloads are probed rather than skipped"
+
+
+def test_the_preflight_reports_a_complete_imagefolder_as_built(tmp_path):
+    """The control: the common case is unchanged, and still skips the probes."""
+    stub = _built_stub(tmp_path)
+
+    _, fetch_names = mk.report_source_state([(_SRC, stub)], SimpleNamespace(refresh="reuse"))
+
+    assert fetch_names == []
+
+
+def test_refresh_rebuild_puts_a_built_source_back_on_the_fetch_list(tmp_path):
+    """rebuild re-runs preparation, which goes back through _download_and_extract."""
+    stub = _built_stub(tmp_path)
+
+    _, fetch_names = mk.report_source_state([(_SRC, stub)], SimpleNamespace(refresh="rebuild"))
+
+    assert fetch_names == ["src"]
 
 
 def test_a_missing_bundled_sidecar_blocks_a_dry_run(monkeypatch, tmp_path):

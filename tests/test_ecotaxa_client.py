@@ -264,3 +264,23 @@ def test_download_vault_images_collects_failures_instead_of_raising(tmp_path):
 
 def test_download_vault_images_is_a_noop_for_no_jobs():
     assert ec.download_vault_images([], show_progress=False) == (0, 0, [])
+
+
+def test_a_manifest_without_a_declared_total_pages_until_it_runs_out(caplog):
+    """`total_ids` absent used to become 0, which ended the loop after ONE window and,
+    being falsy, also skipped the short-manifest guard below it. A single window then
+    imported as the whole project, with nothing raised and nothing logged."""
+    session = _FakeSession([_page([ROW_A, ROW_B], total=None), _page([ROW_C], total=None), _page([], total=None)])
+
+    with caplog.at_level("WARNING"):
+        rows = ec.fetch_project_manifest(11292, session=session, window_size=2, show_progress=False)
+
+    assert [row["objid"] for row in rows] == [ROW_A[0], ROW_B[0], ROW_C[0]]
+    assert "did not declare total_ids" in caplog.text, "the missing guarantee has to be said out loud"
+
+
+def test_a_project_that_really_holds_nothing_is_not_an_error():
+    """`total_ids: 0` with an empty window is a genuinely empty project, not a short read."""
+    session = _FakeSession([_page([], total=0)])
+
+    assert ec.fetch_project_manifest(11292, session=session, window_size=2, show_progress=False) == []

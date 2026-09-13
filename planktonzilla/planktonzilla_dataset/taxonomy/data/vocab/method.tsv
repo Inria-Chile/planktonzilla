@@ -1,0 +1,7 @@
+method	emitted_by	definition
+verbatim	tara_pacific	the class directory already existed as a Raw_Labels value; the whole mapping was copied
+anchor	tara_pacific	the anchor taxon already existed as a proposed_label; its ranks and identifiers were reused
+derived	tara_pacific	built from the frozen EcoTaxa lineage, with higher ranks reconciled against the table
+genus_reuse	frepj	the genus already existed in the table; its whole lineage was reused rather than re-derived
+class_anchor	frepj	kingdom and phylum taken from a class already anchored in the table
+curated_class	frepj	kingdom and phylum hand-curated; the class had no anchor in the table

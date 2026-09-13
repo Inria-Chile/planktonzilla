@@ -41,7 +41,12 @@ from pathlib import Path
 import requests
 
 from planktonzilla.dataset_import import ecotaxa_client, tara_pacific_layout
-from planktonzilla.dataset_import.dataset_importer import DatasetImporter, is_dir_empty
+from planktonzilla.dataset_import.dataset_importer import (
+    REMOVED_UNREADABLE_LEDGER,
+    DatasetImporter,
+    is_dir_empty,
+    removed_unreadable,
+)
 from planktonzilla.utils.logger import get_pylogger
 
 logger = get_pylogger(__name__)
@@ -228,7 +233,9 @@ class TaraPacificDatasetImporter(DatasetImporter):
         So the question is asked with a count instead. Both sides are cheap relative to the
         fetch they gate: the manifest is a local TSV read, and the images are a directory
         walk. ``ecotaxa_max_missing_images`` is honoured, so vignettes that are permanently
-        gone upstream do not make every future run re-walk the whole source.
+        gone upstream do not make every future run re-walk the whole source — and neither do
+        vignettes the integrity walk deleted as unreadable, which are gone for good too.
+        Counting those as never-fetched is what put this source in an unbreakable re-fetch loop.
 
         Never raises: a missing manifest (the state before ``ensure_sidecars`` has run)
         means "not complete", which is the answer that makes the caller build.
@@ -242,7 +249,21 @@ class TaraPacificDatasetImporter(DatasetImporter):
             return False
 
         present = sum(1 for _ in self.imagefolder_dir.rglob(f"*{tara_pacific_layout.IMAGE_SUFFIX}"))
-        if present + self.ecotaxa_max_missing_images >= expected:
+
+        # Vignettes the integrity walk deleted count as ACCOUNTED FOR, not as never fetched.
+        # `check_image_file_integrity` is true for all four of these sources and runs on every call
+        # to `import_dataset` — so without this a single undecodable vignette put the source in a
+        # loop it could never leave: delete -> present < expected -> "incomplete" -> re-prepare ->
+        # re-fetch the same bad bytes -> delete again, on every run, re-hitting EcoTaxa forever.
+        # Re-fetching cannot help; the upstream bytes do not decode.
+        removed = len(removed_unreadable(self.imagefolder_dir))
+        if present + removed + self.ecotaxa_max_missing_images >= expected:
+            if removed:
+                logger.warning(
+                    f"«{self.SOURCE_NAME}» is complete counting {removed} vignette(s) the integrity walk removed as "
+                    f"unreadable. The imagefolder is short by that many and re-running will not recover them — see "
+                    f"{self.imagefolder_dir / REMOVED_UNREADABLE_LEDGER}."
+                )
             return True
 
         logger.warning(

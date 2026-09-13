@@ -1,0 +1,140 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+medplanktonset	Akashiwo_sanguinea	pzt:001162	akashiwo sanguinea	living	full_body	true	accepted							
+medplanktonset	Alexandrium_spp	pzt:001150	alexandrium	living	full_body	true	accepted							
+medplanktonset	Amphidinium_spp	pzt:001065	amphidinium	living	full_body	true	accepted							
+medplanktonset	Appendicularia	pzt:000313	appendicularia	living	full_body	true	accepted							
+medplanktonset	Asterionellopsis_cf._glacialis	pzt:000945	asterionellopsis glacialis	living	full_body	true	accepted							
+medplanktonset	Asteromphalus_sarcophagus	pzt:000883	asteromphalus sarcophagus	living	full_body	true	accepted							
+medplanktonset	Asteromphalus_spp	pzt:000882	asteromphalus	living	full_body	true	accepted							
+medplanktonset	Azadinium_caudatum	pzt:001069	azadinium caudatum	living	full_body	true	accepted							
+medplanktonset	Bacteriastrum_spp	pzt:000907	bacteriastrum	living	full_body	true	accepted							
+medplanktonset	Calciopappus_caudatus	pzt:000870	calciopappus caudatus	living	full_body	true	accepted							
+medplanktonset	Calciosolenia_brasiliensis	pzt:000862	calciosolenia brasiliensis	living	full_body	true	accepted							
+medplanktonset	Centric_diatoms	pzt:000904	centrales	living	full_body	true	accepted							
+medplanktonset	Cerataulina_pelagica	pzt:000959	cerataulina pelagica	living	full_body	true	accepted							
+medplanktonset	Ceratoperidinium_margalefii	pzt:001177	ceratoperidinium margalefii	living	full_body	true	accepted							
+medplanktonset	Chaetoceros_anastomonsans	pzt:000910	chaetoceros anastomosans	living	full_body	true	accepted							
+medplanktonset	Chaetoceros_curvisetus_Chaetoceros_pseudocurvisetus	pzt:000908	chaetoceros	living	full_body	true	accepted							
+medplanktonset	Chaetoceros_danicus	pzt:000912	chaetoceros danicus	living	full_body	true	accepted							
+medplanktonset	Chaetoceros_decipiens	pzt:000913	chaetoceros decipiens	living	full_body	true	accepted							
+medplanktonset	Chaetoceros_diversus	pzt:000915	chaetoceros diversus	living	full_body	true	accepted							
+medplanktonset	Chaetoceros_peruvianus	pzt:000916	chaetoceros peruvianus	living	full_body	true	accepted							
+medplanktonset	Chaetoceros_protuberans_Chaetoceros_didymus	pzt:000908	chaetoceros	living	full_body	true	accepted							
+medplanktonset	Chaetoceros_socialis	pzt:000918	chaetoceros socialis	living	full_body	true	accepted							
+medplanktonset	Chaetoceros_spp	pzt:000908	chaetoceros	living	full_body	true	accepted							
+medplanktonset	Chaetoceros_tortissimus	pzt:000919	chaetoceros tortissimus	living	full_body	true	accepted							
+medplanktonset	Chrysochromulina_lanceolata	pzt:000857	chrysochromulina lanceolata	living	full_body	true	accepted							
+medplanktonset	Chrysochromulina_parkeae	pzt:000858	chrysochromulina parkeae	living	full_body	true	accepted							
+medplanktonset	Ciliates	pzt:000699	ciliophora	living	full_body	true	accepted							
+medplanktonset	Cladopyxis_cf._brachiolata	pzt:001133	cladopyxis brachiolata	living	full_body	true	accepted							
+medplanktonset	Copepod_copepodites	pzt:000152	copepoda	living	full_body	true	accepted							
+medplanktonset	Copepod_eggs	pzt:000152	copepoda	living	egg	true	accepted							
+medplanktonset	Copepod_nauplii	pzt:000152	copepoda	living	full_body	true	accepted							
+medplanktonset	Corythodinium_constrictum	pzt:001195	corythodinium constrictum	living	full_body	true	accepted							
+medplanktonset	Corythodinium_milneri	pzt:001196	corythodinium milneri	living	full_body	true	accepted							
+medplanktonset	Cryptophyceae	pzt:000815	cryptophyceae	living	full_body	true	accepted							
+medplanktonset	Cylindrotheca_closterium-like	pzt:000888	cylindrotheca closterium	living	like	true	accepted							
+medplanktonset	Dactyliosolen_blavyanus	pzt:001011	dactyliosolen blavyanus	living	full_body	true	accepted							
+medplanktonset	Dactyliosolen_fragilissimus	pzt:001012	dactyliosolen fragilissimus	living	full_body	true	accepted							
+medplanktonset	Dictyocha_fibula	pzt:001244	dictyocha fibula	living	full_body	true	accepted							
+medplanktonset	Dictyocysta_spp._Codonaria_spp	pzt:000739	choreotrichida	living	full_body	true	accepted							
+medplanktonset	Dinobryon_coalescens	pzt:001235	dinobryon coalescens	living	full_body	true	accepted							
+medplanktonset	Dinophysis_caudata	pzt:001077	dinophysis caudata	living	full_body	true	accepted							
+medplanktonset	Dinophysis_parva	pzt:001078	dinophysis parva	living	full_body	true	accepted							
+medplanktonset	Dinophysis_sacculus	pzt:001079	dinophysis sacculus	living	full_body	true	accepted							
+medplanktonset	Dinophysis_spp	pzt:001075	dinophysis	living	full_body	true	accepted							
+medplanktonset	Dinophysis_tripos	pzt:001080	dinophysis tripos	living	full_body	true	accepted							
+medplanktonset	Discosphaera_tubifera	pzt:000865	discosphaera tubifera	living	full_body	true	accepted							
+medplanktonset	Eucampia_cornuta	pzt:000963	eucampia cornuta	living	full_body	true	accepted							
+medplanktonset	Euglenophyceae	pzt:001344	euglenophyceae	living	full_body	true	accepted							
+medplanktonset	Gonyaulax_polygramma	pzt:001141	gonyaulax polygramma	living	full_body	true	accepted							
+medplanktonset	Gonyaulax_spp	pzt:001140	gonyaulax	living	full_body	true	accepted							
+medplanktonset	Guinardia_flaccida	pzt:001015	guinardia flaccida	living	full_body	true	accepted							
+medplanktonset	Guinardia_striata_Dactyliosolen_phuketensis	pzt:001009	rhizosoleniaceae	living	full_body	true	accepted							
+medplanktonset	Gyrodinium_spirale_Gyrodinium_fusiforme	pzt:001168	gyrodinium	living	full_body	true	accepted							
+medplanktonset	Haslea_silbo	pzt:000996	haslea silbo	living	full_body	true	accepted							
+medplanktonset	Helicotheca_tamesis	pzt:000978	helicotheca tamesis	living	full_body	true	accepted							
+medplanktonset	Hemiaulus_hauckii_Hemiaulus_sinensis	pzt:000964	hemiaulus	living	full_body	true	accepted							
+medplanktonset	Heterocapsa_niei-like	pzt:001190	heterocapsa	living	like	true	accepted							
+medplanktonset	Kapelodinium_vestifici	pzt:001228	kapelodinium vestifici	living	full_body	true	accepted							
+medplanktonset	Karenia_papilionacea	pzt:001171	karenia papilionacea	living	full_body	true	accepted							
+medplanktonset	Karenia_spp	pzt:001170	karenia	living	full_body	true	accepted							
+medplanktonset	Lauderia_annulata	pzt:001037	lauderia annulata	living	full_body	true	accepted							
+medplanktonset	Leptocylindrus_spp	pzt:000967	leptocylindrus	living	full_body	true	accepted							
+medplanktonset	Licmophora_spp	pzt:000973	licmophora	living	full_body	true	accepted							
+medplanktonset	Lioloma_pacificum	pzt:001032	lioloma pacificum	living	full_body	true	accepted							
+medplanktonset	Lithodesmium_variabile	pzt:000980	lithodesmium variabile	living	full_body	true	accepted							
+medplanktonset	Meringosphaera_mediterranea	pzt:001263	meringosphaera mediterranea	living	full_body	true	accepted							
+medplanktonset	Mesodinium_spp	pzt:000714	mesodinium	living	full_body	true	accepted							
+medplanktonset	Naked_dinoflagellates	pzt:001062	dinophyceae	living	full_body	true	accepted							
+medplanktonset	Neobrightwellia_alternans	pzt:000902	neobrightwellia alternans	living	full_body	true	accepted							
+medplanktonset	Octactis_octonaria	pzt:001246	octactis octonaria	living	full_body	true	accepted							
+medplanktonset	Oltmannsiellopsis_viridis	pzt:001321	oltmannsiellopsis viridis	living	full_body	true	accepted							
+medplanktonset	Ophiaster_spp	pzt:000871	ophiaster	living	full_body	true	accepted							
+medplanktonset	Ornithocercus_spp._Histioneis_spp	pzt:001074	dinophysaceae	living	full_body	true	accepted							
+medplanktonset	Oxytoxum_cf._caudatum	pzt:001199	oxytoxum caudatum	living	full_body	true	accepted							
+medplanktonset	Oxytoxum_cf._scolopax	pzt:001200	oxytoxum scolopax	living	full_body	true	accepted							
+medplanktonset	Oxytoxum_cf._variabile	pzt:001201	oxytoxum variabile	living	full_body	true	accepted							
+medplanktonset	Oxytoxum_spp	pzt:001198	oxytoxum	living	full_body	true	accepted							
+medplanktonset	Pennate_diatoms	pzt:001004	pennales	living	full_body	true	accepted							
+medplanktonset	Phaeocystis_jahnii	pzt:000853	phaeocystis jahnii	living	full_body	true	accepted							
+medplanktonset	Phalacroma_oxytoxoides	pzt:001089	phalacroma oxytoxoides	living	full_body	true	accepted							
+medplanktonset	Phalacroma_spp	pzt:001088	phalacroma	living	full_body	true	accepted							
+medplanktonset	Plagiotropis_spp	pzt:000998	plagiotropis	living	full_body	true	accepted							
+medplanktonset	Pleurosigma spp._Gyrosigma_spp	pzt:000999	pleurosigmataceae	living	full_body	true	accepted							
+medplanktonset	Podolampas_palmipes	pzt:001209	podolampas palmipes	living	full_body	true	accepted							
+medplanktonset	Polykrikos_kofoidii	pzt:001174	polykrikos kofoidii	living	full_body	true	accepted							
+medplanktonset	Proboscia_spp._Rhizosolenia_spp	pzt:001009	rhizosoleniaceae	living	full_body	true	accepted							
+medplanktonset	Prorocentrum_cf._gracile	pzt:001218	prorocentrum gracile	living	full_body	true	accepted							
+medplanktonset	Prorocentrum_redfieldii	pzt:001219	prorocentrum redfieldii	living	full_body	true	accepted							
+medplanktonset	Protoceratium_reticulatum	pzt:001148	protoceratium reticulatum	living	full_body	true	accepted							
+medplanktonset	Protoperidinium_cf._divergens	pzt:001213	protoperidinium divergens	living	full_body	true	accepted							
+medplanktonset	Protoperidinium_diabolus	pzt:001212	protoperidinium diabolus	living	full_body	true	accepted							
+medplanktonset	Pseliodinium_fusus	pzt:001188	pseliodinium fusus	living	full_body	true	accepted							
+medplanktonset	Pseudo-nitzschia_spp._2_cells	pzt:000892	pseudo-nitzschia	living	full_body	true	accepted							
+medplanktonset	Pseudo-nitzschia_spp._3_cells	pzt:000892	pseudo-nitzschia	living	full_body	true	accepted							
+medplanktonset	Pseudo-nitzschia_spp._4_cells	pzt:000892	pseudo-nitzschia	living	full_body	true	accepted							
+medplanktonset	Pseudo-nitzschia_spp._5_cells	pzt:000892	pseudo-nitzschia	living	full_body	true	accepted							
+medplanktonset	Pseudo-nitzschia_spp._6_cells	pzt:000892	pseudo-nitzschia	living	full_body	true	accepted							
+medplanktonset	Pseudo-nitzschia_spp._7_cells	pzt:000892	pseudo-nitzschia	living	full_body	true	accepted							
+medplanktonset	Pseudo-nitzschia_spp._single_cell	pzt:000892	pseudo-nitzschia	living	full_body	true	accepted							
+medplanktonset	Pseudosolenia_calcar-avis	pzt:001020	pseudosolenia calcar-avis	living	full_body	true	accepted							
+medplanktonset	Pterosperma_spp	pzt:001306	pterosperma	living	full_body	true	accepted							
+medplanktonset	Pyramimonas_spp	pzt:001311	pyramimonas	living	full_body	true	accepted							
+medplanktonset	Pyrocystis_cf._lunula	pzt:001154	pyrocystis lunula	living	full_body	true	accepted							
+medplanktonset	Pyrophacus_horologium	pzt:001158	pyrophacus horologium	living	full_body	true	accepted							
+medplanktonset	Radiolaria	pzt:001264	radiozoa	living	full_body	true	accepted							
+medplanktonset	Rhabdosphaera_clavigera	pzt:000867	rhabdosphaera clavigera	living	full_body	true	accepted							
+medplanktonset	Scrippsiella_acuminata_like	pzt:001224	scrippsiella	living	like	true	accepted							
+medplanktonset	Scyphosphaera_apsteinii	pzt:000877	scyphosphaera apsteinii	living	full_body	true	accepted							
+medplanktonset	Skeletonema_menzelii	pzt:001041	skeletonema menzelii	living	full_body	true	accepted							
+medplanktonset	Skeletonema_pseudocostatum_Skeletonema_tropicum	pzt:001039	skeletonema	living	full_body	true	accepted							
+medplanktonset	Sourniaea_diacantha	pzt:001145	sourniaea diacantha	living	full_body	true	accepted							
+medplanktonset	Syracosphaera_pulchra	pzt:000873	syracosphaera pulchra	living	full_body	true	accepted							
+medplanktonset	Tenuicylindrus_belgicus	pzt:000970	tenuicylindrus belgicus	living	full_body	true	accepted							
+medplanktonset	Thalassionema_spp	pzt:001033	thalassionema	living	full_body	true	accepted							
+medplanktonset	Thalassiosira_gravida	pzt:001049	thalassiosira gravida	living	full_body	true	accepted							
+medplanktonset	Thalassiosira_spp	pzt:001048	thalassiosira	living	full_body	true	accepted							
+medplanktonset	Tiarina_spp	pzt:000806	tiarina	living	full_body	true	accepted							
+medplanktonset	Tintinnids	pzt:000739	choreotrichida	living	full_body	true	accepted							
+medplanktonset	Torodinium_spp	pzt:001166	torodinium	living	full_body	true	accepted							
+medplanktonset	Trachymedusae	pzt:000396	trachymedusae	living	full_body	true	accepted							
+medplanktonset	Trieres_mobiliensis	pzt:001060	trieres mobiliensis	living	full_body	true	accepted							
+medplanktonset	Tripos_arietinus	pzt:001097	tripos arietinus	living	full_body	true	accepted							
+medplanktonset	Tripos_azoricus	pzt:001098	tripos azoricus	living	full_body	true	accepted							
+medplanktonset	Tripos_cf._minutus	pzt:001118	tripos minutus	living	full_body	true	accepted							
+medplanktonset	Tripos_concilians	pzt:001102	tripos concilians	living	full_body	true	accepted							
+medplanktonset	Tripos_contortus	pzt:001103	tripos contortus	living	full_body	true	accepted							
+medplanktonset	Tripos_declinatus	pzt:001104	tripos declinatus	living	full_body	true	accepted							
+medplanktonset	Tripos_euarcuatus	pzt:001105	tripos euarcuatus	living	full_body	true	accepted							
+medplanktonset	Tripos_furca	pzt:001107	tripos furca	living	full_body	true	accepted							
+medplanktonset	Tripos_fusus	pzt:001108	tripos fusus	living	full_body	true	accepted							
+medplanktonset	Tripos_horridus	pzt:001112	tripos horridus	living	full_body	true	accepted							
+medplanktonset	Tripos_macroceros	pzt:001116	tripos macroceros	living	full_body	true	accepted							
+medplanktonset	Tripos_muelleri-like	pzt:001095	tripos	living	like	true	accepted							
+medplanktonset	Tripos_pentagonus	pzt:001120	tripos pentagonus	living	full_body	true	accepted							
+medplanktonset	Tripos_spp	pzt:001095	tripos	living	full_body	true	accepted							
+medplanktonset	Tripos_symmetricus	pzt:001125	tripos symmetricus	living	full_body	true	accepted							
+medplanktonset	Tripos_teres	pzt:001126	tripos teres	living	full_body	true	accepted							
+medplanktonset	Umbilicosphaera_sibogae	pzt:000842	umbilicosphaera sibogae	living	full_body	true	accepted							
+medplanktonset	Warnowia_polyphemus	pzt:001180	warnowia polyphemus	living	full_body	true	accepted							

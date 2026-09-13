@@ -47,7 +47,6 @@ Prerequisites:
 """
 
 import concurrent.futures
-import csv
 import json
 import os
 import shutil
@@ -77,6 +76,7 @@ from planktonzilla.planktonzilla_dataset.generate_planktonzilla import (
     clean_corrupt_examples_optimized,
     import_and_redefine_source,
 )
+from planktonzilla.planktonzilla_dataset.taxonomy import load_taxonomy
 from planktonzilla.planktonzilla_dataset.update_planktonzilla import (
     add_license_columns,
     build_sync_dict,
@@ -382,7 +382,12 @@ def apply_version(ds: Dataset, version: str, embeddable: bool) -> Dataset:
     if version is None or not embeddable:
         return ds
 
-    ds.info.version = version
+    # Version(...), not the bare string: `DatasetInfo` only coerces in `__post_init__`,
+    # so a post-hoc assignment reaches `save_to_disk` as a str and serialises as one.
+    # `check_base_on_disk` — the unconditional pre-build guard — then reads `.version`
+    # as a mapping, and every incremental run against the released artifact dies on
+    # `AttributeError: 'str' object has no attribute 'get'` before building anything.
+    ds.info.version = Version(version)
     logger.info(f"Embedded version {str(ds.info.version)!r} in the dataset info.")
     return ds
 
@@ -422,6 +427,19 @@ def tag_hub_release(repo_id: str, version: str, *, token, message=None, overwrit
     logger.info(f"Tagged «{repo_id}» as «{version}» on the HuggingFace Hub.")
 
 
+def is_saved_dataset(path: Path) -> bool:
+    """Whether ``path`` is a directory ``datasets.load_from_disk`` would accept.
+
+    The same dispatcher :func:`check_base_on_disk` mirrors, reduced to its yes/no: a
+    ``Dataset`` carries ``dataset_info.json`` AND ``state.json``, a ``DatasetDict``
+    carries ``dataset_dict.json``, and anything else is not a saved dataset.
+    """
+    dataset = (path / datasets_config.DATASET_INFO_FILENAME).is_file() and (
+        path / datasets_config.DATASET_STATE_JSON_FILENAME
+    ).is_file()
+    return dataset or (path / datasets_config.DATASETDICT_JSON_FILENAME).is_file()
+
+
 def atomic_replace(final: Dataset, output_dir: Path) -> None:
     """Save to ``output_dir``, tolerating that it may be the dataset's own source.
 
@@ -429,10 +447,25 @@ def atomic_replace(final: Dataset, output_dir: Path) -> None:
     dataset is memory-mapped from, which is exactly the ``base=local`` case. Writing
     beside it and swapping also means there is no window where neither a complete old
     nor a complete new copy exists.
+
+    The swap ends in ``rmtree``, so an existing target is required to BE a saved dataset
+    first. Nothing else about the call says so: point this at a directory holding the
+    imagefolders and ``manual_downloads/`` and the rename-then-delete removes all of it
+    and logs success. Refusing is the whole safety property — the caller can always pass
+    a path one level down.
     """
     if not output_dir.exists():
         final.save_to_disk(str(output_dir))
         return
+
+    if not is_saved_dataset(output_dir):
+        raise ValueError(
+            f"refusing to replace {output_dir}: it exists but is not a saved dataset "
+            f"(no {datasets_config.DATASET_INFO_FILENAME}/{datasets_config.DATASET_STATE_JSON_FILENAME}, "
+            f"no {datasets_config.DATASETDICT_JSON_FILENAME}). Replacing it means deleting it, and "
+            f"whatever it holds — an imagefolder tree, manual_downloads/ — is not this build's to delete. "
+            f"Pass an output_dir that is either empty or an existing saved dataset."
+        )
 
     staged = output_dir.with_name(f"{output_dir.name}.new-{os.getpid()}")
     previous = output_dir.with_name(f"{output_dir.name}.old-{os.getpid()}")
@@ -517,41 +550,39 @@ class Check:
 
 
 def check_taxonomy_csv(csv_path, selected) -> list:
-    """Check the taxonomy CSV exists, parses, has every column, and covers each source.
+    """Check the taxonomy exists, parses, has every column, and covers each selected source.
 
-    The column check is not decoration: ``build_taxonomy_lookup`` resolves an absent
-    column to ``None`` for every row instead of raising, so a CSV that lost a rank
-    builds the whole dataset with that rank blank and reports success.
+    The column check is not decoration: the lookup resolves an absent column to ``None`` for every
+    row instead of raising, so a table that lost a rank builds the whole dataset with that rank
+    blank and reports success. It used to be done by peeking the header with a bare ``csv.reader``
+    before handing the file to the reader of record — two parses of the same file, and a check that
+    could only ever work on a CSV. It now asks the loaded store what columns it has, which is the
+    same question answered once and answered for the normalised package too.
 
-    A selected source with NO row at all in the CSV is reported as a warning rather than
-    a failure — it is what adding a source before curating its labels looks like — but
-    it is worth saying up front, because the alternative is discovering afterwards that
-    a few hundred thousand images have null taxonomy and null IDs.
+    A selected source with NO row at all is reported as a warning rather than a failure — it is
+    what adding a source before curating its labels looks like — but it is worth saying up front,
+    because the alternative is discovering afterwards that a few hundred thousand images have null
+    taxonomy and null IDs.
     """
     path = Path(csv_path)
     if not path.exists():
         return [Check("taxonomy-csv", False, f"missing: {path}")]
 
     try:
-        with path.open(newline="", encoding="utf-8") as handle:
-            header = next(csv.reader(handle), [])
+        store = load_taxonomy(path)
     except OSError as e:
         return [Check("taxonomy-csv", False, f"unreadable: {path} ({e})")]
-
-    required = ("Dataset", "Raw_Labels", *LOOKUP_COLS)
-    absent = [column for column in required if column not in header]
-    if absent:
-        return [Check("taxonomy-csv", False, f"{path} is missing the column(s) {absent}")]
-
-    try:
-        lookup = build_taxonomy_lookup(str(path))
     except Exception as e:
         return [Check("taxonomy-csv", False, f"{path} could not be parsed: {type(e).__name__}: {e}")]
 
-    checks = [Check("taxonomy-csv", True, f"{len(lookup)} (dataset, label) rows, all {len(required)} columns present")]
+    required = ("Dataset", "Raw_Labels", *LOOKUP_COLS)
+    absent = [column for column in required if column not in store.legacy_header()]
+    if absent:
+        return [Check("taxonomy-csv", False, f"{path} is missing the column(s) {absent}")]
 
-    covered = {dataset for dataset, _ in lookup}
-    uncovered = [entry["name"] for entry in selected if entry["name"] not in covered]
+    checks = [Check("taxonomy-csv", True, f"{len(store.lookup())} (dataset, label) rows, all {len(required)} columns present")]
+
+    uncovered = [entry["name"] for entry in selected if not store.labels_for(entry["name"])]
     if uncovered:
         checks.append(
             Check(
@@ -565,6 +596,22 @@ def check_taxonomy_csv(csv_path, selected) -> list:
         checks.append(Check("taxonomy-coverage", True, f"all {len(selected)} rebuilt source(s) appear in the CSV"))
 
     return checks
+
+
+def embedded_version_str(version) -> str | None:
+    """Read the embedded version out of either shape ``dataset_info.json`` can hold.
+
+    ``DatasetInfo`` serialises a ``Version`` as ``{"version_str": ...}``. A bare string
+    reaches the file whenever something assigned one post-hoc, bypassing the
+    ``__post_init__`` coercion — which :func:`apply_version` did until it was fixed to
+    pass ``Version``. Artifacts released in that window are on disk already, so both
+    shapes are read rather than one of them crashing the pre-build guard.
+    """
+    if isinstance(version, str):
+        return version
+    if isinstance(version, dict):
+        return version.get("version_str")
+    return None
 
 
 def check_base_on_disk(location) -> list:
@@ -601,7 +648,7 @@ def check_base_on_disk(location) -> list:
     # "empty" — reporting 0 rows for a full dataset would be worse than saying nothing.
     splits = info.get("splits") or {}
     rows = sum(split.get("num_examples") or 0 for split in splits.values()) if splits else None
-    version = (info.get("version") or {}).get("version_str")
+    version = embedded_version_str(info.get("version"))
     shards = [entry.get("filename") for entry in state.get("_data_files") or []]
     missing_shards = [name for name in shards if name and not (path / name).is_file()]
 
@@ -808,16 +855,27 @@ def report_source_state(importers, cfg) -> tuple:
 
     Returns ``(checks, fetch_names)`` — the second being the sources a real run would
     actually download, decided exactly as ``import_and_redefine_source`` decides it: a
-    non-empty imagefolder short-circuits the import unless ``refresh=redownload``
-    removes it first — or a sidecar input it lacks makes it fetch regardless.
+    COMPLETE imagefolder short-circuits the import unless ``refresh`` rebuilds or removes
+    it first — or a sidecar input it lacks makes it fetch regardless.
+
+    "Complete", not "non-empty": this asked ``os.listdir`` while the run asks
+    ``imagefolder_is_complete()``, so a source the run would re-import — a half-built
+    imagefolder, a hollow tree of empty class dirs — was reported as already built and
+    skipped by ``check_downloads=needed``, which is the scope a real build uses.
     """
     checks, fetch_names = [], []
 
     for entry, importer in importers:
         name = entry["name"]
         imagefolder = Path(importer.imagefolder_dir)
-        exists = imagefolder.exists() and bool(os.listdir(imagefolder))
-        state = f"{len(os.listdir(imagefolder))} categories" if exists else "absent/empty -> would be imported"
+        complete = importer.imagefolder_is_complete()
+        categories = len(os.listdir(imagefolder)) if imagefolder.exists() else 0
+        if complete:
+            state = f"{categories} categories"
+        elif categories:
+            state = f"{categories} categories, INCOMPLETE -> would be imported"
+        else:
+            state = "absent/empty -> would be imported"
         removal = " (would be REMOVED first)" if cfg.refresh == "redownload" and imagefolder.exists() else ""
 
         logger.info(f"╰─ {name:16s} {imagefolder} [{state}]{removal}")
@@ -825,7 +883,9 @@ def report_source_state(importers, cfg) -> tuple:
         # A source that needs a hand-downloaded archive only fails once the run reaches
         # it, which on a full build can be hours in. Report it now, while the whole plan
         # is on screen and nothing has been downloaded yet.
-        if not exists or cfg.refresh == "redownload":
+        # rebuild too, now that it reaches its gate: it re-runs preparation, which goes
+        # back through _download_and_extract (a cache hit when the archive is still there).
+        if not complete or cfg.refresh in ("redownload", "rebuild"):
             fetch_names.append(name)
             missing = importer.missing_manual_downloads()
             if missing:
@@ -1199,6 +1259,19 @@ def main(cfg: DictConfig) -> None:
         if cfg.get("output_dir") is not None
         else Path(cfg.data_dir) / constants.DEFAULT_PLANKTONZILLA_DATASET_NAME
     )
+
+    # data_dir holds the imagefolders and manual_downloads/ — the hand-fetched archives
+    # that by definition cannot be re-downloaded. The run ends in `atomic_replace`, which
+    # replaces its target, so pointing output_dir at data_dir deletes the build's own
+    # inputs. Refused here rather than at the end: the answer does not change after
+    # several hours of importing, and by then the tree is already gone.
+    data_dir = cfg.get("data_dir")
+    if data_dir is not None and output_dir.resolve() == Path(data_dir).resolve():
+        raise ValueError(
+            f"output_dir resolves to data_dir ({output_dir}), which holds the imagefolders and "
+            f"manual_downloads/ this build reads from. Saving over it deletes them. Use the default "
+            f"output_dir ({Path(data_dir) / constants.DEFAULT_PLANKTONZILLA_DATASET_NAME}) or another path."
+        )
 
     if cfg.refresh not in REFRESH_MODES:
         raise ValueError(f"refresh must be one of {REFRESH_MODES}, got {cfg.refresh!r}")
