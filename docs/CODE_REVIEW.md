@@ -51,7 +51,7 @@ that refuses the write (the writer itself is unrepaired; see below).
 | 1.4 `MaximumMarginLoss` positive column | **fixed** | `loss.py:258` · `0acf91a` |
 | 1.8 `freeze_backbone` freezes the head too | **fixed** | `train.py:285`, `clip_model.py:99` · `0acf91a` |
 | #72 losses ignore `num_items_in_batch` | **fixed** (promoted from contested) | `train.py:327` · `0acf91a` |
-| 1.5 `RobustAsymmetricLoss` focusing weight | **open — the fix this review proposed does not work** | strict xfail, `tests/test_loss.py:161` |
+| 1.5 `RobustAsymmetricLoss` focusing weight | **fixed** — see [1.5b](#15b-the-fix-the-taylor-terms-are-the-loss-not-the-weight) | `loss.py`, `configs/custom_loss/ral.yaml`, `tests/test_loss.py` |
 | 1.10 experiment configs do not compose | **fixed** (9 of 11; 2 irreparable) | `configs/experiment/` · `7a7b709` |
 | Test split read on every run | **fixed** — not a review finding; found later | `train.py:285` (`eval_test`) · `7a7b709` |
 | 1.7 guard compares only `Kingdom` | **fixed** | all 7 ranks; `RANK_DEPARTURES` in `build_tara_pacific_taxonomy.py`, `tests/test_tara_pacific_taxonomy.py` |
@@ -88,8 +88,7 @@ One more defect surfaced while writing a test for #17: `sqrt(E[x²] - E[x]²)` o
 lands a few ulp below zero, so a class of flat images published **`nan`** as its `Normalize`
 standard deviation. The variance is now clamped at zero.
 
-**Still open, and why.** **1.5** (RAL focusing weight) is unchanged — the fix this review proposed
-does not work, and it stays a `strict=True` xfail. **1.6** and **#35** change published columns, so
+**Still open, and why.** **1.6** and **#35** change published columns, so
 both are gated on the golden diff against the Hub artifact that `KNOWN_ISSUES.md` records as not
 yet built. The five low-severity defects in `templates/sankey_flow.html` and the CLIP-export path
 (**#46-48, #52-53**) are cited but never enumerated in this document — they live in appendix data
@@ -336,9 +335,9 @@ of bug outright.
 
 ### 1.5 `RobustAsymmetricLoss`'s focusing weight is inverted
 
-> **STILL OPEN — and the fix implied below is wrong.** The defect is real and the measurements stand;
-> the *remedy* this finding points at does not work. See
-> [1.5a](#15a-correction-masking-the-terms-does-not-repair-ral) immediately after.
+> **FIXED.** The defect is real and the measurements below stand; the remedy this finding points
+> at was wrong, and so was the conclusion in [1.5a](#15a-correction-masking-the-terms-does-not-repair-ral)
+> that repairing it was out of reach. See [1.5b](#15b-the-fix-the-taylor-terms-are-the-loss-not-the-weight).
 
 `planktonzilla/loss.py:407-428` — *flagged CONTESTED by the panel; upheld by my own reproduction.*
 
@@ -394,8 +393,10 @@ masking, which means repairing it needs the published RAL formulation rather tha
 sibling.
 
 I deliberately did not ship a guess. The state of the art on this finding is recorded as an executable
-`strict=True` xfail (`tests/test_loss.py:161`) carrying the 1870× measurement, so it converts to a hard
-failure the moment someone lands the real fix and can no longer be quietly forgotten.
+`strict=True` xfail carrying the 1870× measurement, so it converts to a hard failure the moment someone
+lands the real fix and can no longer be quietly forgotten.
+
+*That xfail has since flipped — see 1.5b.*
 
 Two smaller claims from my own working notes, corrected here so they do not propagate. RAL's `torch.pow`
 base never goes negative over `p ∈ (0, 1)` — swept at 200k points it stays in `[0.409, 1.0]`, minimum
@@ -403,6 +404,41 @@ base never goes negative over `p ∈ (0, 1)` — swept at 200k points it stays i
 `16.0`, not `NaN`: a negative base is only a problem for *fractional* exponents. (An earlier note of mine
 gave that interval as `[0.64, 1.0]`; that was wrong, and the same wrong figure reached a comment in
 `loss.py`, corrected in the same commit as this document.)
+
+### 1.5b The fix: the Taylor terms are the loss, not the weight
+
+1.5a stopped one step short. Its diagnosis was right — the defect is in the terms, not the masking —
+and its prescription was right too: get the published formulation. That formulation is in the file
+`loss.py` already cites, `kalelpark/RAL/models/get_optimizer.py`, and reading it settles the question
+in one line of structure:
+
+```python
+los_pos = y * (log(xs_pos) + ε_pos·(1-xs_pos) + ε_pos_pow·½·(1-xs_pos)²)
+los_neg = (1-y) * (log(xs_neg) + ε_neg·xs_neg) * (λ-x_sigmoid) * x_sigmoid² * (λ-xs_neg)
+loss    = los_pos + los_neg                       # <- the polynomials ARE the loss
+pt      = xs_pos·y + xs_neg·(1-y)                 # <- the weight comes from BARE probabilities
+loss   *= torch.pow(1 - pt, γ_pos·y + γ_neg·(1-y))
+```
+
+This class had the two swapped: it substituted the polynomials for the probabilities inside the
+focusing base and then multiplied `log_preds` by the result. Restoring the structure makes the base
+`1-p` on the target and `p` on the negatives — identical to the sibling ASL, and exactly the
+"intended" column of 1.5's table. On the same well-classified 1000-class batch RAL now returns
+**0.0016× ASL** where it returned 1871×.
+
+**A second defect surfaced only once the first was fixed**, and it is why 1.5a's masking experiment
+looked so unpromising. This class also *smoothed* the label indicator that masks the two polynomials,
+reusing `eps` for both label smoothing and the log floor. A soft mask leaks the negative polynomial
+onto the target column, where it is large and grows with confidence — measured at `eps=0.1` over 100
+classes, the loss fell to 0.158 at true-logit 4 and then **rose** to 0.999 at logit 16, a loss that
+punishes being right. Upstream uses a hard indicator and does not smooth; with it the same sweep falls
+0.0709 → 3.6e-12. Smoothing is sound in ASL because its whole loss is `-(smoothed_target · weighted_logp)`;
+RAL has no such single term, so it is dropped here and `eps` reverts to upstream's meaning, a 1e-8 log
+floor (`configs/custom_loss/ral.yaml` updated in step).
+
+The xfail is now four assertions: easy negatives suppressed, the focusing weight equal to `p ** γ_neg`
+on a negative at five probabilities, the loss monotonically decreasing in the true-class logit, and
+`eps` not doubling as smoothing. The module's existing permutation-invariance test covers RAL too.
 
 ### 1.6 Two published Tara Pacific taxonomy blocks carry the wrong taxon
 

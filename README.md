@@ -644,7 +644,11 @@ The practical consequence: **17.1% of the corpus may not be used commercially** 
 from datasets import load_dataset
 
 ds = load_dataset("project-oceania/planktonzilla-17M", split="train")
-commercial = ds.filter(lambda row: row["license"] in {"cc-by-4.0", "mit", "cc0-1.0"})  # 12,452,092 images
+
+# `mit` is deliberately NOT in this set. It is recorded from a CODE repository's licence and
+# covers 3,563,595 images — 20.5% of the corpus — whose terms have not been confirmed upstream
+# (KI-14). Add it only once you have checked the IFCB imagery terms at ifcb-data.whoi.edu.
+commercial = ds.filter(lambda row: row["license"] in {"cc-by-4.0", "cc0-1.0"})  # 8,888,497 images
 ```
 
 Two entries deserve a second look before you rely on them — `whoi` (`mit` is the license of a

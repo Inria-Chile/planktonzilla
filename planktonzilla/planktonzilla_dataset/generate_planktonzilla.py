@@ -1126,12 +1126,28 @@ def import_and_redefine_source(
     # carried ones. (Splicing is whole-source, keyed on the `dataset` column, so the
     # disagreement is ACROSS sources in one artifact — never two identities for one
     # row.) One consequence remains live: a stray `train/` at the repo root would
-    # hijack `data_files` for every source at once.
+    # hijack `data_files` for every source at once. That one IS guarded, immediately below —
+    # guarding it changes nothing about the paths this function produces (no such directory
+    # exists, which is why the probe has always fallen through), so the freeze is untouched.
     split_aliases = {
         "train": ["train"],
         "validation": ["validation", "val"],
         "test": ["test"],
     }
+    # Refused, not warned. Because `root` is the REPOSITORY root rather than this source's
+    # imagefolder, one directory named train/, validation/, val/ or test/ at the top of the repo
+    # silently redirects EVERY source's data_files at once — every image in the corpus would load
+    # from that one tree. The repo already contains `tests/`, one character from the trigger.
+    # A build that quietly changed every source is worse than a build that refuses to start.
+    hijackers = sorted(alias for aliases in split_aliases.values() for alias in aliases if (root / alias).is_dir())
+    if hijackers:
+        raise RuntimeError(
+            f"refusing to build: {', '.join(repr(name) for name in hijackers)} exists at the repository "
+            f"root ({root}). This probe is rooted there rather than at the source's imagefolder (a frozen "
+            f"defect — see KI-16), so such a directory would redirect data_files for EVERY source at once "
+            f"and load the whole corpus from it. Rename or remove it before building."
+        )
+
     data_files = {}
     for canonical_split, aliases in split_aliases.items():
         for alias in aliases:

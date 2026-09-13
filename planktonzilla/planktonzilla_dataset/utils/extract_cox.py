@@ -247,6 +247,7 @@ def process_csv(
     max_results: int = MAX_SEQS_PER_SPECIES,
     skip_empty: bool = True,
     nb_rows: int | None = None,
+    expand_to_children: bool = True,
 ):
     """Read the plankton CSV, download COX sequences per species, and write outputs.
 
@@ -310,7 +311,10 @@ def process_csv(
 
         records = get_cox_sequences(
             tax_id,
-            expand_to_children=True,
+            # Threaded from the caller (KI-4). This was hard-coded True while `main` computed
+            # `not args.noexp` for the single-taxon path only, so `--noexp` was silently ignored
+            # on every batch run — the flag was accepted, logged nowhere, and did nothing.
+            expand_to_children=expand_to_children,
             max_results=max_results,
         )
 
@@ -432,6 +436,7 @@ def main() -> None:
         process_csv(
             csv_path=args.csv,
             out_dir=args.out_dir_b,
+            expand_to_children=not args.noexp,
             ncbi_col=args.ncbi_col,
             label_col=args.label_col,
             max_results=args.max_seqs,

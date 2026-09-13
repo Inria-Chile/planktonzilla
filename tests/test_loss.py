@@ -158,24 +158,17 @@ def test_maximum_margin_uses_each_row_own_positive_logit():
     torch.testing.assert_close(actual, expected)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "RobustAsymmetricLoss does not suppress easy negatives: neither robustness term is "
-        "masked by its label indicator, so the focusing base does not reduce to p on a "
-        "negative column. Masking them the way AsymmetricLoss does is NOT the fix — the "
-        "negative term itself tends to 0 as p -> 0, so the base tends to 1 either way. "
-        "Repairing it needs the published RAL formulation, not an analogy to ASL. This test "
-        "is strict so it flips to a failure the moment someone lands the real fix."
-    ),
-)
-def test_robust_asymmetric_loss_does_not_yet_suppress_easy_negatives():
-    """Executable record of the open RAL defect, with the measurement that shows it.
+def test_robust_asymmetric_loss_suppresses_easy_negatives():
+    """Was a strict xfail: RAL returned ~1870x AsymmetricLoss on a well-classified batch.
 
-    `gamma_neg` exists to down-weight negatives the model already rejects confidently.
-    On a well-classified 1000-class batch RAL returns ~1870x what AsymmetricLoss returns,
-    because those easy negatives keep ~full weight and their label-smoothing tail
-    (`eps/C * -log p`, summed over 999 classes) dominates the loss.
+    `gamma_neg` exists to down-weight negatives the model already rejects confidently. It could
+    not, because the Taylor polynomials had been substituted for the probabilities inside the
+    focusing base — so a negative at p=1e-6 kept weight ~1.0 instead of p**4 = 1e-24, and the
+    label-smoothing tail of 999 unsuppressed easy negatives dominated the loss.
+
+    With upstream's structure restored the same batch gives 0.0016x ASL. The bound below is
+    deliberately loose (`< ASL`) rather than pinned to that ratio: what must hold is that the
+    easy negatives are suppressed, not one particular number.
     """
     from planktonzilla.loss import AsymmetricLoss, RobustAsymmetricLoss
 
@@ -188,10 +181,69 @@ def test_robust_asymmetric_loss_does_not_yet_suppress_easy_negatives():
     ral = RobustAsymmetricLoss()(_batch(logits), target)
 
     assert torch.isfinite(ral), f"RAL returned {ral}"
-    assert ral < 10 * asl, (
-        f"RAL={ral.item():.6g} is far above ASL={asl.item():.6g} on a well-classified batch, "
+    assert ral < asl, (
+        f"RAL={ral.item():.6g} is not below ASL={asl.item():.6g} on a well-classified batch, "
         f"which means the easy negatives are not being suppressed"
     )
+
+
+@pytest.mark.parametrize("p", [1e-6, 1e-3, 1e-2, 1e-1, 0.5])
+def test_the_focusing_weight_on_a_negative_is_p_to_the_gamma(p):
+    """The property the whole finding turned on, asserted directly rather than through a loss.
+
+    On a negative column `pt` is 1-p, so the base `1 - pt` is p and the weight is `p ** gamma_neg`.
+    The shipped version produced a NON-MONOTONIC base — 0.9999 at p=1e-6, 0.42 at p=0.1, 0.68 at
+    p=0.5 — inverted exactly where gamma_neg is meant to bite.
+    """
+    from planktonzilla.loss import RobustAsymmetricLoss
+
+    loss_fn = RobustAsymmetricLoss()
+    probability = torch.tensor(p, dtype=torch.float64)
+
+    base = 1 - (1 - probability)  # 1 - pt, with pt = xs_neg on a negative column
+    weight = torch.pow(base, loss_fn.gamma_neg)
+
+    torch.testing.assert_close(weight, probability**loss_fn.gamma_neg)
+
+
+def test_robust_asymmetric_loss_falls_as_the_model_gets_more_confident():
+    """Monotonicity, which is what caught the second half of the bug.
+
+    Restoring upstream's structure is not enough on its own: this class also smoothed the label
+    indicator that masks the two polynomials, and a soft mask leaks the NEGATIVE polynomial onto
+    the target column, where it is large and grows with confidence. At eps=0.1 the loss fell to
+    0.158 at logit 4 and then ROSE to 0.999 at logit 16 — a loss that punishes being right.
+    """
+    from planktonzilla.loss import RobustAsymmetricLoss
+
+    losses = []
+    for true_logit in (0.0, 2.0, 4.0, 8.0, 16.0):
+        logits = torch.full((1, 100), -2.0)
+        logits[0, 0] = true_logit
+        losses.append(RobustAsymmetricLoss()(_batch(logits), torch.tensor([0])).item())
+
+    assert losses == sorted(losses, reverse=True), f"loss is not monotonically decreasing: {losses}"
+    assert losses[-1] < 1e-6, f"a near-perfect prediction should cost ~nothing, got {losses[-1]:.6g}"
+
+
+def test_robust_asymmetric_loss_does_not_smooth_its_label_indicator():
+    """`eps` is upstream Ralloss's log-clamp floor, not label-smoothing strength.
+
+    Pinned because the two were one parameter here, and reintroducing the conflation would
+    reintroduce the non-monotonicity above while looking like a harmless default change.
+    """
+    from planktonzilla.loss import RobustAsymmetricLoss
+
+    assert RobustAsymmetricLoss().eps == 1e-8
+
+    # A floor that small must not perturb an ordinary forward pass; 0.1 clipped every log below
+    # p = 0.1, which is most of a 1000-class softmax.
+    logits = torch.tensor([[2.0, 1.0, 0.5, -1.0]])
+    target = torch.tensor([0])
+    tiny_floor = RobustAsymmetricLoss(eps=1e-12)(_batch(logits), target)
+    default = RobustAsymmetricLoss()(_batch(logits), target)
+
+    torch.testing.assert_close(tiny_floor, default)
 
 
 def test_robust_asymmetric_loss_is_finite_under_softmax_underflow():

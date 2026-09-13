@@ -196,7 +196,15 @@ def _extract_property(claims: dict, prop: str) -> str | None:
         return None
     try:
         return claims[prop][0]["mainsnak"]["datavalue"]["value"]
-    except Exception as e:
+    except (KeyError, IndexError, TypeError) as e:
+        # Narrowed from `except Exception` (KI-1). This is the one site in that entry where the
+        # swallowed set is enumerable: the body is a pure subscript chain over containers that
+        # came out of `json`, `prop in claims` is guaranteed one line above, and every
+        # JSON-decodable shape for `claims[prop]` raises one of these three or succeeds. So the
+        # narrowing propagates nothing new today — it documents the contract and turns a future
+        # non-JSON caller into a visible failure instead of a silently nulled id. The other
+        # sites in KI-1 stay broad: each wraps network or image decoding, whose failure set is
+        # not enumerable, and each feeds a published column.
         logger.debug(f"Could not extract property {prop} from claims, returning None: {e}")
         return None
 
@@ -219,6 +227,7 @@ def fetch_external_ids(taxa_wiki: pl.DataFrame, batch_size: int = 50) -> pl.Data
     qcodes = taxa_wiki.select("wikidata_ID").drop_nulls().unique().to_series().to_list()
 
     results = []
+    abandoned: list[str] = []
     for i in range(0, len(qcodes), batch_size):
         batch = qcodes[i : i + batch_size]
         batch_idx = i // batch_size + 1
@@ -226,7 +235,8 @@ def fetch_external_ids(taxa_wiki: pl.DataFrame, batch_size: int = 50) -> pl.Data
         logger.info(f"[ids] batch {batch_idx} ({len(batch)} Qcodes)")
 
         success = False
-        for attempt in range(5):
+        attempts = 5
+        for attempt in range(attempts):
             try:
                 r = requests.get(url, headers=HEADERS, timeout=60)
                 if r.status_code == 429:
@@ -251,8 +261,24 @@ def fetch_external_ids(taxa_wiki: pl.DataFrame, batch_size: int = 50) -> pl.Data
                 time.sleep(2)
 
         if not success:
+            # The nulls below are indistinguishable from "Wikidata holds no external id for this
+            # Qcode" (KI-6). Adding a status COLUMN would change this function's output schema, so
+            # the distinction is surfaced where it costs nothing instead: named at ERROR, and
+            # collected so a caller can re-ask for exactly the abandoned ids.
+            logger.error(
+                f"  batch {batch_idx} abandoned after {attempts} attempts; {len(batch)} Qcode(s) will be "
+                f"null and are NOT known to lack ids: {', '.join(batch)}"
+            )
+            abandoned.extend(batch)
             results.extend([{"wikidata_ID": qcode, **{col: None for col in WIKIDATA_PROPERTIES}} for qcode in batch])
         time.sleep(1)
+
+    if abandoned:
+        logger.error(
+            f"{len(abandoned)} of {len(qcodes)} Qcode(s) were abandoned rather than resolved. Their "
+            f"aphia/NCBI/BOLD columns are null for a TRANSPORT reason, not a factual one; re-run over "
+            f"them before treating the result as complete."
+        )
 
     df_ids = pl.DataFrame(results)
     return taxa_wiki.join(df_ids, on="wikidata_ID", how="left")

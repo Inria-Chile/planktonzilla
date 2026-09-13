@@ -541,3 +541,34 @@ def test_generate_frepj_only_drives_the_same_seam_end_to_end(monkeypatch, tmp_pa
 
     assert len(captured_overrides) == 1 and "dataset_import=frepj" in captured_overrides[0]
     assert captured_redefiners == {"frepj": gp.FrepjRedefiner}
+
+
+def test_a_split_directory_at_the_repo_root_refuses_the_build(monkeypatch, tmp_path):
+    """KI-16's one live consequence, guarded.
+
+    The split probe in `import_and_redefine_source` is rooted at the REPOSITORY root rather than
+    at the source's imagefolder — frozen, because `original_path` depends on it falling through.
+    What is not frozen is what happens if that directory ever appears: one `test/` at the top of
+    the repo redirects `data_files` for EVERY source at once, so the whole corpus would load from
+    it. The repo already contains `tests/`, one character away.
+
+    Refusing is a no-op on the tree that produced the published data (no such directory exists),
+    which is exactly why it can be guarded without touching the freeze.
+    """
+    imagefolder = tmp_path / "src_imagefolder"
+    (imagefolder / "cls").mkdir(parents=True)
+    (imagefolder / "cls" / "img.png").write_bytes(b"x")
+
+    hijacker = Path(gp.root) / "test"
+    hijacker.mkdir()
+    try:
+        with pytest.raises(RuntimeError, match="refusing to build"):
+            _seam(monkeypatch, tmp_path, _FakeImporter(imagefolder, {}, complete=True))
+    finally:
+        hijacker.rmdir()
+
+
+def test_the_repository_root_carries_no_split_directory_today(tmp_path):
+    """The control: the guard above must be inert on the real tree, or every build stops."""
+    for alias in ("train", "validation", "val", "test"):
+        assert not (Path(gp.root) / alias).is_dir(), f"{alias}/ at the repo root would hijack every source"
