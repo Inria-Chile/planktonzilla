@@ -18,7 +18,10 @@ A completeness sweep added 10 new candidates, 5 of which survived. **79 findings
 
 ## Baseline health
 
-Everything the project gates on is green, and that is worth stating before the findings:
+Everything the project gates on was green at `0df8004`, and that is worth stating before the
+findings. These are the review's own measurements and are **left as recorded** — the suite has
+roughly doubled since (1179 passing at the time of writing), so read the table as the baseline the
+findings were found against, not as a current reading:
 
 | Gate | Result |
 | --- | --- |
@@ -41,10 +44,15 @@ lint, a green suite, and a curated known-issues ledger — which is exactly wher
 
 ## Remediation status
 
-Five code commits on `claude/code-review-l4k0db` (`0aa18aa..9a31b32`) address the **training-path**
-findings. The data-pipeline findings — the ones that destroy or mislabel *published* data, and which this
-review ranks highest — are **all still open**, except 1.1, whose data loss is now *contained* by a guard
-that refuses the write (the writer itself is unrepaired; see below).
+The first five commits on `claude/code-review-l4k0db` (`0aa18aa..9a31b32`) addressed the
+**training-path** findings, and at that point every data-pipeline finding was still open. That is no
+longer where this stands: a [second remediation pass](#second-remediation-pass) closed all of Tier 2
+and Tier 3 and three more Tier 1 findings, and 1.1's writer is repaired rather than merely guarded.
+
+What separates what is fixed from what is not is no longer tier or subsystem but a single question
+— **does the change move a byte that is already published on the Hub?** Everything that does not has
+landed. Everything that does is gated on the golden diff, which is not the same as unfixable: see
+the feasibility note in `KNOWN_ISSUES.md`.
 
 | Finding | Status | Where |
 | --- | --- | --- |
@@ -61,10 +69,13 @@ that refuses the write (the writer itself is unrepaired; see below).
 | 1.6 | **half fixed** | the two mislabels are still published — data-side, gated on the golden diff — but the silence is not: the builder now reports all 8 class dirs whose candidate donors disagree (report section B7), and the set is pinned by a test |
 | Tier 2 (17 entries), Tier 3 (11 entries) | **fixed** — see *Second remediation pass* below | — |
 
-So, of the ten Tier 1 findings: **4 closed** (1.4, 1.7, 1.8, 1.10), **1 re-diagnosed and left open on
-purpose** (1.5), **5 untouched** — plus contested #72 closed alongside them. The closed ones are those that made a
-*training run* measure something other than what it claimed; nothing here has yet been done about the CSV
-corruption, the data-directory deletion, or the published mislabels.
+So, of the ten Tier 1 findings: **9 closed** (1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8, 1.9, 1.10) and
+**1 half closed** (1.6) — plus contested #72. 1.5 was the last to fall and took the longest, because
+the remedy this review proposed does not work and the one that does needed the published RAL
+formulation; see [1.5b](#15b-the-fix-the-taylor-terms-are-the-loss-not-the-weight).
+
+The CSV corruption and the data-directory deletion are both repaired. What is left of Tier 1 is
+1.6's two published mislabels — the data itself, not the silence around it, which is now reported.
 
 These commits also fixed five defects this review **did not find** — see
 [What the review missed](#what-the-review-missed).
@@ -118,18 +129,26 @@ its first: seven tests over four 2x2 images through a real `datasets.Dataset` an
 `tarfile`, covering the two defects and the four properties the docstring claims and nothing
 checked (pairing, key order, class-name captions, RGB JPEG re-encoding).
 
-Gates on the current head (`9a31b32`), against the `0df8004` baseline above:
+Gates across the three remediation points, against the `0df8004` baseline above:
 
-| Gate | `0df8004` | `9a31b32` |
-| --- | --- | --- |
-| `ruff check planktonzilla/ tests/ scripts/` | All checks passed | All checks passed |
-| `ruff format --check` | 89 files | 94 files |
-| `pytest` (the CI set) | 675 passed, 2 skipped | **773 passed**, 2 skipped, **3 xfailed** |
-| `pytest tests/test_train.py` (excluded from CI) | — (9 with `test_datasets.py`) | 9 passed |
+| Gate | `0df8004` | `9a31b32` | `aba5a4f` (current) |
+| --- | --- | --- | --- |
+| `ruff check planktonzilla/ tests/` | All checks passed | All checks passed | All checks passed |
+| `ruff format --check` | 89 files | 94 files | 128 files |
+| `pytest` (the CI set) | 675 passed, 2 skipped | **773 passed**, 2 skipped, **3 xfailed** | **1179 passed**, 2 skipped, 3 xfailed |
+| `pytest tests/test_train.py` (excluded from CI) | — (9 with `test_datasets.py`) | 9 passed | 9 passed |
 
-The three xfails are all `strict=True`, so each converts to a failure the moment a real fix lands: 1.5
-(RAL), and `base_cifar100` / `base_inaturalist` (see 1.10).
-`tests/test_datasets.py` was not re-run: it is network-bound (Tier 3 #40) and unaffected by these changes.
+*(The `0df8004` row measured `scripts/` too; CI lints `planktonzilla/ tests/` only, so the later
+columns follow CI. `notebooks/` is in ruff's `include` but not in what CI runs, and carries 87
+pre-existing findings — out of scope here, and named so nobody re-discovers them as new.)*
+
+Still three xfails, but **not the same three**. All are `strict=True`, so each converts to a failure
+the moment a real fix lands. 1.5's is gone — the RAL fix landed and its xfail became four real
+assertions (see [1.5b](#15b-the-fix-the-taylor-terms-are-the-loss-not-the-weight)). What remains is
+`base_cifar100` and `base_inaturalist` (the two irreparable configs of 1.10) plus a new one,
+`hparams_search[optuna]`, which is an uninstalled extra rather than a defect: `optuna` and
+`hydra-optuna-sweeper` are not project dependencies.
+`tests/test_datasets.py` is network-bound (Tier 3 #40) and unaffected by any of these changes.
 
 ---
 
@@ -152,7 +171,10 @@ The three xfails are all `strict=True`, so each converts to a failure the moment
 This is a substantial and welcome piece of work, and it is the *kind* of gate this review asked for. It is
 not, however, the gate that catches 1.6.
 
-**It does not close any finding in this review.**
+**It does not close any finding in this review.** *(Everything in this section is scoped to what
+merging `e4ebdd4` did and did not change, as measured then. Several of these findings have since been
+fixed by later work — 1.7 among them — so read the bullets below as a verdict on that merge, not as
+current status; [Remediation status](#remediation-status) has the latter.)*
 
 - **`planktonzilla_taxonomy.csv` is byte-identical between `0df8004` and `e4ebdd4`** (2358 data rows
   both sides, `cmp` clean). The tooling reports; it corrects nothing. Every data finding stands unchanged.
@@ -224,6 +246,13 @@ I reproduced each of these myself against the working tree. These are not model 
 
 ### 1.1 `build_frepj_taxonomy.write_csv` destroys 644 taxonomy rows on a no-op re-run
 
+> **FIXED**, and not merely contained. Step 6 of `docs/TAXONOMY_IMPLEMENTATION_PLAN.md` replaced the
+> byte-splicing writers with a key-addressed write API: `write_rows` upserts `mappings/<source>.tsv`
+> and the CSV is re-rendered whole from the package, so there is no block boundary left to misjudge.
+> Finding #22 below went with it, by the same API's "nothing is blanked by omission" rule. Gates:
+> `test_the_no_op_rerun_that_destroyed_644_rows_now_changes_nothing` and
+> `test_a_frepj_rerun_does_not_blank_the_external_ids_it_never_carried`.
+
 `planktonzilla/planktonzilla_dataset/utils/build_frepj_taxonomy.py:434-454`
 
 `write_csv` copies the file prefix up to the **first** `frepj` row and then writes `prefix + frepj_block`
@@ -262,10 +291,17 @@ command line. `tests/test_taxonomy_write_guard.py` reproduces the 644-row loss a
 Two things this does **not** do, on purpose. The writer is not mirrored onto `append_to_master`'s
 pass-through shape, because `docs/TAXONOMY_IMPLEMENTATION_PLAN.md` step 6 replaces the byte-splicing with a
 key-addressed write API rather than patching the boundary scan — refusing costs no work in the meantime,
-since the builder re-derives a block that is already committed. And finding #22 above is **untouched**:
-blanking IDs on frepj's own rows is inside frepj's ownership, so no cross-source guard can see it.
+since the builder re-derives a block that is already committed. And finding #22 above is untouched
+*by the guard*: blanking IDs on frepj's own rows is inside frepj's ownership, so no cross-source guard
+can see it. Both were settled later by step 6's write API rather than by the guard — see the badge at
+the top of this finding; this paragraph describes the interim state, and is kept because the reason a
+guard could not reach #22 is the reason the API had to.
 
 ### 1.2 `atomic_replace` deletes the whole data directory on the migration command the tool itself prints
+
+> **FIXED.** An existing target must BE a saved dataset before the rename-then-delete starts,
+> `output_dir` resolving to `data_dir` is refused up front, and the deprecation notice no longer
+> prints the destructive invocation as the migration path.
 
 `planktonzilla/planktonzilla_dataset/make_planktonzilla.py:425-455`
 
@@ -293,6 +329,10 @@ staging; reject `output_dir` resolving to `data_dir`; and correct the migration 
 `${data_dir}/planktonzilla-17M`.
 
 ### 1.3 `apply_version` writes a version shape the project's own reader cannot parse
+
+> **FIXED.** `ds.info.version = Version(version)`, and `check_base_on_disk` reads both shapes so
+> artifacts released in the broken window stay readable. The fixture is now built through
+> `apply_version` + `save_to_disk` rather than hand-written, so it cannot encode the bug it tests.
 
 `make_planktonzilla.py:380-386` and `:604`
 
@@ -576,6 +616,10 @@ freshly-initialised head — the only thing that *must* train. **Fix:** select t
 
 ### 1.9 The HF token is printed and written to disk in cleartext on every run
 
+> **FIXED.** `print_config_tree` renders a redacted copy. A key that resolves to `None` stays
+> `None` — "no token is set" is worth reading — and `tokenizer` / `include_tokens_per_second` are
+> not masked, since a substring match on "token" would swallow both.
+
 `planktonzilla/utils/hydra.py:98-99`
 
 `task_wrapper` calls `extras(cfg)` on every decorated entry point; `extras` calls
@@ -769,33 +813,38 @@ majority-refute rule demoted to "contested"), the pattern is that this method is
 
 ## Suggested order of work
 
-Item 3 is done; the rest stands as written. **The highest-ranked items are still open** — the work so far
-went to the training path, not to the data pipeline, because that is what was asked for. Anyone picking
-this up should start at 1, not where the branch left off.
+**This list has been worked through.** It is kept as written, struck through where done, because the
+ORDER was the argument — the highest-ranked items were the data-pipeline ones, and the branch had gone
+to the training path instead. What follows is the record of that being corrected, not a to-do list.
 
-1. **Stop the bleeding on the taxonomy CSV** — 1.1 and its sibling 1.2. Both destroy data on a command
-   the project documents as safe/idempotent. Neither has a test. ***Still open — do this first.***
-2. **1.3** — every incremental build against a versioned artifact is currently blocked. ***Still open.***
-3. ~~**1.4 / 1.5 / 1.8**~~ — **done in `0acf91a`**, except 1.5, which is open on purpose: the fix this
-   review proposed does not work (see 1.5a) and guessing would change the objective silently. The
-   permutation-invariance property test suggested here exists and covers all seven losses; the
-   `freeze_backbone` case now raises rather than proceeding. Contested #72 was fixed alongside them.
-4. **1.6** — the mislabels are already in a published artifact, so this needs the golden-diff gate
-   that `KNOWN_ISSUES.md` itself flags as not yet built. The *guard* (1.7) is now fixed, so nothing new
-   lands unremarked while the data waits; `Creseidae`'s root cause is recorded in `RANK_DEPARTURES`.
-   ***Still open.***
-5. **1.9** — one-line redaction, removes a credential from logs. ***Still open, and the cheapest item on
-   this list.***
+1. ~~**Stop the bleeding on the taxonomy CSV** — 1.1 and its sibling 1.2.~~ **Done.** 1.1's
+   byte-splicing writers are gone entirely, replaced by the key-addressed write API of step 6; 1.2
+   refuses the destructive rename and no longer prints it as the migration path. Both now have tests,
+   which is what the entry said neither had.
+2. ~~**1.3**~~ — **done.** Versions are written as `Version(...)` and both shapes are readable, so
+   artifacts released in the broken window are not stranded.
+3. ~~**1.4 / 1.5 / 1.8**~~ — **done in `0acf91a`**, except 1.5, which landed later and separately: the
+   fix this review proposed does not work (see 1.5a), and the one that does needed the published RAL
+   formulation rather than a guess (see 1.5b). The permutation-invariance property test suggested here
+   exists and covers all seven losses; the `freeze_backbone` case now raises rather than proceeding.
+   Contested #72 was fixed alongside them.
+4. **1.6** — **half done, and the only Tier 1 entry still carrying anything.** The *ambiguity* is now
+   reported (report section B7, 8 class dirs, pinned by a test) and the guard (1.7) is fixed, so
+   nothing new lands unremarked. The two published mislabels themselves still need the golden diff.
+5. ~~**1.9**~~ — **done.** As predicted, the cheapest item on the list.
 6. ~~**1.10**~~ — **done in `7a7b709`**; the gate checks *resolution*, not just composition, because
-   composition alone is what let two of them hide. **Tier 3 still open**, mostly mechanical.
+   composition alone is what let two of them hide. ~~**Tier 3**~~ — **also done**, all 11 entries.
 
 Two structural gaps deserve naming, because most of Tier 1 traces back to them:
 
 - **`imagefolder_is_complete()` means "non-empty"**, and two importers violate that premise by
   construction (#29, #24, #7, #25, #26). A per-importer expected-count check would collapse five findings
   into one fix.
-- **The golden-diff harness still does not exist.** `KNOWN_ISSUES.md` already says so. 1.1 and 1.6 are
-  both cases where a diff against the published reference would have caught silent corruption immediately.
+- **The golden-diff harness still does not exist**, and it is now the only thing standing between the
+  remaining findings and a fix. `KNOWN_ISSUES.md` says so, and — measured 2026-09-13, see the caveat
+  at the top of that file — also says it is **cheaply buildable**, which the wording here and there
+  previously left sounding otherwise. 1.1 and 1.6 are both cases where a diff against the published
+  reference would have caught silent corruption immediately.
 
 A third gap is visible only in hindsight, from the defects listed under
 [What the review missed](#what-the-review-missed): **nothing in the project pins the contracts that span

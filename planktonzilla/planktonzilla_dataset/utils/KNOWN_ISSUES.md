@@ -15,7 +15,8 @@ and *would* alter behavior, so it is recorded here instead.
 published HuggingFace reference**. Never regenerate or re-publish the frozen artifacts from a
 changed code path without that diff.
 
-> **Two caveats on that gate, both true as of 2026-08-04 — read before relying on it.**
+> **Two caveats on that gate, both recorded 2026-08-04 and both still true — read before relying
+> on it.** Caveat 1 gained a feasibility measurement on 2026-09-13; the caveat itself is unchanged.
 >
 > 1. **The golden-diff harness does not exist.** No test in `tests/` compares a build against
 >    the published `project-oceania/planktonzilla-17M`. The `test_taxonomy_known_issues.py` /
@@ -23,6 +24,32 @@ changed code path without that diff.
 >    valuable, but that is not the same as diffing against the published reference. Every
 >    `→ HARDEN-01` below is therefore an IOU against a gate nobody has built yet. **Building it
 >    is the prerequisite for closing any HIGH-risk item**, not a step inside closing one.
+>
+>    **It is cheap, though — measured 2026-09-13.** Nothing above says the gate is hard to build,
+>    but nothing said what it would cost either, and the gap has been filled in by assumption: that
+>    diffing against a 17.4M-image artifact means obtaining one. It does not.
+>
+>    The published dataset is **public and ungated**, and its 189
+>    parquet shards carry exactly the columns this gate needs — `dataset`, `original_label`, the
+>    seven ranks, `proposed_label`, `plankton`, `root_class`, `qualifier`, and all five `*_ID`s.
+>    Parquet is columnar, so a projected read never fetches the `image` column: one 497 MB shard
+>    yielded its 92,085 rows over those 18 columns in **9.9 s** over plain HTTP, and the footer
+>    alone in 0.7 s. That is **~31 minutes for all 189 sequentially**, less in parallel, with no
+>    authentication and no bulk download.
+>
+>    Each shard collapses to a few dozen distinct `(dataset, original_label)` pairs — 44 in the one
+>    sampled — so the whole published corpus reduces to the same 2,358 rows `pz_taxonomy render`
+>    already emits, and the comparison is a set difference over those. **The comparison itself is
+>    already written**: `pz_taxonomy diff` reports which published cells differ from a reference
+>    CSV and takes `--against <file>`, defaulting to the committed one. What is missing is the
+>    step that materialises the Hub's projected columns into that file — not the diff, and not the
+>    reporting.
+>
+>    **Two columns cannot be covered**: the published schema has no `living` and no `license` /
+>    `license_url`, so a Hub-derived reference reaches 17 of the 19 CSV columns and the harness has
+>    to either fill those two or compare the other seventeen and say so. (That absence is also why
+>    KI-23's re-push obligation exists — the licence columns are derived here and have never been
+>    published.)
 > 2. **`HARDEN-01` / `HARDEN-02` are defined in `.planning/REQUIREMENTS.md`, which is
 >    gitignored** (`.gitignore:248`) and therefore absent from a fresh clone. The identifiers
 >    are stable enough to cite, but a reader outside the maintainer's working tree cannot
@@ -91,9 +118,17 @@ its imagefolder holds exactly **139** class directories, matching the 139 `medpl
 in `planktonzilla_taxonomy.csv`. `find_class_root` picked the right level on the archive layout
 that could not be verified when the importer was written.*
 
-**The three that want action, in order:** KI-14 (largest open legal exposure), the missing
-golden-diff harness (blocks every HIGH item above), and KI-16's discarded split provenance
-(silent, and not fixed by the archived KI-25).
+**The three that want action, in order:** the **golden-diff harness** — it blocks every HIGH and
+data-side item above, and as of 2026-09-13 it is measured at roughly half an hour of projected
+parquet reads rather than the unreachable thing this file used to imply (see caveat 1); **KI-14**,
+the largest open legal exposure, which is a decision about what `whoi`'s data is actually licensed
+under and not something a patch settles; and **KI-16**'s discarded split provenance (silent, and
+not fixed by the archived KI-25).
+
+Ordering the harness first is a change from earlier readings of this list, and the reason is that
+it is no longer a prerequisite anyone is waiting on someone else to satisfy: it converts KI-8,
+KI-9, KI-10, KI-31, the 19 adjudicated KI-13 collisions, KI-2's retry half, KI-3's disambiguation
+half and review finding 1.6 from "recorded rather than corrected" into ordinary work.
 
 ---
 
