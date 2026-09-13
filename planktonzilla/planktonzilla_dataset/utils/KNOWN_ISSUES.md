@@ -730,8 +730,10 @@ string form in the published CSV. Document only; if fixed, gate on a golden diff
 **Confined to the legacy render (step 6 onward).** The source of record is no longer the CSV:
 `taxonomy/data/identifier.tsv` holds **zero** float-suffixed ids, because the write API strips the
 suffix on the way in (`_bare_id`), and every new id is minted clean. The 5,854 `.0` cells in
-`planktonzilla_taxonomy.csv` are re-added by the renderer alone — `render.py:86`, deliberately, to
-reproduce the frozen bytes — and `render.py:164` parses them back off on the way in.
+`planktonzilla_taxonomy.csv` are re-added by the renderer alone — `render._legacy_id_cell`,
+deliberately, to reproduce the frozen bytes — and `render._as_decimal_free_string` parses them back
+off on the way in. (Named, not numbered: these were cited as `render.py:86` / `:164` and the code
+review that followed shifted both. Line citations in this file rot within a commit.)
 
 So the defect no longer LIVES anywhere; it is a rendering step kept only for byte-compatibility with
 the published artifact, and it is one line to delete once the golden-diff gate exists. Nothing else
