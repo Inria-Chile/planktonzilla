@@ -511,20 +511,37 @@ def read_master_csv(path=None) -> list[dict]:
 
 
 def _existing_indexes(rows):
-    """``(by Raw_Labels, by proposed_label)`` over the rows of the OTHER sources.
+    """``(by Raw_Labels, by proposed_label, all rows per Raw_Labels)`` over the OTHER sources.
 
     Tara Pacific rows are excluded so a re-run reads the same pre-existing table the first
     run did — that is what makes the append idempotent rather than self-reinforcing.
+
+    ``by_raw`` keeps its ``setdefault``, so the donor a class dir copies is still the first row
+    in file order and not one published byte moves. What is new is the third index: the rows that
+    LOST that race are no longer discarded, so a class dir whose candidate donors disagree can be
+    reported instead of silently resolved. Rejecting a donor on rank depth would change published
+    lineages and is gated; noticing that a choice was made is not.
     """
-    by_raw, by_label = {}, defaultdict(list)
+    by_raw, by_label, by_raw_all = {}, defaultdict(list), defaultdict(list)
     for row in rows:
         if row["Dataset"] in DATASET_NAMES:
             continue
         by_raw.setdefault(row["Raw_Labels"], row)
+        by_raw_all[row["Raw_Labels"]].append(row)
         label = (row["proposed_label"] or "").strip().lower()
         if label:
             by_label[label].append(row)
-    return by_raw, by_label
+    return by_raw, by_label, by_raw_all
+
+
+def _donor_disagreement(candidates) -> list:
+    """The columns on which two or more candidate donors for one class dir disagree.
+
+    Only the columns that describe the taxon: the seven ranks, the label, and the five external
+    ids. A difference in `Dataset` is expected — that is what makes them different rows.
+    """
+    watched = (*RANKS, "proposed_label", *ID_COLUMNS)
+    return sorted(column for column in watched if len({(row.get(column) or "").strip() for row in candidates}) > 1)
 
 
 def _branch(taxon) -> str | None:
@@ -717,13 +734,17 @@ def _assert_no_rank_gaps(rows) -> None:
 
 def build_rows(class_map, taxa, master_rows):
     """Turn the frozen tuples into complete CSV rows. Returns ``(rows, decisions)``."""
-    by_raw, by_label = _existing_indexes(master_rows)
+    by_raw, by_label, by_raw_all = _existing_indexes(master_rows)
     rows, decisions = [], []
 
     for entry in class_map:
         taxon = taxa[entry["taxon_id"]]
         class_dir = entry["class_dir"]
         anchor = anchor_taxon(taxon, taxa)
+
+        # Recorded before the copy, so the report says which donor won and what the losers said.
+        raw_candidates = by_raw_all.get(class_dir, [])
+        disagreement = _donor_disagreement(raw_candidates) if len(raw_candidates) > 1 else []
 
         existing = by_raw.get(class_dir)
         if existing is not None:
@@ -788,6 +809,10 @@ def build_rows(class_map, taxa, master_rows):
                 "label": row["proposed_label"],
                 "root_class": row["root_class"],
                 "qualifier": row["qualifier"],
+                # Which columns the candidate donors disagreed on, and who else was in the
+                # running. Empty for the 1,300-odd class dirs with a single candidate.
+                "donor_disagreement": ";".join(disagreement),
+                "donor_candidates": ";".join(sorted({row["Dataset"] for row in raw_candidates})) if disagreement else "",
                 "new_token": taxon["type"] == "M" and taxon["name"] in TOKENS_WITHOUT_PRECEDENT,
                 "needs_rule": taxon["type"] == "M" and _branch(taxon) is None and taxon["name"] not in MORPH_RULES,
             }
@@ -1012,6 +1037,40 @@ def write_reconciliation(decisions, path=DEFAULT_RECONCILIATION_MD, package_dir=
             "### B6. EcoTaxa's two diatom lineages",
             "",
             _B5_NOTE,
+            "",
+        ]
+    )
+
+    # B7 — the ambiguity the `verbatim` rule resolves silently. Review finding 1.6: the donor is
+    # `by_raw.setdefault`, first row in FILE ORDER, with no check that it describes the same taxon
+    # the class dir is keyed to and no warning when two pre-existing rows disagree — and the report
+    # only ever tabulated `derived` rows, so the 323 `verbatim` ones never reached a human. This
+    # section is that missing checkpoint. It changes no row: correcting one is gated on the golden
+    # diff, and until then the choice is at least visible.
+    # One line per class dir, not per row: the same `Raw_Labels` reaches this table once for
+    # each Tara Pacific dataset that carries it, and the ambiguity is a property of the label.
+    ambiguous = {d["class_dir"]: d for d in decisions if d.get("donor_disagreement")}
+    lines.extend(
+        [
+            f"### B7. Class dirs whose candidate donors disagreed ({len(ambiguous)})",
+            "",
+            "The donor is the first matching row in file order. Where more than one pre-existing row",
+            "carries the same `Raw_Labels` and they describe different taxa, the choice below was made",
+            "by position, not by evidence. Correcting one changes a published lineage, so these are",
+            "recorded for adjudication rather than resolved here.",
+            "",
+            "| Raw_Labels | donor taken | other candidates | columns they disagree on |",
+            "| --- | --- | --- | --- |",
+        ]
+    )
+    for decision in sorted(ambiguous.values(), key=lambda d: d["class_dir"]):
+        others = [name for name in decision["donor_candidates"].split(";") if name != decision["donor"]]
+        lines.append(
+            f"| `{decision['class_dir']}` | {decision['donor'] or '—'} | {', '.join(others) or '—'} | "
+            f"{decision['donor_disagreement'].replace(';', ', ')} |"
+        )
+    lines.extend(
+        [
             "",
             "## Section C — every derived row",
             "",

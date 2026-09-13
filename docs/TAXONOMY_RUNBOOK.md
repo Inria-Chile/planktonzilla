@@ -11,9 +11,9 @@ Every number below is read from the committed package. A hand-written runbook th
 | sources | 21 |
 | mapping rows | 2358 |
 | concepts (`taxon.tsv`) | 1352 |
-| identifiers | 4032 |
-| — of them exact matches | 3583 |
-| — of them broad matches | 449 |
+| identifiers | 4034 |
+| — of them exact matches | 3581 |
+| — of them broad matches | 453 |
 | rows whose provenance is recorded | 829 |
 | rows nobody can answer for | 1529 |
 | frozen releases | v1.0 |

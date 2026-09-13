@@ -178,12 +178,16 @@ def test_the_coarse_identifiers_are_recorded_as_broad_matches():
     """A species carrying its genus's id is not an exact match; the register had nothing finer.
 
     Published unchanged either way — the wide CSV cannot say "broader than" — so this buys honesty
-    in the package and a validator that reports only the 21 findings that are real.
+    in the package and a validator that reports only the collisions that are real.
+
+    449 at step 7, 453 since: ``ncbi:418932`` and ``ncbi:418941`` are family taxids by NCBI's own
+    record, and anchoring each on the family it names let its two holders join the same shape. They
+    were reported as cross-branch collisions until then, for want of a concept to be broader THAN.
     """
     predicates = Counter(row["predicate_id"] for row in read_tsv(PACKAGE_DIR / "identifier.tsv"))
 
-    assert predicates[BROAD_MATCH] == 449
-    assert predicates[EXACT_MATCH] == 3583
+    assert predicates[BROAD_MATCH] == 453
+    assert predicates[EXACT_MATCH] == 3581  # 3,583 minus the four re-predicated, plus the two anchors
 
     report = validate.validate(PACKAGE_DIR)
     assert [f for f in report.findings if f.check == "coarse_identifier"] == []

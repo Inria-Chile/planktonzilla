@@ -224,6 +224,24 @@ def cleanup_imagefolder_empty_dirs(imagefolder_dir: Path) -> None:
 # behind check_image_file_integrity.
 IMAGE_SUFFIXES: Final = frozenset({".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".gif", ".ppm", ".webp"})
 
+#: Ledger of files the integrity walk deleted, one path per line, written beside the imagefolder
+#: it describes. A deleted vignette is gone for good — the upstream bytes do not decode — so a
+#: source that counts its images against a manifest has to be able to tell "never fetched" from
+#: "fetched, unreadable, removed". Without it, one undecodable vignette makes such a source
+#: permanently incomplete: delete -> present < expected -> re-prepare -> re-fetch -> delete, on
+#: every run, re-hitting a public service and never letting the reuse path fire. A dotfile, so
+#: the ``imagefolder`` loader ignores it.
+REMOVED_UNREADABLE_LEDGER: Final = ".removed-unreadable"
+
+
+def removed_unreadable(imagefolder_dir) -> set:
+    """Paths the integrity walk has deleted from this imagefolder, as recorded in its ledger."""
+    ledger = Path(imagefolder_dir) / REMOVED_UNREADABLE_LEDGER
+    if not ledger.is_file():
+        return set()
+    return {line for line in ledger.read_text(encoding="utf-8").splitlines() if line}
+
+
 #: Written into an imagefolder while it is being prepared and removed when preparation
 #: finishes. Its PRESENCE is the signal: an imagefolder that predates this marker has
 #: none and still reads as complete, so nothing already on disk is re-imported, while a
@@ -1724,6 +1742,7 @@ class DatasetImporter:
             # exactly the layouts that need it most.
             candidates = [path for path in self.imagefolder_dir.rglob("*") if path.is_file()]
 
+            removed = []
             for path in tqdm(
                 candidates,
                 desc="Validating images.",
@@ -1733,6 +1752,19 @@ class DatasetImporter:
                 if not is_valid_image_file(path):
                     logger.warning(f"Invalid file {path} detected. Removing it from the dataset.")
                     os.remove(path)
+                    removed.append(str(path.relative_to(self.imagefolder_dir)))
+
+            if removed:
+                # Recorded, not just logged. A source whose completeness is a COUNT against a
+                # manifest cannot otherwise distinguish these from vignettes it never fetched, and
+                # would re-fetch them on every run forever.
+                ledger = self.imagefolder_dir / REMOVED_UNREADABLE_LEDGER
+                known = removed_unreadable(self.imagefolder_dir)
+                ledger.write_text("\n".join(sorted(known | set(removed))) + "\n", encoding="utf-8")
+                logger.warning(
+                    f"{len(removed)} unreadable file(s) removed from {self.imagefolder_dir}; recorded in "
+                    f"{REMOVED_UNREADABLE_LEDGER} so they are not mistaken for vignettes that were never fetched."
+                )
 
             cleanup_imagefolder_empty_dirs(self.imagefolder_dir)
 

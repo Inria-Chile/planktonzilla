@@ -193,3 +193,70 @@ def test_jedi_says_what_is_wrong_when_its_extraction_was_already_consumed(tmp_pa
         importer._prepare_imagefolder()
 
     assert "force_download=true" in str(failure.value)
+
+
+# --- an unreadable vignette must not make a source permanently incomplete (finding 64) ---
+
+
+def test_a_removed_unreadable_vignette_counts_as_accounted_for(tmp_path, monkeypatch):
+    """The loop this closes: delete -> incomplete -> re-fetch -> delete, on every run, forever.
+
+    All four Tara Pacific sources set `check_image_file_integrity`, and the integrity walk runs on
+    every `import_dataset` call — while their completeness is a COUNT against the manifest with
+    `ecotaxa_max_missing_images: 0`. So one vignette EcoTaxa serves undecodably meant the source
+    could never read as complete, and every run re-fetched the same bad bytes from a public
+    service. Re-fetching cannot help: the upstream bytes do not decode.
+    """
+    from planktonzilla.dataset_import import dataset_importer as importer_module
+    from planktonzilla.dataset_import.tara_pacific_importer import TaraPacificDatasetImporter
+
+    imagefolder = tmp_path / "tara_imagefolder"
+    (imagefolder / "cls").mkdir(parents=True)
+    for index in range(3):
+        Image.new("RGB", (8, 8)).save(imagefolder / "cls" / f"{index}.jpg")
+
+    stub = object.__new__(TaraPacificDatasetImporter)
+    object.__setattr__(stub, "imagefolder_dir", imagefolder)
+    object.__setattr__(stub, "ecotaxa_max_missing_images", 0)
+    monkeypatch.setattr(TaraPacificDatasetImporter, "expected_image_count", lambda self: 4)
+
+    assert not stub.imagefolder_is_complete(), "3 of 4 with nothing removed is genuinely partial"
+
+    # The fourth was fetched, would not decode, and the integrity walk deleted it.
+    (imagefolder / importer_module.REMOVED_UNREADABLE_LEDGER).write_text("cls/3.jpg\n", encoding="utf-8")
+
+    assert stub.imagefolder_is_complete(), "a vignette removed as unreadable is not one still to fetch"
+
+
+def test_the_ledger_only_excuses_what_it_actually_records(tmp_path, monkeypatch):
+    """The control. Without it the fix could be "always complete", which would publish a fraction
+    of a source the way the base class's non-empty test used to."""
+    from planktonzilla.dataset_import import dataset_importer as importer_module
+    from planktonzilla.dataset_import.tara_pacific_importer import TaraPacificDatasetImporter
+
+    imagefolder = tmp_path / "tara_imagefolder"
+    (imagefolder / "cls").mkdir(parents=True)
+    Image.new("RGB", (8, 8)).save(imagefolder / "cls" / "0.jpg")
+
+    stub = object.__new__(TaraPacificDatasetImporter)
+    object.__setattr__(stub, "imagefolder_dir", imagefolder)
+    object.__setattr__(stub, "ecotaxa_max_missing_images", 0)
+    monkeypatch.setattr(TaraPacificDatasetImporter, "expected_image_count", lambda self: 10)
+
+    (imagefolder / importer_module.REMOVED_UNREADABLE_LEDGER).write_text("cls/1.jpg\n", encoding="utf-8")
+
+    assert not stub.imagefolder_is_complete(), "1 present + 1 removed is still 8 short of 10"
+
+
+def test_the_ledger_is_hidden_and_accumulates_rather_than_overwriting(tmp_path):
+    """Two integrity walks over different corrupt files must not lose the first one's record."""
+    from planktonzilla.dataset_import import dataset_importer as importer_module
+
+    assert importer_module.REMOVED_UNREADABLE_LEDGER.startswith(".")
+
+    imagefolder = tmp_path / "folder"
+    imagefolder.mkdir()
+    assert importer_module.removed_unreadable(imagefolder) == set()
+
+    (imagefolder / importer_module.REMOVED_UNREADABLE_LEDGER).write_text("a.jpg\nb.jpg\n", encoding="utf-8")
+    assert importer_module.removed_unreadable(imagefolder) == {"a.jpg", "b.jpg"}

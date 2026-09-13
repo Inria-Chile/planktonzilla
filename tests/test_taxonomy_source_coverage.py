@@ -37,6 +37,7 @@ that landing it turns this module red rather than passing silently at 37 % forev
 
 import csv
 import shutil
+import zipfile
 from pathlib import Path
 
 import pyrootutils
@@ -57,14 +58,15 @@ from planktonzilla.planktonzilla_dataset.taxonomy.model import MAPPING_COLUMNS, 
 FIXTURES = Path(__file__).parent / "fixtures"
 TARA_CLASSES = Path(root) / "planktonzilla" / "dataset_import" / "tara_pacific_classes.tsv"
 
-# The 15 sources with no independent evidence, pinned so 5.5b landing one is a failing test rather
-# than a silent no-op. 1485 rows, 63 % of the table, every one of them in the published artifact.
+# The sources with no independent evidence, pinned so 5.5b landing one is a failing test rather
+# than a silent no-op. Was 15; `lensless` moved into FROZEN_CLASS_DIRS below, because it is the one
+# source whose archive is COMMITTED — the other fourteen are fetched from upstream, which is why
+# 5.5b needs a network scan for them and not for this one.
 SOURCES_WITHOUT_EVIDENCE = (
     "flowcamnet",
     "global_uvp5",
     "isiisnet",
     "jedioceans",
-    "lensless",
     "medplanktonset",
     "planktonset1.0",
     "planktoscope",
@@ -88,6 +90,22 @@ def _first_column(path):
     return {line.split("\t")[0] for line in Path(path).read_text(encoding="utf-8").splitlines()[1:]}
 
 
+def _lensless_dirs():
+    """Class dirs for `lensless`, read from the bundled archive the importer itself extracts.
+
+    Stronger evidence than a frozen fixture: this is the source of truth, not a transcription of
+    it, so a re-bundled archive that gained or lost a class turns the coverage test red instead of
+    agreeing with a stale copy. The layout is `lensless_dataset/{TRAIN,TEST}_IMAGE/<class>/<file>`
+    — LenslessDatasetImporter renames the two wrappers to train/ and test/, leaving the class dirs
+    where they are, so level 2 is the class name. Byte-exact, double spaces and all
+    (`PARAMECIUM  BURSARIA` is a real class dir).
+    """
+    archive = Path(root) / "planktonzilla" / "dataset_import" / "public_data" / "lensless_dataset.zip"
+    with zipfile.ZipFile(archive) as bundle:
+        parts = (name.split("/") for name in bundle.namelist())
+        return {chunk[2] for chunk in parts if len(chunk) > 3 and chunk[2]}
+
+
 def _tara_column(dataset):
     """Class dirs for one Tara Pacific source, from the EcoTaxa export covering all four."""
     with TARA_CLASSES.open(newline="", encoding="utf-8") as handle:
@@ -99,6 +117,7 @@ def _tara_column(dataset):
 # quietly smaller contract that still passes set equality against a quietly smaller table.
 FROZEN_CLASS_DIRS = {
     "frepj": (lambda: _first_column(FIXTURES / "frepj" / "frepj_class_dirs.tsv"), 229),
+    "lensless": (_lensless_dirs, 10),
     "daplankton": (lambda: _first_column(FIXTURES / "daplankton" / "daplankton_class_dirs.tsv"), 44),
     "tara_pacific_bongo": (lambda: _tara_column("tara_pacific_bongo"), 137),
     "tara_pacific_decknet": (lambda: _tara_column("tara_pacific_decknet"), 132),
@@ -223,20 +242,26 @@ def test_a_published_row_that_vanishes_is_caught_before_coverage_ever_runs(tmp_p
 
 
 # The gap, pinned
-def test_the_sources_with_no_independent_evidence_are_exactly_the_fifteen_named(store):
-    """37 % covered, and the other 63 % named rather than left as an implication.
+def test_the_sources_with_no_independent_evidence_are_exactly_the_fourteen_named(store):
+    """The covered share, and the rest named rather than left as an implication.
 
     Pinned in both directions on purpose. Minting a frozen list for one of these (step 5.5b) turns
     this red, which is the prompt to add it to ``FROZEN_CLASS_DIRS`` — the alternative is a registry
-    that quietly never grows and a coverage suite that reports 37 % as if it were done.
+    that quietly never grows and a coverage suite that reports its share as if it were done. It has
+    now done that once: `lensless` moved across when its committed archive was read as evidence,
+    and this test is the thing that made the move explicit instead of silent.
+
+    The fourteen that remain all fetch their archives from upstream, which is the whole of what
+    5.5b still needs — a network scan, not more local reading.
     """
     covered = set(FROZEN_CLASS_DIRS)
     assert set(store.datasets()) == covered | set(SOURCES_WITHOUT_EVIDENCE)
     assert covered.isdisjoint(SOURCES_WITHOUT_EVIDENCE)
+    assert len(SOURCES_WITHOUT_EVIDENCE) == 14
 
     guarded = sum(len(store.labels_for(dataset)) for dataset in covered)
     unguarded = sum(len(store.labels_for(dataset)) for dataset in SOURCES_WITHOUT_EVIDENCE)
-    assert (guarded, unguarded) == (873, 1485)
+    assert (guarded, unguarded) == (883, 1475)
 
 
 def test_the_evidence_is_independent_of_the_table_it_checks(store):

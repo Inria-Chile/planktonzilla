@@ -66,7 +66,7 @@ code and the CSV on 2026-09-12; the corrections that pass found are noted inline
 | KI-9 | open, wontfix | data-side | the one uppercase value in a normalized column |
 | KI-10 | open, wontfix | data-side | contradictory `plankton` flag on identical fish-egg taxa |
 | KI-12 | **confined to the render** | HIGH | integer IDs serialized as `"12345.0"`; the package holds them clean |
-| KI-13 | open, wontfix | data-side | one external ID stamped on distinct taxa |
+| KI-13 | 2 fixed, 19 adjudicated | data-side | one external ID held by unrelated concepts; every case now has a written verdict |
 | KI-14 | **open, escalate** | downstream-legal | `whoi` recorded as `mit` — 20.5% of the corpus |
 | KI-15 | open, bounded | downstream-legal | `planktonset1.0` recorded as `other` — states nothing |
 | KI-16 | open, **do not fix** | HIGH | split probe reads the repo root; splits discarded |
@@ -742,17 +742,25 @@ published CSV.
 
 ## KI-13 — External ID reused across distinct taxa
 
-**Where:** `NCBI_ID` `418941.0` (`discosphaera tubifera` + `rhabdosphaera clavigera`),
-`418932.0` (`calciopappus caudatus` + `ophiaster`), `2723146.0` (`gonyaulax verior` +
-`sourniaea diacantha`); `wikidata_ID` `Q25364681` (1 genuine collision).
+**Where:** listed by `pz_taxonomy check` — 14 `BOLD_ID`, 4 `NCBI_ID`, 1 `wikidata_ID`, each
+adjudicated in [`taxonomy/data/waivers/structural.tsv`](../taxonomy/data/waivers/structural.tsv)
+and keyed by the finding id the CLI prints.
 
-**Today:** these taxid / QID values are stamped on genuinely different taxa (their other ID
-columns differ, confirming distinctness). A larger bucket — ~25 NCBI, 5 aphia, 6 wikidata
-cases — is **coarse-rank propagation**: a parent's ID reused on descendant/species rows (e.g.
-the genus `chaetoceros` taxid on `chaetoceros dadayi`), an ID-**precision** limitation rather
-than a hard error; and a few apparent collisions are real taxonomic **synonyms** correctly
-sharing one taxid (e.g. `ceratoneis closterium` ≡ `cylindrotheca closterium`). The **forward**
+**Today:** an id is held as `skos:exactMatch` by two or more concepts that are not each other's
+ancestors. A larger bucket — 147 coarse ids — is **coarse-rank propagation**: a parent's ID reused
+on descendant/species rows (e.g. the genus `chaetoceros` taxid on `chaetoceros dadayi`), an
+ID-**precision** limitation rather than a hard error, and resolved below. The **forward**
 direction is clean — no taxon carries two IDs in any column.
+
+*The four examples this entry used to name were re-examined on 2026-09-13 against the committed
+authority snapshot, and three of them are not what it said.* `418932.0` and `418941.0` were called
+collisions of distinct taxa; NCBI's own records make them the **families** Syracosphaeraceae and
+Rhabdosphaeraceae, which is exactly the common ancestor of each pair — coarse propagation, now
+fixed. `2723146.0` was called a collision too; WoRMS has aphia 110045 (`gonyaulax verior`) as a
+junior subjective synonym of `sourniaea diacantha`, so it is one organism under two names and the
+taxid is correct on both rows. Only `Q25364681` survives as stated, and the snapshot now names the
+wrong side of it: Wikidata's record for that QID is the genus *Torodinium*, so it is
+`kapelodinium vestifici` that carries it wrongly.
 
 **Frozen-output risk: data-side.** Correcting an ID changes the published `*_ID` columns.
 Document only.
@@ -769,13 +777,39 @@ genus's id.
 
 No published byte moved: the renderer never reads the predicate, because the 19-column CSV has no
 way to express "broader than", and withdrawing 449 published ids to state a nuance the format
-cannot carry would be the worse answer. `pz_taxonomy check` reported 168 findings before and
-reports 21 after, and `unjustified_broad_match` now guards the re-predication — relabelling a real
-cross-branch collision as a broad match is an ERROR, so this cannot be used to make the remaining
-21 disappear.
+cannot carry would be the worse answer. `pz_taxonomy check` reported 168 findings before and 21
+after, and `unjustified_broad_match` now guards the re-predication — relabelling a real
+cross-branch collision as a broad match is an ERROR, so this cannot be used to make a collision
+disappear.
 
-**Still open:** those 21 genuine cross-branch collisions, listed by `pz_taxonomy check`. Correcting
-one changes a published `*_ID` cell, so each needs the same adjudication it always did.
+**Two more resolved (2026-09-13), and the rest adjudicated.** Of the 21 that step 7 left:
+
+- **2 were fixed.** `ncbi:418932` and `ncbi:418941` are family taxids by NCBI's own record in the
+  committed snapshot, and each family is the common ancestor of the two concepts holding it. They
+  were the same coarse propagation as the other 147, missed only because no concept held the id for
+  the finer ones to be broader THAN. Anchoring the id on the family (`pzt:000868`, `pzt:000863`) and
+  re-predicating the four holders brings them into the resolved bucket: **453 broad matches now**,
+  and again **no published byte moved** — neither family is a `proposed_label`, and `pz_taxonomy
+  diff` reports no published cell changed.
+- **19 are adjudicated**, in `waivers/structural.tsv`, from committed evidence alone:
+  - **14 `coarse_identifier_no_anchor`** (all BOLD) — the same shape as the two above: 2–8 concepts
+    on different branches beneath one common ancestor that does not hold the id. What committed
+    evidence cannot settle is *which* concept each BOLD id names — no row in the Wikidata snapshot
+    claims any of the fourteen — so BOLD itself has to be asked. Each waiver names the anchor
+    concept the correction would use and says whether attaching the id there moves a published
+    cell: for **12 of the 14 it does not**, because the ancestor has no published row.
+  - **4 `nomenclature_drift`** (all NCBI: `2723146`, `2856`, `655800`, `66468`) — one organism under
+    two names. The taxid is right on both rows; what differs is the two names and their lineages.
+    Normalising onto the accepted name is a published-lineage change and stays gated.
+  - **1 `defect_wrong_identifier`** (`wikidata:Q25364681`) — the only one where a register names the
+    wrong side outright. Correcting it means clearing one published cell, so it stays gated.
+
+**Still open:** the 19 above. A waiver records a decision, it does not fix the data — but the
+decision, the evidence and the exact correction are now written down for each, `pz_taxonomy check`
+reports **0 errors and 0 unadjudicated findings**, and a NEW collision arrives unwaived against a
+clean report instead of hiding in a list of 21. `tests/test_taxonomy_validate.py` re-derives each
+reason's holder count, anchor concept and published-or-not verdict from the package, so an
+adjudication that stops describing the data fails rather than rots.
 
 ---
 

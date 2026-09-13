@@ -336,3 +336,64 @@ def test_no_unwaived_errors(findings, waivers):
     errors = [f for f in unwaived if f.severity == "ERROR"]
     rendered = [f"{f.finding_id} {f.check} {f.proposed_label} csv={f.csv_value} authority={f.authority_value}" for f in errors]
     assert not errors, "unwaived ERROR findings:\n  " + "\n  ".join(rendered)
+
+
+# An outage must not permanently remove ids from verification
+def test_a_service_outage_leaves_the_id_re_askable_rather_than_pinned(monkeypatch):
+    """The defect: a transient outage recorded ids as `unresolved`, and `_reuse` never re-asks those.
+
+    Every later incremental harvest carried the miss forward, so the crosschecks went on reporting
+    missing records for ids the authority holds perfectly well. Only `--full` recovered them, and
+    nothing told the operator that. The fetchers had the distinction all along —
+    `_get_with_retry` returns `None` for "every attempt failed" and a real response for "the
+    register answered" — and threw it away one line later.
+
+    Simulated at that seam: WoRMS never answers, so the id must come back UNDETERMINED, and must
+    NOT appear in the snapshot's `unresolved` list.
+    """
+    from planktonzilla.planktonzilla_dataset.utils import verify_taxonomy_ids as vti
+
+    monkeypatch.setattr(vti, "_get_with_retry", lambda *args, **kwargs: None)
+    monkeypatch.setattr(vti.time, "sleep", lambda _seconds: None)
+
+    records, not_found, undetermined = vti.fetch_worms(["1102"])
+
+    assert records == {}
+    assert not_found == [], "an outage is not evidence that WoRMS lacks the id"
+    assert undetermined == ["1102"]
+
+
+def test_a_register_that_answers_no_record_is_recorded_as_absent(monkeypatch):
+    """The control. Without it the fix could be "call everything undetermined", which would
+    re-ask genuinely absent ids on every harvest forever."""
+    from planktonzilla.planktonzilla_dataset.utils import verify_taxonomy_ids as vti
+
+    class _NoContent:
+        status_code = 204
+
+    monkeypatch.setattr(vti, "_get_with_retry", lambda *args, **kwargs: _NoContent())
+    monkeypatch.setattr(vti.time, "sleep", lambda _seconds: None)
+
+    records, not_found, undetermined = vti.fetch_worms(["999999999"])
+
+    assert records == {}
+    assert not_found == ["999999999"]
+    assert undetermined == []
+
+
+def test_an_undetermined_id_is_re_requested_by_the_next_incremental_run():
+    """`_reuse` is what makes the split matter: it skips `unresolved`, so keeping an undetermined
+    id out of that list is exactly what puts it back on the fetch queue."""
+    from planktonzilla.planktonzilla_dataset.utils import verify_taxonomy_ids as vti
+
+    previous = {
+        "worms": {"1102": {"aphia_id": "1102"}},
+        "provenance": {"sources": {"worms": {"unresolved": ["555"], "undetermined": ["777"]}}},
+    }
+
+    kept, to_fetch = vti._reuse(previous, "worms", ["1102", "555", "777", "888"])
+
+    assert set(kept) == {"1102"}, "an id already resolved is carried, not re-asked"
+    assert "555" not in to_fetch, "a genuine absence stays absent"
+    assert "777" in to_fetch, "an id the service never answered for must be re-asked"
+    assert "888" in to_fetch, "a brand-new id is fetched"

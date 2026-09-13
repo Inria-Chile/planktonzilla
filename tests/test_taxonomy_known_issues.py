@@ -120,8 +120,17 @@ def test_ki12_float_serialized_ids(rows):
     assert all(re.match(r"^Q\d+$", v) for v in wikidata)
 
 
-# --- KI-13: one external ID stamped on >1 distinct taxon ---
-def test_ki13_ncbi_id_reused_across_distinct_taxa(rows):
+# --- KI-13: one external ID on >1 row ---
+def test_ki13_one_ncbi_id_is_published_on_two_rows(rows):
+    """The published fact, which is unchanged; what it MEANS was re-read on 2026-09-13.
+
+    This was filed as one taxid stamped on two distinct taxa. NCBI's own record for 418941 in the
+    committed authority snapshot is the FAMILY Rhabdosphaeraceae, which is the common ancestor of
+    both rows — so the two cells are their family's taxid, the coarse-propagation shape, not a
+    mistaken identity. The package now says so (`pzt:000863` holds the id exactly, the two species
+    hold it as `skos:broadMatch`), and these two published cells did not move: the 19-column CSV
+    cannot express "broader than", so both rows still read `418941.0`. That is what is pinned here.
+    """
     labels = {r["proposed_label"].strip().lower() for r in rows if r["NCBI_ID"].strip() == "418941.0"}
     assert {"discosphaera tubifera", "rhabdosphaera clavigera"} <= labels
 

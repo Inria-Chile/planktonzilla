@@ -24,8 +24,11 @@ tests, named after what was measured:
     the absence row the design offers is rejected by its own id pattern
 """
 
+import ast
+import csv
 import json
 import shutil
+from collections import Counter
 from pathlib import Path
 
 import pyrootutils
@@ -68,6 +71,34 @@ def _checks(report):
     return sorted({finding.check for finding in report.findings})
 
 
+def _subjects_of(finding):
+    """The concept ids an ``id_shared_across_branches`` finding names, back out of its detail."""
+    return ast.literal_eval(finding.detail.split("concepts ", 1)[1])
+
+
+def _lowest_common_ancestor(taxon_ids, taxa):
+    """The deepest concept every one of ``taxon_ids`` hangs from — the anchor a coarse id wants."""
+
+    def ancestors(taxon_id):
+        out, seen, cursor = [], set(), taxa[taxon_id]["parentNameUsageID"]
+        while cursor and cursor in taxa and cursor not in seen:
+            seen.add(cursor)
+            out.append(cursor)
+            cursor = taxa[cursor]["parentNameUsageID"]
+        return out
+
+    common = set(ancestors(taxon_ids[0])) | {taxon_ids[0]}
+    for taxon_id in taxon_ids[1:]:
+        common &= set(ancestors(taxon_id)) | {taxon_id}
+    return max(common, key=lambda taxon_id: len(ancestors(taxon_id)))
+
+
+def _published_labels():
+    """Every ``proposed_label`` the frozen CSV publishes — i.e. which concepts have a published row."""
+    with constants.DEFAULT_TAXONOMY_CSV_FILENAME.open(newline="", encoding="utf-8") as handle:
+        return {(row["proposed_label"] or "").strip().lower() for row in csv.DictReader(handle)}
+
+
 # The committed package
 def test_the_committed_package_validates_clean():
     """THE GATE. Zero errors, every remaining finding adjudicated, no stale adjudication."""
@@ -80,8 +111,8 @@ def test_the_committed_package_validates_clean():
     assert report.stale_waivers == [], f"waiver(s) matching no current finding: {report.stale_waivers}"
 
 
-def test_the_remaining_findings_are_the_identifier_backlog_and_nothing_else():
-    """What is left is a named, countable backlog rather than undifferentiated noise.
+def test_nothing_is_left_unadjudicated():
+    """The backlog is now zero UNADJUDICATED findings, which is not the same as zero findings.
 
     It was 147 coarse identifiers (a species carrying its own genus's id) plus 21 cross-branch
     collisions. **Step 7 worked the first number to zero**: those 449 identifier rows now carry
@@ -90,25 +121,109 @@ def test_the_remaining_findings_are_the_identifier_backlog_and_nothing_else():
     qualify an id — and ``unjustified_broad_match`` now guards the re-predication, so relabelling a
     real collision cannot make it disappear from this report.
 
-    The 21 are the KI-13 backlog and stay pinned: a number for a later step to move.
+    The 21 then went two ways. **Two were fixed**: the committed NCBI snapshot names taxid 418932
+    as the family Syracosphaeraceae and 418941 as Rhabdosphaeraceae, and in both cases that family
+    is exactly the common ancestor of the two holders — so they were the same coarse propagation
+    step 7 re-predicated 449 times, missed only because no concept held the id to be broader THAN.
+    Anchoring the id on the family and re-predicating the holders moved no published byte (neither
+    family is a ``proposed_label``, and the renderer never reads the predicate).
+
+    The remaining **19 are adjudicated**, each with the evidence and the correction written down.
+    They stay findings — a waiver records a decision, it does not fix the data — but a NEW
+    collision arrives unwaived and is visible against a clean report rather than lost in a list of
+    21. The count that matters now is that ``findings`` is empty and no waiver is stale.
     """
     report = validate.apply_waivers(
         validate.validate(PACKAGE, registered=REGISTERED),
         validate.read_waivers(PACKAGE),
     )
 
-    assert report.summary()["by_check"] == {"id_shared_across_branches": 21}
-    assert report.summary()["waived"] == 6
+    assert report.summary()["by_check"] == {}
+    assert report.summary()["waived"] == 25
+    assert report.summary()["stale_waivers"] == 0
 
 
-def test_every_frozen_defect_is_adjudicated_with_a_written_reason():
-    """The six waived findings are KI-8 and KI-9, each carrying why it stays."""
+def test_the_two_anchorable_collisions_were_fixed_rather_than_waived():
+    """A waiver for something the committed evidence can actually resolve is a decision not taken.
+
+    NCBI's own record for each of these taxids is the FAMILY, and the family is the common ancestor
+    of both holders — so the shape is coarse propagation, not two taxa stamped with one id, and the
+    fix is the one step 7 applied 449 times. Guarded here because the alternative is silent: the
+    validator reports nothing either way once a waiver exists.
+    """
+    identifiers = read_tsv(PACKAGE / "identifier.tsv")
+    held = {(row["subject_id"], row["object_id"]): row["predicate_id"] for row in identifiers}
+
+    for object_id, anchor, holders in (
+        ("ncbi:418932", "pzt:000868", ("pzt:000870", "pzt:000871")),
+        ("ncbi:418941", "pzt:000863", ("pzt:000865", "pzt:000867")),
+    ):
+        assert held[(anchor, object_id)] == "skos:exactMatch", f"{object_id} lost its anchor"
+        for holder in holders:
+            assert held[(holder, object_id)] == "skos:broadMatch", f"{holder} re-claims {object_id} exactly"
+
+    waivers = validate.read_waivers(PACKAGE)
+    waived_ids = {row["locator"] for row in waivers.values()}
+    assert not waived_ids & {"ncbi:418932", "ncbi:418941"}, "a resolved collision must not also carry a waiver"
+
+
+def test_every_adjudicated_collision_states_the_shape_the_package_actually_has():
+    """The reasons carry measurements, so a reason that stops describing the data is a failure.
+
+    Nineteen prose paragraphs are exactly the kind of record that rots: the holder count moves, a
+    concept is renamed, an ancestor gains a published row, and the adjudication silently starts
+    describing a package that no longer exists. Each ``coarse_identifier_no_anchor`` reason names
+    its holder count, its anchor concept by id and name, and whether that anchor is published —
+    every one of which is re-derived here from the package itself.
+    """
+    taxa = {row["taxonID"]: row for row in read_tsv(PACKAGE / "taxon.tsv")}
+    published = _published_labels()
+    unwaived = validate.validate(PACKAGE, registered=REGISTERED)
+    collisions = {f.finding_id: f for f in unwaived.findings if f.check == "id_shared_across_branches"}
+
+    coarse = [row for row in validate.read_waivers(PACKAGE).values() if row["category"] == "coarse_identifier_no_anchor"]
+    assert len(coarse) == 14, "the fourteen BOLD ids with no anchor to re-predicate onto"
+
+    for row in coarse:
+        finding = collisions[row["finding_id"]]
+        holders = row["subject"].split(";")
+        assert sorted(holders) == sorted(_subjects_of(finding)), f"{row['locator']}: subject drifted from the finding"
+        assert f"{len(holders)} concepts hold {row['locator']}" in row["reason"]
+
+        anchor = _lowest_common_ancestor(holders, taxa)
+        assert f"{anchor} {taxa[anchor]['scientificName']} ({taxa[anchor]['taxonRank']})" in row["reason"], (
+            f"{row['locator']}: the reason names an anchor the tree no longer gives"
+        )
+        gated = taxa[anchor]["scientificName"] in published
+        assert ("IS a published proposed_label" in row["reason"]) == gated, (
+            f"{row['locator']}: the reason is wrong about whether correcting it moves a published cell"
+        )
+
+
+def test_every_waived_finding_is_adjudicated_with_a_written_reason():
+    """Six KI-8/KI-9 frozen defects plus the nineteen KI-13 collisions, each carrying why it stays.
+
+    The category vocabulary is pinned because it is the machine-readable half of the adjudication:
+    ``coarse_identifier_no_anchor`` says the correction is to anchor and re-predicate,
+    ``nomenclature_drift`` says the id is right on both rows and the NAMES are what differ, and
+    ``defect_wrong_identifier`` says one named row carries an id that is not its taxon's.
+    """
     waivers = validate.read_waivers(PACKAGE)
 
-    assert len(waivers) == 6
-    assert {row["check"] for row in waivers.values()} == {"lineage_name_repeat", "name_not_lowercase"}
-    assert all(row["category"] == "frozen_defect" for row in waivers.values())
+    assert len(waivers) == 25
+    assert {row["check"] for row in waivers.values()} == {
+        "lineage_name_repeat",
+        "name_not_lowercase",
+        "id_shared_across_branches",
+    }
+    assert Counter(row["category"] for row in waivers.values()) == {
+        "coarse_identifier_no_anchor": 14,
+        "frozen_defect": 6,
+        "nomenclature_drift": 4,
+        "defect_wrong_identifier": 1,
+    }
     assert all(len(row["reason"]) > 80 for row in waivers.values()), "a waiver without a real reason"
+    assert all(row["subject"] for row in waivers.values()), "a waiver that does not say what it is about"
 
 
 def test_the_ported_adjudications_are_complete_and_resolve_to_real_taxa():
@@ -413,3 +528,40 @@ def test_a_parent_cycle_is_reported_rather_than_hung_on(package):
 
     assert "parent_cycle" in _checks(report)
     assert any(finding.check == "parent_cycle" for finding in report.errors)
+
+
+# The two registries that hold the same adjudications
+def test_the_ported_waivers_still_agree_with_the_registries_the_tools_read():
+    """The TSVs and the JSONs are two copies of one set of adjudications, and nothing compared them.
+
+    ``read_waivers`` deliberately consumes only ``structural.tsv``; ``horizontal.tsv`` and
+    ``authority.tsv`` are ports waiting for their checks to move onto the loader. Meanwhile the
+    live tools read the JSONs — ``verify_label_consistency`` reads
+    ``LABEL_CONSISTENCY_WAIVERS.json`` and ``verify_taxonomy_ids`` reads
+    ``AUTHORITY_WAIVERS.json``. So a 21st adjudication added where the tools look leaves the
+    ported copy stale, and the test above cannot notice: it asserts the TSV against itself, with
+    hard-coded counts that a stale file still satisfies.
+
+    This is the missing edge. It compares the two by ``finding_id`` and by what each says, so
+    drift in either direction is a failure rather than a silent divergence.
+    """
+    import json
+
+    for tsv_name, json_name in (
+        ("horizontal.tsv", "LABEL_CONSISTENCY_WAIVERS.json"),
+        ("authority.tsv", "AUTHORITY_WAIVERS.json"),
+    ):
+        ported = {row["finding_id"]: row for row in read_tsv(PACKAGE / "waivers" / tsv_name)}
+        live_path = Path(root) / "planktonzilla" / "planktonzilla_dataset" / "utils" / json_name
+        live = {entry["finding_id"]: entry for entry in json.loads(live_path.read_text(encoding="utf-8"))["waivers"]}
+
+        assert set(ported) == set(live), (
+            f"{tsv_name} and {json_name} adjudicate different findings; "
+            f"only in the port: {sorted(set(ported) - set(live))}; only live: {sorted(set(live) - set(ported))}"
+        )
+
+        for finding_id, entry in live.items():
+            for field in ("check", "category", "reason"):
+                assert ported[finding_id][field] == entry[field], (
+                    f"{finding_id}: {tsv_name} says {field}={ported[finding_id][field]!r}, {json_name} says {entry[field]!r}"
+                )

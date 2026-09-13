@@ -50,7 +50,11 @@ PACKAGE = migrate.PACKAGE_DIR
 # which relation changed size.
 EXPECTED_ROWS = {
     "taxon.tsv": 1352,
-    "identifier.tsv": 4032,
+    # 4,032 at migration; +2 when the two family-level NCBI taxids the committed snapshot names
+    # (418932 Syracosphaeraceae, 418941 Rhabdosphaeraceae) were anchored on the family they name,
+    # which is what let their four holders be re-predicated to skos:broadMatch. No published byte
+    # moved: neither family is a proposed_label, and the renderer never reads the predicate.
+    "identifier.tsv": 4034,
     "merged.tsv": 0,
     "release/v1.0/legacy_row_order.tsv": 2358,
     "release/v1.0/legacy_overrides.tsv": 13,
