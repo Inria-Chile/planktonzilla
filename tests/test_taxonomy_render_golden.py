@@ -488,3 +488,66 @@ def test_a_source_mapped_after_the_freeze_renders_after_the_frozen_block(tmp_pat
         ("newsource", "b"),
         ("newsource", "a"),
     ], "post-freeze rows are not in collation order"
+
+
+# 8. The override layer's three attribute columns
+
+
+def test_a_blank_attribute_override_leaves_the_model_value_alone(store):
+    """All thirteen committed override rows are blank in those columns, and must stay inert.
+
+    Blank means one thing for ids and the opposite for attributes, which is the whole design of
+    ``_pinned``: a blank id override PUBLISHES a blank (that is what these thirteen rows exist to
+    do, one per row rather than per taxon), while a blank attribute override means "no opinion".
+    Reading blank the id way would have blanked ``root_class``, ``qualifier`` and ``plankton`` on
+    thirteen published rows the moment the columns were wired up. This pins that they did not move.
+    """
+    assert all(
+        not (row.get(column) or "").strip()
+        for row in store.overrides.values()
+        for column in ("root_class", "qualifier", "plankton")
+    ), "an override now pins an attribute — this test's premise, and the sha pin, both need re-checking"
+
+    overridden = {key for key in store.overrides}
+    rendered = {(row["Dataset"], row["Raw_Labels"]): row for row in store.rows()}
+    for dataset, verbatim in overridden:
+        row = rendered[(dataset, verbatim)]
+        assert row["root_class"] and row["plankton"] in ("True", "False")
+
+
+def test_a_pinned_attribute_reaches_the_render(tmp_path):
+    """The columns the loader reads and the renderer used to drop.
+
+    ``legacy_overrides.tsv`` declares ``root_class`` / ``qualifier`` / ``plankton`` and the loader
+    parses all three, but ``legacy_rows`` applied only ``LEGACY_ID_COLUMNS`` — so a curator pinning
+    a mapping attribute for a release had it silently discarded, with the release pin's sha still
+    green because the render never changed. Exercised on a scratch copy, because writing a real
+    value into the committed table is a published-cell change and gated on the golden diff.
+    """
+
+    def edit(work):
+        path = work / "release" / "v1.0" / "legacy_overrides.tsv"
+        lines = path.read_text(encoding="utf-8").split("\n")
+        header = lines[0].split("\t")
+        fields = lines[1].split("\t")
+        fields[header.index("root_class")] = "artefact"
+        fields[header.index("qualifier")] = "part"
+        fields[header.index("plankton")] = "False"
+        lines[1] = "\t".join(fields)
+        path.write_text("\n".join(lines), encoding="utf-8")
+
+    pinned = load_taxonomy(_broken(tmp_path, edit))
+    key = next(iter(pinned.overrides))
+    row = {(r["Dataset"], r["Raw_Labels"]): r for r in pinned.rows()}[key]
+
+    assert row["root_class"] == "artefact"
+    assert row["qualifier"] == "part"
+    assert row["plankton"] == "False"
+    # `living` is not pinnable: it is not an independent column, it IS root_class == "living",
+    # so it must follow the pin rather than keep the model's answer.
+    assert row["living"] == "False"
+
+    # And the pin is per row, not per taxon: no other row moved.
+    baseline = {(r["Dataset"], r["Raw_Labels"]): r for r in load_taxonomy().rows()}
+    after = {(r["Dataset"], r["Raw_Labels"]): r for r in pinned.rows()}
+    assert {k for k, r in after.items() if r != baseline[k]} == {key}

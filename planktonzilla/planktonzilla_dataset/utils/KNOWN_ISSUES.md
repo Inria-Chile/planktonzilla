@@ -55,12 +55,12 @@ code and the CSV on 2026-09-12; the corrections that pass found are noted inline
 
 | # | Status | Frozen-output risk | Subject |
 | --- | --- | --- | --- |
-| KI-1 | open, deferred | HIGH | broad `except Exception` swallows transport failures (7 sites; one has since been narrowed) |
-| KI-2 | open, deferred | HIGH | no retry/backoff or socket timeouts on external fetchers |
+| KI-1 | open, deferred | HIGH | broad `except Exception` swallows transport failures (**9 handlers** measured 2026-09-13; two sites since narrowed) |
+| KI-2 | **half fixed** | HIGH | ~~no socket timeouts~~ (both Entrez calls bounded); retry/backoff still open |
 | KI-3 | **half fixed** | HIGH | ~~unbounded Wikidata 429 recursion~~ (bounded); loose taxon disambiguation still open |
-| KI-4 | open, deferred | MEDIUM | `--noexp` not threaded into the batch path |
+| KI-4 | **fixed** | MEDIUM (unchanged in practice) | `--noexp` is threaded into the batch path |
 | KI-5 | **not reproducible** | MEDIUM | a transport-error `None` is cached as a genuine no-match — no transport path writes to the cache |
-| KI-6 | open, deferred | MEDIUM | "API failed" indistinguishable from "no ID" |
+| KI-6 | **fixed** | MEDIUM → none | "API failed" is now named, logged and returned separately from "no ID" |
 | KI-7 | **resolved in place** | none left | null/separator/engine handling; every half is now done |
 | KI-8 | open, wontfix | data-side | a taxon in a rank slot its suffix contradicts |
 | KI-9 | open, wontfix | data-side | the one uppercase value in a normalized column |
@@ -104,10 +104,15 @@ golden-diff harness (blocks every HIGH item above), and KI-16's discarded split 
 `clean_corrupt_examples_optimized`), `extract_taxon_ids.py` (`search_wikidata_taxon`,
 `_extract_property`, `fetch_external_ids`).
 
-*`retrieve_ecotaxa_metadata` was on that list and is not any more (re-checked 2026-09-12 with an
-AST walk over every handler at every named site). It catches
-`(requests.RequestException, ValueError, TypeError)` — narrow, and narrowed before this entry was
-last touched. Every other site above is still a bare `except Exception`.*
+*Two of the named sites are no longer broad, and the count is measured rather than remembered:
+an AST walk over every handler at every site above (re-run 2026-09-13) finds **9 `except Exception`
+handlers** across the three files. `retrieve_ecotaxa_metadata` catches
+`(requests.RequestException, ValueError, TypeError)`, narrowed before this entry was last touched;
+`_extract_property` now catches `(KeyError, IndexError, TypeError)`, narrowed 2026-09-13. That one
+could land while the other eight cannot because it reads a **field out of an already-parsed
+response** — it never touches the network, so there is no transport failure for it to have been
+swallowing and no row it can change. The remaining eight all sit directly on a request or on image
+decoding, which is exactly where narrowing turns a completed run with NaN rows into an aborted one.*
 
 **Today:** broad `except Exception` swallows transient network/JSON/IO failures and falls back
 to NaN/empty/`None`, conflating "the API failed" with "there is genuinely no data."
@@ -122,16 +127,29 @@ corrupt-image filter drops — altering metadata columns and **row counts**. →
 
 ## KI-2 — Add retry/backoff + socket timeouts to the external fetchers
 
-**Where:** `extract_cox.py` NCBI Entrez `esearch`/`efetch` (currently no retry, no timeout — a
-failed batch is silently dropped or truncated); `generate_planktonzilla.py` WHOI/EcoTaxa GETs.
+**Where:** `extract_cox.py` NCBI Entrez `esearch`/`efetch`; `generate_planktonzilla.py`
+WHOI/EcoTaxa GETs.
 
 **Today:** a transient failure means those sequences/records are simply missing from the output.
 
 **Proposed:** bounded retry with exponential backoff on 429/5xx, plus explicit socket timeouts.
 
-**Frozen-output risk: HIGH.** Retrying can **recover records the original run dropped**, changing
+**Half fixed (2026-09-13): the timeouts are in.** The two halves of this entry are not equally
+gated, and separating them is what let one of them land. A **timeout cannot recover a record** —
+it can only turn a hang into the failure that was already going to happen — so adding one moves no
+frozen byte, while a **retry can**, which is the half `HARDEN-01` actually blocks.
+
+`Bio.Entrez` builds on `urllib` with no timeout parameter, so a stalled socket hung the run
+forever instead of failing into the retry that already exists further up. `extract_cox.py` now
+defines `ENTREZ_TIMEOUT = 60` and a `_socket_timeout` context manager that sets and restores
+`socket.getdefaulttimeout()` in a `finally`, and both `Entrez.esearch` and `Entrez.efetch` run
+inside it. The restore matters: a bare `setdefaulttimeout` would leak a 60-second ceiling onto
+every later socket in the process, including the HTTP downloads the importers make.
+
+**Still open:** bounded retry with exponential backoff on 429/5xx, on both fetchers. **Frozen-output
+risk: HIGH** for that half — retrying can **recover records the original run dropped**, changing
 the produced FASTA / `summary.csv` / metadata columns and row counts versus the frozen
-reference. → `HARDEN-01`.
+reference. → `HARDEN-01`. (Wikidata's 429 loop is a separate case and is already bounded; see KI-3.)
 
 ## KI-3 — Bound the Wikidata 429 recursion and tighten taxon disambiguation
 
@@ -163,16 +181,23 @@ still loose, so the file cannot be misread as closing KI-3. → `HARDEN-01`.
 
 **Where:** `extract_cox.py` `process_csv` / `get_cox_sequences`.
 
-**Today:** `process_csv` calls `get_cox_sequences(..., expand_to_children=True)` hard-coded — the
-`--noexp` CLI flag is not threaded into the batch path. The `skip_empty=False` branch also
-changes which "no-ID" rows are written to `summary.csv`.
+**Today:** the `skip_empty=False` branch changes which "no-ID" rows are written to
+`summary.csv`.
 
-**Proposed:** thread `--noexp` through to the batch path; make the `skip_empty` semantics
-explicit and consistent.
+**Fixed (2026-09-13), the `--noexp` half.** `process_csv` hard-coded
+`get_cox_sequences(..., expand_to_children=True)` while `main` computed `not args.noexp` for the
+single-taxon path only — so on every batch run the flag was accepted, logged nowhere, and did
+nothing. `process_csv` now takes `expand_to_children: bool = True` and `main` passes
+`expand_to_children=not args.noexp`.
 
-**Frozen-output risk: MEDIUM.** The frozen artifacts were produced on the success path
-*without* `--noexp` and with default `skip_empty`, so a clean re-run with today's invocation is
-often inert — but the change is genuinely behavior-altering for other invocations. → `HARDEN-01`.
+This is the rare gated-looking change that is inert on the frozen artifacts *by default*: the
+default is the value that was hard-coded, so an invocation that does not pass `--noexp` behaves
+exactly as before. What changes is that `--noexp` now does what it says, which no frozen artifact
+was produced with. Verified by re-running the suite; no published byte moved.
+
+**Still open:** the `skip_empty` semantics, which are genuinely inconsistent between the two
+branches. **Frozen-output risk: MEDIUM** for that half — it alters which rows reach
+`summary.csv`. → `HARDEN-01`.
 
 ## KI-5 — Don't cache a `None` that came from a transport error
 
@@ -203,11 +228,23 @@ recorded and the numbering must stay stable. The property is now pinned —
 **Today:** when a batch ultimately fails, every Qcode in it is filled with `None` IDs —
 indistinguishable from Qcodes that legitimately have no external ID.
 
-**Proposed:** add a status indicator (e.g. a column) so downstream consumers can retry only the
-true failures.
+**Fixed (2026-09-13).** The fix does not need the column the proposal assumed, which is why it
+could land: **nothing has to change in the output** for a failure to stop looking like an answer.
+`fetch_external_ids` now collects the Qcodes of every abandoned batch in an `abandoned` list,
+logs each abandonment at WARNING with the batch index and attempt count, and ends with a single
+ERROR naming how many of how many were abandoned — so a run that resolved nothing is no longer
+indistinguishable, in its own log, from a run that found nothing. The `None`-fill fallback is
+untouched and no column is added, so the frozen artifacts' shape is unchanged.
 
-**Frozen-output risk: MEDIUM.** Adds/changes columns and alters the `None`-fill fallback. →
-`HARDEN-01`.
+The same distinction was drawn on the verification side, where it *does* reach an artifact:
+`verify_taxonomy_ids.py`'s three fetchers now return `(records, not_found, undetermined)` instead
+of folding both into one list, and `build_snapshot` records only genuine `not_found` under
+`unresolved` while warning loudly about the undetermined. A registry being down used to be
+written into the snapshot as "this taxon has no record there", which is a false claim about the
+data rather than a gap in it.
+
+**Frozen-output risk: none, as landed.** The proposal's status *column* would have been MEDIUM;
+logging is not. → the column, if ever wanted, stays behind `HARDEN-01`.
 
 ## KI-7 — Reconcile null / separator / pandas-vs-polars CSV handling
 

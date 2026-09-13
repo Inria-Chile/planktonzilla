@@ -58,7 +58,7 @@ that refuses the write (the writer itself is unrepaired; see below).
 | `Raw_Labels` → one taxon never checked | **fixed** — not a review finding; the gap 1.6 sits in | `utils/verify_label_consistency.py` (KI-31) |
 | 1.1 `write_csv` destroys 644 rows | **fixed** — see *Second remediation pass* below | the byte-splicing writers are gone |
 | 1.2, 1.3, 1.9 | **fixed** — see *Second remediation pass* below | — |
-| 1.6 | **open** | re-verified against `main` `e4ebdd4` — still live; its root cause is now recorded (see 1.7). Data-side: correcting it changes a published lineage, so it is gated on the golden diff |
+| 1.6 | **half fixed** | the two mislabels are still published — data-side, gated on the golden diff — but the silence is not: the builder now reports all 8 class dirs whose candidate donors disagree (report section B7), and the set is pinned by a test |
 | Tier 2 (17 entries), Tier 3 (11 entries) | **fixed** — see *Second remediation pass* below | — |
 
 So, of the ten Tier 1 findings: **4 closed** (1.4, 1.7, 1.8, 1.10), **1 re-diagnosed and left open on
@@ -88,11 +88,35 @@ One more defect surfaced while writing a test for #17: `sqrt(E[x²] - E[x]²)` o
 lands a few ulp below zero, so a class of flat images published **`nan`** as its `Normalize`
 standard deviation. The variance is now clamped at zero.
 
-**Still open, and why.** **1.6** and **#35** change published columns, so
-both are gated on the golden diff against the Hub artifact that `KNOWN_ISSUES.md` records as not
-yet built. The five low-severity defects in `templates/sankey_flow.html` and the CLIP-export path
+**Still open, and why.** **#35** changes published columns, so it is gated on the golden diff
+against the Hub artifact that `KNOWN_ISSUES.md` records as not yet built. **1.6** no longer is:
+the mislabels themselves still are, but the *ambiguity that produced them* is now reported — see
+[1.6](#16-two-published-tara-pacific-taxonomy-blocks-carry-the-wrong-taxon).
+
+The five low-severity defects in `templates/sankey_flow.html` and the CLIP-export path
 (**#46-48, #52-53**) are cited but never enumerated in this document — they live in appendix data
-that is not in the repository, so there is nothing here to act on.
+that is not in the repository. Rather than leave them unactionable, the two files were re-read and
+the defects rediscovered; all are fixed. Neither file feeds a published artifact (the Sankey page
+and the WebDataset shards are both built locally), so none of this is gated.
+
+In `save_planktonzilla_for_clip.py`, both of the last two are silent by construction — nothing
+raises, nothing logs, and the `.tar` files open cleanly:
+
+- **Sample keys were unique only within a shard.** WebDataset takes a member's basename as the
+  sample's `__key__`, and the writer numbered from `0` in every shard, so a 20-shard split
+  published twenty samples answering to `image_0`. Pairing the `.jpg` with its `.txt` only needs
+  the two basenames to agree *inside one tar*, which is why nothing ever failed; what breaks is
+  anything keyed BY the key — joining predictions back to samples, deduplicating a resampled
+  stream, caching. Now the zero-padded absolute index within the split.
+- **An empty split exported nothing and said nothing.** `n_shards` is `0`, the loop body never
+  runs, and the split folder is still created — so the export "succeeded" and produced a directory
+  a training job points at and finds empty. Now a warning, not an exception: a filter matching
+  nothing is a real outcome, not an impossible state.
+
+The module had no test at all, which is how both survived. `tests/test_clip_shard_export.py` is
+its first: seven tests over four 2x2 images through a real `datasets.Dataset` and a real
+`tarfile`, covering the two defects and the four properties the docstring claims and nothing
+checked (pairing, key order, class-name captions, RGB JPEG re-encoding).
 
 Gates on the current head (`9a31b32`), against the `0df8004` baseline above:
 
@@ -442,11 +466,28 @@ on a negative at five probabilities, the loss monotonically decreasing in the tr
 
 ### 1.6 Two published Tara Pacific taxonomy blocks carry the wrong taxon
 
-> **STILL OPEN on `main` `e4ebdd4`**, re-verified after PR #33. The taxonomy CSV is byte-identical to
-> `0df8004`, and both mislabels are still published. The new authority tooling groups by
-> `proposed_label`, so it cannot see this class of defect; grouping by `Raw_Labels` instead surfaces
-> **16 rank-inflation cases**, these two among them. See
-> [Changes on `main`](#changes-on-main-since-the-review).
+> **THE DATA IS STILL WRONG; THE SILENCE IS FIXED.** Both mislabels are still published — correcting
+> one moves a published lineage and is gated on the golden diff. What is no longer true is the second
+> half of this finding, that nothing reports the ambiguity: the builder now keeps the candidate donors
+> that LOST the file-order race and reports every class dir whose candidates disagree.
+>
+> The fix below asks for three things. Two of them landed: ambiguous keys are routed into the
+> reconciliation report (**section B7**, `TARA_PACIFIC_TAXONOMY_RECONCILIATION.md`) with the donor
+> taken, the other candidates, and the columns they disagree on; and all rows per `Raw_Labels` are
+> collected rather than discarded at `setdefault`. The third — **rejecting** a donor on rank depth — is
+> the gated one, because rejecting is what changes a published cell.
+>
+> Eight class dirs are reported, not the two named below: `Acantharia`, `Annelida`, `Creseidae`,
+> `Dinophyceae`, `Foraminifera`, `Harpacticoida`, `Neoceratium`, `Ornithocercus`. Both named cases
+> appear with `zooscan` winning on file order, exactly as described. Re-running the builder still
+> writes zero changes and the CSV sha is unmoved; `tests/test_tara_pacific_taxonomy.py` pins the set
+> of eight, so a ninth appearing — or one of these quietly resolving — is a test failure, not a
+> silently absorbed change in what the table asserts about a taxon.
+>
+> *(Original note, still true of the data: re-verified on `main` `e4ebdd4` after PR #33. The taxonomy
+> CSV is byte-identical to `0df8004`. The authority tooling groups by `proposed_label`, so it cannot
+> see this class of defect; grouping by `Raw_Labels` instead surfaces 16 rank-inflation cases, these
+> two among them. See [Changes on `main`](#changes-on-main-since-the-review).)*
 
 `planktonzilla/planktonzilla_dataset/utils/build_tara_pacific_taxonomy.py:455`
 
@@ -636,8 +677,9 @@ permanently.
 | 78 | `generate_planktonzilla.py:20` | Docstring says three sources are omitted from `cfg.datasets`; all three are active entries. |
 
 Plus five confirmed low-severity defects in `templates/sankey_flow.html` and the CLIP-export path
-(#46-48, #52-53), and #35 (`generate_planktonzilla.py:659` stringifies metadata `NaN` to the literal
-`'nan'` rather than null — related to KI-1 but distinct).
+(#46-48, #52-53) — never enumerated here, since rediscovered and fixed, see
+[Remediation status](#remediation-status) — and #35 (`generate_planktonzilla.py:659` stringifies
+metadata `NaN` to the literal `'nan'` rather than null — related to KI-1 but distinct).
 
 ---
 

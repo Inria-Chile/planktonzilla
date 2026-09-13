@@ -85,6 +85,26 @@ def _legacy_id_cell(column: str, values) -> str:
     return values[0] if column == "wikidata_ID" else f"{values[0]}.0"
 
 
+def _pinned(override, column: str, derived: str) -> str:
+    """An override for a mapping ATTRIBUTE wins only when it is non-empty.
+
+    The opposite rule to the id columns two lines below, and deliberately so. A blank id override
+    means "publish no id for this row" — that is what the thirteen committed rows are for. A blank
+    attribute override cannot mean the same thing: `root_class` and `plankton` have no empty legal
+    value, and every one of those thirteen rows leaves all three columns blank because it has no
+    opinion about them. Reading blank as "pin the empty string" would therefore blank thirteen
+    published cells the moment this was wired up.
+
+    So blank means "no opinion, take the model's value", which is what makes wiring this inert
+    today and useful the first time a curator writes a value here — until now the loader read these
+    three columns and the renderer dropped them, so a pin would have been silently discarded.
+    """
+    if override is None:
+        return derived
+    pinned = (override.get(column) or "").strip()
+    return pinned or derived
+
+
 def legacy_rows(store) -> list:
     """The 19-column wide rows, as dicts of strings, in the release's stored physical order.
 
@@ -111,16 +131,26 @@ def legacy_rows(store) -> list:
 
         override = store.overrides.get(key)
         ids = store.identifiers.get(mapping.taxon_id, {})
+
+        # The three attribute columns the override table also declares. `living` is not among
+        # them: it is not independent, it IS `root_class == "living"`, so it follows whichever
+        # root_class wins rather than being pinnable on its own.
+        root_class = _pinned(override, "root_class", mapping.root_class)
+        qualifier = _pinned(override, "qualifier", blank_qualifier[mapping.qualifier])
+        plankton = _pinned(override, "plankton", "True" if mapping.plankton else "False")
+
         row = {
             "Dataset": mapping.dataset,
             "Raw_Labels": mapping.verbatim,
             **project7(store, mapping.taxon_id),
             "proposed_label": mapping.concept,
-            "plankton": "True" if mapping.plankton else "False",
-            "living": "True" if mapping.root_class == "living" else "False",
-            "root_class": mapping.root_class,
-            "qualifier": blank_qualifier[mapping.qualifier],
+            "plankton": plankton,
+            "living": "True" if root_class == "living" else "False",
+            "root_class": root_class,
+            "qualifier": qualifier,
         }
+        # Ids take the override even when it is BLANK — blanking one per row rather than per taxon
+        # is what all 13 committed override rows exist to do, and the reason each of them states.
         for column in LEGACY_ID_COLUMNS:
             row[column] = override[column] if override is not None else _legacy_id_cell(column, ids.get(column, []))
         rows.append(row)
