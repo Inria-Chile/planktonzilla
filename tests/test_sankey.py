@@ -23,6 +23,8 @@ import json
 from collections import Counter
 from datetime import datetime
 
+import pytest
+
 from planktonzilla.planktonzilla_dataset import sankey as sk
 
 RANKS = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]
@@ -392,3 +394,68 @@ def test_the_domain_column_mixes_real_domains_and_non_living_labels():
 def test_the_real_payload_is_json_serialisable_and_round_trips():
     payload = sk.build_ribbons(_real_rows(), Counter())
     assert json.loads(json.dumps(payload))["meta"]["n_ribbons"] == payload["meta"]["n_ribbons"]
+
+
+def test_provenance_still_calls_a_one_argument_fetcher_when_no_revision_is_set(monkeypatch):
+    """The unset case forwards NOTHING, not `revision=None`.
+
+    Three tests above install `lambda repo_id:` doubles, and those doubles are what pin the
+    fetcher's arity. This pins the idiom that keeps them valid, so a later tidy-up to
+    unconditional forwarding goes red here — naming the reason — rather than breaking three
+    unrelated provenance tests with a TypeError.
+    """
+    seen = []
+    monkeypatch.setattr(sk, "fetch_dataset_metadata", lambda repo_id: seen.append(repo_id) or {})
+    sk.provenance("org/plankton-9K")
+    assert seen == ["org/plankton-9K"]
+
+
+def test_dataset_revision_reaches_the_scan_and_the_provenance_together(monkeypatch):
+    """One flag, both reads — because pinning half of them produces a page that lies.
+
+    The scan supplies the counts and the metadata fetch supplies the sha the page prints. Pin the
+    scan alone and the page shows branch counts under the default branch's sha; pin the fetch
+    alone and it shows the branch's sha over default-branch counts. Neither is detectable from
+    the page itself, which is why the two are one flag.
+    """
+    seen = {}
+    monkeypatch.setattr(sk, "fetch_dataset_metadata", lambda repo_id, **kw: seen.update(fetch=kw) or {})
+    sk.provenance("org/plankton-9K", revision="v1.1")
+    assert seen["fetch"]["revision"] == "v1.1"
+
+    import datasets
+
+    def _fake_load_dataset(repo_id, **kw):
+        seen["scan"] = kw
+        raise _ScanReachedError
+
+    # Patched on the real module object, because `scan_dataset` imports `load_dataset` from it
+    # inside the function body — a fresh attribute lookup on every call. Replacing the whole
+    # module in sys.modules would also have to satisfy `from datasets.distributed import ...`.
+    monkeypatch.setattr(datasets, "load_dataset", _fake_load_dataset)
+    with pytest.raises(_ScanReachedError):
+        sk.scan_dataset("org/plankton-9K", workers=1, retries=1, revision="v1.1")
+
+    assert seen["scan"]["revision"] == "v1.1"
+    assert seen["scan"]["streaming"] is True
+
+
+def test_dataset_version_still_suppresses_the_hub_lookup_and_changes_no_read(monkeypatch):
+    """--dataset-version and --dataset-revision are one character apart and do opposite things.
+
+    The first pins the STRING the page prints and suppresses the Hub lookup entirely; the second
+    pins what is READ. This asserts the first still reads nothing even when the second is set, so
+    the two cannot be conflated by a later edit.
+    """
+    monkeypatch.setattr(
+        sk,
+        "fetch_dataset_metadata",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("the Hub must not be consulted here")),
+    )
+    meta = sk.provenance("org/plankton-9K", version="v1.2", revision="v1.1")
+    assert meta["dataset_version"] == "v1.2"
+    assert meta["dataset_revision"] == ""
+
+
+class _ScanReachedError(Exception):
+    """Raised by the fake reader so the test stops at the kwargs it is actually about."""

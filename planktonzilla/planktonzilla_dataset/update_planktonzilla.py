@@ -50,6 +50,7 @@ from .constants import (
     default_num_proc,
     has_per_row_instrument,
     resolve_instrument,
+    revision_kwargs,
     validate_instrument_coverage,
     validate_license_coverage,
 )
@@ -329,8 +330,13 @@ def main(cfg: DictConfig) -> None:
 
     sync_taxonomy = cfg.get("sync_taxonomy", True)
 
-    logger.info(f"Loading dataset {repo_id}.")
-    ds = load_dataset(repo_id, split="train")
+    # Read and write are the same repo_id here, so the two revisions must be set independently:
+    # push_revision alone is a read-modify-write across two different refs, which discards on the
+    # second run exactly what the first one published.
+    read_revision = cfg.get("read_revision", None)
+    source = f"{repo_id}@{read_revision}" if read_revision else str(repo_id)
+    logger.info(f"Loading dataset {source}.")
+    ds = load_dataset(repo_id, split="train", **revision_kwargs(read_revision))
 
     if sync_taxonomy:
         logger.info(f"Re-syncing taxonomy and external IDs on {repo_id} from taxonomy CSV {taxo_csv_path}.")
@@ -351,16 +357,18 @@ def main(cfg: DictConfig) -> None:
     dataset_final.save_to_disk(output_dir)
 
     if cfg.get("push_to_hub", False):
-        # revision is only forwarded when set, so the default call stays byte-identical.
+        # revision is only forwarded when set, so the default call stays byte-identical. Spelled
+        # `push_kwargs` rather than `revision_kwargs` because the read above now calls the helper
+        # of that name, and a local binding would shadow it for the whole function.
         push_revision = cfg.get("push_revision", None)
-        revision_kwargs = {"revision": push_revision} if push_revision else {}
+        push_kwargs = revision_kwargs(push_revision)
         target = f"{cfg.repo_id}@{push_revision}" if push_revision else str(cfg.repo_id)
         logger.info(f"Pushing updated Planktonzilla dataset to HuggingFace Hub as «{target}».")
         dataset_final.push_to_hub(
             cfg.repo_id,
             private=cfg.get("push_as_private", True),
             token=cfg.get("hf_token", None),
-            **revision_kwargs,
+            **push_kwargs,
         )
     else:
         logger.warning("Skipping pushing dataset to HuggingFace Hub, set push_to_hub=True to change this.")

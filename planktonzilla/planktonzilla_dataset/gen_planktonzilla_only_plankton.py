@@ -43,6 +43,7 @@ from planktonzilla.planktonzilla_dataset.constants import (
     INSTRUMENT_COLS,
     TAXONOMY_RANKS,
     default_num_proc,
+    revision_kwargs,
 )
 from planktonzilla.planktonzilla_dataset.taxonomy import TaxonomyError
 from planktonzilla.planktonzilla_dataset.taxonomy import render as taxonomy_render
@@ -315,6 +316,13 @@ def main() -> None:
     parser.add_argument("--val-frac", type=float, default=VAL_FRAC, help="Fraction of each dataset reserved for validation.")
     parser.add_argument("--num-proc", type=int, default=default_num_proc(), help="Number of processes for dataset ops.")
     parser.add_argument(
+        "--revision",
+        default=None,
+        help="Hub revision (branch, tag or sha) to read. Default: the repo's default branch. "
+        "Pin it whenever --vocabulary is pinned — reproducing a released vocabulary's class ids "
+        "from a floating source is the inconsistency --vocabulary exists to prevent.",
+    )
+    parser.add_argument(
         "--vocabulary",
         default=None,
         help="A released label-vocabulary tag (v1.0, v1.2) whose class ids this build must reproduce. "
@@ -324,7 +332,20 @@ def main() -> None:
 
     num_proc = args.num_proc
 
-    ds = load_dataset(args.repo_id, split="train")
+    if args.vocabulary and not args.revision:
+        # A warning, not a refusal: `--vocabulary v1.0` against the default branch is the
+        # documented invocation and refusing it would break a published command. But pinning the
+        # ids while leaving the rows they are derived from floating is half a reproduction, and
+        # the half that is missing is the one that silently changes.
+        logger.warning(
+            f"--vocabulary={args.vocabulary} pins the class ids, but --revision is unset, so the "
+            f"rows they are computed over come from whatever the repo's default branch holds "
+            f"today. Pass --revision to pin both."
+        )
+
+    source = f"{args.repo_id}@{args.revision}" if args.revision else str(args.repo_id)
+    logger.info(f"Loading {source} from the HuggingFace Hub.")
+    ds = load_dataset(args.repo_id, split="train", **revision_kwargs(args.revision))
     ds = build_only_plankton(ds, num_proc=num_proc, vocabulary=args.vocabulary)
 
     train_ds, val_ds, test_ds = stratified_split_by_dataset(

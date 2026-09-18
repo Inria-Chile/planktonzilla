@@ -450,7 +450,7 @@ def test_resolve_base_location(tmp_path):
     assert mk.resolve_base_location(cfg, out) is None
 
     cfg.base = "hub"
-    assert mk.resolve_base_location(cfg, out) == ("hub", cfg.base_repo_id)
+    assert mk.resolve_base_location(cfg, out) == mk.BaseLocation("hub", cfg.base_repo_id, None)
 
     # `local` is "what is already there": nothing there yet degrades to no base (a
     # first build on a clean machine must be able to run the documented incremental
@@ -458,13 +458,104 @@ def test_resolve_base_location(tmp_path):
     cfg.base = "local"
     assert mk.resolve_base_location(cfg, out) is None
     out.mkdir()
-    assert mk.resolve_base_location(cfg, out) == ("disk", out)
+    assert mk.resolve_base_location(cfg, out) == mk.BaseLocation("disk", out, None)
 
     # An explicit path never degrades: a typo must not silently become "no base".
     cfg.base = "/data/staged-pz"
-    kind, target = mk.resolve_base_location(cfg, out)
-    assert kind == "disk"
-    assert str(target) == "/data/staged-pz"
+    location = mk.resolve_base_location(cfg, out)
+    assert location.kind == "disk"
+    assert str(location.target) == "/data/staged-pz"
+
+
+def test_base_revision_on_a_disk_base_is_refused_not_ignored(tmp_path):
+    """A revision that pins nothing is a user who believes they pinned something.
+
+    Silently ignoring it is how a run reads the default branch while its operator is certain it
+    read `v1.1`. Both non-Hub bases refuse, and each names the fix.
+    """
+    cfg = _compose(job_name="test_make_baserev_disk")
+    GlobalHydra.instance().clear()
+    OmegaConf.set_struct(cfg, False)
+    out = tmp_path / "planktonzilla-17M"
+    out.mkdir()
+
+    cfg.base_revision = "v1.1"
+
+    for base in ("local", "/data/staged-pz"):
+        cfg.base = base
+        with pytest.raises(ValueError, match="reads from disk"):
+            mk.resolve_base_location(cfg, out)
+
+    # base=null is the third way to pin nothing, and it is refused for the same reason.
+    cfg.base = None
+    with pytest.raises(ValueError, match="reads no base at all"):
+        mk.resolve_base_location(cfg, out)
+
+    # And with base=hub the same value is carried, not refused.
+    cfg.base = "hub"
+    assert mk.resolve_base_location(cfg, out).revision == "v1.1"
+
+
+def test_base_revision_reaches_both_load_base_and_the_preflight(monkeypatch):
+    """The read and the check that vouches for it must name the same ref.
+
+    Pinning one without the other is worse than pinning neither: the pre-flight reports the
+    DEFAULT branch's sha for a run that is about to read a branch, so the banner vouches for
+    bytes the run never sees.
+    """
+    seen = {}
+    monkeypatch.setattr(mk, "load_dataset", lambda *a, **k: seen.update(load=(a, k)) or MagicMock())
+
+    mk.load_base(mk.BaseLocation("hub", "org/ds", "v1.1"))
+    assert seen["load"][0] == ("org/ds",)
+    assert seen["load"][1]["revision"] == "v1.1"
+
+    api = MagicMock()
+    api.dataset_info.return_value = SimpleNamespace(sha="abc1234def", last_modified=None, private=False)
+    checks = mk.check_base_on_hub("org/ds", token=None, timeout=5, api=api, revision="v1.1")
+
+    assert api.dataset_info.call_args.kwargs["revision"] == "v1.1"
+    assert checks[0].ok
+    assert "org/ds@v1.1" in checks[0].detail
+
+
+def test_the_default_run_forwards_no_revision_to_load_base(monkeypatch):
+    """Unset means unchanged: not `revision=None`, which is a different call.
+
+    Forwarding `revision=None` changes the `datasets` cache key and breaks test doubles that pin
+    a narrower signature, so `constants.revision_kwargs` forwards nothing at all. This is the
+    companion to `hub_reads == []` above, which proves the default run does not read the Hub;
+    this proves that when it DOES read, it reads exactly as it always did.
+    """
+    seen = {}
+    monkeypatch.setattr(mk, "load_dataset", lambda *a, **k: seen.update(load=(a, k)) or MagicMock())
+
+    mk.load_base(mk.BaseLocation("hub", "org/ds", None))
+    assert "revision" not in seen["load"][1], seen["load"][1]
+
+    api = MagicMock()
+    api.dataset_info.return_value = SimpleNamespace(sha="abc1234def", last_modified=None, private=False)
+    mk.check_base_on_hub("org/ds", token=None, timeout=5, api=api)
+    assert "revision" not in api.dataset_info.call_args.kwargs
+
+
+def test_a_pinned_read_that_404s_names_the_branch_first(monkeypatch):
+    """On a pinned read a 404 is far more often a missing branch than a missing repo."""
+    from huggingface_hub.errors import RepositoryNotFoundError
+
+    api = MagicMock()
+    # huggingface_hub 1.x makes `response` a required keyword on the HTTP error base and reads
+    # several attributes off it while formatting the message, so the double is a MagicMock rather
+    # than a namespace enumerating whichever ones this version happens to touch.
+    api.dataset_info.side_effect = RepositoryNotFoundError("nope", response=MagicMock(status_code=404))
+
+    pinned = mk.check_base_on_hub("org/ds", token=None, timeout=5, api=api, revision="v1.1")
+    assert not pinned[0].ok
+    assert "revision «v1.1» does not exist" in pinned[0].detail
+
+    # Unpinned, the wording is unchanged — there is no branch to blame.
+    plain = mk.check_base_on_hub("org/ds", token=None, timeout=5, api=api)
+    assert "revision" not in plain[0].detail
 
 
 def test_build_overrides_is_module_level_and_frozen_by_default():

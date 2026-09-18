@@ -71,6 +71,7 @@ from planktonzilla.planktonzilla_dataset.constants import (
     DEFAULT_PLANKTONZILLA_DATASET_REPO_ID,
     DEFAULT_TAXONOMY_CSV_FILENAME,
     TAXONOMY_RANKS,
+    revision_kwargs,
 )
 from planktonzilla.planktonzilla_dataset.taxonomy import load_taxonomy
 from planktonzilla.utils.logger import get_pylogger
@@ -260,7 +261,7 @@ def build_ribbons(rows: list[dict], counts: Counter) -> dict:
 
 
 # --------------------------------------------------------------- dataset scan
-def scan_dataset(repo_id: str, workers: int, retries: int = 4) -> Counter:
+def scan_dataset(repo_id: str, workers: int, retries: int = 4, *, revision: str | None = None) -> Counter:
     """Aggregate per-(dataset, proposed_label_lower, root_class) image counts from the HF dataset.
 
     Driven by the HuggingFace ``datasets`` library in streaming mode with column projection, so only
@@ -279,7 +280,7 @@ def scan_dataset(repo_id: str, workers: int, retries: int = 4) -> Counter:
     from datasets.distributed import split_dataset_by_node
 
     base = (
-        load_dataset(repo_id, split="train", streaming=True)
+        load_dataset(repo_id, split="train", streaming=True, **revision_kwargs(revision))
         .select_columns(["dataset", "proposed_label", "root_class"])
         .with_format("arrow")
     )
@@ -399,7 +400,7 @@ def fetch_logo(url: str) -> str:
         return ""
 
 
-def fetch_dataset_metadata(repo_id: str) -> dict:
+def fetch_dataset_metadata(repo_id: str, revision: str | None = None) -> dict:
     """Return ``{'version', 'revision', 'modified'}`` for a Hub dataset, or ``{}`` if unreachable.
 
     A Hub dataset is versioned by commit, so the version reported here is the first of: an
@@ -411,7 +412,7 @@ def fetch_dataset_metadata(repo_id: str) -> dict:
         from huggingface_hub import HfApi
 
         api = HfApi()
-        info = api.dataset_info(repo_id)
+        info = api.dataset_info(repo_id, **revision_kwargs(revision))
     except Exception as exc:
         logger.warning("Hub metadata for %s is unavailable (%s); the page will omit the dataset version.", repo_id, exc)
         return {}
@@ -451,7 +452,7 @@ def dataset_name(dataset: str) -> str:
     return dataset.rstrip("/").rsplit("/", 1)[-1]
 
 
-def provenance(dataset_repo: str, *, version: str = "", offline: bool = False) -> dict:
+def provenance(dataset_repo: str, *, version: str = "", offline: bool = False, revision: str | None = None) -> dict:
     """Return the build-provenance block the page shows in its ``Dataset version`` / ``Generated`` tiles.
 
     ``generated_at`` is stamped locally in UTC to the second, so it is always present. The dataset
@@ -463,7 +464,10 @@ def provenance(dataset_repo: str, *, version: str = "", offline: bool = False) -
     meta = {"generated_at": stamp, "dataset_version": version, "dataset_revision": "", "dataset_modified": ""}
     if version or offline:
         return meta
-    hub = fetch_dataset_metadata(dataset_repo)
+    # Conditional forwarding at this internal boundary, not an unconditional keyword: the
+    # tests install one-parameter `lambda repo_id:` doubles here, and those doubles are what pin
+    # the arity. An unconditional `revision=None` would force them wider for no behaviour change.
+    hub = fetch_dataset_metadata(dataset_repo, **revision_kwargs(revision))
     meta["dataset_version"] = hub.get("version", "")
     meta["dataset_revision"] = hub.get("revision", "")
     meta["dataset_modified"] = hub.get("modified", "")
@@ -525,9 +529,16 @@ def _build_parser() -> argparse.ArgumentParser:
         help="dataset the page is about — repo id or URL (default: --dataset-repo, else the published dataset)",
     )
     ap.add_argument(
+        "--dataset-revision",
+        default=None,
+        help="Hub revision (branch, tag or sha) to SCAN and to resolve provenance from. Not the "
+        "same as --dataset-version, which only pins the string the page prints and reads nothing",
+    )
+    ap.add_argument(
         "--dataset-version",
         default="",
-        help="pin the version shown on the page instead of resolving it from the Hub",
+        help="pin the version shown on the page instead of resolving it from the Hub. Changes "
+        "nothing about what is READ — that is --dataset-revision",
     )
     ap.add_argument("--logo-url", default=DEFAULT_LOGO_URL, help="official Inria lockup SVG to embed")
     ap.add_argument(
@@ -559,7 +570,7 @@ def resolve_counts(args: argparse.Namespace) -> Counter:
             raise SystemExit(f"error: samples JSON not found: {args.samples_json}")
         return load_sample_counts(args.samples_json)
     if args.dataset_repo:
-        return scan_dataset(args.dataset_repo, args.workers)
+        return scan_dataset(args.dataset_repo, args.workers, revision=args.dataset_revision)
     fallback = Path("samples.json")
     if fallback.exists():
         logger.info("Using %s for image counts (pass --no-samples to ignore it).", fallback)
@@ -588,7 +599,14 @@ def main(argv: list[str] | None = None) -> int:
 
     dataset = resolve_dataset_name(args)
     payload = build_ribbons(rows, counts)
-    payload["meta"].update(provenance(dataset, version=args.dataset_version, offline=args.no_assets))
+    payload["meta"].update(
+        provenance(
+            dataset,
+            version=args.dataset_version,
+            offline=args.no_assets,
+            revision=args.dataset_revision,
+        )
+    )
     meta = payload["meta"]
 
     fonts_css = "" if args.no_assets else fetch_fonts()

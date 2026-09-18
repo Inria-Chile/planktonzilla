@@ -197,6 +197,50 @@ DATASET_LICENSES = {
     )
 }
 
+# Sources whose terms, taxonomy rows and importer configs are recorded AHEAD of their arrival in
+# the published planktonzilla-17M. They are in DATASET_LICENSES, DATASET_IMPORT_CONFIGS, the
+# default registry and planktonzilla_taxonomy.csv, and absent from the frozen artifact until the
+# v1.2 push. Listed explicitly so every consumer tolerates exactly these six and nothing else;
+# when a pending source lands, it comes out of this set in the same commit that regenerates
+# samples.json.
+#   frepj           registry since 2026-08-25, published on its own as project-oceania/planktonzilla-frepj
+#   daplankton      registry since 2026-08-27
+#   tara_pacific_*  registry since 2026-08-26
+#
+# This used to be a private set in tests/test_dataset_licenses.py, which was the wrong home: it is
+# not a fact about testing. Three consumers now depend on it — that test's samples.json coverage
+# check, the golden-diff harness's excluded_datasets, and the coverage-anomaly rule that makes the
+# harness's "876 uncovered rows" honest rather than a licence to subtract whatever disagrees. Two
+# transcriptions of six names would drift, and the drift would read as a data difference.
+RECORDED_BUT_NOT_YET_PUBLISHED = frozenset(
+    {
+        "frepj",
+        "daplankton",
+        "tara_pacific_bongo",
+        "tara_pacific_decknet",
+        "tara_pacific_hsn",
+        "tara_pacific_manta",
+    }
+)
+
+
+def revision_kwargs(revision) -> dict:
+    """``{"revision": r}`` when ``r`` is set, ``{}`` when it is not.
+
+    The one line that keeps a default run byte-identical. A read path that spells
+    ``revision=cfg.get("base_revision")`` inline forwards ``revision=None``, which is NOT the same
+    call as forwarding nothing: it changes the ``datasets`` cache key, and it breaks the two
+    existing test doubles that pin a one- and a two-parameter signature
+    (``tests/test_sankey.py`` installs ``lambda repo_id: ...``). Every read-side pin in this
+    package goes through here, so "unset means unchanged" is one testable property rather than
+    seven copies of the same conditional.
+
+    The write side already spells this idiom inline twice (``make_planktonzilla`` and
+    ``update_planktonzilla``, both for ``push_revision``); those are left alone because changing
+    them moves no read and this helper exists to stop the READ paths from drifting.
+    """
+    return {"revision": revision} if revision else {}
+
 
 def license_fields(dataset_name: str) -> dict:
     """Return the ``{license, license_url}`` pair for one ``dataset`` column value.

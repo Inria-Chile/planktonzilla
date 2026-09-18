@@ -158,14 +158,29 @@ def legacy_rows(store) -> list:
     return rows
 
 
-def render_wide_csv(store) -> bytes:
-    """The 19-column CSV, byte-exact: LF line endings, ``QUOTE_MINIMAL``, the frozen header order."""
+def write_wide_csv(rows) -> bytes:
+    """The 19-column CSV bytes from plain row dicts: LF, ``QUOTE_MINIMAL``, UTF-8, no BOM.
+
+    Split out of :func:`render_wide_csv` so a caller that has rows but no store cannot reinvent
+    the byte format. The one such caller today is the golden-diff harness, which reconstructs the
+    published rows from the Hub and must produce a file `pz_taxonomy diff --against` can read: if
+    it spelled the writer itself, every divergence in quoting or line ending would arrive at a
+    reviewer as a data difference.
+
+    Every property the frozen table depends on lives here and nowhere else — 0 CR bytes in
+    372,916, the 229 comma-bearing fields quoted and nothing else, one trailing newline.
+    """
     buffer = io.StringIO(newline="")
     writer = csv.writer(buffer, lineterminator="\n", quoting=csv.QUOTE_MINIMAL)
     writer.writerow(LEGACY_HEADER)
-    for row in store.rows():
+    for row in rows:
         writer.writerow([row[column] for column in LEGACY_HEADER])
     return buffer.getvalue().encode("utf-8")
+
+
+def render_wide_csv(store) -> bytes:
+    """The 19-column CSV, byte-exact: LF line endings, ``QUOTE_MINIMAL``, the frozen header order."""
+    return write_wide_csv(store.rows())
 
 
 def _norm(value):
@@ -227,14 +242,24 @@ def project_row(row) -> dict:
     return values
 
 
+# The taxonomy columns the build actually writes to the Hub, in CONSOLIDATED_COLUMNS order.
+# Lifted out of published_projection's body so the golden-diff harness's READ list is the same
+# object as the build's WRITE list: two transcriptions of this tuple would drift, and a harness
+# reading a column the build stopped writing reports nulls as a data difference.
+#
+# It is the 16 of the CSV's 19 that reach the Hub. `Dataset`/`Raw_Labels` are the key (published
+# as `dataset`/`original_label`, which is why they are not in LOOKUP_COLUMNS) and `living` is
+# never published at all.
+PUBLISHED_TAXONOMY_COLUMNS = tuple(column for column in constants.CONSOLIDATED_COLUMNS if column in LOOKUP_COLUMNS)
+
+
 def published_projection(rows) -> list:
     """The taxonomy columns of the published dataset, in ``constants.CONSOLIDATED_COLUMNS`` order.
 
     ``plankton`` is a ``bool`` and ``living`` is excluded, which is the published contract and
     differs from both the CSV header and the 16-column lookup.
     """
-    columns = [column for column in constants.CONSOLIDATED_COLUMNS if column in LOOKUP_COLUMNS]
-    return [{column: values[column] for column in columns} for values in map(project_row, rows)]
+    return [{column: values[column] for column in PUBLISHED_TAXONOMY_COLUMNS} for values in map(project_row, rows)]
 
 
 def label_vocabulary(rows, datasets=None) -> list:

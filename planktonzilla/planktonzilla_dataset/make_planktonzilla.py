@@ -148,15 +148,42 @@ def select_sources(cfg) -> list:
     return [entry for entry in registry if entry["name"] in wanted]
 
 
-def resolve_base_location(cfg, output_dir: Path):
-    """Resolve ``cfg.base`` to ``("hub", repo_id)`` / ``("disk", path)`` / ``None``."""
+@dataclass(frozen=True)
+class BaseLocation:
+    """Where a run splices from, and — for the Hub — at which revision.
+
+    A 2-tuple carried the first two fields. The third does not belong beside them positionally,
+    because it is meaningful for exactly one value of ``kind``: a revision on a disk base is not a
+    narrower read, it is a user who believes they pinned something. That is refused in
+    :func:`resolve_base_location` rather than ignored.
+    """
+
+    kind: str  # "hub" | "disk"
+    target: object  # repo id (hub) or Path (disk)
+    revision: str | None = None
+
+
+def resolve_base_location(cfg, output_dir: Path) -> "BaseLocation | None":
+    """Resolve ``cfg.base`` to a :class:`BaseLocation`, or ``None`` for "splice into nothing"."""
     base = cfg.get("base")
+    base_revision = cfg.get("base_revision", None)
     if base is None:
+        if base_revision:
+            raise ValueError(
+                f"base_revision={base_revision!r} is set, but base is null, so this run reads no "
+                f"base at all and the revision pins nothing. Pass base=hub, or drop base_revision."
+            )
         return None
 
     base = str(base)
     if base == "hub":
-        return ("hub", cfg.base_repo_id)
+        return BaseLocation("hub", cfg.base_repo_id, base_revision)
+
+    if base_revision:
+        raise ValueError(
+            f"base_revision={base_revision!r} is set, but base={base!r} reads from disk, where a "
+            f"Hub revision means nothing. Pass base=hub, or drop base_revision."
+        )
     if base == "local":
         if not output_dir.exists():
             # A FIRST build on this machine: `local` means "what is already there", and
@@ -174,17 +201,24 @@ def resolve_base_location(cfg, output_dir: Path):
                 "(and base_repo_id= when it should differ from repo_id)."
             )
             return None
-        return ("disk", output_dir)
-    return ("disk", Path(base))
+        return BaseLocation("disk", output_dir)
+    return BaseLocation("disk", Path(base))
 
 
-def load_base(location) -> Dataset:
-    """Load the base dataset from the Hub or from disk, unwrapping a single-split dict."""
-    kind, target = location
+def load_base(location: BaseLocation) -> Dataset:
+    """Load the base dataset from the Hub or from disk, unwrapping a single-split dict.
+
+    The Hub read is pinnable. Without that pin the second run of an additive re-push re-reads the
+    repo default branch and silently discards the columns the first run published to
+    ``push_revision`` — the splice would find no such column on the base and concatenate a
+    null-filled one over it.
+    """
+    kind, target = location.kind, location.target
 
     if kind == "hub":
-        logger.info(f"Loading base dataset from the HuggingFace Hub: {target}.")
-        return load_dataset(target, split="train")
+        source = f"{target}@{location.revision}" if location.revision else str(target)
+        logger.info(f"Loading base dataset from the HuggingFace Hub: {source}.")
+        return load_dataset(target, split="train", **constants.revision_kwargs(location.revision))
 
     logger.info(f"Loading base dataset from disk: {target}.")
     ds = load_from_disk(str(target))
@@ -518,10 +552,11 @@ def log_plan(*, selected, registry, base_location, output_dir, cfg, dropped) -> 
 
     if base_location is None:
         base_desc = "nothing (building only what `sources` rebuilds)"
-    elif base_location[0] == "hub":
-        base_desc = f"HuggingFace Hub «{base_location[1]}»"
+    elif base_location.kind == "hub":
+        ref = f"@{base_location.revision}" if base_location.revision else ""
+        base_desc = f"HuggingFace Hub «{base_location.target}{ref}»"
     else:
-        base_desc = f"disk «{base_location[1]}»"
+        base_desc = f"disk «{base_location.target}»"
 
     logger.info("=" * 78)
     logger.info(f"Base          : {base_desc}")
@@ -689,21 +724,36 @@ def check_base_on_disk(location) -> list:
     return checks
 
 
-def check_base_on_hub(repo_id, *, token, timeout, api=None) -> list:
+def check_base_on_hub(repo_id, *, token, timeout, api=None, revision=None) -> list:
     """Check the Hub dataset a ``base=hub`` run would read is there and readable.
 
     A private or unauthorised repo answers 404, so ``RepositoryNotFoundError`` means
     "missing OR invisible to this token" and is worded that way. ``GatedRepoError`` —
     which SUBCLASSES it in huggingface_hub 1.x, hence the order of the handlers — is the
     one case where the repo is known to exist and only access is missing.
+
+    ``revision`` is the same pin :func:`load_base` will use, and passing it here is the point of
+    the parameter rather than a nicety: unpinned, this reports the DEFAULT branch's sha for a run
+    that is about to read a branch, which is worse than reporting nothing at all.
     """
     api = api or HfApi(token=token)
 
     try:
-        info = api.dataset_info(repo_id, timeout=timeout)
+        info = api.dataset_info(repo_id, timeout=timeout, **constants.revision_kwargs(revision))
     except GatedRepoError:
         return [Check("base-hub", False, f"«{repo_id}» is gated; request access on the Hub before a base=hub run")]
     except RepositoryNotFoundError:
+        # A 404 on a PINNED read is far more often a branch that does not exist than a repo that
+        # does not, so the pinned wording names that first.
+        if revision:
+            return [
+                Check(
+                    "base-hub",
+                    False,
+                    f"«{repo_id}@{revision}» not found: either the repo is invisible to this token "
+                    f"(a private repo needs HF_TOKEN), or revision «{revision}» does not exist on it",
+                )
+            ]
         return [Check("base-hub", False, f"«{repo_id}» not found, or invisible to this token (a private repo needs HF_TOKEN)")]
     except Exception as e:
         # Broad on purpose: huggingface_hub 1.x speaks httpx, whose transport errors are
@@ -711,7 +761,7 @@ def check_base_on_hub(repo_id, *, token, timeout, api=None) -> list:
         # network is down". A pre-flight has to report that, not crash on it.
         return [Check("base-hub", False, f"«{repo_id}» could not be read: {type(e).__name__}: {e}")]
 
-    detail = f"«{repo_id}» readable"
+    detail = f"«{repo_id}@{revision}» readable" if revision else f"«{repo_id}» readable"
     if info.sha:
         detail += f", revision {info.sha[:7]}"
     if info.last_modified:
@@ -1088,11 +1138,16 @@ def run_preflight(*, selected, cfg, base_location, output_dir, taxo_csv_path, ve
         checks += download_checks
 
     if base_location is not None:
-        kind, target = base_location
+        kind, target = base_location.kind, base_location.target
         if kind == "disk":
             checks += check_base_on_disk(target)
         elif remote:
-            checks += check_base_on_hub(target, token=cfg.get("hf_token", None), timeout=cfg.check_timeout)
+            checks += check_base_on_hub(
+                target,
+                token=cfg.get("hf_token", None),
+                timeout=cfg.check_timeout,
+                revision=base_location.revision,
+            )
 
     checks += check_writable_dir("output-dir", output_dir)
     checks += check_writable_dir("data-dir", cfg.data_dir, needed_bytes=estimated_bytes)
@@ -1358,8 +1413,8 @@ def main(cfg: DictConfig) -> None:
     # pointing at a directory that does not exist bought a full multi-hour build and then
     # raised FileNotFoundError from load_from_disk with everything discarded. Skipped only
     # when the pre-flight below is going to make the same check, so it is reported once.
-    if base_location is not None and base_location[0] == "disk" and not preflight_will_run:
-        broken = [check for check in check_base_on_disk(base_location[1]) if not check.ok and check.blocking]
+    if base_location is not None and base_location.kind == "disk" and not preflight_will_run:
+        broken = [check for check in check_base_on_disk(base_location.target) if not check.ok and check.blocking]
         if broken:
             raise RuntimeError(
                 "Nothing was built: the `base` this run would splice into is not usable, and it is only read at the "
@@ -1483,6 +1538,19 @@ def main(cfg: DictConfig) -> None:
         push_revision = cfg.get("push_revision", None)
         revision_kwargs = {"revision": push_revision} if push_revision else {}
         target = f"{cfg.repo_id}@{push_revision}" if push_revision else str(cfg.repo_id)
+
+        # Reading one ref and writing another is legitimate exactly once — the run that CREATES the
+        # branch. Every run after that has to be told, because the failure is silent: the second
+        # run reads the default branch, finds no new column on it, and concatenates a null-filled
+        # one over what the first run published.
+        if push_revision and base_location is not None and base_location.kind == "hub" and not base_location.revision:
+            logger.warning(
+                f"push_revision={push_revision} with base_revision=null: this run READ the repo "
+                f"default branch and is WRITING «{push_revision}». That is right for the run that "
+                f"creates the branch and wrong for every run after it — a second run would re-read "
+                f"the default branch and discard what this one publishes. Pass "
+                f"base_revision={push_revision} next time."
+            )
 
         logger.info(f"Pushing consolidated Planktonzilla dataset to HuggingFace Hub as «{target}».")
         ds.push_to_hub(
