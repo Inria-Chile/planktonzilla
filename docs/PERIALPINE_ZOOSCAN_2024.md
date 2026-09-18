@@ -269,9 +269,10 @@ curl -sL "https://entrepot.recherche.data.gouv.fr/api/access/datafile/708600" \
   | tail -n +3 | tr -d '"' | cut -f5 | sort | uniq -c | sort -rn
 ```
 
-`tests/test_perialpine_zooscan_record.py` pins the tables above against each other and against the
-README on every CI run, so a hand edit that breaks the arithmetic of this file fails there rather
-than quietly becoming the record.
+`tests/test_perialpine_zooscan_record.py` pins the three inventory tables above against each other
+on every CI run, and checks that the README and KI-32 still link here, so a hand edit that breaks
+the arithmetic of this file fails there rather than quietly becoming the record. The prose is not
+pinned — rewording this file is free.
 
 ---
 
