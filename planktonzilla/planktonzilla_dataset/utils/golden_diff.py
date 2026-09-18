@@ -1437,18 +1437,64 @@ def main(argv=None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
     if args.refresh:
-        status = _run_refresh(args)
+        status = _guarded(_refresh_stage, args)
         if status != EXIT_OK:
             return status
 
     if not args.report:
         return EXIT_OK
+    return _guarded(_report_stage, args)
+
+
+def _guarded(stage, args) -> int:
+    """Run one CLI stage and turn every way it can fail into the code that failure actually IS.
+
+    This is the function that makes "1 and 2 are never conflated" true of the PROCESS and not only
+    of the docstring. Without it, a stage that raises leaves ``main`` through the interpreter's own
+    error path, and Python exits 1 — so an 18-column reference nobody can diff, a manifest with a
+    truncated JSON tail, or one flaky ``dataset_info`` call all report themselves to CI as "the
+    taxonomy moved". That is the single worst answer this harness can give, because it is specific,
+    plausible and wrong, and it sends a reviewer looking for a change to the table instead of at the
+    reference that could not be read.
+
+    One conversion site for both stages, and it reads the code OFF the exception rather than
+    re-deciding it: two places that each decide what a refusal is worth is how one of them
+    eventually returns a 1. An UNEXPECTED exception is a 2 for the same reason — "could not read"
+    is the honest description of a traceback, and "the data differs" is a claim about the data that
+    nothing here is in a position to make. The traceback survives at debug level, because a refusal
+    a maintainer cannot reproduce is its own problem.
+    """
+    try:
+        return stage(args)
+    except GoldenDiffError as error:
+        print(f"REFUSED: {error}")
+        return error.exit_code
+    except Exception as error:
+        logger.debug("the %s stage raised", stage.__name__, exc_info=True)
+        print(
+            f"REFUSED: {type(error).__name__}: {error}. The harness could not read its own inputs, "
+            f"which is exit 2 and never exit 1 — a traceback is not evidence that the taxonomy has "
+            f"moved. Re-run --refresh rather than hand-editing the reference or its manifest."
+        )
+        return EXIT_REFUSED
+
+
+def _report_stage(args) -> int:
+    """The offline stages in order: the age warning, the opt-in revision check, then the diff.
+
+    ``warn_if_aged`` runs on EVERY report and not only under ``--check-revision``. Age is offline
+    information — it is a date the manifest already carries — so gating the warning on the networked
+    flag meant the one state it describes, a reference nobody has refreshed in a year, was silent in
+    exactly the CI run that reads the manifest on every PR.
+    """
+    manifest_path = Path(args.manifest)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else None
+    if manifest is not None:
+        warn_if_aged(manifest)
 
     if args.check_revision:
-        if not Path(args.manifest).exists():
-            return _refuse(f"--check-revision needs a manifest and {args.manifest} does not exist")
-        manifest = json.loads(Path(args.manifest).read_text(encoding="utf-8"))
-        warn_if_aged(manifest)
+        if manifest is None:
+            return _refuse(f"--check-revision needs a manifest and {manifest_path} does not exist")
         status = check_revision(manifest, allow_stale=args.allow_stale_revision)
         if status != EXIT_OK:
             return status
@@ -1456,12 +1502,11 @@ def main(argv=None) -> int:
     return report(args.reference, args.manifest, args.package, args.waivers, summary=args.summary, as_json=args.as_json)
 
 
-def _run_refresh(args) -> int:
-    """The refresh half of the CLI, with every refusal it can raise turned into exit 2.
+def _refresh_stage(args) -> int:
+    """The refresh half of the CLI. Every refusal it can raise is converted by :func:`_guarded`.
 
-    Split out of :func:`main` so the ``try`` that converts a :class:`GoldenDiffError` into a code
-    lives in one place: every refusal in this module is a 2, and a second conversion site is how one
-    of them would eventually come back as a 1.
+    It raises rather than catching, so the conversion from an exception to an exit code happens in
+    exactly one place for both stages.
     """
     revision = args.revision or recorded_revision(args.manifest)
     if revision is None:
@@ -1470,19 +1515,15 @@ def _run_refresh(args) -> int:
             "branch and the reference will be baselined against whatever is there.",
             args.repo_id,
         )
-    try:
-        reference = refresh(
-            args.repo_id,
-            revision,
-            workers=args.workers,
-            block_size=args.block_size,
-            shards=args.shards,
-            reference_path=args.reference,
-            manifest_path=args.manifest,
-        )
-    except GoldenDiffError as error:
-        print(f"REFUSED: {error}")
-        return EXIT_REFUSED
+    reference = refresh(
+        args.repo_id,
+        revision,
+        workers=args.workers,
+        block_size=args.block_size,
+        shards=args.shards,
+        reference_path=args.reference,
+        manifest_path=args.manifest,
+    )
     logger.info("refreshed %d pairs, %d disagreement(s)", reference.manifest["pairs"], len(reference.disagreements))
     return EXIT_OK
 
