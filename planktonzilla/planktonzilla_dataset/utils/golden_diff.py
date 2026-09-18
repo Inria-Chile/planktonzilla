@@ -92,6 +92,7 @@ import argparse
 import hashlib
 import json
 import logging
+import os
 import time
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
@@ -152,10 +153,17 @@ DEFAULT_WAIVERS_PATH = Path(__file__).parent / "GOLDEN_DIFF_WAIVERS.json"
 DEFAULT_BLOCK_SIZE = 65536
 
 # PROCESSES, not threads. `HfFileSystem` funnels every read through one fsspec asyncio loop thread,
-# so a thread pool tops out around 1.42x no matter how wide it is; 16 processes complete the sweep
-# in 57.7 s. `workers=1` runs in-process instead, which is how the offline tests drive `refresh`
-# without a subprocess boundary standing between them and their fakes.
-DEFAULT_WORKERS = 16
+# so a thread pool tops out around 1.42x no matter how wide it is. `workers=1` runs in-process
+# instead, which is how the offline tests drive `refresh` without a subprocess boundary standing
+# between them and their fakes.
+#
+# Derived from the host rather than fixed at 16. Each worker materialises one shard's projected
+# columns, so the width is bounded by MEMORY, not by how many reads the Hub will serve: a first
+# live sweep at 16 on a 4-CPU host lost 72 of 189 shards to `BrokenProcessPool`, because one
+# OOM-killed worker takes the whole pool — and the Hub answered a run that wide with 429s besides.
+# Twice the CPU count keeps the pool fed while a worker waits on the network, and the cap keeps a
+# large host from rediscovering the same wall.
+DEFAULT_WORKERS = max(2, min(16, (os.cpu_count() or 2) * 2))
 
 SHARD_READ_ATTEMPTS = 4
 SHARD_RETRY_BACKOFF_SECONDS = 2.0
@@ -621,6 +629,23 @@ def _dispatch(jobs, workers: int, label: str) -> list:
     return outcomes
 
 
+def _outcome_path(outcome, job) -> str:
+    """The shard an outcome belongs to, whether it succeeded, failed, or died with the pool.
+
+    A `ShardReadError` carries its own path, but a `BrokenProcessPool` carries nothing — and that
+    is exactly the failure a reviewer most needs named, because one OOM-killed worker fails every
+    outstanding future at once and a refusal listing 72 question marks says nothing about which
+    read was too big. The job tuple always knows, so the path comes from there when the exception
+    cannot supply it.
+    """
+    return getattr(outcome, "path", None) or job[1]
+
+
+def _with_paths(outcomes, jobs) -> list:
+    """Pair each outcome with its shard's path, so a refusal can name what failed."""
+    return [(_outcome_path(outcome, job), outcome) for outcome, job in zip(outcomes, jobs, strict=True)]
+
+
 # ── Step 15, part 1: the schema gate ───────────────────────────────────────────────────────────
 
 
@@ -932,7 +957,7 @@ def refresh(
     started = time.time()
     gate_jobs = [(fs, path, (), SHARD_READ_ATTEMPTS) for path in paths]
     gate_outcomes = _dispatch(gate_jobs, workers, "schema gate")
-    fingerprint = gate_schemas(_settled_reads(gate_outcomes))
+    fingerprint = gate_schemas(_settled_reads(_with_paths(gate_outcomes, gate_jobs)))
     logger.info("schema gate: %d footers, %.1f s, fingerprint %s", len(paths), time.time() - started, fingerprint[:12])
 
     indices = None if shards is None else resolve_shard_selection(shards, len(paths))
@@ -948,7 +973,7 @@ def refresh(
 
     started = time.time()
     jobs = [(fs, path, COVERED_HUB_COLUMNS, SHARD_READ_ATTEMPTS) for path in selected]
-    reads = _settled_reads(_dispatch(jobs, workers, "shard read"))
+    reads = _settled_reads(_with_paths(_dispatch(jobs, workers, "shard read"), jobs))
 
     cells: dict = {}
     rows_scanned = 0
@@ -992,14 +1017,15 @@ def _settled_reads(outcomes) -> list:
     once — reporting whichever failure was collected first sends a reviewer chasing a shard that is
     no more broken than the other three.
     """
-    failures = [outcome for outcome in outcomes if isinstance(outcome, BaseException)]
+    failures = [(path, outcome) for path, outcome in outcomes if isinstance(outcome, BaseException)]
     if failures:
-        paths = [getattr(failure, "path", "?") for failure in failures]
+        paths = [path for path, _ in failures]
+        shown = paths if len(paths) <= 8 else [*paths[:8], f"... and {len(paths) - 8} more"]
         raise GoldenDiffError(
             f"{len(failures)} of {len(outcomes)} shard(s) would not read, so NO reference was "
-            f"written: {paths}. The first failure was: {failures[0]}"
+            f"written: {shown}. The first failure was: {failures[0][1]}"
         )
-    return list(outcomes)
+    return [outcome for _path, outcome in outcomes]
 
 
 def _isoformat(value) -> str | None:
