@@ -1158,6 +1158,16 @@ def _coverage_lines(manifest, rendered_rows, buckets, waived_ids) -> list:
     by_dataset = Counter(row["Dataset"] for row in rendered_rows if row["Dataset"] in excluded)
     pending = ", ".join(f"{name} {count}" for name, count in by_dataset.most_common())
     absent_sources = ", ".join(sorted({dataset for dataset, _label in absent}))
+    # `compared_cells` is the DENOMINATOR — what the gate claims to have checked — and it excludes
+    # `living` deliberately (23,712 = 1,482 x 16, not x 17). The numerator beside it is whatever
+    # `diff_published` reported, and that DOES include `living`, because the reference carries all
+    # 19 columns and the differ iterates every one of them.
+    #
+    # So a changed `root_class` prints TWO differing cells, not one: the real change and its
+    # synthesised shadow. That asymmetry is deliberate and is left as it is, because it can only
+    # ever over-report. Making the numerator match the denominator would mean filtering `living`
+    # out of the differ's output, and a filter that hides a column is exactly the kind of thing
+    # that later hides a column it should not have.
     compared_cells = pairs * len(COMPARED_COLUMNS)
     synthesised = ", ".join(SYNTHESISED_COLUMNS)
 
@@ -1227,7 +1237,11 @@ def report(reference_csv, manifest, package_dir, waivers, *, summary: bool = Fal
             f"refuses rather than emit a column it cannot justify."
         )
 
-    committed_sha = sha256_bytes(Path(constants.DEFAULT_TAXONOMY_CSV_FILENAME).read_bytes())
+    # Hashed from the rows THIS report is diffing, not from the default CSV path. Under a
+    # non-default --package those are different tables, and warning about a file the run never
+    # looked at is worse than not warning: it is a specific claim about the wrong artifact. The
+    # bytes are already in hand, since `rendered_rows` is what the diff below compares.
+    committed_sha = sha256_bytes(render.write_wide_csv(rendered_rows))
     if committed_sha != manifest_data.get("taxonomy_csv_sha256"):
         # A WARNING and not a refusal: comparing a CHANGED table against the frozen Hub is the whole
         # point, so refusing here would disable the gate exactly when it is needed.

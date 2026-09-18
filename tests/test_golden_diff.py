@@ -1016,3 +1016,57 @@ def test_refresh_is_the_only_entry_point_that_lists_or_opens_hub_files(gd):
 
     assert "report" not in offenders, f"the report stage reaches the Hub: {sorted(offenders.get('report', ()))}"
     assert set(offenders) <= allowed, f"Hub call(s) outside the refresh path: {_unexpected(offenders, allowed)}"
+
+
+def test_the_harness_refuses_when_the_renderer_stops_deriving_living_from_root_class(gd):
+    """`living` is the one column the reference invents, and this is the only thing guarding it.
+
+    The harness synthesises `living` because the published schema has no such column, deriving it
+    exactly as `render.py:148` does. That is legitimate only while the derivation actually holds.
+    If a curator ever pins `living` directly, or the column grows a third state, then synthesising
+    it is no longer reproduction — it is invention, and a reference carrying invented cells is
+    exactly what this gate exists to prevent.
+
+    Left untested when the module was written, on the reasoning that only a `render.py` edit can
+    break it. That is true and is not a reason to leave it unpinned: an untested refusal is a
+    refusal nobody knows is still wired up, and this one stands between a synthesised column and a
+    reference the harness cannot justify.
+    """
+    ok = [
+        {"Dataset": "zooscan", "Raw_Labels": "calanus", "living": "True", "root_class": "living"},
+        {"Dataset": "zooscan", "Raw_Labels": "fibre", "living": "False", "root_class": "detritus"},
+    ]
+    assert gd.check_living_derivation(ok) == []
+
+    # Each of the two ways the derivation can break, in both directions.
+    pinned_true = [{"Dataset": "d", "Raw_Labels": "l", "living": "True", "root_class": "detritus"}]
+    pinned_false = [{"Dataset": "d", "Raw_Labels": "l", "living": "False", "root_class": "living"}]
+    for broken in (pinned_true, pinned_false):
+        found = gd.check_living_derivation(broken)
+        assert found == broken, "a row whose living disagrees with its root_class must be reported"
+
+    # It reports EVERY broken row, not the first: a reviewer needs to know whether one curator
+    # pinned one cell or the derivation stopped holding across the table.
+    many = pinned_true * 3 + ok
+    assert len(gd.check_living_derivation(many)) == 3
+
+
+def test_the_report_refuses_a_broken_living_derivation_with_exit_two(gd, monkeypatch, tmp_path):
+    """And the refusal is wired into `report`, at exit 2 rather than exit 1.
+
+    A broken derivation means the reference cannot be justified — "I will not vouch for this" —
+    and not "the data differs". Getting that code wrong would send a reviewer looking for a
+    taxonomy change that nobody made.
+    """
+    monkeypatch.setattr(
+        gd,
+        "check_living_derivation",
+        lambda rows: [{"Dataset": "zooscan", "Raw_Labels": "calanus", "living": "True", "root_class": "detritus"}],
+    )
+    reference = Path(gd.DEFAULT_REFERENCE_PATH)
+    manifest = Path(gd.DEFAULT_MANIFEST_PATH)
+    if not reference.exists() or not manifest.exists():
+        pytest.skip(f"needs the committed reference at {reference} and manifest at {manifest}")
+
+    status = gd.report(str(reference), str(manifest), gd.loader.PACKAGE_DIR, str(gd.DEFAULT_WAIVERS_PATH))
+    assert status == gd.EXIT_REFUSED
