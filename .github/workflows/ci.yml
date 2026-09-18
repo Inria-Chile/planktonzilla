@@ -140,3 +140,22 @@ jobs:
         with:
           header: taxonomy-published-cells
           path: /tmp/taxonomy_comment.md
+
+      # Unconditional, unlike the steps above: the golden diff answers a different question, and
+      # one that a taxonomy-only trigger would miss. `pz_taxonomy diff` asks "did this PR move a
+      # published cell?"; this asks "does the CSV still describe the rows actually published in
+      # planktonzilla-17M?" — which can start failing because the REFERENCE was refreshed, or
+      # because a build path changed what a rebuild would write, with the taxonomy untouched.
+      #
+      # Zero network. It reads the committed reference and manifest, which is the whole reason
+      # they are committed: a gate that only runs when someone remembers to run it is
+      # indistinguishable from no gate.
+      - name: Golden diff against the published dataset
+        run: |
+          {
+            echo "### Golden diff: the CSV vs the published dataset"
+            echo
+            echo '```'
+            uv run pz_golden_diff --report --summary
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

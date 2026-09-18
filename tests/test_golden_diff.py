@@ -795,6 +795,42 @@ def test_a_reference_missing_a_column_raises_rather_than_reporting(gd, tmp_path,
     assert "living" in str(caught.value)
 
 
+def test_the_cli_turns_every_unreadable_state_into_two_and_never_one(
+    gd, tmp_path, monkeypatch, covered_reference, published_datasets
+):
+    """`main` returns 2 for anything it could not read — including states that RAISE.
+
+    The companion to the test above, and the place the exit-code promise is actually kept. `report`
+    raising `KeyError` is correct and is the contract that test pins; what must not follow from it
+    is a PROCESS that exits 1, because an exception leaving `main` takes the interpreter's own error
+    path and the interpreter's own error path is exit 1 — the code this suite reserves for "the
+    taxonomy moved". A reviewer reading a red CI job cannot tell that 1 from a real one, and will go
+    looking for a change to the table that nobody made.
+
+    Three unreadable states, one for each way in: a reference the differ cannot subscript, a
+    manifest that is not JSON, and a refresh whose very first Hub call dies. The third is the
+    "a flaky network can only ever produce 2" clause stated as a test rather than as a docstring.
+    """
+    header = tuple(column for column in LEGACY_HEADER if column != "living")
+    reference_path, manifest_path = _write_pair(
+        tmp_path, _rewrite(covered_reference, header, lambda row: None), published_datasets
+    )
+    argv = ["--report", "--reference", str(reference_path), "--manifest", str(manifest_path)]
+    assert gd.main(argv) == 2, "an eighteen-column reference is unreadable, not a data difference"
+
+    manifest_path.write_text("{not json at all", encoding="utf-8")
+    assert gd.main(argv) == 2, "a truncated manifest is unreadable, not a data difference"
+
+    def dead_socket(*args, **kwargs):
+        raise OSError("connection reset by peer")
+
+    monkeypatch.setattr(gd, "refresh", dead_socket)
+    refreshed = gd.main(
+        ["--refresh", "--revision", _FROZEN_SHA, "--reference", str(reference_path), "--manifest", str(manifest_path)]
+    )
+    assert refreshed == 2, "a flaky network must never be able to produce a data-difference verdict"
+
+
 def test_extra_columns_in_the_reference_are_free(gd, tmp_path, covered_reference, published_datasets):
     """A twentieth column in the reference changes nothing, because the differ iterates the render.
 
