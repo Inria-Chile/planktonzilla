@@ -840,11 +840,17 @@ Two structural gaps deserve naming, because most of Tier 1 traces back to them:
 - **`imagefolder_is_complete()` means "non-empty"**, and two importers violate that premise by
   construction (#29, #24, #7, #25, #26). A per-importer expected-count check would collapse five findings
   into one fix.
-- **The golden-diff harness still does not exist**, and it is now the only thing standing between the
-  remaining findings and a fix. `KNOWN_ISSUES.md` says so, and — measured 2026-09-13, see the caveat
-  at the top of that file — also says it is **cheaply buildable**, which the wording here and there
-  previously left sounding otherwise. 1.1 and 1.6 are both cases where a diff against the published
-  reference would have caught silent corruption immediately.
+- **~~The golden-diff harness still does not exist~~ — BUILT AND GREEN, 2026-09-18.** It was the
+  only thing standing between the remaining findings and a fix, and it no longer stands there:
+  `pz_golden_diff` read all 189 published shards (17,404,047 rows) and found **23,712 cells
+  compared, 0 differing**. 1.1 and 1.6 are both cases where this would have caught silent
+  corruption immediately, and both are now fixable as ordinary work rather than blocked.
+
+  Two qualifications, because "the gate is green" is the easiest sentence in this document to
+  over-read. It covers **1,482 of the 2,358 mapped rows and 16 of the 19 columns** — 873 rows
+  belong to sources that are not published yet, so nothing reachable from this repository can
+  check them. And it certifies that the CSV and the Hub agree *today*; it is the precondition for
+  judging a proposed change to published data, not approval of one. See KI-33 for the numbers.
 
 A third gap is visible only in hindsight, from the defects listed under
 [What the review missed](#what-the-review-missed): **nothing in the project pins the contracts that span

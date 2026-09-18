@@ -15,15 +15,33 @@ and *would* alter behavior, so it is recorded here instead.
 published HuggingFace reference**. Never regenerate or re-publish the frozen artifacts from a
 changed code path without that diff.
 
-> **Two caveats on that gate, both recorded 2026-08-04 and both still true — read before relying
-> on it.** Caveat 1 gained a feasibility measurement on 2026-09-13; the caveat itself is unchanged.
+> **Two caveats on that gate, both recorded 2026-08-04. Caveat 1 is NO LONGER TRUE — the harness
+> was built, run and found green on 2026-09-18 — and is kept, struck through, with its three wrong
+> figures corrected inline, because what it got wrong is instructive. Caveat 2 still stands.**
 >
-> 1. **The golden-diff harness does not exist.** No test in `tests/` compares a build against
->    the published `project-oceania/planktonzilla-17M`. The `test_taxonomy_known_issues.py` /
->    `test_taxonomy_lookup_equivalence.py` suites *pin* today's values so a change goes red —
->    valuable, but that is not the same as diffing against the published reference. Every
->    `→ HARDEN-01` below is therefore an IOU against a gate nobody has built yet. **Building it
->    is the prerequisite for closing any HIGH-risk item**, not a step inside closing one.
+> 1. **~~The golden-diff harness does not exist.~~ IT EXISTS, AND IT IS GREEN (2026-09-18).**
+>    `pz_golden_diff` was built and run against the published dataset that day. The paragraphs
+>    below are kept as the record of what was believed before it was built — three of their
+>    figures were wrong, and each correction is marked inline.
+>
+>    **The result.** All 189 shards read, 17,404,047 rows, in 104.6 s (14.5 s of that the schema
+>    gate over every footer, before a single data byte). **23,712 cells compared, 0 differ.**
+>    0 pairs whose published rows disagree with each other. The reference and its manifest are
+>    committed beside this file, and `--report` is offline, so CI runs the gate on every PR.
+>
+>    So the claim this file has never been able to make, it can now make: **the CSV describes the
+>    rows actually published in `planktonzilla-17M`**, for the 62.8% of its rows the Hub carries.
+>    Every `→ HARDEN-01` below stops being an IOU and becomes ordinary work — **for those rows**.
+>    What the gate cannot see is KI-33, and it is not small: 876 of the 2,358 rows, plus `living`,
+>    which is synthesised from a column the gate DOES check and therefore cannot fail on its own.
+>    (The new `instrument` / `instrument_id` columns are outside the 19 entirely, so the gate is
+>    silent about them too — see KI-33 gap 4. They are columns of the dataset, not of the CSV,
+>    which is the same distinction the second correction below is about.)
+>
+>    **"Building it is the prerequisite for closing any HIGH-risk item"** still holds and is now
+>    satisfiable. Note what it does NOT say: a green gate is not a licence to re-push. It says the
+>    CSV and the Hub agree today, which is the precondition for judging a change, not a judgement
+>    about one.
 >
 >    **It is cheap, though — measured 2026-09-13.** Nothing above says the gate is hard to build,
 >    but nothing said what it would cost either, and the gap has been filled in by assumption: that
@@ -45,11 +63,48 @@ changed code path without that diff.
 >    step that materialises the Hub's projected columns into that file — not the diff, and not the
 >    reporting.
 >
+>    > **CORRECTION (2026-09-18, measured over all 189 shards).** "The whole published corpus
+>    > reduces to the same 2,358 rows" is **wrong**, and wrong in the direction that matters. The
+>    > Hub carries **1,482** distinct pairs across **15** datasets; the CSV has 2,358 across 21,
+>    > with zero duplicate keys. `csv − hub = 876`; `hub − csv = 0`. The estimate generalised from
+>    > one sampled shard: the median shard holds **1** distinct pair, not "a few dozen".
+>    >
+>    > A harness built to the description above would report 876 spurious deletions on its first
+>    > run — and the obvious fix, subtracting whatever the Hub lacks, is exactly how a *real*
+>    > deletion later becomes invisible. `golden_diff` therefore accounts for all 876 explicitly
+>    > (873 unpublished + 3 orphaned) and treats any uncovered row in neither list as **exit 2**.
+>    >
+>    > The read cost was also over-estimated, in the other direction: **104.6 s**, not ~31 min,
+>    > with the projection pushed into the parquet reader and a 64 KiB block size. Threads do not
+>    > help — `HfFileSystem` funnels every read through one fsspec loop — and the process count is
+>    > bounded by MEMORY, not by the Hub: 16 workers OOM-killed the pool on a 4-CPU host and drew
+>    > a wall of 429s, so the default is now derived from the CPU count.
+>
 >    **Two columns cannot be covered**: the published schema has no `living` and no `license` /
 >    `license_url`, so a Hub-derived reference reaches 17 of the 19 CSV columns and the harness has
 >    to either fill those two or compare the other seventeen and say so. (That absence is also why
 >    KI-23's re-push obligation exists — the licence columns are derived here and have never been
 >    published.)
+>
+>    > **CORRECTION (2026-09-18).** "17 of the 19 CSV columns" is wrong twice over.
+>    > `license`/`license_url` are columns of the **dataset**, not of the CSV — they are
+>    > `constants.LICENSE_COLS`, and the 19-column `LEGACY_HEADER` has never contained them — so
+>    > subtracting them from a count of CSV columns is a category error. This same block already
+>    > says "those 18 columns" four paragraphs up, and contradicts itself. Correct: **18 of 19 are
+>    > present on the Hub, 1 is absent (`living`)**, and the harness emits all 19.
+>    >
+>    > It emits all 19 because the escape hatch this paragraph offers — "compare the other
+>    > seventeen and say so" — **is not reachable**. `write.diff_published` indexes the reference
+>    > with a bare subscript (`write.py:891`), so a reference missing a column raises
+>    > `KeyError: 'living'` rather than degrading to a partial comparison. (Its sibling
+>    > `_diff_tables` uses `.get(column, "")`; the asymmetry looks like an oversight, but fixing
+>    > it would change a tool curators run by hand and is left alone deliberately.)
+>    >
+>    > `living` is instead **synthesised** from `root_class`, which is itself compared —
+>    > `render.py:148`, verified to hold on all 2,358 rows. That means it cannot fail
+>    > independently, so it is excluded from the compared-cell count and named on every run. A
+>    > clean `living` column proves nothing, and the harness says so rather than letting it pad
+>    > the total.
 > 2. **`HARDEN-01` / `HARDEN-02` are defined in `.planning/REQUIREMENTS.md`, which is
 >    gitignored** (`.gitignore:248`) and therefore absent from a fresh clone. The identifiers
 >    are stable enough to cite, but a reader outside the maintainer's working tree cannot
@@ -65,7 +120,7 @@ Phase 4, so these failures are no longer silent — only their *handling* is unc
 
 Entries are numbered in the order they were found, not the order they are read: KI-1..7 and
 KI-16..25 are **code behavior**, KI-8..13 and KI-31 are **data** defects in the frozen taxonomy CSV,
-KI-32 is a **source-side** limit on what a new column can assert,
+KI-32 is a **source-side** limit on what a new column can assert, KI-33 is a **coverage** limit on what the golden diff can check,
 KI-14..15 are **source-license** questions, and KI-26 is a **data** defect in a source's own
 sidecar tables; KI-27 through KI-30 are decision logs like KI-24. Numbers are never reused or renumbered — commits,
 code comments and tests cite them.
@@ -106,6 +161,7 @@ code and the CSV on 2026-09-12; the corrections that pass found are noted inline
 | KI-30 | decision log | none (same rows) | `planktonset1.0` is fetched from a mirror we keep; NCEI's on-demand generator cannot resume or be size-checked |
 | KI-31 | open, wontfix | data-side | 20 source labels publish two different taxa across datasets |
 | KI-32 | open, source-side | none (additive) | the instrument column cannot say which UVP5 imaged a row, and names no device for `frepj` |
+| KI-33 | open, coverage | none (read-only) | the golden diff is green over 1,482 of 2,358 rows and 16 of 19 columns; what it cannot see |
 
 Two obligations belong to archived entries but are **still open**, and are restated here so
 archiving cannot bury them:
@@ -113,24 +169,27 @@ archiving cannot bury them:
 | from | open obligation |
 | --- | --- |
 | KI-21 / KI-24 | `zoolake` and `jedioceans` are verified for reachability and archive shape only; **no full import has completed** |
-| KI-23 | deriving the two licence columns is safe; **re-pushing** the published artifact from that schema is still gated |
+| KI-23 | deriving the two licence columns is safe; **re-pushing** the published artifact from that schema is still gated — but the gate now EXISTS (KI-33), so the obligation has a discharge path: green on the default branch, push to a `push_revision` branch, re-run `pz_golden_diff --refresh --revision <branch>`. Until 2026-09-18 that second refresh was not merely ungated but *impossible*: every read path ignored `revision=`, so nothing downstream could see the branch it had just written |
 
 *KI-17's obligation is **discharged** (2026-08-28): MedPlanktonSet has now had a real run, and
 its imagefolder holds exactly **139** class directories, matching the 139 `medplanktonset` rows
 in `planktonzilla_taxonomy.csv`. `find_class_root` picked the right level on the archive layout
 that could not be verified when the importer was written.*
 
-**The three that want action, in order:** the **golden-diff harness** — it blocks every HIGH and
-data-side item above, and as of 2026-09-13 it is measured at roughly half an hour of projected
-parquet reads rather than the unreachable thing this file used to imply (see caveat 1); **KI-14**,
-the largest open legal exposure, which is a decision about what `whoi`'s data is actually licensed
-under and not something a patch settles; and **KI-16**'s discarded split provenance (silent, and
-not fixed by the archived KI-25).
+**The two that want action, in order:** **KI-14**, the largest open legal exposure, which is a
+decision about what `whoi`'s data is actually licensed under and not something a patch settles;
+and **KI-16**'s discarded split provenance (silent, and not fixed by the archived KI-25).
 
-Ordering the harness first is a change from earlier readings of this list, and the reason is that
-it is no longer a prerequisite anyone is waiting on someone else to satisfy: it converts KI-8,
-KI-9, KI-10, KI-31, the 19 adjudicated KI-13 collisions, KI-2's retry half, KI-3's disambiguation
-half and review finding 1.6 from "recorded rather than corrected" into ordinary work.
+**The golden-diff harness led this list until 2026-09-18 and is now built, run and green** (see
+caveat 1). It did what ordering it first was meant to do: KI-8, KI-9, KI-10, KI-31, the 19
+adjudicated KI-13 collisions, KI-2's retry half, KI-3's disambiguation half and review finding 1.6
+are now ordinary work rather than IOUs.
+
+**For the 1,482 rows the gate can see.** For the other 876 they stay recorded-not-corrected, and
+nothing about a green run changes that — 873 of those rows belong to sources that have never been
+published, so no gate reachable from this repository can say anything about them until v1.2 does.
+**Built is not clean, and clean is not complete.** KI-33 carries the numbers so this distinction
+has a citation rather than living in a reviewer's memory.
 
 ---
 
@@ -1015,6 +1074,84 @@ vocab.nerc.ac.uk that day and its prefLabel read back; none is deprecated. Two i
 deliberately the SERIES term rather than the obvious candidate — `TOOL2154` not `TOOL1577`
 (which is the UVP5 **DEEP**), and `TOOL2141` not `TOOL1578` (the UVP6 **LP**) — because the
 configs name an instrument family and not a model.*
+
+---
+
+## KI-33 — The golden diff is green over 1,482 of the 2,358 mapped rows
+
+**Where:** `planktonzilla/planktonzilla_dataset/utils/golden_diff.py`, its committed
+`golden_reference.csv` / `golden_reference.json`, and the CI step that runs `--report` on every
+PR. Pinned by `tests/test_golden_diff.py`.
+
+**Today:** the gate exists and passes. Against
+`project-oceania/planktonzilla-17M@7fd542ef`, 2026-09-18: all 189 shards read, 17,404,047 rows,
+**23,712 cells compared, 0 differ**, 0 pairs whose published rows disagree with each other. That
+retires caveat 1 at the top of this file and converts eight `→ HARDEN-01` items into ordinary
+work.
+
+It also bounds what "green" means, and the bound is the entry. **The gate sees 1,482 of the 2,358
+mapped rows (62.8%) and 16 of the 19 columns.** Those numbers print before the verdict on every
+run, including green ones, because "the golden diff passes" read as "the artifact is verified" is
+the one misreading that would make this gate worse than no gate: it would license a re-push on
+evidence that does not cover the rows being pushed.
+
+**Four gaps, all measured.**
+
+1. **873 rows in six sources the Hub does not carry.** `frepj` 229, `tara_pacific_manta` 172,
+   `tara_pacific_hsn` 159, `tara_pacific_bongo` 137, `tara_pacific_decknet` 132, `daplankton` 44.
+   These are `constants.RECORDED_BUT_NOT_YET_PUBLISHED` — curated here, awaiting v1.2. No gate
+   reachable from this repository can say anything about them, because there is nothing published
+   to compare against. They are listed in the manifest as `excluded_datasets` and cross-pinned
+   against the licence suite's independent derivation of the same six names. Closing this needs
+   the v1.2 push, not a code change.
+
+2. **3 rows that ARE mapped but carry no published image.** `planktoscope`/`Dinobryon`,
+   `planktoscope`/`Podon`, `planktoscope`/`Ptychocylis`. This is a different kind of gap from the
+   873 and must not be merged with them: `planktoscope` **is** published, so "not published yet"
+   does not explain it. Either the three are dead labels that should be retired from the CSV, or
+   the published rows are missing images that ought to be there. **The harness can only report
+   the fact; someone has to adjudicate which.** They sit in the manifest as `absent_pairs`, so
+   the gate ships accounting for them rather than red — a gate that is red on its first day
+   invites a wholesale waiver, which is worse than a recorded gap. Closing this is a curation
+   decision.
+
+   *The rule that keeps those 876 honest:* every uncovered row must appear in
+   `excluded_datasets` or `absent_pairs`. Any uncovered row in **neither** is a coverage anomaly
+   and exits **2**, not a subtraction. Without it, "subtract the rows the Hub does not have"
+   decays into "subtract whatever disagrees", and a genuine deletion later reads as a known
+   limitation.
+
+3. **`living` cannot fail independently.** The published schema has no `living` column, so the
+   harness synthesises it from `root_class` exactly as `render.py:148` derives it — verified to
+   hold on all 2,358 rows. But `root_class` is itself compared, so the two move together by
+   construction: a clean `living` column in a diff is not verification, it is arithmetic. It is
+   therefore **excluded from the compared-cell count** (23,712 = 1,482 × 16, not × 17), listed as
+   `synthesised_columns` in the manifest, and named on every run. The derivation is validated on
+   each report, and the harness refuses with exit 2 if it ever stops holding. Closing this needs
+   `living` to be published, which is a schema change to the frozen artifact.
+
+4. **`instrument` and `instrument_id` are not checked at all.** They are columns of the dataset,
+   never of the 19-column CSV, so they fall outside the reference entirely. Extra columns in a
+   reference are free — `write.diff_published` iterates the RENDERED row's keys — so a
+   branch-derived reference carrying them would pass **without them having been compared**, and
+   someone will read that as the new columns having been validated. They have not been. Checking
+   them needs a schema-level assertion the CSV cannot express, because the CSV has no opinion
+   about a per-image column. See KI-32 for what those columns can and cannot say in the first
+   place.
+
+**Frozen-output risk: none — the harness only reads.** `--refresh` reads 189 parquet footers and
+their projected columns; `--report` reads two committed files and touches no network. Nothing in
+it writes to the Hub.
+
+**What a green gate does and does not license.** It says the CSV and the published rows agree
+today, which is the *precondition* for judging a proposed change — not a judgement about one, and
+not cover for the 876 rows it cannot see. KI-23's re-push obligation is unchanged by it.
+
+*Recorded 2026-09-18, the day the gate was first run. The sweep took 104.6 s at 8 worker
+processes — the register's earlier ~31-minute estimate assumed a sequential read without the
+parquet projection pushed down. Two of that estimate's other figures were wrong and are corrected
+inline in caveat 1: the corpus reduces to 1,482 pairs and not 2,358, and 18 of the 19 columns are
+present on the Hub rather than 17.*
 
 ---
 

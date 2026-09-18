@@ -870,6 +870,21 @@ def build_manifest(
     """
     excluded = sorted(constants.RECORDED_BUT_NOT_YET_PUBLISHED)
     absent = sorted(pair for pair in csv_pairs - set(resolved) if pair[0] not in constants.RECORDED_BUT_NOT_YET_PUBLISHED)
+    if absent:
+        # DERIVED, and therefore said out loud. The report stage refuses an uncovered row that this
+        # list does not name — but this list is computed from whatever was uncovered, so a refresh
+        # run after the taxonomy grew would quietly absolve the new rows instead of failing on them,
+        # and the coverage-anomaly rule would never fire again. It cannot be a refusal (the three
+        # planktoscope rows are real and have to ship accounted-for, or the gate is red on day one
+        # and someone waives the whole check), so it is a warning that names every pair. A reviewer
+        # reads this list in the committed manifest's diff; growing it is a decision, not a default.
+        logger.warning(
+            "%d pair(s) are mapped by the taxonomy in a PUBLISHED source but carry no published "
+            "image, and are being recorded in absent_pairs: %s. Each is a per-row finding to "
+            "adjudicate (KI-33), not an exemption — check this list in the manifest's diff.",
+            len(absent),
+            [f"{dataset}/{label}" for dataset, label in absent],
+        )
     return {
         "repo_id": repo_id,
         "revision": sha,

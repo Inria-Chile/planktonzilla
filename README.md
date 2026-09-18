@@ -131,7 +131,7 @@ planktonzilla/                          # repo root
 ├── docs/                               # banner + figures used by this README
 ├── .devcontainer/                      # CUDA 12.5 + cuDNN dev container
 ├── .github/workflows/ci.yml            # CI: lint · test · dependency-isolation guard
-╰── tests/                              # pytest suite (mocks all network)
+╰── tests/                              # pytest suite (mocks the network, bar two excluded suites)
 ```
 
 ### Prerequisites
@@ -350,6 +350,30 @@ token, and the four Tara Pacific sources' `ecotaxa_project` and `orig_id`; the l
 every other source. A base that predates the column is
 filled with `{}` on its next `pz_planktonzilla base=…` run (logged loudly), so that run too
 belongs on a new `push_revision`, not over the frozen one.
+
+**Set `base_revision` on every run after the first.** `push_revision` pins what a run WRITES;
+`base_revision` pins what it READS, and they are separate knobs on purpose. The command above is
+correct exactly once — the run that creates the branch. A second run with `base_revision` unset
+re-reads the default branch, finds no `instrument` column on it, and concatenates a null-filled
+one over what the first run published. Nothing goes red; the columns simply empty. The run warns
+when it spots the pairing:
+
+```bash
+# Every run after the one that created the branch
+uv run pz_planktonzilla base=hub base_revision=v1.1 sources=[] sync_taxonomy=false \
+  push_to_hub=true push_revision=v1.1
+```
+
+The same split exists wherever the dataset is read: `pz_update_planktonzilla read_revision=…`,
+`--revision` on the only-plankton builder, and `--dataset-revision` on `pz_sankey` (which is not
+`--dataset-version`: that one pins the string the page prints and reads nothing). All default to
+null, so an unpinned run behaves exactly as it always has.
+
+**Before and after any such push, run the golden diff.** `pz_golden_diff --report` must be green
+on the default branch first — that is the evidence the CSV and the published rows agree, which is
+the precondition for judging a change rather than approval of one. After the push, re-run
+`pz_golden_diff --refresh --revision v1.1` against the branch. It covers 1,482 of the 2,358 rows
+and 16 of the 19 columns; `instrument`/`instrument_id` are NOT among them. See KI-33.
 
 `push_revision` targets a branch; `version` tags it. Tag the frozen state *first* so `v1.0`
 keeps pointing at the original bytes:
@@ -712,6 +736,11 @@ Everything CI runs mocks the network: no run reaches NCBI, Wikidata, WHOI, EcoTa
 Hugging Face Hub. The two suites CI excludes are the exception — `tests/test_datasets.py` issues
 live requests to `huggingface.co` and `datasets-server.huggingface.co`, and both it and
 `tests/test_train.py` are excluded for being network-bound and slow (~7 min), not for being broken.
+
+That holds for the golden diff too, and it is the reason its reference is committed:
+`pz_golden_diff --refresh` is networked and run by hand, while `pz_golden_diff --report` reads
+only the committed reference and manifest. CI runs the report on every PR, and a test proves the
+report path imports nothing that speaks HTTP rather than merely asserting it.
 
 #### Code Quality
 

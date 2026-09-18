@@ -283,11 +283,18 @@ def build_taxonomy_lookup(csv_path) -> dict:
 #      today, and the golden gate keeps it true.
 #   2. `pz_taxonomy check` reports zero errors. TRUE today.
 #   3. A golden diff against the PUBLISHED Hub artefact — not against the committed CSV, which is
-#      an input to the build and not its output. The published dataset carries 17.4 M rows of
-#      taxonomy joined at build time; nothing here proves the join produced what is on the Hub.
-#      That is a network job against `project-oceania/planktonzilla-17m`, and until it has been
-#      run and its result recorded, retiring the CSV would be trading a checkable artefact for an
-#      unchecked one.
+#      an input to the build and not its output. RUN, and GREEN, on 2026-09-18: `pz_golden_diff`
+#      read all 189 shards (17,404,047 rows) and found 23,712 cells compared, 0 differing, 0
+#      pairs whose published rows disagree. Its reference and manifest are committed beside
+#      KNOWN_ISSUES.md and CI re-checks them offline on every PR.
+#
+#      This condition is therefore SATISFIED for the rows the Hub carries — and that is 1,482 of
+#      the 2,358, over 16 of the 19 columns. The rest is KI-33: 873 rows belong to six sources
+#      that have never been published, 3 more are mapped but carry no published image, and
+#      `living` is synthesised from a column the gate already checks, so it cannot fail on its
+#      own. Whether "clean for every row the Hub carries" is ENOUGH to retire the CSV is a
+#      curation decision and not a mechanical one, which is why the switch below stays False: a
+#      green gate over 62.8% of the rows is evidence for that decision, not the decision.
 #
 # Until then the CSV stays committed and stays read, and the package is its provenance rather than
 # its replacement.
