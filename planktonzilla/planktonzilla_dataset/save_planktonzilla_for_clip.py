@@ -7,7 +7,9 @@ Loads the on-disk only-plankton ``DatasetDict`` (produced by
 ``gen_planktonzilla_only_plankton``) and writes WebDataset-style ``.tar`` shards,
 one folder per split. Each sample becomes a paired ``image_{i}.jpg`` (RGB JPEG)
 and ``image_{i}.txt`` (the taxonomy class string) so that WebDataset groups them
-into the same sample. ``i`` is the zero-padded index within the SPLIT, not within the
+into the same sample, plus ``image_{i}.instrument.txt`` when the split carries the
+instrument column (same sample key, since WebDataset splits on the first dot).
+``i`` is the zero-padded index within the SPLIT, not within the
 shard, so every sample's WebDataset ``__key__`` is unique across the whole split. Only
 the ``train`` and ``validation`` splits are exported.
 
@@ -81,6 +83,10 @@ def export_to_tar_shards(
 
         taxo_classes = dataset.features["label"].names
 
+        # Carried only when the split actually has it, so this stays readable for a dataset
+        # built before the instrument columns existed.
+        instrument_column = "instrument" if "instrument" in dataset.column_names else None
+
         for shard_idx in range(n_shards):
             start = shard_idx * shard_size
             end = min((shard_idx + 1) * shard_size, total_samples)
@@ -130,6 +136,22 @@ def export_to_tar_shards(
                     label_info = tarfile.TarInfo(name=f"image_{i}.txt")
                     label_info.size = len(label_bytes.getbuffer())
                     tar.addfile(label_info, label_bytes)
+
+                    # --- 3. Instrument provenance (key: image_{i}.instrument.txt) ---
+                    # WebDataset splits a member name on its FIRST dot to get the sample
+                    # `__key__`, so this lands in the SAME sample as the .jpg and .txt above
+                    # rather than creating a third one -- the extension is "instrument.txt".
+                    # Written as its own member instead of being folded into the caption
+                    # because the caption is what CLIP trains on: an instrument name in there
+                    # would teach the text tower to read gear, not taxa. Consumers that only
+                    # ask for ("jpg", "txt") are unaffected.
+                    if instrument_column is not None:
+                        instrument = example[instrument_column]
+                        if instrument:
+                            instrument_bytes = io.BytesIO(str(instrument).encode("utf-8"))
+                            instrument_info = tarfile.TarInfo(name=f"image_{i}.instrument.txt")
+                            instrument_info.size = len(instrument_bytes.getbuffer())
+                            tar.addfile(instrument_info, instrument_bytes)
 
 
 def main() -> None:

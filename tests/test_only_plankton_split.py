@@ -26,6 +26,7 @@ from datasets import ClassLabel, Dataset, Features, Value
 
 from planktonzilla.planktonzilla_dataset.gen_planktonzilla_only_plankton import (
     _splittable_size,
+    build_only_plankton,
     stratified_split_by_dataset,
 )
 
@@ -110,3 +111,65 @@ def test_sources_are_split_independently_of_each_other():
 
     assert len(train) == 1600 and len(val) == 200 and len(test) == 200
     assert sorted(set(val["dataset"])) == ["one", "two"]
+
+
+# --- instrument provenance survives the trim -----------------------------------------
+
+
+def _plankton_rows(instrument=True):
+    """A minimal dataset shaped like the consolidated one, for build_only_plankton."""
+    columns = {
+        "image": ["img-a", "img-b"],
+        "dataset": ["zooscan", "daplankton"],
+        "plankton": [True, True],
+        "Kingdom": ["animalia", "chromista"],
+        "Phylum": ["arthropoda", "ciliophora"],
+        "Class": ["", ""],
+        "Order": ["", ""],
+        "Family": ["", ""],
+        "Genus": ["", ""],
+        "Species": ["", ""],
+        "original_path": ["/zooscan/a/a.jpg", "/DAPlankton/lab_fc_x/lab_fc_b.png"],
+    }
+    if instrument:
+        columns["instrument"] = ["ZooScan", "FlowCam"]
+        columns["instrument_id"] = [
+            "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/",
+            "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1583/",
+        ]
+    return Dataset.from_dict(columns)
+
+
+def test_the_instrument_columns_survive_the_training_trim():
+    """The trim keeps image/label/dataset; instrument had to be added to that list.
+
+    `build_only_plankton` drops every other column, so before this the instrument provenance
+    reached the full dataset and then died here — never appearing in the only-plankton split,
+    the CLIP shards, or any trained model. `dataset` is not a substitute for it: DAPlankton
+    alone spans three instruments and four separate sources image with a ZooScan.
+    """
+    built = build_only_plankton(_plankton_rows(), vocabulary=None)
+
+    assert "instrument" in built.column_names
+    assert "instrument_id" in built.column_names
+    assert built["instrument"] == ["ZooScan", "FlowCam"]
+    assert set(built.column_names) == {"image", "label", "dataset", "instrument", "instrument_id"}
+
+
+def test_the_trim_still_works_on_a_dataset_built_before_the_columns_existed():
+    """Retention is conditional, so an older base does not turn into a KeyError."""
+    built = build_only_plankton(_plankton_rows(instrument=False), vocabulary=None)
+
+    assert set(built.column_names) == {"image", "label", "dataset"}
+
+
+def test_instrument_is_kept_as_a_string_not_a_classlabel():
+    """The instrument vocabulary is open; encoding it would renumber on a registry change.
+
+    That is the same trap `released_vocabulary` exists to avoid for taxa — a new source
+    bringing a new instrument must not silently move the ids of the existing ones.
+    """
+    built = build_only_plankton(_plankton_rows(), vocabulary=None)
+
+    assert built.features["instrument"] == Value("string")
+    assert built.features["instrument_id"] == Value("string")

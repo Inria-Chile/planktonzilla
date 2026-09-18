@@ -7,6 +7,10 @@ push_to_hub: true
 
 human_readable_name: "UVP6Net: plankton images captured with the UVP6"
 license: "cc-by-nc-4.0"
+# config says only 'UVP6' with no model qualifier (uvp6net.yaml:8,11). TOOL2141 is the UVP6 SERIES term --
+# deliberately not TOOL1578, which is the UVP6 *LP* the config does not claim
+instrument: "UVP6"
+instrument_id: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL2141/"
 description: |
   Plankton was imaged with UVP6 in contrasted oceanic regions. The full images were processed by the
   UVP6 firmware and the regions of interest (ROIs) around each individual object were recorded. A set

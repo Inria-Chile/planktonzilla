@@ -69,6 +69,8 @@ DATACARD_TEMPLATE = """
 
 - **Original dataset available online at:**  <{{ source_url | default("[More Information Needed]", true)}}>.
 - **Original dataset license:** <{{ license | default("[More Information Needed]", true)}}>.
+- **Imaging instrument:** {{ instrument | default("not recorded", true) }}
+{%- if instrument_id %} ([BODC L22]({{ instrument_id }})){% endif %}.
 
 ## Details
 
@@ -903,6 +905,9 @@ class DatasetImporter:
         cleanup_after_processing: When True, remove raw/intermediate files at the end.
         description / license / citation_* / source_url / paperswithcode_id / arxiv_id:
             Dataset-card metadata.
+        instrument / instrument_id: The imaging instrument and its BODC L22 term. Read by
+            constants.DATASET_INSTRUMENTS' test as the upstream source of truth, and rendered
+            on the per-source dataset card.
 
     Instance attributes set in ``__post_init__``: ``imagefolder_dir`` and ``raw_dir``
     (both derived from ``data_dir`` and the lowercased class name), plus
@@ -1003,6 +1008,17 @@ class DatasetImporter:
 
     description: str = ""
     license: str = None
+    # The imaging instrument this source's images were captured with, and its term in the
+    # BODC/SeaVoX L22 device catalogue. Declared here rather than only in constants.py so the
+    # `DATASET_INSTRUMENTS` transcription has an upstream a test can hold it against -- the half
+    # of the `license` pattern that would otherwise have no equivalent.
+    #
+    # Both are None where the repo does not document one (`frepj`), and `instrument_id` alone is
+    # None where L22 has no term for a documented instrument (`zoolake`, `lensless`,
+    # `planktonset1.0`). `instrument` is the sentinel "@per-row" for `daplankton`, whose images
+    # genuinely come from three instruments and are resolved per row. See constants.DATASET_INSTRUMENTS.
+    instrument: str = None
+    instrument_id: str = None
     citation_bibtex: str = None
     citation_apa: str = None
     source_url: str = None

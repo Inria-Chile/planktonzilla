@@ -274,7 +274,7 @@ def retrieve_ecotaxa_metadata(obj_id, session: requests.Session | None = None) -
 
 
 # Assigning taxonomy, IDs and metadata
-def _taxonomy_row(example, *, class_names, n_splits, dataset_name, lookup, lookup_cols, license_fields):
+def _taxonomy_row(example, *, class_names, n_splits, dataset_name, lookup, lookup_cols, license_fields, instrument_fields):
     """Map one example to its dataset/original_label/original_path + taxonomy fields.
 
     Hoisted out of ``RedefineDataset.redefine``'s per-split loop so it can be bound
@@ -285,6 +285,13 @@ def _taxonomy_row(example, *, class_names, n_splits, dataset_name, lookup, looku
     ``license_fields`` is the ``{license, license_url}`` pair for ``dataset_name``,
     resolved once by the caller. It rides along in this existing pass rather than in
     a second ``map``, so recording the terms costs no extra sweep over the images.
+
+    ``instrument_fields`` is the same idea for ``{instrument, instrument_id}``, with one
+    difference: it is ``None`` for a source whose instrument varies per IMAGE, and then the
+    pair is resolved here from ``short_path``. Only DAPlankton takes that branch today, and
+    it does so because its images really do come from three instruments -- the source exists
+    to benchmark exactly that domain shift. Keeping the constant sources on a pre-resolved
+    dict means 17M rows do not each pay for a lookup that cannot vary.
     """
     label_str = class_names[example["label"]]
     full_path = example["image"]["path"]
@@ -302,6 +309,7 @@ def _taxonomy_row(example, *, class_names, n_splits, dataset_name, lookup, looku
         "original_label": label_str,
         "original_path": short_path,
         **license_fields,
+        **(instrument_fields if instrument_fields is not None else constants.resolve_instrument(dataset_name, short_path)),
         **tax,
     }
 
@@ -515,7 +523,7 @@ class RedefineDataset:
         depending on which class happens to sort first.
         """
         features = ds.features.copy()
-        for column in (*constants.IDENTITY_COLS, *constants.LICENSE_COLS, *self.lookup_cols):
+        for column in (*constants.IDENTITY_COLS, *constants.LICENSE_COLS, *constants.INSTRUMENT_COLS, *self.lookup_cols):
             features[column] = Value("bool") if column == "plankton" else Value("string")
         return features
 
@@ -535,6 +543,7 @@ class RedefineDataset:
             "timestamp",
             constants.CUSTOM_METADATA_COL,
             *constants.LICENSE_COLS,
+            *constants.INSTRUMENT_COLS,
             *self.ID_STR_COLS,
             *self.ID_NUM_COLS,
         ]
@@ -570,6 +579,11 @@ class RedefineDataset:
                 lookup_cols=self.lookup_cols,
                 # Resolved once per split, not per row; raises for an unrecorded source.
                 license_fields=constants.license_fields(dataset_name),
+                # None for a per-image source, which makes _taxonomy_row resolve each row from
+                # its path instead. Both branches raise rather than emitting a null instrument.
+                instrument_fields=(
+                    None if constants.has_per_row_instrument(dataset_name) else constants.instrument_fields(dataset_name)
+                ),
             )
 
             logger.info(f"Processing split {split}...")
@@ -587,7 +601,7 @@ class RedefineDataset:
             # them is output-preserving — it just forbids the transient `null`.
             # Every column _taxonomy_row emits MUST be listed: with an explicit
             # ``features=`` the ArrowWriter raises KeyError on any unlisted output
-            # column, so the license provenance pair rides along here too.
+            # column, so the license and instrument provenance pairs ride along here too.
             map_features = Features(
                 {
                     **ds.features,
@@ -595,6 +609,7 @@ class RedefineDataset:
                     "original_label": Value("string"),
                     "original_path": Value("string"),
                     **{col: Value("string") for col in constants.LICENSE_COLS},
+                    **{col: Value("string") for col in constants.INSTRUMENT_COLS},
                     **{col: Value("string") for col in self.lookup_cols},
                 }
             )
@@ -1195,6 +1210,7 @@ def main(cfg: DictConfig) -> None:
     # a recorded license would otherwise only surface hours in, having already written
     # rows we cannot state the terms for.
     constants.validate_license_coverage(d["name"] for d in cfg.datasets)
+    constants.validate_instrument_coverage(d["name"] for d in cfg.datasets)
 
     taxo_csv_path = (
         cfg.taxonomy_csv_path if cfg.get("taxonomy_csv_path") is not None else str(constants.DEFAULT_TAXONOMY_CSV_FILENAME)

@@ -1013,6 +1013,7 @@ def test_a_usable_base_on_disk_does_not_stop_the_run(monkeypatch, tmp_path):
     monkeypatch.setattr(mk, "atomic_replace", lambda ds, path: None)
     monkeypatch.setattr(mk, "load_base", lambda location: Dataset.from_dict({"x": [1]}))
     monkeypatch.setattr(mk, "ensure_license_columns", lambda ds, where: ds)
+    monkeypatch.setattr(mk, "ensure_instrument_columns", lambda ds, where: ds)
     monkeypatch.setattr(mk, "ensure_custom_metadata", lambda ds, where: ds)
     monkeypatch.setattr(mk, "assert_consolidated_schema", lambda ds, where, reference=None: None)
     monkeypatch.setattr(mk, "assemble", lambda **kwargs: Dataset.from_dict({"x": [1]}))

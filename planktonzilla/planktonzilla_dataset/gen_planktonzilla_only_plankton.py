@@ -40,6 +40,7 @@ from datasets import (
 
 from planktonzilla.planktonzilla_dataset.constants import (
     DEFAULT_PLANKTONZILLA_DATASET_REPO_ID,
+    INSTRUMENT_COLS,
     TAXONOMY_RANKS,
     default_num_proc,
 )
@@ -67,8 +68,9 @@ def build_only_plankton(ds: Dataset, num_proc: int = 1, vocabulary: str | None =
 
     Filters to examples flagged as plankton with a non-empty Kingdom, builds a
     ``tax_label`` string by joining the non-empty taxonomy ranks, encodes each
-    unique string into an integer ``ClassLabel``, and trims the dataset to just
-    the ``image``, ``label`` and ``dataset`` columns.
+    unique string into an integer ``ClassLabel``, and trims the dataset to the
+    ``image``, ``label`` and ``dataset`` columns plus the instrument provenance
+    (``instrument`` / ``instrument_id``) when the source carries it.
 
     ``vocabulary`` is what step 8 added, and the reason to use it is that the
     default is dangerous. Computing ``sorted(set(...))`` makes the class ids a
@@ -88,7 +90,10 @@ def build_only_plankton(ds: Dataset, num_proc: int = 1, vocabulary: str | None =
 
     Returns:
         A dataset with ``image``, ``label`` (the encoded ``ClassLabel``) and
-        ``dataset`` columns.
+        ``dataset`` columns, plus ``instrument`` / ``instrument_id`` if present on
+        the input. Those are kept because per-instrument evaluation and
+        cross-instrument domain shift are questions this corpus exists to answer,
+        and a column dropped here reaches no trained model.
 
     Raises:
         TaxonomyError: If a released vocabulary is named and the data carries a
@@ -133,8 +138,18 @@ def build_only_plankton(ds: Dataset, num_proc: int = 1, vocabulary: str | None =
 
     ds = ds.map(encode_label, num_proc=num_proc)
 
-    # Keep only what we need for training.
-    ds = ds.remove_columns([c for c in ds.column_names if c not in ["image", "label", "dataset"]])
+    # Keep only what we need for training -- plus the instrument provenance, which IS needed:
+    # per-instrument evaluation and cross-instrument domain shift are the questions this corpus
+    # exists to answer (DAPlankton is in the registry precisely as a benchmark for them), and a
+    # column dropped here never reaches the only-plankton split, the CLIP shards or any trained
+    # model. `dataset` is not a substitute: DAPlankton alone spans three instruments, and four
+    # different sources image with a ZooScan.
+    #
+    # Kept as plain strings rather than a ClassLabel: the vocabulary is open (a new source can
+    # bring a new instrument) and encoding it would renumber on every registry change, which is
+    # the same trap `released_vocabulary` above exists to avoid for taxa.
+    keep = ["image", "label", "dataset", *(c for c in INSTRUMENT_COLS if c in ds.column_names)]
+    ds = ds.remove_columns([c for c in ds.column_names if c not in keep])
 
     ds = ds.cast(
         Features(
@@ -142,6 +157,7 @@ def build_only_plankton(ds: Dataset, num_proc: int = 1, vocabulary: str | None =
                 "image": ds.features["image"],
                 "label": class_label,
                 "dataset": Value("string"),
+                **{c: Value("string") for c in INSTRUMENT_COLS if c in ds.column_names},
             }
         )
     )

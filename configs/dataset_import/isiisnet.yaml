@@ -7,6 +7,10 @@ push_to_hub: true
 
 human_readable_name: "ISIISNet: plankton images captured with the ISIIS (In-situ Ichthyoplankton Imaging System)"
 license: cc-by-nc-4.0
+# config names 'an In Situ Ichthyoplankton Imaging System' and its 'linescan, shadowgraph camera'
+# (isiisnet.yaml:11-13); L22 TOOL1561 is the BellaMare/RSMAS ISIIS of Cowen and Guigand (2008)
+instrument: "ISIIS"
+instrument_id: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1561/"
 description: |
   Plankton was imaged with an In Situ Ichthyoplankton Imaging System, between surface and ~100m, over 10 days
   in July 2016, in the North Western Mediterranean Sea. This deployment was the core of the VISUFRONT cruise.

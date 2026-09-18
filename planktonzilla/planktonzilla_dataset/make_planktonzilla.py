@@ -78,6 +78,7 @@ from planktonzilla.planktonzilla_dataset.generate_planktonzilla import (
 )
 from planktonzilla.planktonzilla_dataset.taxonomy import load_taxonomy
 from planktonzilla.planktonzilla_dataset.update_planktonzilla import (
+    add_instrument_columns,
     add_license_columns,
     build_sync_dict,
     sync_columns,
@@ -245,6 +246,30 @@ def ensure_license_columns(ds: Dataset, *, where: str) -> Dataset:
         f"the revision the paper and released models are pinned to."
     )
     return add_license_columns(ds)
+
+
+def ensure_instrument_columns(ds: Dataset, *, where: str) -> Dataset:
+    """Derive the ``instrument`` / ``instrument_id`` columns when a base predates them.
+
+    Same mechanics and caveats as :func:`ensure_license_columns`, and the same necessity:
+    without it, :func:`assert_consolidated_schema` turns every ``base=hub`` run into a
+    ValueError the moment these columns join ``CONSOLIDATED_COLUMNS``, which would make the
+    migration that adds them impossible to express with this command.
+
+    Unlike the licence pair this is derivation for 20 of the 21 sources and per-row lookup for
+    the twenty-first; see :func:`update_planktonzilla.add_instrument_columns`.
+    """
+    missing = [col for col in constants.INSTRUMENT_COLS if col not in ds.column_names]
+    if not missing:
+        return ds
+
+    logger.warning(
+        f"{where} predates the instrument columns {missing}; deriving them from the `dataset` "
+        f"column (and, for per-image sources, from `original_path`). This CHANGES the published "
+        f"schema — publish it with push_revision=<branch> rather than over the revision the paper "
+        f"and released models are pinned to."
+    )
+    return add_instrument_columns(ds)
 
 
 def ensure_custom_metadata(ds: Dataset, *, where: str) -> Dataset:
@@ -1299,6 +1324,7 @@ def main(cfg: DictConfig) -> None:
     # whose redistribution terms we cannot state. Only the sources this run rebuilds are
     # checked — rows carried over from the base already carry their own license columns.
     constants.validate_license_coverage(entry["name"] for entry in selected)
+    constants.validate_instrument_coverage(entry["name"] for entry in selected)
 
     if not selected and base_location is None and not dropped:
         raise ValueError("Nothing to do: `sources` selects no source and `base` is null.")
@@ -1428,6 +1454,7 @@ def main(cfg: DictConfig) -> None:
         # Before the schema check, so a base that predates per-image licensing can still
         # be brought up to date rather than rejected for lacking the columns.
         base = ensure_license_columns(base, where="the base dataset")
+        base = ensure_instrument_columns(base, where="the base dataset")
         base = ensure_custom_metadata(base, where="the base dataset")
         assert_consolidated_schema(base, where="the base dataset")
 

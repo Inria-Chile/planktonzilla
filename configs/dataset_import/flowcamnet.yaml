@@ -6,6 +6,11 @@ hf_dataset_name: flowcamnet
 push_to_hub: true
 human_readable_name: "FlowCAMNet: plankton images captured with the FlowCAM"
 license: cc-by-nc-4.0
+# config: 'plankton images captured with the FlowCAM' (flowcamnet.yaml:7,10). TOOL1583 is L22's ONLY
+# FlowCam term and names the VS Benchtop line specifically; the config does not state a model, so the id is
+# coarser evidence than the name -- recorded in KNOWN_ISSUES
+instrument: "FlowCam"
+instrument_id: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1583/"
 description: |
   Plankton was imaged with Flowcam in contrasted oceanic regions. The full images were processed with the ImageJ
   software and the regions of interest (ROIs) around each individual object were recorded. A set of associated

@@ -65,6 +65,7 @@ Phase 4, so these failures are no longer silent — only their *handling* is unc
 
 Entries are numbered in the order they were found, not the order they are read: KI-1..7 and
 KI-16..25 are **code behavior**, KI-8..13 and KI-31 are **data** defects in the frozen taxonomy CSV,
+KI-32 is a **source-side** limit on what a new column can assert,
 KI-14..15 are **source-license** questions, and KI-26 is a **data** defect in a source's own
 sidecar tables; KI-27 through KI-30 are decision logs like KI-24. Numbers are never reused or renumbered — commits,
 code comments and tests cite them.
@@ -104,6 +105,7 @@ code and the CSV on 2026-09-12; the corrections that pass found are noted inline
 | KI-29 | decision log | MEDIUM (rebuild) | the four Tara Pacific deposits joined (18th–21st, last); the first sources with **no archive** |
 | KI-30 | decision log | none (same rows) | `planktonset1.0` is fetched from a mirror we keep; NCEI's on-demand generator cannot resume or be size-checked |
 | KI-31 | open, wontfix | data-side | 20 source labels publish two different taxa across datasets |
+| KI-32 | open, source-side | none (additive) | the instrument column cannot say which UVP5 imaged a row, and names no device for `frepj` |
 
 Two obligations belong to archived entries but are **still open**, and are restated here so
 archiving cannot bury them:
@@ -948,6 +950,71 @@ and gate a data fix on a golden diff (`HARDEN-01`). The check itself is network-
 over the committed CSV — so it runs on every push, and a NEW disagreement (a CSV edit, or a new
 source dataset reusing an existing label for a different taxon) arrives unwaived and turns the
 suite red.
+
+---
+
+## KI-32 — What the `instrument` column cannot say
+
+**Where:** `constants.DATASET_INSTRUMENTS`, the `instrument:` / `instrument_id:` fields of
+`configs/dataset_import/*.yaml`, and the two columns they produce. Pinned by
+`tests/test_dataset_instruments.py`.
+
+**Today:** every image carries the imaging instrument that took it, as a short community name
+(`instrument`) and as its term in the BODC/SeaVoX **L22** device catalogue (`instrument_id`) —
+the vocabulary the plankton-imaging community actually uses, and the one JERICO-S3's best
+practice (Martin-Cabrera et al. 2022) carries into OBIS-ENV-DATA. Darwin Core has no instrument
+term at all, which is why the URI rather than a DwC field is the interoperable half.
+
+Nineteen of the 21 sources resolve to one instrument. `daplankton` resolves **per image** from
+the merge prefix its importer leaves in `original_path`, which is right rather than a
+workaround: that source exists to benchmark recognition *across* instruments, and a single
+value for it would erase the very thing it is in the registry to measure.
+
+**Four things the column does not assert, all deliberate.** Each is a gap in what the sources
+record, not a cell nobody filled, and each is pinned by a test so a later edit cannot quietly
+turn it into a guess.
+
+1. **`global_uvp5` cannot say which UVP5.** Its own config states the source mixes UVP5-SD and
+   UVP5-HD, which "have different imagers, resulting in a different effective size range ... and
+   morphological properties (grey levels, etc.)" — i.e. exactly the kind of domain shift a
+   consumer would want to condition on. L22 *can* express it: `TOOL2109` is the StandarD and
+   `TOOL2110` the High Definition. **The vocabulary is finer than our data.** Nothing in this
+   repo marks which version imaged a given row, so the column carries the series term
+   `TOOL2154` and says "a UVP5, unspecified which". Closing this needs a per-object SD/HD marker
+   from the upstream deposit; whether `objects.tsv.gz` carries one is unknown here, and the
+   importer reads only `object_id` and `taxon` out of it.
+
+2. **`frepj` names no device at all.** Nothing in the repo does: the config says
+   "high-resolution microscopic images" and the README "40x and 100x", which is a *modality*,
+   not an instrument. L22 offers generic terms (`TOOL1034` "Inverted Microscope (generic)",
+   `TOOL2302` "Unspecified polarised light microscope") and choosing one would publish a guess
+   as a fact on all 229 rows. Both fields are null. Closing this needs the depositors.
+
+3. **Three documented instruments have no L22 term**, so they carry a name and a null id:
+   `zoolake`'s **Dual Scripps Plankton Camera** (L22's four "Scripps" entries are a Doppler
+   sonar, a plankton net and two titrators), the **lensless microscope** (zero hits across all
+   2,430 L22 terms), and `planktonset1.0`'s **ISIIS-2** — L22 has only `TOOL1561`, the 2008
+   ISIIS of Cowen and Guigand, and ISIIS-2 is a later instrument. A null id means "no standard
+   term exists", never "unknown device"; group those by the `instrument` string. Closing any of
+   the three means requesting a term from BODC.
+
+4. **The FlowCam id is finer than the evidence.** `TOOL1583` is L22's *only* FlowCam term and
+   names the "FlowCam VS [imaging only system without light scatter measurement] (Benchtop)
+   ... series" specifically, while the four FlowCam sources here say only "FlowCam". The id is
+   used because the alternative is no id for four sources; the over-specificity is recorded
+   here rather than in a footnote nobody reads.
+
+**Frozen-output risk: none as landed, gated to publish.** The columns are additive and change no
+existing value, so a from-scratch build and the `ensure_instrument_columns` back-fill are both
+ungated — the same footing as `license`/`license_url` (KI-23) and `custom_metadata`. Putting
+them on the **published** artifact is a different act and carries KI-23's standing obligation:
+it re-pushes the frozen revision and must go to a `push_revision` branch, after the golden diff.
+
+*Recorded 2026-09-18, when the columns were added. Every L22 term was resolved against
+vocab.nerc.ac.uk that day and its prefLabel read back; none is deprecated. Two ids are
+deliberately the SERIES term rather than the obvious candidate — `TOOL2154` not `TOOL1577`
+(which is the UVP5 **DEEP**), and `TOOL2141` not `TOOL1578` (the UVP6 **LP**) — because the
+configs name an instrument family and not a model.*
 
 ---
 

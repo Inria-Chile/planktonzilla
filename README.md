@@ -531,29 +531,32 @@ enters with the v1.2 release; until then published on its own as
 (2025)](https://doi.org/10.5194/essd-17-2761-2025). Each has an importer config in
 `configs/dataset_import/`:
 
-| Source | `dataset` value | Images | Description | License |
-| --- | --- | ---: | --- | --- |
-| **Global UVP5** | `global_uvp5` | 7,414,467 | Underwater Vision Profiler 5, global deployment (largest contributor) | `cc-by-4.0` |
-| **WHOI-Plankton** | `whoi` | 3,563,595 | Woods Hole Oceanographic Institution IFCB imagery | `mit` ⚠️ |
-| **JEDI-Oceans** | `jedioceans` | 1,915,882 | JEDI oceanic plankton (CPICS) | `cc-by-sa-4.0` |
-| **ZooScanNet** | `zooscan` | 1,451,745 | ZooScan scanned-sample plankton | `cc-by-nc-4.0` |
-| **ZooCamNet** | `zoocamnet` | 1,286,590 | ZooCam in-situ imaging | `cc-by-4.0` |
-| **UVP6Net** | `uvp6net` | 634,459 | Underwater Vision Profiler 6 | `cc-by-nc-4.0` |
-| **ISIISNET** | `isiisnet` | 408,166 | In-Situ Ichthyoplankton Imaging System Network | `cc-by-nc-4.0` |
-| **FlowCamNet** | `flowcamnet` | 301,247 | FlowCam imaging flow cytometry | `cc-by-nc-4.0` |
-| **PlanktoScope** | `planktoscope` | 179,720 | PlanktoScope open-hardware microscopy | `cc-by-nc-4.0` |
-| **MedPlanktonSet** | `medplanktonset` | 77,271 | Mediterranean plankton set | `cc-by-4.0` |
-| **SYKE IFCB 2022** | `syke_ifcb_2022` | 63,074 | Finnish Environment Institute, Imaging FlowCytobot | `cc-by-4.0` |
-| **PlanktonSet 1.0** | `planktonset1.0` | 60,736 | NOAA/Kaggle PlanktonSet | `other` ⚠️ |
-| **SYKE ZooScan 2024** | `sykezooscan2024` | 22,753 | Finnish Environment Institute, ZooScan | `cc-by-4.0` |
-| **ZooLake** | `zoolake` | 17,942 | Lake Greifensee (Switzerland) zooplankton | `cc0-1.0` |
-| **Lensless** | `lensless` | 6,400 | Lensless plankton microscopy (lab culture) | `cc-by-4.0` |
-| **FREPJ-Z** (v1.2) | `frepj` | 88,686 | Freshwater zooplankton of Japanese lakes and reservoirs, 40×/100× microscopy — registry only, not in the published 17M yet | `cc-by-4.0` |
-| **DAPlankton** | `daplankton` | 111,924 | Multi-instrument benchmark: 15 cultured classes imaged by IFCB, CytoSense and FlowCam, plus 31 Baltic field classes by IFCB and CytoSense — registry only, not in the published 17M yet | `cc-by-4.0` |
-| **Tara Pacific Deck net** (v1.2) | `tara_pacific_decknet` | 1,581,623 | FlowCam surface micro-plankton, Atlantic + Pacific, 2016–2018 — registry only | `cc-by-4.0` |
-| **Tara Pacific Bongo** (v1.2) | `tara_pacific_bongo` | 380,769 | FlowCam surface micro-plankton, reefs and lagoons — registry only | `cc-by-4.0` |
-| **Tara Pacific HSN** (v1.2) | `tara_pacific_hsn` | 256,352 | ZooScan surface meso-plankton, high-speed net — registry only | `cc-by-4.0` |
-| **Tara Pacific Manta** (v1.2) | `tara_pacific_manta` | 135,876 | ZooScan surface meso-plankton **and microplastics**, incl. the Great Pacific Garbage Patch — registry only | `cc-by-4.0` |
+| Source | `dataset` value | Images | Instrument | Description | License |
+| --- | --- | ---: | --- | --- | --- |
+| **Global UVP5** | `global_uvp5` | 7,414,467 | UVP5 (SD or HD, KI-32) | Underwater Vision Profiler 5, global deployment (largest contributor) | `cc-by-4.0` |
+| **WHOI-Plankton** | `whoi` | 3,563,595 | [IFCB](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1588/) | Woods Hole Oceanographic Institution IFCB imagery | `mit` ⚠️ |
+| **JEDI-Oceans** | `jedioceans` | 1,915,882 | [CPICS](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1582/) | JEDI oceanic plankton (CPICS) | `cc-by-sa-4.0` |
+| **ZooScanNet** | `zooscan` | 1,451,745 | [ZooScan](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/) | ZooScan scanned-sample plankton | `cc-by-nc-4.0` |
+| **ZooCamNet** | `zoocamnet` | 1,286,590 | [ZooCAM](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1587/) | ZooCam in-situ imaging | `cc-by-4.0` |
+| **UVP6Net** | `uvp6net` | 634,459 | [UVP6](https://vocab.nerc.ac.uk/collection/L22/current/TOOL2141/) | Underwater Vision Profiler 6 | `cc-by-nc-4.0` |
+| **ISIISNET** | `isiisnet` | 408,166 | [ISIIS](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1561/) | In-Situ Ichthyoplankton Imaging System Network | `cc-by-nc-4.0` |
+| **FlowCamNet** | `flowcamnet` | 301,247 | [FlowCam](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1583/) | FlowCam imaging flow cytometry | `cc-by-nc-4.0` |
+| **PlanktoScope** | `planktoscope` | 179,720 | [PlanktoScope](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1579/) | PlanktoScope open-hardware microscopy | `cc-by-nc-4.0` |
+| **MedPlanktonSet** | `medplanktonset` | 77,271 | [IFCB](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1588/) | Mediterranean plankton set | `cc-by-4.0` |
+| **SYKE IFCB 2022** | `syke_ifcb_2022` | 63,074 | [IFCB](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1588/) | Finnish Environment Institute, Imaging FlowCytobot | `cc-by-4.0` |
+| **PlanktonSet 1.0** | `planktonset1.0` | 60,736 | ISIIS-2 (no L22 term) | NOAA/Kaggle PlanktonSet | `other` ⚠️ |
+| **SYKE ZooScan 2024** | `sykezooscan2024` | 22,753 | [ZooScan](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/) | Finnish Environment Institute, ZooScan | `cc-by-4.0` |
+| **ZooLake** | `zoolake` | 17,942 | Dual Scripps Plankton Camera (no L22 term) | Lake Greifensee (Switzerland) zooplankton | `cc0-1.0` |
+| **Lensless** | `lensless` | 6,400 | Lensless microscope (no L22 term) | Lensless plankton microscopy (lab culture) | `cc-by-4.0` |
+| **FREPJ-Z** (v1.2) | `frepj` | 88,686 | — (not recorded, KI-32) | Freshwater zooplankton of Japanese lakes and reservoirs, 40×/100× microscopy — registry only, not in the published 17M yet | `cc-by-4.0` |
+| **DAPlankton** | `daplankton` | 111,924 | IFCB / CytoSense / FlowCam (per image) | Multi-instrument benchmark: 15 cultured classes imaged by IFCB, CytoSense and FlowCam, plus 31 Baltic field classes by IFCB and CytoSense — registry only, not in the published 17M yet | `cc-by-4.0` |
+| **Tara Pacific Deck net** (v1.2) | `tara_pacific_decknet` | 1,581,623 | [FlowCam](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1583/) | FlowCam surface micro-plankton, Atlantic + Pacific, 2016–2018 — registry only | `cc-by-4.0` |
+| **Tara Pacific Bongo** (v1.2) | `tara_pacific_bongo` | 380,769 | [FlowCam](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1583/) | FlowCam surface micro-plankton, reefs and lagoons — registry only | `cc-by-4.0` |
+| **Tara Pacific HSN** (v1.2) | `tara_pacific_hsn` | 256,352 | [ZooScan](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/) | ZooScan surface meso-plankton, high-speed net — registry only | `cc-by-4.0` |
+| **Tara Pacific Manta** (v1.2) | `tara_pacific_manta` | 135,876 | [ZooScan](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/) | ZooScan surface meso-plankton **and microplastics**, incl. the Great Pacific Garbage Patch — registry only | `cc-by-4.0` |
+
+The **Instrument** column links to that device's term in the BODC/SeaVoX **L22** device catalogue, which is the vocabulary the plankton-imaging community uses (Darwin Core has no instrument term). Three instruments have no L22 term and one source records no device at all; `global_uvp5` mixes two UVP5 versions with different imagers and nothing marks which imaged a given row. All four limits are recorded in [KI-32](planktonzilla/planktonzilla_dataset/utils/KNOWN_ISSUES.md).
+
 
 Note that the `dataset` column value does not always match the importer config stem (`whoi` vs
 `whoi-plankton.yaml`, `zooscan` vs `zooscannet.yaml`, and three more). The mapping is recorded in

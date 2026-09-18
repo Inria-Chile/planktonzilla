@@ -139,3 +139,68 @@ def test_a_split_shorter_than_one_shard_still_exports(tmp_path):
     shards = _keys(tmp_path / "train")
     assert list(shards) == ["shard_00000.tar"]
     assert shards["shard_00000.tar"] == ["image_000000000.jpg", "image_000000000.txt"]
+
+
+# --- instrument provenance in the shards ---------------------------------------------
+
+
+def _dataset_with_instrument(n: int):
+    """Like ``_dataset`` but carrying the instrument column the only-plankton split now keeps."""
+    base = _dataset(n)
+    return base.add_column("instrument", ["ZooScan" if index % 2 else "FlowCam" for index in range(n)])
+
+
+def test_the_instrument_rides_in_the_same_webdataset_sample(tmp_path):
+    """WebDataset splits a member name on its FIRST dot to get ``__key__``.
+
+    So ``image_0.instrument.txt`` has key ``image_0`` and extension ``instrument.txt`` — the
+    same sample as the ``.jpg`` and ``.txt``, not a third one. If it split on the LAST dot the
+    key would be ``image_0.instrument`` and every sample would silently arrive half-empty, so
+    this is the property worth pinning rather than the file merely existing.
+    """
+    export_to_tar_shards(DatasetDict({"train": _dataset_with_instrument(4)}), output_dir=str(tmp_path), shard_size=2)
+    shards = _keys(tmp_path / "train")
+
+    for names in shards.values():
+        keys = {name.split(".", 1)[0] for name in names}
+        assert len(keys) == 2, f"expected two samples per shard, got keys {sorted(keys)}"
+        for key in keys:
+            assert {f"{key}.jpg", f"{key}.txt", f"{key}.instrument.txt"} <= set(names)
+
+
+def test_the_instrument_member_carries_the_instrument_not_the_caption(tmp_path):
+    """The caption is what CLIP's text tower trains on; gear names do not belong in it."""
+    export_to_tar_shards(DatasetDict({"train": _dataset_with_instrument(2)}), output_dir=str(tmp_path), shard_size=2)
+    first = min((tmp_path / "train").glob("*.tar"))
+    with tarfile.open(first) as tar:
+        captions = {
+            tar.extractfile(n).read().decode("utf-8") for n in tar.getnames() if n.endswith(".txt") and ".instrument." not in n
+        }
+        instruments = {tar.extractfile(n).read().decode("utf-8") for n in tar.getnames() if n.endswith(".instrument.txt")}
+
+    assert captions <= set(CLASSES)
+    assert instruments == {"FlowCam", "ZooScan"}
+    assert not instruments & captions
+
+
+def test_a_split_without_the_column_exports_exactly_as_before(exported):
+    """Backwards compatible: an older dataset still produces plain .jpg/.txt pairs."""
+    for names in _keys(exported).values():
+        assert not [name for name in names if ".instrument." in name]
+        assert len(names) == 4
+
+
+def test_a_null_instrument_writes_no_member_rather_than_an_empty_one(tmp_path):
+    """`frepj` has no documented instrument, so its rows carry null.
+
+    An empty ``.instrument.txt`` would read downstream as "this image was taken by nothing";
+    omitting the member says "not recorded", which is what is true.
+    """
+    dataset = _dataset(2).add_column("instrument", [None, "ZooScan"])
+    export_to_tar_shards(DatasetDict({"train": dataset}), output_dir=str(tmp_path), shard_size=2)
+
+    first = min((tmp_path / "train").glob("*.tar"))
+    with tarfile.open(first) as tar:
+        members = [name for name in tar.getnames() if name.endswith(".instrument.txt")]
+        assert members == ["image_000000001.instrument.txt"]
+        assert tar.extractfile(members[0]).read().decode("utf-8") == "ZooScan"

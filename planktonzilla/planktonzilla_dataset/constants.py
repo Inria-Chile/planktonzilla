@@ -61,6 +61,16 @@ ID_NUM_COLS = ("aphia_ID", "NCBI_ID", "BOLD_ID")  # numeric in the CSV -> text w
 # string, like every other text column in the consolidated dataset.
 LICENSE_COLS = ("license", "license_url")
 
+# Provenance columns describing the imaging instrument each image was captured with.
+# ``instrument`` is the short community name a consumer groups by; ``instrument_id`` is its
+# term in the BODC/SeaVoX L22 device catalogue, which is the vocabulary the plankton-imaging
+# community actually uses (JERICO-S3 best practice, Martin-Cabrera et al. 2022, carries
+# exactly this crosswalk into OBIS-ENV-DATA eMoF rows). Darwin Core has no instrument term at
+# all, which is why the URI and not a DwC field is the interoperable half.
+#
+# Unlike LICENSE_COLS these are NOT a pure function of ``dataset``: see DATASET_INSTRUMENTS.
+INSTRUMENT_COLS = ("instrument", "instrument_id")
+
 # ``dataset`` column value -> ``configs/dataset_import/<stem>.yaml``.
 #
 # Five of the seventeen do NOT match: the value written into the ``dataset`` column is
@@ -227,6 +237,187 @@ def validate_license_coverage(dataset_names) -> None:
         )
 
 
+# Sentinel for a source whose instrument varies per IMAGE rather than per source. Stored in
+# DATASET_INSTRUMENTS so the fact is declared rather than implied by an absence, and so
+# ``instrument_fields`` can refuse to answer for it instead of quietly returning nulls.
+PER_ROW_INSTRUMENT = "@per-row"
+
+# L22 terms, resolved against vocab.nerc.ac.uk on 2026-09-18 and their prefLabels read back.
+# None is deprecated. Two are deliberately the SERIES term rather than the obvious model term,
+# because the configs name an instrument family and not a model:
+#   - UVP5   -> TOOL2154 "...Underwater Vision Profiler 5 {UVP5} imaging sensor series",
+#               NOT TOOL1577, which is the UVP5 *DEEP*.
+#   - UVP6   -> TOOL2141 "...Underwater Vision Profiler 6 {UVP6} imaging sensor series",
+#               NOT TOOL1578, which is the UVP6 *LP*.
+_L22 = "https://vocab.nerc.ac.uk/collection/L22/current/{}/"
+
+# ``dataset`` column value -> the instrument fields emitted for every image of that source.
+#
+# Transcribed VERBATIM from the ``instrument:`` / ``instrument_id:`` fields of the matching
+# configs/dataset_import/*.yaml, which stay the upstream source of truth exactly as they do for
+# DATASET_LICENSES; tests/test_dataset_instruments.py fails if the two disagree. Those config
+# fields were ADDED for this column: before them a table here would have been a transcription
+# with nothing to check it against, which is how the licence table drifted on `zoolake` once.
+#
+# Three kinds of null, all deliberate, none a placeholder for "look it up later":
+#   - `frepj` has BOTH fields null. Nothing in the repo names an instrument for it: the config
+#     says "high-resolution microscopic images" and the README "40x and 100x", which is a
+#     modality, not a device. L22 does offer generic microscope terms (TOOL1034 "Inverted
+#     Microscope (generic)", TOOL2302 "Unspecified polarised light microscope") and choosing one
+#     would publish a guess as a fact on 229 rows. See KI-32.
+#   - `zoolake`, `lensless` and `planktonset1.0` have a NAME but a null id, because L22 has no
+#     term for their instrument: no Scripps plankton camera (its four "Scripps" entries are a
+#     Doppler sonar, a plankton net and two titrators), no lensless imager at all, and only the
+#     2008 ISIIS TOOL1561 -- not the later ISIIS-2 that planktonset1.0 names. Group those by the
+#     `instrument` string; the id says only "no standard term exists", never "unknown device".
+#   - `daplankton` is PER_ROW_INSTRUMENT. Its images genuinely come from three instruments and
+#     that is the POINT of the source -- its own config calls it a benchmark for recognition
+#     "ACROSS imaging instruments ... the domain shift a classifier has to survive is the
+#     instrument rather than the label". Resolved per row by ``resolve_instrument``.
+#
+# One caveat that the table cannot express and KI-32 records: TOOL1583 is L22's only FlowCam
+# term and names the "FlowCam VS [imaging only] (Benchtop) ... series" specifically, while the
+# four FlowCam sources here say only "FlowCam". The id is therefore slightly more specific than
+# the evidence; it is used because the alternative is no id at all for four sources.
+DATASET_INSTRUMENTS = {
+    name: {"instrument": instrument, "instrument_id": _L22.format(code) if code else None}
+    for name, instrument, code in (
+        ("isiisnet", "ISIIS", "TOOL1561"),
+        ("whoi", "IFCB", "TOOL1588"),
+        ("flowcamnet", "FlowCam", "TOOL1583"),
+        ("lensless", "Lensless microscope", None),
+        ("medplanktonset", "IFCB", "TOOL1588"),
+        ("uvp6net", "UVP6", "TOOL2141"),
+        ("zoocamnet", "ZooCAM", "TOOL1587"),
+        ("zooscan", "ZooScan", "TOOL1581"),
+        ("planktonset1.0", "ISIIS-2", None),
+        ("syke_ifcb_2022", "IFCB", "TOOL1588"),
+        ("planktoscope", "PlanktoScope", "TOOL1579"),
+        ("global_uvp5", "UVP5", "TOOL2154"),
+        ("jedioceans", "CPICS", "TOOL1582"),
+        ("sykezooscan2024", "ZooScan", "TOOL1581"),
+        ("zoolake", "Dual Scripps Plankton Camera", None),
+        ("frepj", None, None),
+        ("daplankton", PER_ROW_INSTRUMENT, None),
+        ("tara_pacific_bongo", "FlowCam", "TOOL1583"),
+        ("tara_pacific_decknet", "FlowCam", "TOOL1583"),
+        ("tara_pacific_hsn", "ZooScan", "TOOL1581"),
+        ("tara_pacific_manta", "ZooScan", "TOOL1581"),
+    )
+}
+
+# The instrument each DAPlankton merge prefix stands for. The importer folds five
+# ``<subset>/<instrument>/<class>/`` roots into one class dir per taxon and keeps the
+# provenance as a filename prefix (daplankton_layout.DOMAIN_PREFIXES), so the instrument of a
+# DAPlankton image is recoverable from ``original_path`` alone -- offline, with no re-fetch.
+# Keyed on the prefix rather than on the (subset, code) pair so this stays a pure string
+# operation on the column the dataset already carries.
+DAPLANKTON_PREFIX_INSTRUMENTS = {
+    "lab_cs_": ("CytoSense", _L22.format("TOOL1209")),
+    "sea_cs_": ("CytoSense", _L22.format("TOOL1209")),
+    "lab_fc_": ("FlowCam", _L22.format("TOOL1583")),
+    "lab_ifcb_": ("IFCB", _L22.format("TOOL1588")),
+    "sea_ifcb_": ("IFCB", _L22.format("TOOL1588")),
+}
+
+
+def instrument_fields(dataset_name: str) -> dict:
+    """Return the ``{instrument, instrument_id}`` pair for one CONSTANT-instrument source.
+
+    A fresh dict per call, for the same reason ``license_fields`` returns one.
+
+    Raises:
+        KeyError: If ``dataset_name`` has no entry in DATASET_INSTRUMENTS. Missing is always a
+            bug -- a new source wired up without recording what took its pictures.
+        ValueError: If the source is PER_ROW_INSTRUMENT. Returning nulls there would publish
+            "instrument unknown" for a source whose whole purpose is the instrument, so the
+            caller is made to go through ``resolve_instrument`` instead.
+    """
+    try:
+        fields = DATASET_INSTRUMENTS[dataset_name]
+    except KeyError:
+        raise KeyError(
+            f"No instrument recorded for dataset «{dataset_name}». Add `instrument:` and "
+            f"`instrument_id:` to its configs/dataset_import/*.yaml and to DATASET_INSTRUMENTS "
+            f"in {__name__} before building or updating the dataset."
+        ) from None
+    if fields["instrument"] == PER_ROW_INSTRUMENT:
+        raise ValueError(
+            f"«{dataset_name}» images come from more than one instrument; call "
+            f"resolve_instrument(dataset_name, original_path) per row instead of "
+            f"instrument_fields(dataset_name)."
+        )
+    return dict(fields)
+
+
+def has_per_row_instrument(dataset_name: str) -> bool:
+    """Whether this source's instrument varies per IMAGE rather than per source.
+
+    Lets a caller resolve the constant pair once per split and fall back to the per-row path
+    only where it is needed, without indexing DATASET_INSTRUMENTS directly — an unrecorded
+    source must raise the same explanatory KeyError here as everywhere else, not a bare one
+    from a dict lookup buried in a build.
+
+    Raises:
+        KeyError: If ``dataset_name`` has no entry in DATASET_INSTRUMENTS.
+    """
+    try:
+        return DATASET_INSTRUMENTS[dataset_name]["instrument"] == PER_ROW_INSTRUMENT
+    except KeyError:
+        raise KeyError(
+            f"No instrument recorded for dataset «{dataset_name}». Add `instrument:` and "
+            f"`instrument_id:` to its configs/dataset_import/*.yaml and to DATASET_INSTRUMENTS "
+            f"in {__name__} before building or updating the dataset."
+        ) from None
+
+
+def resolve_instrument(dataset_name: str, original_path: str | None = None) -> dict:
+    """Return the ``{instrument, instrument_id}`` pair for one IMAGE.
+
+    The single entry point the build path uses, so a per-row source cannot silently fall back
+    to a source-level constant: for the 20 constant sources this is ``instrument_fields``, and
+    for DAPlankton it reads the merge prefix the importer left on the filename.
+
+    Raises:
+        KeyError: As ``instrument_fields``.
+        ValueError: If a per-row source's path carries no recognised prefix. That means the
+            importer's merge policy changed without this table following, and silently emitting
+            a null would hide it on every one of that source's rows.
+    """
+    fields = DATASET_INSTRUMENTS.get(dataset_name)
+    if fields is None or fields["instrument"] != PER_ROW_INSTRUMENT:
+        return instrument_fields(dataset_name)
+
+    name = (original_path or "").rsplit("/", 1)[-1]
+    for prefix, (instrument, identifier) in DAPLANKTON_PREFIX_INSTRUMENTS.items():
+        if name.startswith(prefix):
+            return {"instrument": instrument, "instrument_id": identifier}
+    raise ValueError(
+        f"«{dataset_name}» resolves its instrument from the merge prefix of original_path, but "
+        f"{original_path!r} carries none of {sorted(DAPLANKTON_PREFIX_INSTRUMENTS)}. The "
+        f"importer's merge policy and DAPLANKTON_PREFIX_INSTRUMENTS in {__name__} have diverged."
+    )
+
+
+def validate_instrument_coverage(dataset_names) -> None:
+    """Fail fast if any of ``dataset_names`` has no recorded instrument.
+
+    Called beside ``validate_license_coverage``, before the expensive work starts, so a source
+    added without an instrument surfaces in seconds rather than after a multi-hour build has
+    written rows that cannot say what took the picture.
+
+    Raises:
+        KeyError: Listing every unrecorded dataset name at once.
+    """
+    missing = sorted({name for name in dataset_names if name not in DATASET_INSTRUMENTS})
+    if missing:
+        raise KeyError(
+            f"No instrument recorded for dataset(s) {missing}. Add `instrument:` and "
+            f"`instrument_id:` to their configs/dataset_import/*.yaml and to DATASET_INSTRUMENTS "
+            f"in {__name__} before building or updating the dataset."
+        )
+
+
 # Provenance columns written by RedefineDataset._taxonomy_row: which source an example
 # came from, the label that source gave it, and its path inside that source's
 # imagefolder. ``dataset`` is the splice key — its values are the ``name`` field of the
@@ -272,6 +463,7 @@ CONSOLIDATED_COLUMNS = (
     *ID_NUM_COLS,
     *METADATA_COLS,
     *LICENSE_COLS,
+    *INSTRUMENT_COLS,
     CUSTOM_METADATA_COL,
 )
 

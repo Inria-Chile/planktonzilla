@@ -7,6 +7,11 @@ push_to_hub: true
 
 human_readable_name: "PlanktonSet 1.0: Plankton imagery data collected from F.G. Walton Smith in Straits of Florida from 2014-06-03 to 2014-06-06 and used in the 2015 National Data Science Bowl (NCEI Accession 0127422)"
 license: other
+# config names 'In Situ Ichthyoplankton Imaging System (ISIIS-2)' (planktonset1.yaml:12-13) -- a later
+# version than L22's single ISIIS term TOOL1561 (Cowen and Guigand 2008). No ISIIS-2 term exists, so the id
+# is null rather than asserting the 2008 instrument; group by the `instrument` name instead
+instrument: "ISIIS-2"
+instrument_id: null
 description: |
   Data presented here are subset of a larger plankton imagery data set collected in the subtropical Straits of 
   Florida from 2014-05-28 to 2014-06-14. Imagery data were collected using the In Situ Ichthyoplankton Imaging 
