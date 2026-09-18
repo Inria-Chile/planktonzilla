@@ -64,6 +64,11 @@ _SCANNED = {
     "planktonzilla/planktonzilla_dataset/sankey.py": {"scan_dataset", "fetch_dataset_metadata"},
     "planktonzilla/planktonzilla_dataset/gen_planktonzilla_only_plankton.py": {"main"},
     "planktonzilla/planktonzilla_dataset/update_planktonzilla.py": {"main"},
+    # The golden-diff harness reads the Hub too, and its whole design rests on the network living
+    # in a seam small enough to replace with a literal table. Listing the three functions here is
+    # what keeps that seam from widening: a fourth reader appearing anywhere else in the module
+    # goes red, which is also what stops the offline `--report` stage from growing a Hub call.
+    "planktonzilla/planktonzilla_dataset/utils/golden_diff.py": {"list_shards", "refresh", "check_revision"},
 }
 
 # The calls that reach the Hub. `HfApi()` itself is inert; `dataset_info` is the read.
