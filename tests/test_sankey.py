@@ -440,6 +440,34 @@ def test_dataset_revision_reaches_the_scan_and_the_provenance_together(monkeypat
     assert seen["scan"]["streaming"] is True
 
 
+def test_the_scan_projects_its_columns_in_the_parquet_read(monkeypatch):
+    """The projection must ARRIVE as a kwarg, not merely leave the call succeeding.
+
+    `columns` is not a named parameter of `load_dataset`: it reaches `ParquetConfig.columns`
+    through `**config_kwargs`, so a misspelling is absorbed silently and the read quietly goes
+    back to fetching every image. Asserting the call did not raise would therefore pass for the
+    broken spelling too, which is why this asserts the key and its value.
+
+    The projection is the difference between 14.8 s and 2.8 s on one shard's first 20,000 rows —
+    `IterableDataset.select_columns`, which this replaced, is applied to each table after it
+    arrives and so discards the image column rather than declining to read it.
+    """
+    import datasets
+
+    seen = {}
+
+    def _fake_load_dataset(repo_id, **kw):
+        seen.update(kw)
+        raise _ScanReachedError
+
+    monkeypatch.setattr(datasets, "load_dataset", _fake_load_dataset)
+    with pytest.raises(_ScanReachedError):
+        sk.scan_dataset("org/plankton-9K", workers=1, retries=1)
+
+    assert seen["columns"] == list(sk.SCAN_COLUMNS)
+    assert seen["columns"] == ["dataset", "proposed_label", "root_class"]
+
+
 def test_dataset_version_still_suppresses_the_hub_lookup_and_changes_no_read(monkeypatch):
     """--dataset-version and --dataset-revision are one character apart and do opposite things.
 
