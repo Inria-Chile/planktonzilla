@@ -1,0 +1,267 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+planktoscope	Acantharea	pzt:001265	acantharia	living	full_body	true	accepted							
+planktoscope	Acantharia	pzt:001265	acantharia	living	full_body	true	accepted							
+planktoscope	Acartiidae	pzt:000154	acartiidae	living	full_body	true	accepted							
+planktoscope	Actinommidae	pzt:001276	actinommidae	living	full_body	true	accepted							
+planktoscope	Amphibelone	pzt:001268	amphibelone	living	full_body	true	accepted							
+planktoscope	Amphisolenia	pzt:001072	amphisolenia	living	full_body	true	accepted							
+planktoscope	Amphorellopsis	pzt:000773	amphorellopsis	living	full_body	true	accepted							
+planktoscope	Amphorides_Tintinnidiidae	pzt:000774	amphorides	living	full_body	true	accepted							
+planktoscope	Appendicularia	pzt:000313	appendicularia	living	full_body	true	accepted							
+planktoscope	Asterionella	pzt:000942	asterionella	living	full_body	true	accepted							
+planktoscope	Asterionellopsis	pzt:000944	asterionellopsis	living	full_body	true	accepted							
+planktoscope	Asterolamprales	pzt:000880	asterolamprales	living	full_body	true	accepted							
+planktoscope	Bacillaria	pzt:000886	bacillaria	living	full_body	true	accepted							
+planktoscope	Bacillariophyceae	pzt:000879	bacillariophyceae	living	full_body	true	accepted							
+planktoscope	Bacteriastrum_Chaetocerotales	pzt:000907	bacteriastrum	living	full_body	true	accepted							
+planktoscope	Bacteriastrum_Mediophyceae	pzt:000907	bacteriastrum	living	full_body	true	accepted							
+planktoscope	Bellerochea	pzt:000956	bellerochea	living	full_body	true	accepted							
+planktoscope	Biddulphia	pzt:000899	biddulphia	living	full_body	true	accepted							
+planktoscope	Bivalvia_Mollusca	pzt:000439	bivalvia	living	full_body	true	accepted							
+planktoscope	Bleakeleya	pzt:000946	bleakeleya	living	full_body	true	accepted							
+planktoscope	Bleakeleya notata	pzt:000943	asterionella bleakeleyi	living	full_body	true	accepted							
+planktoscope	Calanoida	pzt:000153	calanoida	living	full_body	true	accepted							
+planktoscope	Callimitra	pzt:001274	callimitra	living	full_body	true	accepted							
+planktoscope	Calocalanus	pzt:000192	calocalanus	living	full_body	true	accepted							
+planktoscope	Centropages	pzt:000160	centropages	living	full_body	true	accepted							
+planktoscope	Centropagidae	pzt:000159	centropagidae	living	full_body	true	accepted							
+planktoscope	Cerataulina	pzt:000958	cerataulina	living	full_body	true	accepted							
+planktoscope	Ceratocorys	pzt:001129	ceratocorys	living	full_body	true	accepted							
+planktoscope	Ceratocorys horrida	pzt:001130	ceratocorys horrida	living	full_body	true	accepted							
+planktoscope	Chaetoceros affinis	pzt:000909	chaetoceros affinis	living	full_body	true	accepted							
+planktoscope	Chaetoceros dadayi	pzt:000911	chaetoceros dadayi	living	full_body	true	accepted							
+planktoscope	Chaetoceros danicus	pzt:000912	chaetoceros danicus	living	full_body	true	accepted							
+planktoscope	Chaetoceros inter epibiont	pzt:000908	chaetoceros	living	full_body	true	accepted							
+planktoscope	Chaetoceros peruvianus	pzt:000916	chaetoceros peruvianus	living	full_body	true	accepted							
+planktoscope	Chaetoceros_Mediophyceae	pzt:000908	chaetoceros	living	full_body	true	accepted							
+planktoscope	Chaetognatha	pzt:000304	chaetognatha	living	full_body	true	accepted							
+planktoscope	Challengeron	pzt:000693	challengeron	living	full_body	true	accepted							
+planktoscope	Ciliophora	pzt:000699	ciliophora	living	full_body	true	accepted							
+planktoscope	Cladopyxis	pzt:001132	cladopyxis	living	full_body	true	accepted							
+planktoscope	Climacocylis	pzt:000763	climacocylis	living	full_body	true	accepted							
+planktoscope	Climacodium	pzt:000960	climacodium	living	full_body	true	accepted							
+planktoscope	Climacosphenia	pzt:000924	climacosphenia	living	full_body	true	accepted							
+planktoscope	Coccodiscidae	pzt:001277	coccodiscidae	living	full_body	true	accepted							
+planktoscope	Codonaria	pzt:000741	codonaria	living	full_body	true	accepted							
+planktoscope	Codonella	pzt:000742	codonella	living	full_body	true	accepted							
+planktoscope	Codonella amphorella	pzt:000743	codonella amphorella	living	full_body	true	accepted							
+planktoscope	Codonellopsis orthoceras	pzt:000749	codonellopsis orthoceras	living	full_body	true	accepted							
+planktoscope	Codonellopsis_Tintinnidiidae	pzt:000747	codonellopsis	living	full_body	true	accepted							
+planktoscope	Collozoum	pzt:001272	collozoum	living	full_body	true	accepted							
+planktoscope	Copepoda_Maxillopoda	pzt:000152	copepoda	living	full_body	true	accepted							
+planktoscope	Corethron	pzt:000927	corethron	living	full_body	true	accepted							
+planktoscope	Corycaeidae	pzt:000203	corycaeidae	living	full_body	true	accepted							
+planktoscope	Corythodinium	pzt:001194	corythodinium	living	full_body	true	accepted							
+planktoscope	Corythodinium constrictum	pzt:001195	corythodinium constrictum	living	full_body	true	accepted							
+planktoscope	Corythodinium tesselatum	pzt:001197	corythodinium tesselatum	living	full_body	true	accepted							
+planktoscope	Coscinodiscophycidae	pzt:000879	bacillariophyceae	living	full_body	true	accepted							
+planktoscope	Cyanobacteria_Bacteria	pzt:000646	cyanobacteria	living	full_body	true	accepted							
+planktoscope	Cystidium	pzt:001270	nassellaria	living	full_body	true	accepted							
+planktoscope	Cyttarocylis	pzt:000751	cyttarocylis	living	full_body	true	accepted							
+planktoscope	Dadayiella	pzt:000775	dadayiella	living	full_body	true	accepted							
+planktoscope	Dictyocha	pzt:001243	dictyocha	living	full_body	true	accepted							
+planktoscope	Dictyocysta	pzt:000753	dictyocysta	living	full_body	true	accepted							
+planktoscope	Dinobryon	pzt:001234	dinobryon	living	full_body	true	accepted							
+planktoscope	Dinophyceae	pzt:001062	dinophyceae	living	full_body	true	accepted							
+planktoscope	Dinophysis	pzt:001075	dinophysis	living	full_body	true	accepted							
+planktoscope	Dinophysis caudata_Dinophysis	pzt:001077	dinophysis caudata	living	full_body	true	accepted							
+planktoscope	Dinophysis tripos	pzt:001080	dinophysis tripos	living	full_body	true	accepted							
+planktoscope	Ditylum	pzt:000976	ditylum	living	full_body	true	accepted							
+planktoscope	Doliolida	pzt:000340	doliolida	living	full_body	true	accepted							
+planktoscope	Entomoneis	pzt:001028	entomoneis	living	full_body	true	accepted							
+planktoscope	Epicancella	pzt:000755	epicancella	living	full_body	true	accepted							
+planktoscope	Epiplocylis	pzt:000756	epiplocylis	living	full_body	true	accepted							
+planktoscope	Ethmodiscus gazellae	pzt:000939	ethmodiscus gazellae	living	full_body	true	accepted							
+planktoscope	Eucampia	pzt:000962	eucampia	living	full_body	true	accepted							
+planktoscope	Eucampia cornuta	pzt:000896	neomoelleria cornuta	living	full_body	true	accepted							
+planktoscope	Euphysetta	pzt:000695	euphysetta	living	full_body	true	accepted							
+planktoscope	Euterpina	pzt:000237	euterpina	living	full_body	true	accepted							
+planktoscope	Eutintinnus	pzt:000758	eutintinnus	living	full_body	true	accepted							
+planktoscope	Evadne	pzt:000150	evadne	living	full_body	true	accepted							
+planktoscope	Favella	pzt:000299	favella	living	full_body	true	accepted							
+planktoscope	Foraminifera	pzt:000831	foraminifera	living	full_body	true	accepted							
+planktoscope	Fragilariaceae	pzt:000941	fragilariaceae	living	full_body	true	accepted							
+planktoscope	Fritillariidae	pzt:000315	fritillariidae	living	full_body	true	accepted							
+planktoscope	Gastropoda_Mollusca	pzt:000444	gastropoda	living	full_body	true	accepted							
+planktoscope	Gossleriella	pzt:000932	gossleriella	living	full_body	true	accepted							
+planktoscope	Guinardia flaccida	pzt:001015	guinardia flaccida	living	full_body	true	accepted							
+planktoscope	Gyrodinium	pzt:001168	gyrodinium	living	full_body	true	accepted							
+planktoscope	Halosphaera	pzt:001310	halosphaera	living	full_body	true	accepted							
+planktoscope	Harpacticoida	pzt:000232	harpacticoida	living	full_body	true	accepted							
+planktoscope	Helicotheca tamesis	pzt:000978	helicotheca tamesis	living	full_body	true	accepted							
+planktoscope	Hemiaulus	pzt:000964	hemiaulus	living	full_body	true	accepted							
+planktoscope	Hemidiscus	pzt:000934	hemidiscus	living	full_body	true	accepted							
+planktoscope	Isthmia	pzt:000900	isthmia	living	full_body	true	accepted							
+planktoscope	Lauderia	pzt:001036	lauderia	living	full_body	true	accepted							
+planktoscope	Leprotintinnus	pzt:000779	leprotintinnus	living	full_body	true	accepted							
+planktoscope	Leptocylindrus	pzt:000967	leptocylindrus	living	full_body	true	accepted							
+planktoscope	Leptocylindrus mediterraneus	pzt:000968	leptocylindrus mediterraneus	living	full_body	true	accepted							
+planktoscope	Licmophora	pzt:000973	licmophora	living	full_body	true	accepted							
+planktoscope	Lioloma	pzt:001031	lioloma	living	full_body	true	accepted							
+planktoscope	Lithodesmium	pzt:000979	lithodesmium	living	full_body	true	accepted							
+planktoscope	Lithoptera	pzt:001265	acantharia	living	full_body	true	accepted							
+planktoscope	Mastogloia	pzt:000986	mastogloia	living	full_body	true	accepted							
+planktoscope	Mediopyxis	pzt:000981	mediopyxis	living	full_body	true	accepted							
+planktoscope	Microsetella	pzt:000234	microsetella	living	full_body	true	accepted							
+planktoscope	Nassellaria_Polycystinea	pzt:001270	nassellaria	living	full_body	true	accepted							
+planktoscope	Naviculales	pzt:000993	naviculales	living	full_body	true	accepted							
+planktoscope	Nematoda	pzt:000478	nematoda	living	full_body	true	accepted							
+planktoscope	Neocalyptrella	pzt:001017	neocalyptrella	living	full_body	true	accepted							
+planktoscope	Neoceratium	pzt:001094	neoceratium	living	full_body	true	accepted							
+planktoscope	Neoceratium arietinum	pzt:001097	tripos arietinus	living	full_body	true	accepted							
+planktoscope	Neoceratium azoricum	pzt:001098	tripos azoricus	living	full_body	true	accepted							
+planktoscope	Neoceratium belone	pzt:001099	tripos belone	living	full_body	true	accepted							
+planktoscope	Neoceratium breve	pzt:001100	tripos brevis	living	full_body	true	accepted							
+planktoscope	Neoceratium candelabrum	pzt:001101	tripos candelabrum	living	full_body	true	accepted							
+planktoscope	Neoceratium contortum	pzt:001103	tripos contortus	living	full_body	true	accepted							
+planktoscope	Neoceratium declinatum	pzt:001104	tripos declinatus	living	full_body	true	accepted							
+planktoscope	Neoceratium extensum	pzt:001106	tripos extensus	living	full_body	true	accepted							
+planktoscope	Neoceratium furca_Neoceratium	pzt:001107	tripos furca	living	full_body	true	accepted							
+planktoscope	Neoceratium fusus_Neoceratium	pzt:001108	tripos fusus	living	full_body	true	accepted							
+planktoscope	Neoceratium geniculatum	pzt:001109	tripos geniculatus	living	full_body	true	accepted							
+planktoscope	Neoceratium gravidum	pzt:001110	tripos gravidus	living	full_body	true	accepted							
+planktoscope	Neoceratium hexacanthum	pzt:001111	tripos hexacanthus	living	full_body	true	accepted							
+planktoscope	Neoceratium incisum	pzt:001113	tripos incisus	living	full_body	true	accepted							
+planktoscope	Neoceratium limulus	pzt:001114	tripos limulus	living	full_body	true	accepted							
+planktoscope	Neoceratium lineatum	pzt:001115	tripos lineatus	living	full_body	true	accepted							
+planktoscope	Neoceratium macroceros	pzt:001116	tripos macroceros	living	full_body	true	accepted							
+planktoscope	Neoceratium massiliense	pzt:001117	tripos massiliensis	living	full_body	true	accepted							
+planktoscope	Neoceratium paradoxides	pzt:001119	tripos paradoxides	living	full_body	true	accepted							
+planktoscope	Neoceratium pentagonum	pzt:001120	tripos pentagonus	living	full_body	true	accepted							
+planktoscope	Neoceratium petersii	pzt:001121	tripos petersii	living	full_body	true	accepted							
+planktoscope	Neoceratium platycorne	pzt:001122	tripos platycornis	living	full_body	true	accepted							
+planktoscope	Neoceratium praeolongum	pzt:001110	tripos gravidus	living	full_body	true	accepted							
+planktoscope	Neoceratium pulchellum	pzt:001123	tripos pulchellus	living	full_body	true	accepted							
+planktoscope	Neoceratium ranipes	pzt:001124	tripos ranipes	living	full_body	true	accepted							
+planktoscope	Neoceratium symmetricum	pzt:001125	tripos symmetricus	living	full_body	true	accepted							
+planktoscope	Neoceratium teres	pzt:001126	tripos teres	living	full_body	true	accepted							
+planktoscope	Neoceratium trichoceros	pzt:001127	tripos trichoceros	living	full_body	true	accepted							
+planktoscope	Octactis	pzt:001245	octactis	living	full_body	true	accepted							
+planktoscope	Odontella mobiliensis	pzt:001055	odontella mobiliensis	living	full_body	true	accepted							
+planktoscope	Odontella sinensis_Odontella	pzt:001056	odontella sinensis	living	full_body	true	accepted							
+planktoscope	Odontella_Mediophyceae	pzt:001054	odontella	living	full_body	true	accepted							
+planktoscope	Oikopleuridae	pzt:000317	oikopleuridae	living	full_body	true	accepted							
+planktoscope	Oithonidae	pzt:000226	oithonidae	living	full_body	true	accepted							
+planktoscope	Oncaeidae	pzt:000228	oncaeidae	living	full_body	true	accepted							
+planktoscope	Ornithocercus	pzt:001081	ornithocercus	living	full_body	true	accepted							
+planktoscope	Ornithocercus magnificus_Ornithocercus	pzt:001083	ornithocercus magnificus	living	full_body	true	accepted							
+planktoscope	Ornithocercus quadratus_Ornithocercus	pzt:001084	ornithocercus quadratus	living	full_body	true	accepted							
+planktoscope	Ornithocercus splendidus	pzt:001085	ornithocercus splendidus	living	full_body	true	accepted							
+planktoscope	Ornithocercus steinii	pzt:001086	ornithocercus steinii	living	full_body	true	accepted							
+planktoscope	Ostracoda	pzt:000296	ostracoda	living	full_body	true	accepted							
+planktoscope	Oxytoxum	pzt:001198	oxytoxum	living	full_body	true	accepted							
+planktoscope	Parafavella	pzt:000785	parafavella	living	full_body	true	accepted							
+planktoscope	Parundella_Xystonellidae	pzt:000782	parundella	living	full_body	true	accepted							
+planktoscope	Pediastrum	pzt:001294	pediastrum	living	full_body	true	accepted							
+planktoscope	Penilia	pzt:000097	penilia	living	full_body	true	accepted							
+planktoscope	Phaeocystis	pzt:000852	phaeocystis	living	full_body	true	accepted							
+planktoscope	Phaeodaria	pzt:000679	thecofilosea	living	full_body	true	accepted							
+planktoscope	Phalacroma	pzt:001088	phalacroma	living	full_body	true	accepted							
+planktoscope	Plagiacanthidae	pzt:001273	plagiacanthidae	living	full_body	true	accepted							
+planktoscope	Planktoniella sol	pzt:001047	planktoniella sol	living	full_body	true	accepted							
+planktoscope	Pleurosigmataceae	pzt:000999	pleurosigmataceae	living	full_body	true	accepted							
+planktoscope	Podolampas bipes	pzt:001208	podolampas bipes	living	full_body	true	accepted							
+planktoscope	Podolampas_Podolampadaceae_Peridiniales_Dinophyceae	pzt:001207	podolampas	living	full_body	true	accepted							
+planktoscope	Podon	pzt:000151	podon	living	full_body	true	accepted							
+planktoscope	Porifera spicule	pzt:000485	porifera	living	full_body	true	accepted							
+planktoscope	Proboscia	pzt:001018	proboscia	living	full_body	true	accepted							
+planktoscope	Proplectella	pzt:000783	proplectella	living	full_body	true	accepted							
+planktoscope	Protoperidinium	pzt:001211	protoperidinium	living	full_body	true	accepted							
+planktoscope	Pseudo-Nitzschia chain	pzt:000892	pseudo-nitzschia	living	full_body	true	accepted							
+planktoscope	Pseudosolenia	pzt:001019	pseudosolenia	living	full_body	true	accepted							
+planktoscope	Pterosperma	pzt:001306	pterosperma	living	full_body	true	accepted							
+planktoscope	Ptychocylis	pzt:000766	ptychocylis	living	full_body	true	accepted							
+planktoscope	Pyrocystis	pzt:001151	pyrocystis	living	full_body	true	accepted							
+planktoscope	Pyrocystis fusiformis	pzt:001152	pyrocystis fusiformis	living	full_body	true	accepted							
+planktoscope	Pyrocystis hamulus	pzt:001153	pyrocystis hamulus	living	full_body	true	accepted							
+planktoscope	Pyrocystis lunula	pzt:001154	pyrocystis lunula	living	full_body	true	accepted							
+planktoscope	Pyrocystis noctiluca	pzt:001155	pyrocystis pseudonoctiluca	living	full_body	true	accepted							
+planktoscope	Pyrophacus	pzt:001157	pyrophacus	living	full_body	true	accepted							
+planktoscope	Rhabdonella	pzt:000768	rhabdonella	living	full_body	true	accepted							
+planktoscope	Rhabdonellopsis	pzt:000769	rhabdonellopsis	living	full_body	true	accepted							
+planktoscope	Rhizaria	pzt:000675	chromista	living	full_body	true	accepted							
+planktoscope	Rhizosolenia	pzt:001021	rhizosolenia	living	full_body	true	accepted							
+planktoscope	Rhizosolenia bergonii	pzt:001022	rhizosolenia bergonii	living	full_body	true	accepted							
+planktoscope	Rhizosolenia inter. Richelia	pzt:001021	rhizosolenia	living	full_body	true	accepted							
+planktoscope	Rotifera	pzt:000486	rotifera	living	full_body	true	accepted							
+planktoscope	Salpingella_Tintinnidiidae	pzt:000776	salpingella	living	full_body	true	accepted							
+planktoscope	Scyphosphaera apsteinii	pzt:000877	scyphosphaera apsteinii	living	full_body	true	accepted							
+planktoscope	Skeletonema	pzt:001039	skeletonema	living	full_body	true	accepted							
+planktoscope	Spongodiscidae	pzt:001278	spongodiscidae	living	full_body	true	accepted							
+planktoscope	Spumellaria	pzt:001275	spumellaria	living	full_body	true	accepted							
+planktoscope	Steenstrupiella	pzt:000777	steenstrupiella	living	full_body	true	accepted							
+planktoscope	Sticholonche	pzt:001280	sticholonchida	living	full_body	true	accepted							
+planktoscope	Striatella	pzt:001025	striatella	living	full_body	true	accepted							
+planktoscope	Temora	pzt:000201	temora	living	full_body	true	accepted							
+planktoscope	Thalassionematales	pzt:001029	thalassionematales	living	full_body	true	accepted							
+planktoscope	Thalassiosirales	pzt:001034	thalassiosirales	living	full_body	true	accepted							
+planktoscope	Tiarina	pzt:000806	tiarina	living	full_body	true	accepted							
+planktoscope	Tintinnina	pzt:000739	choreotrichida	living	full_body	true	accepted							
+planktoscope	Tintinnopsis	pzt:000745	tintinnopsis	living	full_body	true	accepted							
+planktoscope	Triceratium	pzt:001058	triceratium	living	full_body	true	accepted							
+planktoscope	Trichodesmium	pzt:000671	trichodesmium	living	full_body	true	accepted							
+planktoscope	Trigonium	pzt:000903	trigonium	living	full_body	true	accepted							
+planktoscope	Tripos arcticus	pzt:001096	tripos arcticus	living	full_body	true	accepted							
+planktoscope	Triposolenia_Amphisoleniaceae_Dinophysiales	pzt:001073	triposolenia	living	full_body	true	accepted							
+planktoscope	Undellidae	pzt:000780	undellidae	living	full_body	true	accepted							
+planktoscope	Xystonella	pzt:000786	xystonella	living	full_body	true	accepted							
+planktoscope	Xystonellidae	pzt:000784	xystonellidae	living	full_body	true	accepted							
+planktoscope	Xystonellopsis	pzt:000787	xystonellopsis	living	full_body	true	accepted							
+planktoscope	Xystonellopsis paradoxa	pzt:000788	xystonellopsis paradoxa	living	full_body	true	accepted							
+planktoscope	Zoothamniidae	pzt:000737	zoothamniidae	living	full_body	true	accepted							
+planktoscope	aggregate_Radiolaria	pzt:001264	radiozoa	living	full_body	true	accepted							
+planktoscope	aggregates	pzt:000024	other	artefact	unqualified	false	accepted							
+planktoscope	artefact	pzt:000002	artefact	artefact	unqualified	false	accepted							
+planktoscope	badfocus_artefact	pzt:000003	bad focus	artefact	unqualified	false	accepted							
+planktoscope	badfocus_other	pzt:000003	bad focus	artefact	unqualified	false	accepted							
+planktoscope	bipinnaria	pzt:000429	asteroidea	living	full_body	true	accepted							
+planktoscope	bubble	pzt:000005	bubble	artefact	unqualified	false	accepted							
+planktoscope	copepoda-cut	pzt:000152	copepoda	living	full_body	true	accepted							
+planktoscope	cristal	pzt:000006	crystal	inert	unqualified	false	accepted							
+planktoscope	crumple sphere	pzt:000039	shape	artefact	unqualified	false	accepted							
+planktoscope	cylindrotheca_nitzschia	pzt:000885	bacillariaceae	living	full_body	true	accepted							
+planktoscope	dactyliosolen guinardia mix	pzt:001009	rhizosoleniaceae	living	mix	true	accepted							
+planktoscope	dark_detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+planktoscope	dark_sphere	pzt:000039	shape	artefact	unqualified	false	accepted							
+planktoscope	detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+planktoscope	dry	pzt:000024	other	artefact	unqualified	false	accepted							
+planktoscope	echinopluteus	pzt:000433	echinoidea	living	full_body	true	accepted							
+planktoscope	egg sac_egg	pzt:000010	egg	living	egg	false	accepted							
+planktoscope	egg_other	pzt:000010	egg	living	egg	false	accepted							
+planktoscope	fecal pellets	pzt:000013	feces	detritus	unqualified	false	accepted							
+planktoscope	fiber_detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+planktoscope	fiber_plastic	pzt:000028	plastic fiber	inert	unqualified	false	accepted							
+planktoscope	frustule	pzt:000879	bacillariophyceae	living	full_body	true	accepted							
+planktoscope	ghost	pzt:000024	other	artefact	unqualified	false	accepted							
+planktoscope	head_Appendicularia	pzt:000313	appendicularia	detritus	part_head	false	accepted							
+planktoscope	larvae_Annelida	pzt:000045	annelida	living	larvae	true	accepted							
+planktoscope	larvae_Gastropoda	pzt:000444	gastropoda	living	larvae	true	accepted							
+planktoscope	light_detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+planktoscope	molt	pzt:000022	molt	detritus	unqualified	false	accepted							
+planktoscope	moving	pzt:000023	moving	artefact	unqualified	false	accepted							
+planktoscope	multiple bacillariophyceae	pzt:000879	bacillariophyceae	living	mix	true	accepted							
+planktoscope	multiple_other	pzt:000024	other	artefact	unqualified	false	accepted							
+planktoscope	nauplii_Cirripedia	pzt:000300	thecostraca	living	full_body	true	accepted							
+planktoscope	nauplii_Copepoda	pzt:000152	copepoda	living	full_body	true	accepted							
+planktoscope	nauplii_Temora	pzt:000201	temora	living	full_body	true	accepted							
+planktoscope	neoceratium falcatum inflatum mix	pzt:001095	tripos	living	mix	true	accepted							
+planktoscope	neoceratium gibberum concilians mix	pzt:001094	neoceratium	living	mix	true	accepted							
+planktoscope	ophiopluteus	pzt:000435	ophiuroidea	living	full_body	true	accepted							
+planktoscope	other_living	pzt:000024	other	living	full_body	false	accepted							
+planktoscope	othertocheck	pzt:000024	other	artefact	unqualified	false	accepted							
+planktoscope	part_Crustacea	pzt:000062	arthropoda	detritus	part	false	accepted							
+planktoscope	part_Ctenophora	pzt:000949	ctenophora	detritus	part	false	accepted							
+planktoscope	part_Neoceratium	pzt:001094	neoceratium	detritus	part	false	accepted							
+planktoscope	polar view	pzt:001062	dinophyceae	living	full_body	true	accepted							
+planktoscope	pollen	pzt:000034	pollen	living	full_body	false	accepted							
+planktoscope	puff	pzt:000671	trichodesmium	living	full_body	true	accepted							
+planktoscope	rods_othertocheck	pzt:000024	other	artefact	unqualified	false	accepted							
+planktoscope	sand	pzt:000037	sand	inert	unqualified	false	accepted							
+planktoscope	seaweed	pzt:000038	seaweed	living	full_body	false	accepted							
+planktoscope	setae_Chaetoceros	pzt:000908	chaetoceros	living	full_body	true	accepted							
+planktoscope	sphere_detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+planktoscope	stellate hairs	pzt:000041	stellate hairs	detritus	unqualified	false	accepted							
+planktoscope	tail_Appendicularia	pzt:000313	appendicularia	detritus	part_tail	false	accepted							
+planktoscope	ushape	pzt:000039	shape	artefact	unqualified	false	accepted							
+planktoscope	veliger_Mollusca	pzt:000438	mollusca	living	full_body	true	accepted							
+planktoscope	zoea_Decapoda	pzt:000273	decapoda	living	full_body	true	accepted							

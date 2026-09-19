@@ -1,6 +1,7 @@
 _target_: transformers.TrainingArguments
 output_dir: ${paths.output_dir}
-overwrite_output_dir: false
+# overwrite_output_dir was REMOVED in transformers 5.x. Passing it raised after the
+# dataset and the weights had already been fetched.
 
 do_train: true
 do_eval: true

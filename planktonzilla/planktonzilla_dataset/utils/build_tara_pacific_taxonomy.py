@@ -57,17 +57,21 @@ way under ``global_uvp5`` and blank here; a row with nothing to inherit leaves i
 authoritative EcoTaxa taxon id per label lives in ``tara_pacific_classes.tsv``, which is
 where the importer reads it from anyway.
 
-The append is IDEMPOTENT: re-running rewrites the Tara Pacific block in place, so a second
-run leaves the CSV byte-identical.
+Since step 6 the write goes through the taxonomy package rather than into the master CSV:
+``write_rows`` upserts one ``mappings/<source>.tsv`` per curated source and the CSV is
+re-rendered whole from the package. The append-only invariant above is a consequence of that
+rather than something this builder arranges, so a re-run is byte-identical by construction.
+Nothing is written without ``--apply``.
 """
 
 import argparse
 import csv
-import io
 from collections import Counter, defaultdict
 from pathlib import Path
 
 from planktonzilla.planktonzilla_dataset import constants
+from planktonzilla.planktonzilla_dataset.taxonomy import write as taxonomy_write
+from planktonzilla.planktonzilla_dataset.utils import taxonomy_write_guard as write_guard
 from planktonzilla.utils.logger import get_pylogger
 
 logger = get_pylogger(__name__)
@@ -507,20 +511,37 @@ def read_master_csv(path=None) -> list[dict]:
 
 
 def _existing_indexes(rows):
-    """``(by Raw_Labels, by proposed_label)`` over the rows of the OTHER sources.
+    """``(by Raw_Labels, by proposed_label, all rows per Raw_Labels)`` over the OTHER sources.
 
     Tara Pacific rows are excluded so a re-run reads the same pre-existing table the first
     run did — that is what makes the append idempotent rather than self-reinforcing.
+
+    ``by_raw`` keeps its ``setdefault``, so the donor a class dir copies is still the first row
+    in file order and not one published byte moves. What is new is the third index: the rows that
+    LOST that race are no longer discarded, so a class dir whose candidate donors disagree can be
+    reported instead of silently resolved. Rejecting a donor on rank depth would change published
+    lineages and is gated; noticing that a choice was made is not.
     """
-    by_raw, by_label = {}, defaultdict(list)
+    by_raw, by_label, by_raw_all = {}, defaultdict(list), defaultdict(list)
     for row in rows:
         if row["Dataset"] in DATASET_NAMES:
             continue
         by_raw.setdefault(row["Raw_Labels"], row)
+        by_raw_all[row["Raw_Labels"]].append(row)
         label = (row["proposed_label"] or "").strip().lower()
         if label:
             by_label[label].append(row)
-    return by_raw, by_label
+    return by_raw, by_label, by_raw_all
+
+
+def _donor_disagreement(candidates) -> list:
+    """The columns on which two or more candidate donors for one class dir disagree.
+
+    Only the columns that describe the taxon: the seven ranks, the label, and the five external
+    ids. A difference in `Dataset` is expected — that is what makes them different rows.
+    """
+    watched = (*RANKS, "proposed_label", *ID_COLUMNS)
+    return sorted(column for column in watched if len({(row.get(column) or "").strip() for row in candidates}) > 1)
 
 
 def _branch(taxon) -> str | None:
@@ -713,13 +734,17 @@ def _assert_no_rank_gaps(rows) -> None:
 
 def build_rows(class_map, taxa, master_rows):
     """Turn the frozen tuples into complete CSV rows. Returns ``(rows, decisions)``."""
-    by_raw, by_label = _existing_indexes(master_rows)
+    by_raw, by_label, by_raw_all = _existing_indexes(master_rows)
     rows, decisions = [], []
 
     for entry in class_map:
         taxon = taxa[entry["taxon_id"]]
         class_dir = entry["class_dir"]
         anchor = anchor_taxon(taxon, taxa)
+
+        # Recorded before the copy, so the report says which donor won and what the losers said.
+        raw_candidates = by_raw_all.get(class_dir, [])
+        disagreement = _donor_disagreement(raw_candidates) if len(raw_candidates) > 1 else []
 
         existing = by_raw.get(class_dir)
         if existing is not None:
@@ -784,6 +809,10 @@ def build_rows(class_map, taxa, master_rows):
                 "label": row["proposed_label"],
                 "root_class": row["root_class"],
                 "qualifier": row["qualifier"],
+                # Which columns the candidate donors disagreed on, and who else was in the
+                # running. Empty for the 1,300-odd class dirs with a single candidate.
+                "donor_disagreement": ";".join(disagreement),
+                "donor_candidates": ";".join(sorted({row["Dataset"] for row in raw_candidates})) if disagreement else "",
                 "new_token": taxon["type"] == "M" and taxon["name"] in TOKENS_WITHOUT_PRECEDENT,
                 "needs_rule": taxon["type"] == "M" and _branch(taxon) is None and taxon["name"] not in MORPH_RULES,
             }
@@ -796,42 +825,70 @@ def build_rows(class_map, taxa, master_rows):
 # --- Writing --------------------------------------------------------------------------
 
 
-def _serialize(rows) -> str:
-    """Render rows with the master CSV's dialect (``\\n``, minimal quoting)."""
-    buffer = io.StringIO()
-    writer = csv.DictWriter(buffer, fieldnames=CSV_COLUMNS, lineterminator="\n")
-    writer.writerows(rows)
-    return buffer.getvalue()
+def provenance_of(decisions) -> dict:
+    """``{(dataset, class dir): {method, donor, …}}`` — the decision record, as columns.
+
+    ``build_rows`` has always computed exactly this: which rule decided the row, which row donated
+    its identifiers, which anchor taxon it hung from. Until step 7 it went into a Markdown report
+    and nowhere else, so the question "why does this row say this?" was answerable by reading prose
+    and not by reading the table. The report is now derived from these columns rather than being
+    their only home.
+    """
+    provenance = {}
+    for decision in decisions:
+        record = {"method": decision["rule"]}
+        if decision["donor"]:
+            record["donor"] = decision["donor"]
+        if decision["anchor"]:
+            # The taxon the ranks and ids were reused from — the evidence for the identification,
+            # which is what this Darwin Core column is for.
+            record["identificationReferences"] = f"anchor:{decision['anchor']}"
+        notes = []
+        if decision["new_token"]:
+            notes.append("morphology token with no precedent in the table; root_class and qualifier reasoned by analogy")
+        if decision["needs_rule"]:
+            notes.append("fell through to the artefact default; no morphology rule matched")
+        if notes:
+            record["remarks"] = "; ".join(notes)
+        provenance[(decision["dataset"], decision["class_dir"])] = record
+    return provenance
 
 
-def append_to_master(rows, path=None) -> int:
-    """Append (or, on a re-run, replace in place) the Tara Pacific block. Idempotent.
+def write_rows(rows, *, decisions=None, package_dir=None, csv_path=None, apply: bool = False):
+    """Upsert the curated Tara Pacific rows into the taxonomy package, then re-render the master CSV.
 
-    Every line that is not a Tara Pacific row is passed through byte-for-byte, so the
-    frozen header + 1485 rows and the 229 frepj rows are untouched — the append-only
-    invariant ``tests/test_frepj_taxonomy_coverage.py::test_existing_rows_byte_frozen``
-    pins.
+    This builder curates FOUR sources (``bongo``, ``decknet``, ``hsn``, ``manta``).
+    ``upsert_wide_rows`` groups the rows by their own ``Dataset`` column and writes one mapping file
+    each, so the four-way split is a partition rather than a filter — the builder cannot reach a
+    fifth source even by accident, which is what the byte-range writer it replaces could not say.
+
+    The row-preservation guard still runs on the re-render. This writer did keep foreign lines, but
+    so did ``build_frepj_taxonomy.write_csv`` until a source landed after its block
+    (``docs/CODE_REVIEW.md`` finding 1.1). An asserted invariant survives that; a documented one
+    does not.
+
+    Args:
+        rows: The curated Tara Pacific rows, in file order.
+        decisions: The matching decision records from :func:`build_rows`; their rule, donor and
+            anchor become the rows' provenance columns.
+        package_dir: The taxonomy package (default: the bundled one).
+        csv_path: Master taxonomy CSV to re-render (default: the committed one).
+        apply: Write. Defaults to False, so a run reports what it would change and touches nothing.
 
     Returns:
-        The number of rows written.
+        The :class:`ChangeSet` the upsert produced.
     """
-    path = Path(path or constants.DEFAULT_TAXONOMY_CSV_FILENAME)
-    original = path.read_text(encoding="utf-8")
-
-    kept = []
-    for line in original.splitlines(keepends=True):
-        # A Tara Pacific row is recognised by its Dataset column, which is the first field
-        # and never quoted; nothing else in the file starts with these names.
-        if any(line.startswith(f"{name},") for name in DATASET_NAMES):
-            continue
-        kept.append(line)
-
-    body = "".join(kept)
-    if body and not body.endswith("\n"):
-        body += "\n"
-
-    path.write_text(body + _serialize(rows), encoding="utf-8")
-    return len(rows)
+    package_dir = Path(package_dir or taxonomy_write.loader.PACKAGE_DIR)
+    provenance = provenance_of(decisions) if decisions else None
+    changes = taxonomy_write.upsert_wide_rows(package_dir, rows, provenance=provenance, apply=apply)
+    if apply:
+        write_guard.render_master(
+            package_dir,
+            csv_path or constants.DEFAULT_TAXONOMY_CSV_FILENAME,
+            owner=set(DATASET_NAMES),
+            tool="build_tara_pacific_taxonomy",
+        )
+    return changes
 
 
 # The report's static prose, one constant per paragraph.
@@ -880,9 +937,28 @@ _B5_NOTE = (
 )
 
 
-def write_reconciliation(decisions, path=DEFAULT_RECONCILIATION_MD) -> Path:
-    """Emit the human-verify report: how each row was decided and what is genuinely new."""
-    by_rule = Counter(decision["rule"] for decision in decisions)
+def _committed_methods(package_dir) -> Counter:
+    """``{method: rows}`` for the four Tara Pacific sources, read back out of the package."""
+    from planktonzilla.planktonzilla_dataset.taxonomy.model import read_tsv
+
+    counts = Counter()
+    for name in DATASET_NAMES:
+        path = Path(package_dir) / "mappings" / f"{name}.tsv"
+        if path.exists():
+            counts.update(row["method"] for row in read_tsv(path) if row["method"])
+    return counts
+
+
+def write_reconciliation(decisions, path=DEFAULT_RECONCILIATION_MD, package_dir=None) -> Path:
+    """Emit the human-verify report: how each row was decided and what is genuinely new.
+
+    Section A's counts come from the COMMITTED PACKAGE when one is given, not from the in-memory
+    decisions — step 7's point. A report string-concatenated from a run says what that run thought;
+    a report read back out of the ledger says what was actually written, and cannot claim a number
+    the table disagrees with. The prose sections stay prose: ``HOMONYM_NOTES`` and
+    ``RANK_DEPARTURES`` are reasoning, and reasoning has no column.
+    """
+    by_rule = _committed_methods(package_dir) if package_dir else Counter(d["rule"] for d in decisions)
     new_tokens = sorted({decision["class_dir"] for decision in decisions if decision["new_token"]})
     needs_rule = sorted({decision["class_dir"] for decision in decisions if decision["needs_rule"]})
 
@@ -962,6 +1038,40 @@ def write_reconciliation(decisions, path=DEFAULT_RECONCILIATION_MD) -> Path:
             "",
             _B5_NOTE,
             "",
+        ]
+    )
+
+    # B7 — the ambiguity the `verbatim` rule resolves silently. Review finding 1.6: the donor is
+    # `by_raw.setdefault`, first row in FILE ORDER, with no check that it describes the same taxon
+    # the class dir is keyed to and no warning when two pre-existing rows disagree — and the report
+    # only ever tabulated `derived` rows, so the 323 `verbatim` ones never reached a human. This
+    # section is that missing checkpoint. It changes no row: correcting one is gated on the golden
+    # diff, and until then the choice is at least visible.
+    # One line per class dir, not per row: the same `Raw_Labels` reaches this table once for
+    # each Tara Pacific dataset that carries it, and the ambiguity is a property of the label.
+    ambiguous = {d["class_dir"]: d for d in decisions if d.get("donor_disagreement")}
+    lines.extend(
+        [
+            f"### B7. Class dirs whose candidate donors disagreed ({len(ambiguous)})",
+            "",
+            "The donor is the first matching row in file order. Where more than one pre-existing row",
+            "carries the same `Raw_Labels` and they describe different taxa, the choice below was made",
+            "by position, not by evidence. Correcting one changes a published lineage, so these are",
+            "recorded for adjudication rather than resolved here.",
+            "",
+            "| Raw_Labels | donor taken | other candidates | columns they disagree on |",
+            "| --- | --- | --- | --- |",
+        ]
+    )
+    for decision in sorted(ambiguous.values(), key=lambda d: d["class_dir"]):
+        others = [name for name in decision["donor_candidates"].split(";") if name != decision["donor"]]
+        lines.append(
+            f"| `{decision['class_dir']}` | {decision['donor'] or '—'} | {', '.join(others) or '—'} | "
+            f"{decision['donor_disagreement'].replace(';', ', ')} |"
+        )
+    lines.extend(
+        [
+            "",
             "## Section C — every derived row",
             "",
             "| dataset | Raw_Labels | anchor | proposed_label | root_class | qualifier | higher ranks from |",
@@ -990,7 +1100,8 @@ def main(argv=None) -> int:
     parser.add_argument("--taxa-tsv", default=DEFAULT_TAXA_TSV, type=Path)
     parser.add_argument("--csv", default=None, type=Path, help="Master taxonomy CSV (default: the committed one).")
     parser.add_argument("--reconciliation", default=DEFAULT_RECONCILIATION_MD, type=Path)
-    parser.add_argument("--dry-run", action="store_true", help="Report what would be written, write nothing.")
+    parser.add_argument("--package", default=None, type=Path, help="Taxonomy package (default: the bundled one).")
+    parser.add_argument("--apply", action="store_true", help="Write. Without it the builder reports and stops.")
     args = parser.parse_args(argv)
 
     taxa = read_taxa(args.taxa_tsv)
@@ -1005,13 +1116,14 @@ def main(argv=None) -> int:
     if needs_rule:
         logger.warning(f"{len(needs_rule)} label(s) fell through to the artefact default: {needs_rule}")
 
-    if args.dry_run:
-        logger.info("Dry run: nothing written.")
+    changes = write_rows(rows, decisions=decisions, package_dir=args.package, csv_path=args.csv, apply=args.apply)
+    logger.info(changes.describe())
+    if not args.apply:
+        logger.info("Nothing was written. Re-run with --apply to write it.")
         return 0
 
-    written = append_to_master(rows, args.csv)
-    report = write_reconciliation(decisions, args.reconciliation)
-    logger.info(f"Wrote {written} row(s) to the master CSV and the report to {report}.")
+    report = write_reconciliation(decisions, args.reconciliation, package_dir=args.package or taxonomy_write.loader.PACKAGE_DIR)
+    logger.info(f"Wrote {len(rows)} row(s) through the package and the report to {report}.")
     return 0
 
 

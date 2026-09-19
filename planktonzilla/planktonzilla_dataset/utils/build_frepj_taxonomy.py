@@ -43,8 +43,11 @@ What it does
 7. Emits ``FREPJ_TAXONOMY_RECONCILIATION.md`` (Section A = overlap reuse table,
    Section B = flagged-conflict list).
 
-The append is IDEMPOTENT: re-running rewrites the frepj block in place so a second
-run leaves the CSV byte-identical.
+Since step 6 the write goes through the taxonomy package rather than into the master CSV:
+``write_rows`` upserts ``mappings/frepj.tsv`` and the CSV is re-rendered whole from the
+package. The append-only invariant above is a consequence of that rather than something
+this builder arranges — there is no block boundary to find, so a re-run is byte-identical
+by construction. Nothing is written without ``--apply``.
 
 Network-free BY CONSTRUCTION: reads only the committed TSV fixture and the committed
 CSV. No HTTP, no downloads.
@@ -52,13 +55,14 @@ CSV. No HTTP, no downloads.
 
 import argparse
 import csv
-import io
 import logging
 import re
 from collections import Counter
 from pathlib import Path
 
 from planktonzilla.planktonzilla_dataset import constants
+from planktonzilla.planktonzilla_dataset.taxonomy import write as taxonomy_write
+from planktonzilla.planktonzilla_dataset.utils import taxonomy_write_guard as write_guard
 from planktonzilla.utils.logger import get_pylogger
 
 logger = get_pylogger(__name__)
@@ -423,35 +427,77 @@ def build_rows(tsv_path: Path, csv_path: Path) -> tuple[list[Parsed], list[dict]
     return parsed, [p.as_csv_row() for p in parsed]
 
 
-def _encode_rows(csv_rows: list[dict]) -> str:
-    """Encode the frepj rows as a pure-LF CSV block (Raw_Labels auto-quoted)."""
-    buf = io.StringIO()
-    writer = csv.writer(buf, lineterminator="\n", quoting=csv.QUOTE_MINIMAL)
-    for row in csv_rows:
-        writer.writerow([row[col] for col in CSV_COLUMNS])
-    return buf.getvalue()
+def provenance_of(parsed: list) -> dict:
+    """``{(frepj, class dir): {method, donor, …}}`` — how each of the 229 rows was decided.
 
-
-def write_csv(csv_path: Path, csv_rows: list[dict]) -> None:
-    """Idempotently append the frepj rows after the pristine 1486-line prefix.
-
-    The pre-existing header + 1485 rows are preserved byte-for-byte: the append
-    boundary is the first CSV row whose ``Dataset`` column parses to ``frepj``
-    (WR-04) — the row's first field is parsed with ``csv.reader`` rather than raw
-    substring search, so a literal ``frepj,`` embedded in some other quoted field
-    can never be mistaken for the boundary. The prefix bytes up to that row are
-    copied verbatim (never re-serialised), so a re-run rewrites only the frepj block
-    and leaves the file byte-identical.
+    ``parse_class_dir`` has always recorded this on the :class:`Parsed` it returns: whether the
+    lineage was reused from a genus already in the table, whether the kingdom and phylum came from
+    a class anchor the table supplies or from the hand-curated map, whether a class name was
+    normalised, whether the sentinel cascade cut a rank. Until step 7 it reached only the
+    reconciliation report, so the table itself could not say why any row claimed what it claimed.
     """
-    raw = csv_path.read_bytes()
-    prefix = bytearray()
-    for line in raw.splitlines(keepends=True):
-        content = line.decode("utf-8").rstrip("\r\n")
-        first_field = next(csv.reader([content]), [""])[0] if content else ""
-        if first_field == DATASET_NAME:
-            break
-        prefix += line
-    csv_path.write_text(bytes(prefix).decode("utf-8") + _encode_rows(csv_rows))
+    provenance = {}
+    for row in parsed:
+        if row.reused_genus is not None:
+            method = "genus_reuse"
+        elif row.class_curated:
+            method = "curated_class"
+        else:
+            method = "class_anchor"
+
+        record = {"method": method}
+        if row.reused_sources:
+            record["donor"] = ";".join(row.reused_sources)
+        if row.reused_genus is not None:
+            record["identificationReferences"] = f"genus:{row.reused_genus}"
+
+        notes = []
+        if row.class_typo is not None:
+            notes.append(f"class name normalised from {row.class_typo[0]!r}")
+        if row.species_flag:
+            notes.append(f"species epithet: {row.species_flag}")
+        if row.is_six_tuple:
+            notes.append("six-field class directory; the frozen list carries one")
+        if notes:
+            record["remarks"] = "; ".join(notes)
+        provenance[(DATASET_NAME, row.raw_labels)] = record
+    return provenance
+
+
+def write_rows(csv_rows: list[dict], *, parsed=None, package_dir=None, csv_path=None, apply: bool = False):
+    """Upsert the curated frepj rows into the taxonomy package, then re-render the master CSV.
+
+    Replaces the byte-splicing this builder did until step 6, which copied the prefix up to the
+    first ``frepj`` row and wrote its own block after it — discarding everything appended LATER,
+    turning 2358 rows into 1714 and exiting 0 (``docs/CODE_REVIEW.md`` finding 1.1).
+
+    There is no byte range now. ``upsert_wide_rows`` writes ``mappings/frepj.tsv`` and nothing else
+    under ``mappings/``, and the master CSV is re-rendered whole from the package, which is a total
+    function of it. The row-preservation guard still runs on the render: this builder's own history
+    is why an invariant gets asserted rather than documented.
+
+    Args:
+        csv_rows: The curated frepj rows, in file order.
+        parsed: The matching :class:`Parsed` records; their reuse and curation flags become the
+            rows' provenance columns.
+        package_dir: The taxonomy package (default: the bundled one).
+        csv_path: The master CSV to re-render (default: the committed one).
+        apply: Write. Defaults to False, so a run reports what it would change and touches nothing.
+
+    Returns:
+        The :class:`ChangeSet` the upsert produced.
+    """
+    package_dir = Path(package_dir or taxonomy_write.loader.PACKAGE_DIR)
+    provenance = provenance_of(parsed) if parsed else None
+    changes = taxonomy_write.upsert_wide_rows(package_dir, csv_rows, provenance=provenance, apply=apply)
+    if apply:
+        write_guard.render_master(
+            package_dir,
+            csv_path or constants.DEFAULT_TAXONOMY_CSV_FILENAME,
+            owner={DATASET_NAME},
+            tool="build_frepj_taxonomy",
+        )
+    return changes
 
 
 def _fmt_ids(id_rows: list[dict]) -> str:
@@ -650,14 +696,20 @@ def main() -> None:
     parser.add_argument("--tsv", type=Path, default=DEFAULT_CLASS_DIRS_TSV)
     parser.add_argument("--csv", type=Path, default=constants.DEFAULT_TAXONOMY_CSV_FILENAME)
     parser.add_argument("--report", type=Path, default=DEFAULT_RECONCILIATION_MD)
+    parser.add_argument("--package", type=Path, default=None, help="Taxonomy package (default: the bundled one).")
+    parser.add_argument("--apply", action="store_true", help="Write. Without it the builder reports and stops.")
     args = parser.parse_args()
 
     logger.info(f"Reading frozen class-dirs from «{args.tsv}».")
     parsed, csv_rows = build_rows(args.tsv, args.csv)
     logger.info(f"Curated {len(csv_rows)} «frepj» rows.")
 
-    write_csv(args.csv, csv_rows)
-    logger.info(f"Appended {len(csv_rows)} rows to «{args.csv}» (idempotent, append-only).")
+    changes = write_rows(csv_rows, parsed=parsed, package_dir=args.package, csv_path=args.csv, apply=args.apply)
+    logger.info(changes.describe())
+    if not args.apply:
+        # The report is an artefact too. "Nothing was written" has to mean nothing.
+        logger.info("Nothing was written. Re-run with --apply to write it.")
+        return
 
     write_report(args.report, parsed)
     logger.info(f"Wrote reconciliation report «{args.report}».")

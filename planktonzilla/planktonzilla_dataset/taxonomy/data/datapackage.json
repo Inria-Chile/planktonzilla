@@ -1,0 +1,1004 @@
+{
+  "name": "planktonzilla-taxonomy",
+  "title": "planktonzilla source-label to taxon-concept mapping",
+  "description": "The schema of record for the normalised taxonomy package. Executed by planktonzilla.planktonzilla_dataset.taxonomy.validate, which needs nothing but polars and the standard library -- so pre-flight on a laptop gives CI's verdict. Shaped as a Frictionless Data Package so the descriptor stays readable to that toolchain, with two project extensions its validator ignores: `vocabulary` on a field constraint (the value must appear in a vocab table) and `uniqueKeys` (which Frictionless 5.19 parses but does not enforce -- measured).",
+  "profile": "tabular-data-package",
+  "dialect": {
+    "delimiter": "\t",
+    "lineTerminator": "\n",
+    "quoteChar": "",
+    "header": true
+  },
+  "resources": [
+    {
+      "name": "taxon",
+      "path": "taxon.tsv",
+      "description": "One row per node: the rank tree, plus lineage-less buckets.",
+      "schema": {
+        "fields": [
+          {
+            "name": "taxonID",
+            "type": "string",
+            "description": "Opaque, never renamed, never reused.",
+            "constraints": {
+              "required": true,
+              "pattern": "^pzt:[0-9]{6}$"
+            }
+          },
+          {
+            "name": "parentNameUsageID",
+            "type": "string",
+            "description": "Empty at a root.",
+            "constraints": {
+              "pattern": "^(pzt:[0-9]{6})?$"
+            }
+          },
+          {
+            "name": "taxonRank",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "vocabulary": "rank#rank"
+            }
+          },
+          {
+            "name": "scientificName",
+            "type": "string",
+            "description": "Binomial at species rank; the epithet is projected.",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "taxonomicStatus",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "enum": [
+                "accepted",
+                "synonym",
+                "misapplied"
+              ]
+            }
+          },
+          {
+            "name": "acceptedNameUsageID",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "pattern": "^(pzt:[0-9]{6})?$"
+            }
+          },
+          {
+            "name": "nameAccordingTo",
+            "type": "string",
+            "description": "The classification followed, where two placements coexist."
+          },
+          {
+            "name": "kind",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "vocabulary": "kind#kind"
+            }
+          },
+          {
+            "name": "taxonRemarks",
+            "type": "string",
+            "description": ""
+          }
+        ],
+        "primaryKey": [
+          "taxonID"
+        ],
+        "uniqueKeys": [
+          [
+            "scientificName",
+            "taxonRank",
+            "parentNameUsageID"
+          ]
+        ],
+        "foreignKeys": [
+          {
+            "fields": [
+              "parentNameUsageID"
+            ],
+            "reference": {
+              "resource": "taxon",
+              "fields": [
+                "taxonID"
+              ]
+            }
+          },
+          {
+            "fields": [
+              "acceptedNameUsageID"
+            ],
+            "reference": {
+              "resource": "taxon",
+              "fields": [
+                "taxonID"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "identifier",
+      "path": "identifier.tsv",
+      "description": "One external id per line, SSSOM-shaped. An absence is a row, not a blank.",
+      "schema": {
+        "fields": [
+          {
+            "name": "subject_id",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "pattern": "^pzt:[0-9]{6}$"
+            }
+          },
+          {
+            "name": "predicate_id",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "enum": [
+                "skos:exactMatch",
+                "skos:broadMatch",
+                "skos:narrowMatch",
+                "skos:closeMatch",
+                "sssom:NoTermFound"
+              ]
+            }
+          },
+          {
+            "name": "object_id",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "pattern": "^[a-z_]+:([A-Za-z0-9]+|absent)$"
+            }
+          },
+          {
+            "name": "mapping_justification",
+            "type": "string",
+            "description": "How the mapping was arrived at. LogicalReasoning is a broad match inferred from the hierarchy.",
+            "constraints": {
+              "required": true,
+              "enum": [
+                "semapv:LexicalMatching",
+                "semapv:LogicalReasoning",
+                "semapv:ManualMappingCuration",
+                "semapv:UnspecifiedMatching"
+              ]
+            }
+          },
+          {
+            "name": "mapping_date",
+            "type": "string",
+            "description": "A string, never a date type: a spreadsheet round trip rewrites dates."
+          },
+          {
+            "name": "author_id",
+            "type": "string",
+            "description": ""
+          },
+          {
+            "name": "confidence",
+            "type": "string",
+            "description": ""
+          },
+          {
+            "name": "comment",
+            "type": "string",
+            "description": ""
+          }
+        ],
+        "primaryKey": [
+          "subject_id",
+          "predicate_id",
+          "object_id"
+        ],
+        "foreignKeys": [
+          {
+            "fields": [
+              "subject_id"
+            ],
+            "reference": {
+              "resource": "taxon",
+              "fields": [
+                "taxonID"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mapping",
+      "description": "One file per source. `pathGlob` is a project extension: the descriptor declares the SHAPE of a mapping file and nothing about which sources exist, because enumerating them here would be a second source registry beside constants.DATASET_IMPORT_CONFIGS -- two lists that drift, and a line both branches of a concurrent add-source PR insert at the same position (measured: it conflicted). The registry is constants.DATASET_IMPORT_CONFIGS, which adding a source already has to touch for validate_license_coverage. Each file's datasetID must equal its own stem.",
+      "schema": {
+        "fields": [
+          {
+            "name": "datasetID",
+            "type": "string",
+            "description": "Must equal the file stem.",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "verbatimIdentification",
+            "type": "string",
+            "description": "The class-directory name, byte-exact.",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "taxonID",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "pattern": "^pzt:[0-9]{6}$"
+            }
+          },
+          {
+            "name": "concept",
+            "type": "string",
+            "description": "The display name; must equal the taxon's scientificName.",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "root_class",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "vocabulary": "root_class#root_class"
+            }
+          },
+          {
+            "name": "qualifier",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "vocabulary": "qualifier#qualifier"
+            }
+          },
+          {
+            "name": "plankton",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "description": "`draft` is skipped by the renderer and the coverage rule.",
+            "constraints": {
+              "required": true,
+              "enum": [
+                "accepted",
+                "draft"
+              ]
+            }
+          },
+          {
+            "name": "method",
+            "type": "string",
+            "description": "How this row was decided. Blank where nobody can answer; a gap, not a value.",
+            "constraints": {
+              "vocabulary": "method#method"
+            }
+          },
+          {
+            "name": "donor",
+            "type": "string",
+            "description": "The source or row a reused decision came from. Never set without a method."
+          },
+          {
+            "name": "identifiedBy",
+            "type": "string",
+            "description": "Who made the identification."
+          },
+          {
+            "name": "dateIdentified",
+            "type": "string",
+            "description": "A string, never a date type: a spreadsheet round trip rewrites dates."
+          },
+          {
+            "name": "identificationReferences",
+            "type": "string",
+            "description": "The evidence: the anchor taxon or genus whose lineage was reused."
+          },
+          {
+            "name": "confidence",
+            "type": "string",
+            "description": ""
+          },
+          {
+            "name": "remarks",
+            "type": "string",
+            "description": "Anything about this row a column cannot hold."
+          }
+        ],
+        "primaryKey": [
+          "datasetID",
+          "verbatimIdentification"
+        ],
+        "foreignKeys": [
+          {
+            "fields": [
+              "taxonID"
+            ],
+            "reference": {
+              "resource": "taxon",
+              "fields": [
+                "taxonID"
+              ]
+            }
+          }
+        ]
+      },
+      "pathGlob": "mappings/*.tsv"
+    },
+    {
+      "name": "rank",
+      "path": "vocab/rank.tsv",
+      "schema": {
+        "fields": [
+          {
+            "name": "rank",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "ordinal",
+            "type": "string",
+            "description": ""
+          },
+          {
+            "name": "legacy_slot",
+            "type": "string",
+            "description": ""
+          }
+        ],
+        "primaryKey": [
+          "rank"
+        ]
+      }
+    },
+    {
+      "name": "root_class",
+      "path": "vocab/root_class.tsv",
+      "schema": {
+        "fields": [
+          {
+            "name": "root_class",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "living",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "primaryKey": [
+          "root_class"
+        ]
+      }
+    },
+    {
+      "name": "qualifier",
+      "path": "vocab/qualifier.tsv",
+      "schema": {
+        "fields": [
+          {
+            "name": "qualifier",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "legacy_value",
+            "type": "string",
+            "description": ""
+          }
+        ],
+        "primaryKey": [
+          "qualifier"
+        ]
+      }
+    },
+    {
+      "name": "authority",
+      "path": "vocab/authority.tsv",
+      "schema": {
+        "fields": [
+          {
+            "name": "authority",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "legacy_column",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "prefix",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "scope",
+            "type": "string",
+            "description": ""
+          },
+          {
+            "name": "multi_valued",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "primaryKey": [
+          "authority"
+        ]
+      }
+    },
+    {
+      "name": "kind",
+      "path": "vocab/kind.tsv",
+      "schema": {
+        "fields": [
+          {
+            "name": "kind",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "definition",
+            "type": "string",
+            "description": ""
+          }
+        ],
+        "primaryKey": [
+          "kind"
+        ]
+      }
+    },
+    {
+      "name": "method",
+      "path": "vocab/method.tsv",
+      "description": "How a mapping row was decided. Controlled so 2358 answers to «why?» are comparable.",
+      "schema": {
+        "fields": [
+          {
+            "name": "method",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "emitted_by",
+            "type": "string",
+            "description": "The source whose builder emits this method."
+          },
+          {
+            "name": "definition",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          }
+        ],
+        "primaryKey": [
+          "method"
+        ]
+      }
+    },
+    {
+      "name": "label_vocabulary",
+      "pathGlob": "vocab/labels/*_taxpath.tsv",
+      "description": "A RELEASED training vocabulary: the ClassLabel names a release published, in class-id order. Frozen, never regenerated — new names are a new tag, because regenerating renumbers the class ids of every model already trained against the old one.",
+      "schema": {
+        "fields": [
+          {
+            "name": "class_id",
+            "type": "string",
+            "description": "The integer id. Its position in the file IS its value.",
+            "constraints": {
+              "required": true,
+              "pattern": "^[0-9]+$"
+            }
+          },
+          {
+            "name": "tax_label",
+            "type": "string",
+            "description": "The space-joined non-empty ranks. Empty at class 0, which is a real class."
+          }
+        ],
+        "description": "No primaryKey: a pathGlob pools every matching file into one key space, and each released vocabulary has its own class-id space starting at 0. The real invariant is stronger than uniqueness anyway — class_id equals position — and check_rules asserts it per file."
+      }
+    },
+    {
+      "name": "merged",
+      "path": "merged.tsv",
+      "description": "Retired ids. An id present in the previous commit and absent now must appear here.",
+      "schema": {
+        "fields": [
+          {
+            "name": "retired_id",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "pattern": "^pzt:[0-9]{6}$"
+            }
+          },
+          {
+            "name": "replacement_id",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "pattern": "^(pzt:[0-9]{6})?$"
+            }
+          },
+          {
+            "name": "date",
+            "type": "string",
+            "description": ""
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          }
+        ],
+        "primaryKey": [
+          "retired_id"
+        ]
+      }
+    },
+    {
+      "name": "legacy_row_order",
+      "path": "release/v1.0/legacy_row_order.tsv",
+      "description": "The frozen physical order. Not derivable within a label; asserted against the collation key.",
+      "schema": {
+        "fields": [
+          {
+            "name": "sequence",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "pattern": "^[0-9]+$"
+            }
+          },
+          {
+            "name": "datasetID",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "verbatimIdentification",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          }
+        ],
+        "primaryKey": [
+          "sequence"
+        ],
+        "uniqueKeys": [
+          [
+            "datasetID",
+            "verbatimIdentification"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "legacy_overrides",
+      "path": "release/v1.0/legacy_overrides.tsv",
+      "description": "Per-mapping id overrides, and the three nullable mapping pins a curator needs.",
+      "schema": {
+        "fields": [
+          {
+            "name": "datasetID",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "verbatimIdentification",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "wikidata_ID",
+            "type": "string",
+            "description": ""
+          },
+          {
+            "name": "aphia_ID",
+            "type": "string",
+            "description": ""
+          },
+          {
+            "name": "NCBI_ID",
+            "type": "string",
+            "description": ""
+          },
+          {
+            "name": "BOLD_ID",
+            "type": "string",
+            "description": ""
+          },
+          {
+            "name": "ecotaxa_ID",
+            "type": "string",
+            "description": ""
+          },
+          {
+            "name": "root_class",
+            "type": "string",
+            "description": ""
+          },
+          {
+            "name": "qualifier",
+            "type": "string",
+            "description": ""
+          },
+          {
+            "name": "plankton",
+            "type": "string",
+            "description": ""
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          }
+        ],
+        "primaryKey": [
+          "datasetID",
+          "verbatimIdentification"
+        ]
+      }
+    },
+    {
+      "name": "waiver_horizontal",
+      "path": "waivers/horizontal.tsv",
+      "description": "KI-31 adjudications, re-keyed from name-derived finding ids onto stable concept ids.",
+      "schema": {
+        "fields": [
+          {
+            "name": "finding_id",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "check",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "severity",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "enum": [
+                "ERROR",
+                "WARN"
+              ]
+            }
+          },
+          {
+            "name": "raw_label",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "taxon_ids",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "labels",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "n_rows",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "category",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          }
+        ],
+        "primaryKey": [
+          "finding_id"
+        ]
+      }
+    },
+    {
+      "name": "waiver_authority",
+      "path": "waivers/authority.tsv",
+      "description": "Adjudicated external-authority findings, re-keyed onto stable concept ids.",
+      "schema": {
+        "fields": [
+          {
+            "name": "finding_id",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "check",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "authority",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "taxon_id",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "pattern": "^pzt:[0-9]{6}$"
+            }
+          },
+          {
+            "name": "proposed_label",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "id_column",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "id_value",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "csv_value",
+            "type": "string",
+            "description": ""
+          },
+          {
+            "name": "authority_value",
+            "type": "string",
+            "description": ""
+          },
+          {
+            "name": "category",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          }
+        ],
+        "primaryKey": [
+          "finding_id"
+        ]
+      }
+    },
+    {
+      "name": "waiver_structural",
+      "path": "waivers/structural.tsv",
+      "description": "Adjudications of THIS validator's own findings, keyed by its finding_id. The only waiver table read_waivers consumes; horizontal and authority are ported data for the checks that move onto the loader in steps 5 and 7.",
+      "schema": {
+        "fields": [
+          {
+            "name": "finding_id",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "pattern": "^[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "check",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "severity",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true,
+              "enum": [
+                "ERROR",
+                "WARN"
+              ]
+            }
+          },
+          {
+            "name": "resource",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "locator",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "subject",
+            "type": "string",
+            "description": ""
+          },
+          {
+            "name": "category",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "description": "",
+            "constraints": {
+              "required": true
+            }
+          }
+        ],
+        "primaryKey": [
+          "finding_id"
+        ]
+      }
+    }
+  ]
+}

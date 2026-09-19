@@ -26,6 +26,7 @@ the live service cannot change anything. The only dependency beyond the stdlib i
 
 import concurrent.futures
 import csv
+import itertools
 import os
 import time
 from pathlib import Path
@@ -156,16 +157,30 @@ def fetch_project_manifest(
     """
     rows: list[dict] = []
     total = None
+    read_header = False
     progress = None
 
-    while total is None or len(rows) < total:
+    # Paging runs until a window comes back EMPTY, and stops early once the promised
+    # count is reached. It used to run `while total is None or len(rows) < total` with
+    # `total = int(payload.get("total_ids", 0))` — so a service that omitted total_ids
+    # produced `total = 0`, which ended the loop after ONE window and, being falsy, also
+    # skipped the short-manifest guard below. A one-window manifest imported as if it
+    # were the whole project, with nothing raised and nothing logged.
+    while True:
         url = query_url(project_id, window_start=len(rows), window_size=window_size)
         payload = _request_json(
             url, session=session, user_agent=user_agent, timeout=timeout, retries=retries, json_body={"filters": {}}
         )
 
-        if total is None:
-            total = int(payload.get("total_ids", 0))
+        if not read_header:
+            read_header = True
+            declared = payload.get("total_ids")
+            total = int(declared) if declared is not None else None
+            if total is None:
+                logger.warning(
+                    f"EcoTaxa project {project_id} did not declare total_ids. Paging until a window comes back "
+                    f"empty; without a promised count the short-manifest check cannot run."
+                )
             progress = tqdm(
                 total=total, desc=f"EcoTaxa manifest {project_id}", unit="obj", leave=False, disable=not show_progress
             )
@@ -176,11 +191,13 @@ def fetch_project_manifest(
         rows.extend(dict(zip(MANIFEST_COLUMNS, detail)) for detail in details)
         if progress is not None:
             progress.update(len(details))
+        if total is not None and len(rows) >= total:
+            break
 
     if progress is not None:
         progress.close()
 
-    if total and len(rows) != total:
+    if total is not None and len(rows) != total:
         raise EcoTaxaError(
             f"EcoTaxa project {project_id} promised {total} objects but returned {len(rows)}. "
             "Refusing a short manifest: it would import a silently incomplete dataset."
@@ -282,7 +299,7 @@ def download_vault_images(
     retries: int = 3,
     show_progress: bool = True,
     desc: str = "EcoTaxa vignettes",
-) -> tuple[int, list[str]]:
+) -> tuple[int, int, list[str]]:
     """Fetch ``(url, destination Path)`` pairs concurrently, skipping what is on disk.
 
     Resumable by construction: an existing destination is left untouched, so a re-run
@@ -307,25 +324,36 @@ def download_vault_images(
     fetched, skipped, failures = 0, 0, []
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
-            futures = [
-                executor.submit(_fetch_one_image, job, session=session, headers=headers, timeout=timeout, retries=retries)
-                for job in jobs
-            ]
-            for future in tqdm(
-                concurrent.futures.as_completed(futures),
-                total=len(futures),
-                desc=desc,
-                unit="img",
-                leave=False,
-                disable=not show_progress,
-            ):
-                error, downloaded = future.result()
-                if error is not None:
-                    failures.append(error)
-                elif downloaded:
-                    fetched += 1
-                else:
-                    skipped += 1
+
+            def submit(job):
+                return executor.submit(
+                    _fetch_one_image, job, session=session, headers=headers, timeout=timeout, retries=retries
+                )
+
+            # A bounded window, not one Future per job. Submitting all of them up front
+            # held ~3.2 GiB of Future state for tara_pacific_decknet's 1.58 M objects
+            # before the first result was read — the pool can only run `workers` at a
+            # time either way, so a window a few deep per worker keeps every one of them
+            # busy and behaves identically.
+            queued = iter(jobs)
+            pending = {submit(job) for job in itertools.islice(queued, max(1, workers) * 4)}
+
+            with tqdm(total=len(jobs), desc=desc, unit="img", leave=False, disable=not show_progress) as progress:
+                while pending:
+                    done, pending = concurrent.futures.wait(pending, return_when=concurrent.futures.FIRST_COMPLETED)
+                    for future in done:
+                        error, downloaded = future.result()
+                        if error is not None:
+                            failures.append(error)
+                        elif downloaded:
+                            fetched += 1
+                        else:
+                            skipped += 1
+                        progress.update(1)
+
+                        nxt = next(queued, None)
+                        if nxt is not None:
+                            pending.add(submit(nxt))
     finally:
         if owns_session:
             session.close()

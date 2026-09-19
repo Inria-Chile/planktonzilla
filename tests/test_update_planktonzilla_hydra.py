@@ -464,3 +464,80 @@ def test_add_license_columns_never_reads_the_image_column(monkeypatch, tmp_path)
     assert out["license"] == ["cc-by-4.0"]
     # The image feature survives untouched, still lazily decoded.
     assert isinstance(out.features["image"], datasets.Image)
+
+
+def test_read_revision_is_forwarded_only_when_set(monkeypatch, tmp_path):
+    """Unset means unchanged; set means the read is pinned.
+
+    The default call has to stay byte-identical, which is why `revision_kwargs` forwards nothing
+    rather than `revision=None` — the latter is a different call to `datasets` and a different
+    cache key.
+    """
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "lensless", "y")
+
+    seen = []
+    monkeypatch.setattr(up, "load_dataset", lambda *a, **k: seen.append(k) or _tiny_update_dataset())
+    monkeypatch.setattr(up, "sync_columns", lambda ds, sync_dict, num_proc: ds)
+    monkeypatch.setattr(up.Dataset, "save_to_disk", lambda self, path: None)
+
+    for overrides, expected in (([], None), (["read_revision=v1.1"], "v1.1")):
+        GlobalHydra.instance().clear()
+        hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_update_readrev")
+        cfg = hydra.compose(
+            config_name="update_planktonzilla",
+            overrides=[f"taxonomy_csv_path={csv_path}", f"data_dir={tmp_path / 'out'}", *overrides],
+        )
+        seen.clear()
+        up.main(cfg)
+        GlobalHydra.instance().clear()
+
+        if expected is None:
+            assert "revision" not in seen[0], seen[0]
+        else:
+            assert seen[0]["revision"] == expected
+
+
+def test_read_revision_and_push_revision_are_independent(monkeypatch, tmp_path):
+    """The defect this script carries is that ONE repo_id serves both directions.
+
+    Pinning only the push makes the run a read-modify-write across two different refs: it reads
+    the default branch, applies its change, and writes the result onto the branch — discarding
+    whatever the previous run published there. The two knobs are therefore separate, and this
+    pins that they do not collapse into each other.
+    """
+    csv_path = tmp_path / "taxo.csv"
+    _write_taxonomy_csv(str(csv_path), "lensless", "y")
+
+    reads = []
+    monkeypatch.setattr(up, "load_dataset", lambda *a, **k: reads.append(k) or _tiny_update_dataset())
+    monkeypatch.setattr(up, "sync_columns", lambda ds, sync_dict, num_proc: ds)
+    monkeypatch.setattr(up.Dataset, "save_to_disk", lambda self, path: None)
+    push = MagicMock()
+    monkeypatch.setattr(up.Dataset, "push_to_hub", push)
+
+    GlobalHydra.instance().clear()
+    hydra.initialize(config_path="../configs", version_base="1.3", job_name="test_update_both_revs")
+    cfg = hydra.compose(
+        config_name="update_planktonzilla",
+        overrides=[
+            f"taxonomy_csv_path={csv_path}",
+            f"data_dir={tmp_path / 'out'}",
+            "read_revision=v1.1",
+            "push_to_hub=true",
+            "push_revision=v1.2",
+        ],
+    )
+    up.main(cfg)
+    GlobalHydra.instance().clear()
+
+    assert reads[0]["revision"] == "v1.1"
+    assert push.call_args.kwargs.get("revision") == "v1.2"
+
+
+def _tiny_update_dataset():
+    """The one-row stand-in `_drive_update_main` builds, for the tests that drive main directly."""
+    columns = {"dataset": ["lensless"], "original_label": ["y"]}
+    for col in up.SYNC_COLS:
+        columns[col] = [True] if col == "plankton" else [""]
+    return Dataset.from_dict(columns)

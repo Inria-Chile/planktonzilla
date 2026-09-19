@@ -7,6 +7,9 @@ push_to_hub: true
 
 human_readable_name: "ZooScanNet Plankton Images Dataset"
 license: "cc-by-nc-4.0"
+# config: 'Samples were imaged with a ZooScan' (zooscannet.yaml:12)
+instrument: "ZooScan"
+instrument_id: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/"
 description: |
   Plankton was sampled with various nets, from bottom or 500m depth to the surface, in many oceans
   of the world. Samples were imaged with a ZooScan. The full images were processed with ZooProcess which generated

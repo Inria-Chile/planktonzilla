@@ -3,57 +3,35 @@
 
 extract_taxon_ids.py
 =====================
-Two-step pipeline that, starting from the planktonzilla taxonomy, resolves the
-external identifiers for each taxon.
+Wikidata harvest: given a taxon name, its Qcode, and from the Qcode the external identifiers other
+authorities publish for it — WoRMS (P850 -> aphia_ID), NCBI Taxonomy (P685 -> NCBI_ID) and BOLD
+Systems (P3606 -> BOLD_ID).
 
-Step 1 (Wikidata):
-    For each unique taxon (Kingdom -> Species) it looks up its Wikidata Qcode,
-    keeping the deepest rank available (Species first, and if it does not exist
-    it goes up to Kingdom).
+These functions are the network half of ``resolve_frepj_ids``, which is their only caller.
 
-Step 2 (External databases):
-    From each Qcode it queries Wikidata (wbgetentities) and extracts the IDs for
-    WoRMS (P850 -> aphia_ID), NCBI Taxonomy (P685 -> NCBI_ID) and
-    BOLD Systems (P3606 -> BOLD_ID).
-
-Input:
-    data/planktonzilla_taxonomy_v20.csv   (separator ",")
-
-Outputs (in data/):
-    taxonomy_and_wikidata.csv     -> unique taxa + wikidata_ID
-    taxonomy_wiki_and_ids.csv     -> unique taxa + wikidata_ID + aphia/NCBI/BOLD
-
-Usage:
-    python extract_taxon_ids.py
-    python extract_taxon_ids.py --limit 10        # quick test with 10 taxa
-    python extract_taxon_ids.py --input data/another_taxonomy.csv
+**The two-step CSV pipeline this module used to carry is retired** (step 6 of
+``docs/TAXONOMY_IMPLEMENTATION_PLAN.md``, open decision 12 of ``docs/TAXONOMY_REPRESENTATION.md``).
+It read ``data/planktonzilla_taxonomy_v20.csv`` — a path that has not existed for some time — and
+wrote ``taxonomy_and_wikidata.csv`` and ``taxonomy_wiki_and_ids.csv``, two intermediate tables
+nothing consumed and whose disagreement about empty string versus null was half of KI-7. The
+identifier table of the normalised taxonomy package is what they were reaching for:
+``planktonzilla/planktonzilla_dataset/taxonomy/data/identifier.tsv``, one row per
+``(concept, authority)`` with its justification and date, written through
+``taxonomy.write.add_ids`` and validated by ``pz_taxonomy check``.
 
 Requirements:
     pip install polars requests
 """
 
-import argparse
-import logging
-import os
 import time
 
 import polars as pl
 import requests
 
-from planktonzilla.planktonzilla_dataset.constants import DEFAULT_TAXONOMY_CSV_FILENAME, TAXONOMY_RANKS
+from planktonzilla.planktonzilla_dataset.constants import TAXONOMY_RANKS
 from planktonzilla.utils.logger import get_pylogger
 
 logger = get_pylogger(__name__)
-
-# ── Paths (relative to the repo, no hardcoded absolute paths) ───────────────────
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(REPO_ROOT, "data")
-INPUT_CSV = os.path.join(DATA_DIR, DEFAULT_TAXONOMY_CSV_FILENAME)
-WIKIDATA_CSV = os.path.join(DATA_DIR, "taxonomy_and_wikidata.csv")
-IDS_CSV = os.path.join(DATA_DIR, "taxonomy_wiki_and_ids.csv")
-
-# Separator for the input/output CSV (planktonzilla_taxonomy_v20 uses ",").
-SEP = ","
 
 # Taxonomy columns, from most general to most specific.
 COLS = list(TAXONOMY_RANKS)
@@ -72,6 +50,11 @@ WIKIDATA_PROPERTIES = {
 
 session = requests.Session()
 _SEARCH_CACHE: dict[str, dict | None] = {}
+
+#: How many times a single Wikidata search rides out an HTTP 429 before giving up. The
+#: waits double (2s, 4s, … 64s), so the budget is ~2 minutes rather than the flat 2s the
+#: recursive version used.
+RATE_LIMIT_ATTEMPTS = 6
 
 
 # ── Step 1: Wikidata Qcode per taxon ──────────────────────────────────────────
@@ -93,21 +76,46 @@ def search_wikidata_taxon(taxon: str) -> dict | None:
         "limit": 5,
     }
 
-    try:
-        r = session.get(
-            "https://www.wikidata.org/w/api.php",
-            params=params,
-            headers=HEADERS,
-            timeout=10,
-        )
-        if r.status_code == 429:
-            time.sleep(2)
-            return search_wikidata_taxon(taxon)
-        if r.status_code != 200:
+    # A bounded loop, not recursion (KI-3, first half). On 429 this used to sleep 2s and
+    # call ITSELF, so a rate-limit that outlasted the interpreter's stack — about a
+    # thousand frames, half an hour of hammering Wikidata at a flat 2s — ended in a
+    # RecursionError unwound through a thousand `except Exception` handlers. The budget
+    # here is deliberate rather than whatever the stack happened to allow, and the waits
+    # grow, so it backs off where the recursion did not.
+    #
+    # KI-3's SECOND half — the loose `description` substring match below, which can
+    # resolve the wrong entity — is untouched: tightening it changes which Qcodes resolve,
+    # hence the published aphia_ID / NCBI_ID / BOLD_ID values. Still → HARDEN-01.
+    data = None
+    for attempt in range(RATE_LIMIT_ATTEMPTS):
+        try:
+            r = session.get(
+                "https://www.wikidata.org/w/api.php",
+                params=params,
+                headers=HEADERS,
+                timeout=10,
+            )
+            if r.status_code == 429:
+                if attempt == RATE_LIMIT_ATTEMPTS - 1:
+                    # Nothing follows the last wait but the give-up below, so waiting 64s to do it
+                    # is 64s of nothing.
+                    break
+                wait = 2 ** (attempt + 1)
+                logger.info(f"Wikidata rate-limited on {taxon!r}; waiting {wait}s (attempt {attempt + 1})")
+                time.sleep(wait)
+                continue
+            if r.status_code != 200:
+                return None
+            data = r.json()
+            break
+        except Exception as e:
+            logger.warning(f"Wikidata search failed for taxon {taxon!r}, returning None: {e}")
             return None
-        data = r.json()
-    except Exception as e:
-        logger.warning(f"Wikidata search failed for taxon {taxon!r}, returning None: {e}")
+
+    if data is None:
+        # Rate-limited for the whole budget. NOT cached: this is a transport outcome, and
+        # caching it would make a later retry in the same run impossible (KI-5's shape).
+        logger.warning(f"Wikidata stayed rate-limited for {taxon!r} across {RATE_LIMIT_ATTEMPTS} attempts.")
         return None
 
     for result in data.get("search", []):
@@ -188,7 +196,15 @@ def _extract_property(claims: dict, prop: str) -> str | None:
         return None
     try:
         return claims[prop][0]["mainsnak"]["datavalue"]["value"]
-    except Exception as e:
+    except (KeyError, IndexError, TypeError) as e:
+        # Narrowed from `except Exception` (KI-1). This is the one site in that entry where the
+        # swallowed set is enumerable: the body is a pure subscript chain over containers that
+        # came out of `json`, `prop in claims` is guaranteed one line above, and every
+        # JSON-decodable shape for `claims[prop]` raises one of these three or succeeds. So the
+        # narrowing propagates nothing new today — it documents the contract and turns a future
+        # non-JSON caller into a visible failure instead of a silently nulled id. The other
+        # sites in KI-1 stay broad: each wraps network or image decoding, whose failure set is
+        # not enumerable, and each feeds a published column.
         logger.debug(f"Could not extract property {prop} from claims, returning None: {e}")
         return None
 
@@ -211,6 +227,7 @@ def fetch_external_ids(taxa_wiki: pl.DataFrame, batch_size: int = 50) -> pl.Data
     qcodes = taxa_wiki.select("wikidata_ID").drop_nulls().unique().to_series().to_list()
 
     results = []
+    abandoned: list[str] = []
     for i in range(0, len(qcodes), batch_size):
         batch = qcodes[i : i + batch_size]
         batch_idx = i // batch_size + 1
@@ -218,7 +235,8 @@ def fetch_external_ids(taxa_wiki: pl.DataFrame, batch_size: int = 50) -> pl.Data
         logger.info(f"[ids] batch {batch_idx} ({len(batch)} Qcodes)")
 
         success = False
-        for attempt in range(5):
+        attempts = 5
+        for attempt in range(attempts):
             try:
                 r = requests.get(url, headers=HEADERS, timeout=60)
                 if r.status_code == 429:
@@ -243,75 +261,24 @@ def fetch_external_ids(taxa_wiki: pl.DataFrame, batch_size: int = 50) -> pl.Data
                 time.sleep(2)
 
         if not success:
+            # The nulls below are indistinguishable from "Wikidata holds no external id for this
+            # Qcode" (KI-6). Adding a status COLUMN would change this function's output schema, so
+            # the distinction is surfaced where it costs nothing instead: named at ERROR, and
+            # collected so a caller can re-ask for exactly the abandoned ids.
+            logger.error(
+                f"  batch {batch_idx} abandoned after {attempts} attempts; {len(batch)} Qcode(s) will be "
+                f"null and are NOT known to lack ids: {', '.join(batch)}"
+            )
+            abandoned.extend(batch)
             results.extend([{"wikidata_ID": qcode, **{col: None for col in WIKIDATA_PROPERTIES}} for qcode in batch])
         time.sleep(1)
 
+    if abandoned:
+        logger.error(
+            f"{len(abandoned)} of {len(qcodes)} Qcode(s) were abandoned rather than resolved. Their "
+            f"aphia/NCBI/BOLD columns are null for a TRANSPORT reason, not a factual one; re-run over "
+            f"them before treating the result as complete."
+        )
+
     df_ids = pl.DataFrame(results)
     return taxa_wiki.join(df_ids, on="wikidata_ID", how="left")
-
-
-# ── Orchestration ───────────────────────────────────────────────────────────────
-
-
-def load_unique_taxa(input_csv: str, limit: int | None) -> pl.DataFrame:
-    """Read the taxonomy CSV and return the unique taxonomy combinations.
-
-    Selects the taxonomy-rank columns, drops all-empty rows, lowercases the values
-    and de-duplicates.
-
-    Args:
-        input_csv: Path to the input taxonomy CSV (separator ``SEP``).
-        limit: If set, only the first ``limit`` CSV rows are considered.
-
-    Returns:
-        A DataFrame of unique, lowercased taxonomy-rank combinations.
-    """
-    df = pl.read_csv(input_csv, separator=SEP).fill_null("")
-    if limit is not None:
-        df = df[:limit]
-    return (
-        df.select(COLS)
-        .filter(pl.any_horizontal([pl.col(c) != "" for c in COLS]))
-        .with_columns([pl.col(c).str.to_lowercase() for c in COLS])
-        .unique()
-    )
-
-
-def main() -> None:
-    """Resolve Wikidata Qcodes and external IDs for each taxon and write CSVs.
-
-    CLI entry point running the two-step pipeline (both steps hit the Wikidata API):
-    Step 1 writes ``--wikidata-out`` (taxa + ``wikidata_ID``) and Step 2 writes
-    ``--ids-out`` (taxa + aphia/NCBI/BOLD), normalizing empty strings to null first.
-    """
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--input", default=INPUT_CSV, help="Input taxonomy CSV.")
-    parser.add_argument("--wikidata-out", default=WIKIDATA_CSV, help="Step 1 output (taxa + wikidata_ID).")
-    parser.add_argument("--ids-out", default=IDS_CSV, help="Final output (taxa + all the IDs).")
-    parser.add_argument("--limit", type=int, default=None, help="Process only the first N rows (test).")
-    args = parser.parse_args()
-
-    # Step 0: unique taxa.
-    taxa = load_unique_taxa(args.input, args.limit)
-    logger.info(f"{taxa.height} unique taxa to resolve.")
-
-    # Step 1: Wikidata Qcodes.
-    taxa_wiki = fetch_wikidata_ids(taxa)
-    os.makedirs(os.path.dirname(args.wikidata_out), exist_ok=True)
-    taxa_wiki.write_csv(args.wikidata_out, separator=SEP)
-    logger.info(f"Step 1 done -> {args.wikidata_out}")
-
-    # Step 2: WoRMS / NCBI / BOLD.
-    taxa_ids = fetch_external_ids(taxa_wiki)
-    # Normalize empty strings to null before saving.
-    taxa_ids = taxa_ids.with_columns(pl.when(pl.col(pl.String) == "").then(None).otherwise(pl.col(pl.String)).name.keep())
-    os.makedirs(os.path.dirname(args.ids_out), exist_ok=True)
-    taxa_ids.write_csv(args.ids_out, separator=SEP)
-    logger.info(f"Step 2 done -> {args.ids_out}")
-
-    logger.info("DONE")
-
-
-if __name__ == "__main__":
-    main()

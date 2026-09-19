@@ -145,3 +145,62 @@ def test_the_test_split_is_read_when_explicitly_requested():
 def test_eval_test_does_not_override_do_eval():
     """`do_eval=false` means no evaluation at all; eval_test cannot re-enable it."""
     assert should_evaluate_test_split(OmegaConf.create({"eval_test": True}), _Args(do_eval=False)) is False
+
+
+# --------------------------------------------------------------------------------------
+# The hparams_search config group — the one group finding 1.10's sweep did not cover
+# --------------------------------------------------------------------------------------
+
+HPARAMS_SEARCH_DIR = os.path.join(CONFIG_DIR, "hparams_search")
+
+HPARAMS_SEARCH_NEEDS_EXTRAS = {
+    "optuna": "needs `optuna` and `hydra-optuna-sweeper`, neither a project dependency",
+}
+
+
+def _hparams_search_names():
+    return sorted(f[: -len(".yaml")] for f in os.listdir(HPARAMS_SEARCH_DIR) if f.endswith(".yaml"))
+
+
+@pytest.mark.parametrize("name", _hparams_search_names())
+def test_every_hparams_search_config_composes(name, request):
+    """Same contract as the experiment group: a shipped config-group member must compose.
+
+    `optuna` cannot, and the reason is an install rather than a defect — so it is a strict xfail
+    naming exactly what it needs, the way `base_cifar100` and `base_inaturalist` are. Strict, so
+    it flips the moment someone adds the extras and the config has to be correct for real.
+    """
+    if name in HPARAMS_SEARCH_NEEDS_EXTRAS:
+        request.node.add_marker(pytest.mark.xfail(strict=True, reason=HPARAMS_SEARCH_NEEDS_EXTRAS[name]))
+
+    with initialize_config_dir(config_dir=CONFIG_DIR, version_base=None):
+        cfg = compose(config_name="train", overrides=[f"hparams_search={name}"], return_hydra_config=True)
+
+    assert cfg.get("optimized_metric"), f"{name} defines no optimized_metric"
+
+
+@pytest.mark.parametrize("name", _hparams_search_names())
+def test_the_hparams_search_space_sweeps_keys_that_exist(name):
+    """A sweep over a key no config declares dies under struct mode, at trial 1 of N.
+
+    This is what the group actually shipped: `model.optimizer._target_`, `model.lr` and
+    `datamodule.batch_size` are PyTorch-Lightning template keys, and `cfg.model` here is an
+    `AutoModelForImageClassification.from_pretrained` spec with neither an optimizer nor an lr.
+    Checked without composing the sweeper, so it runs even while the extras are absent.
+    """
+    import yaml
+
+    with open(os.path.join(HPARAMS_SEARCH_DIR, f"{name}.yaml")) as handle:
+        raw = yaml.safe_load(handle)
+
+    params = ((raw.get("hydra") or {}).get("sweeper") or {}).get("params") or {}
+    assert params, f"{name} declares an empty search space"
+
+    with initialize_config_dir(config_dir=CONFIG_DIR, version_base=None):
+        base = compose(config_name="train")
+
+    for key in params:
+        node = base
+        for part in key.split("."):
+            assert part in node, f"{name} sweeps {key!r}, but {part!r} is not in the composed config"
+            node = node[part]

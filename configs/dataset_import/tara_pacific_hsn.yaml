@@ -8,6 +8,10 @@ check_image_file_integrity: true
 
 human_readable_name: "Tara Pacific High-Speed Net / ZooScan surface meso-plankton"
 license: "cc-by-4.0"
+# config: 'ZooScan-imaged meso-plankton (> 200 um) ... individually imaged and measured with the ZooScan'
+# (tara_pacific_hsn.yaml:30,39-40); tara_pacific_layout.SOURCES agrees
+instrument: "ZooScan"
+instrument_id: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/"
 source_url: "https://doi.org/10.17882/102336"
 
 # EMPTY ON PURPOSE — this source has no archive to download; see tara_pacific_bongo.yaml

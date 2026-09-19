@@ -1,0 +1,14 @@
+datasetID	verbatimIdentification	wikidata_ID	aphia_ID	NCBI_ID	BOLD_ID	ecotaxa_ID	root_class	qualifier	plankton	reason
+frepj	Branchiopoda,Or._unk,Or._unk,Or._unk,Or._unk									ids blanked per row rather than per taxon; diverges from branchiopoda
+frepj	Copepoda,Calanoida,Fa._unk,Fa._unk,Fa._unk									ids blanked per row rather than per taxon; diverges from calanoida
+frepj	Copepoda,Calanoida,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage									ids blanked per row rather than per taxon; diverges from calanoida
+frepj	Copepoda,Cyclopoida,Cyclopidae,Cyclops,Sp._unk	Q1421606	149782.0	263416.0	302138.0					ids blanked per row rather than per taxon; diverges from cyclops
+frepj	Copepoda,Cyclopoida,Fa._unk,Fa._unk,Fa._unk									ids blanked per row rather than per taxon; diverges from cyclopoida
+frepj	Copepoda,Cyclopoida,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage									ids blanked per row rather than per taxon; diverges from cyclopoida
+frepj	Copepoda,Cyclopoida,Oithonidae,Oithona,Sp._unk_naupliar_stage	Q6556536	106485.0	136190.0	142597.0					ids blanked per row rather than per taxon; diverges from oithona
+frepj	Copepoda,Harpacticoida,Fa._unk,Fa._unk,Fa._unk									ids blanked per row rather than per taxon; diverges from harpacticoida
+frepj	Copepoda,Harpacticoida,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage,Fa._unk_copepodid_stage									ids blanked per row rather than per taxon; diverges from harpacticoida
+frepj	Copepoda,Or._unk_naupliar_stage,Or._unk_naupliar_stage,Or._unk_naupliar_stage,Or._unk_naupliar_stage									ids blanked per row rather than per taxon; diverges from copepoda
+frepj	Insecta,Diptera,Chaoboridae,Chaoborus,Sp._unk_larva_stage	Q2707905	118088.0	41812.0	169991.0					ids blanked per row rather than per taxon; diverges from chaoborus
+frepj	Litostomatea,Dileptida,Dileptidae,Paradileptus,Sp._unk	Q25360965	425542.0	2778690.0	72834.0					ids blanked per row rather than per taxon; diverges from paradileptus
+frepj	Ostracoda,Or._unk,Or._unk,Or._unk,Or._unk									ids blanked per row rather than per taxon; diverges from ostracoda

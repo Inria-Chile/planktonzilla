@@ -24,7 +24,7 @@ Multimodal deep learning framework, datasets, and models for plankton identifica
 
 ## Online Resources
 
-- `planktonzilla-17M` dataset: 17.4 million plankton images drawn from 15 source datasets (two more are in the build registry, awaiting their first publication), all standardized and preprocessed for deep learning applications: [`project-oceania/planktonzilla-17M`](https://huggingface.co/datasets/project-oceania/planktonzilla-17m). To explore how those source labels map onto one taxonomy, build the Sankey locally with [`pz_sankey`](#explore-the-label-space-sankey).
+- `planktonzilla-17M` dataset: 17.4 million plankton images drawn from 15 source datasets (six more are in the build registry, awaiting their first publication), all standardized and preprocessed for deep learning applications: [`project-oceania/planktonzilla-17M`](https://huggingface.co/datasets/project-oceania/planktonzilla-17m). To explore how those source labels map onto one taxonomy, build the Sankey locally with [`pz_sankey`](#explore-the-label-space-sankey).
 - Models trained on [`project-oceania/planktonzilla-17M`](https://huggingface.co/datasets/project-oceania/planktonzilla-17m):
   - [`project-oceania/CLIP-ViT-B-16.openai-pt.planktonzilla-pt`](https://huggingface.co/project-oceania/CLIP-ViT-B-16.openai-pt.planktonzilla-pt)
   - [`project-oceania/CLIP-ViT-B-16.bioclip-pt.planktonzilla-pt`](https://huggingface.co/project-oceania/CLIP-ViT-B-16.bioclip-pt.planktonzilla-pt)
@@ -122,7 +122,8 @@ planktonzilla/                          # repo root
 │   │   ├── sankey.py                        # pz_sankey — live label-space Sankey (self-contained HTML)
 │   │   ├── templates/sankey_flow.html       # the page pz_sankey fills in
 │   │   ├── constants.py                     # shared constants
-│   │   ├── planktonzilla_taxonomy.csv       # taxonomy mapping table
+│   │   ├── planktonzilla_taxonomy.csv       # taxonomy mapping table (rendered from taxonomy/, still the source of record)
+│   │   ├── taxonomy/                         # the normalised taxonomy package + pz_taxonomy (see docs/TAXONOMY_RUNBOOK.md)
 │   │   ╰── utils/                            # extract_cox.py, extract_taxon_ids.py, KNOWN_ISSUES.md, RESOLVED_ISSUES.md
 │   ╰── utils/                           # hydra.py, resolvers.py, logger.py, rich_utils.py
 ├── scripts/                            # train.sh, train_clip.sh, push_dataset.sh (SLURM launchers)
@@ -130,7 +131,7 @@ planktonzilla/                          # repo root
 ├── docs/                               # banner + figures used by this README
 ├── .devcontainer/                      # CUDA 12.5 + cuDNN dev container
 ├── .github/workflows/ci.yml            # CI: lint · test · dependency-isolation guard
-╰── tests/                              # pytest suite (mocks all network)
+╰── tests/                              # pytest suite (mocks the network, bar two excluded suites)
 ```
 
 ### Prerequisites
@@ -164,12 +165,18 @@ to activate it manually. If you prefer an activated shell, run
 
 ```bash
 # Import ISIISNET dataset
-uv run pz_import_dataset dataset_import=isiisnet
+uv run pz_import_dataset dataset_import=isiisnet action=import
 
 # Import other available datasets
-uv run pz_import_dataset dataset_import=flowcamnet
-uv run pz_import_dataset dataset_import=lensless
+uv run pz_import_dataset dataset_import=flowcamnet action=import
+uv run pz_import_dataset dataset_import=lensless action=import
+
+# Without action=import you get the default, which only PRINTS what the source is
+uv run pz_import_dataset dataset_import=isiisnet
 ```
+
+`action` defaults to `show` (`configs/import_dataset.yaml`), so `action=import` is what actually
+imports; the other value is `update-metadata`.
 
 Every importable source has a config in `configs/dataset_import/` — pass its filename (without
 the `.yaml`) as `dataset_import=`.
@@ -339,9 +346,34 @@ to republish the taxonomy too.
 
 The same holds for `custom_metadata` (added for v1.2): one JSON object per image holding what
 only its source knows and no consolidated column covers — FREPJ's `magnification` and raw `site`
-token; the literal `{}` for every other source. A base that predates the column is
+token, and the four Tara Pacific sources' `ecotaxa_project` and `orig_id`; the literal `{}` for
+every other source. A base that predates the column is
 filled with `{}` on its next `pz_planktonzilla base=…` run (logged loudly), so that run too
 belongs on a new `push_revision`, not over the frozen one.
+
+**Set `base_revision` on every run after the first.** `push_revision` pins what a run WRITES;
+`base_revision` pins what it READS, and they are separate knobs on purpose. The command above is
+correct exactly once — the run that creates the branch. A second run with `base_revision` unset
+re-reads the default branch, finds no `instrument` column on it, and concatenates a null-filled
+one over what the first run published. Nothing goes red; the columns simply empty. The run warns
+when it spots the pairing:
+
+```bash
+# Every run after the one that created the branch
+uv run pz_planktonzilla base=hub base_revision=v1.1 sources=[] sync_taxonomy=false \
+  push_to_hub=true push_revision=v1.1
+```
+
+The same split exists wherever the dataset is read: `pz_update_planktonzilla read_revision=…`,
+`--revision` on the only-plankton builder, and `--dataset-revision` on `pz_sankey` (which is not
+`--dataset-version`: that one pins the string the page prints and reads nothing). All default to
+null, so an unpinned run behaves exactly as it always has.
+
+**Before and after any such push, run the golden diff.** `pz_golden_diff --report` must be green
+on the default branch first — that is the evidence the CSV and the published rows agree, which is
+the precondition for judging a change rather than approval of one. After the push, re-run
+`pz_golden_diff --refresh --revision v1.1` against the branch. It covers 1,482 of the 2,358 rows
+and 16 of the 19 columns; `instrument`/`instrument_id` are NOT among them. See KI-34.
 
 `push_revision` targets a branch; `version` tags it. Tag the frozen state *first* so `v1.0`
 keeps pointing at the original bytes:
@@ -431,7 +463,7 @@ uv run pz_train
 uv run pz_train dataset=isiisnet model=resnet18
 
 # Use specialized loss for imbalanced data
-uv run pz_train dataset=isiisnet model=resnet50 custom_loss=focal
+uv run pz_train dataset=isiisnet model=resnet18 custom_loss=focal
 
 # Override training parameters
 uv run pz_train dataset=isiisnet model=resnet18 training_arguments.num_train_epochs=10 training_arguments.learning_rate=1e-4
@@ -442,14 +474,14 @@ uv run pz_train dataset=isiisnet model=resnet18 training_arguments.num_train_epo
 Planktonzilla uses Hydra for hierarchical configuration management. You can override any configuration parameter:
 
 ```bash
-# Use different model architecture
-uv run pz_train model=efficientnet
+# Use different model architecture (see configs/model/ for the full list)
+uv run pz_train model=vit-base
 
 # Apply different augmentation strategy
 uv run pz_train augmentation=autoaugment
 
 # Combine multiple overrides
-uv run pz_train dataset=isiisnet model=resnet50 custom_loss=ldam training_arguments.learning_rate=1e-4
+uv run pz_train dataset=isiisnet model=beit-base custom_loss=ldam training_arguments.learning_rate=1e-4
 ```
 
 ### Architecture
@@ -523,29 +555,32 @@ enters with the v1.2 release; until then published on its own as
 (2025)](https://doi.org/10.5194/essd-17-2761-2025). Each has an importer config in
 `configs/dataset_import/`:
 
-| Source | `dataset` value | Images | Description | License |
-| --- | --- | ---: | --- | --- |
-| **Global UVP5** | `global_uvp5` | 7,414,467 | Underwater Vision Profiler 5, global deployment (largest contributor) | `cc-by-4.0` |
-| **WHOI-Plankton** | `whoi` | 3,563,595 | Woods Hole Oceanographic Institution IFCB imagery | `mit` ⚠️ |
-| **JEDI-Oceans** | `jedioceans` | 1,915,882 | JEDI oceanic plankton (CPICS) | `cc-by-sa-4.0` |
-| **ZooScanNet** | `zooscan` | 1,451,745 | ZooScan scanned-sample plankton | `cc-by-nc-4.0` |
-| **ZooCamNet** | `zoocamnet` | 1,286,590 | ZooCam in-situ imaging | `cc-by-4.0` |
-| **UVP6Net** | `uvp6net` | 634,459 | Underwater Vision Profiler 6 | `cc-by-nc-4.0` |
-| **ISIISNET** | `isiisnet` | 408,166 | In-Situ Ichthyoplankton Imaging System Network | `cc-by-nc-4.0` |
-| **FlowCamNet** | `flowcamnet` | 301,247 | FlowCam imaging flow cytometry | `cc-by-nc-4.0` |
-| **PlanktoScope** | `planktoscope` | 179,720 | PlanktoScope open-hardware microscopy | `cc-by-nc-4.0` |
-| **MedPlanktonSet** | `medplanktonset` | 77,271 | Mediterranean plankton set | `cc-by-4.0` |
-| **SYKE IFCB 2022** | `syke_ifcb_2022` | 63,074 | Finnish Environment Institute, Imaging FlowCytobot | `cc-by-4.0` |
-| **PlanktonSet 1.0** | `planktonset1.0` | 60,736 | NOAA/Kaggle PlanktonSet | `other` ⚠️ |
-| **SYKE ZooScan 2024** | `sykezooscan2024` | 22,753 | Finnish Environment Institute, ZooScan | `cc-by-4.0` |
-| **ZooLake** | `zoolake` | 17,942 | Lake Greifensee (Switzerland) zooplankton | `cc-by-4.0` |
-| **Lensless** | `lensless` | 6,400 | Lensless plankton microscopy (lab culture) | `cc-by-4.0` |
-| **FREPJ-Z** (v1.2) | `frepj` | 88,686 | Freshwater zooplankton of Japanese lakes and reservoirs, 40×/100× microscopy — registry only, not in the published 17M yet | `cc-by-4.0` |
-| **DAPlankton** | `daplankton` | 111,924 | Multi-instrument benchmark: 15 cultured classes imaged by IFCB, CytoSense and FlowCam, plus 31 Baltic field classes by IFCB and CytoSense — registry only, not in the published 17M yet | `cc-by-4.0` |
-| **Tara Pacific Deck net** (v1.2) | `tara_pacific_decknet` | 1,581,623 | FlowCam surface micro-plankton, Atlantic + Pacific, 2016–2018 — registry only | `cc-by-4.0` |
-| **Tara Pacific Bongo** (v1.2) | `tara_pacific_bongo` | 380,769 | FlowCam surface micro-plankton, reefs and lagoons — registry only | `cc-by-4.0` |
-| **Tara Pacific HSN** (v1.2) | `tara_pacific_hsn` | 256,352 | ZooScan surface meso-plankton, high-speed net — registry only | `cc-by-4.0` |
-| **Tara Pacific Manta** (v1.2) | `tara_pacific_manta` | 135,876 | ZooScan surface meso-plankton **and microplastics**, incl. the Great Pacific Garbage Patch — registry only | `cc-by-4.0` |
+| Source | `dataset` value | Images | Instrument | Description | License |
+| --- | --- | ---: | --- | --- | --- |
+| **Global UVP5** | `global_uvp5` | 7,414,467 | UVP5 (SD or HD, KI-33) | Underwater Vision Profiler 5, global deployment (largest contributor) | `cc-by-4.0` |
+| **WHOI-Plankton** | `whoi` | 3,563,595 | [IFCB](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1588/) | Woods Hole Oceanographic Institution IFCB imagery | `mit` ⚠️ |
+| **JEDI-Oceans** | `jedioceans` | 1,915,882 | [CPICS](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1582/) | JEDI oceanic plankton (CPICS) | `cc-by-sa-4.0` |
+| **ZooScanNet** | `zooscan` | 1,451,745 | [ZooScan](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/) | ZooScan scanned-sample plankton | `cc-by-nc-4.0` |
+| **ZooCamNet** | `zoocamnet` | 1,286,590 | [ZooCAM](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1587/) | ZooCam in-situ imaging | `cc-by-4.0` |
+| **UVP6Net** | `uvp6net` | 634,459 | [UVP6](https://vocab.nerc.ac.uk/collection/L22/current/TOOL2141/) | Underwater Vision Profiler 6 | `cc-by-nc-4.0` |
+| **ISIISNET** | `isiisnet` | 408,166 | [ISIIS](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1561/) | In-Situ Ichthyoplankton Imaging System Network | `cc-by-nc-4.0` |
+| **FlowCamNet** | `flowcamnet` | 301,247 | [FlowCam](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1583/) | FlowCam imaging flow cytometry | `cc-by-nc-4.0` |
+| **PlanktoScope** | `planktoscope` | 179,720 | [PlanktoScope](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1579/) | PlanktoScope open-hardware microscopy | `cc-by-nc-4.0` |
+| **MedPlanktonSet** | `medplanktonset` | 77,271 | [IFCB](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1588/) | Mediterranean plankton set | `cc-by-4.0` |
+| **SYKE IFCB 2022** | `syke_ifcb_2022` | 63,074 | [IFCB](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1588/) | Finnish Environment Institute, Imaging FlowCytobot | `cc-by-4.0` |
+| **PlanktonSet 1.0** | `planktonset1.0` | 60,736 | ISIIS-2 (no L22 term) | NOAA/Kaggle PlanktonSet | `other` ⚠️ |
+| **SYKE ZooScan 2024** | `sykezooscan2024` | 22,753 | [ZooScan](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/) | Finnish Environment Institute, ZooScan | `cc-by-4.0` |
+| **ZooLake** | `zoolake` | 17,942 | Dual Scripps Plankton Camera (no L22 term) | Lake Greifensee (Switzerland) zooplankton | `cc0-1.0` |
+| **Lensless** | `lensless` | 6,400 | Lensless microscope (no L22 term) | Lensless plankton microscopy (lab culture) | `cc-by-4.0` |
+| **FREPJ-Z** (v1.2) | `frepj` | 88,686 | — (not recorded, KI-33) | Freshwater zooplankton of Japanese lakes and reservoirs, 40×/100× microscopy — registry only, not in the published 17M yet | `cc-by-4.0` |
+| **DAPlankton** | `daplankton` | 111,924 | IFCB / CytoSense / FlowCam (per image) | Multi-instrument benchmark: 15 cultured classes imaged by IFCB, CytoSense and FlowCam, plus 31 Baltic field classes by IFCB and CytoSense — registry only, not in the published 17M yet | `cc-by-4.0` |
+| **Tara Pacific Deck net** (v1.2) | `tara_pacific_decknet` | 1,581,623 | [FlowCam](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1583/) | FlowCam surface micro-plankton, Atlantic + Pacific, 2016–2018 — registry only | `cc-by-4.0` |
+| **Tara Pacific Bongo** (v1.2) | `tara_pacific_bongo` | 380,769 | [FlowCam](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1583/) | FlowCam surface micro-plankton, reefs and lagoons — registry only | `cc-by-4.0` |
+| **Tara Pacific HSN** (v1.2) | `tara_pacific_hsn` | 256,352 | [ZooScan](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/) | ZooScan surface meso-plankton, high-speed net — registry only | `cc-by-4.0` |
+| **Tara Pacific Manta** (v1.2) | `tara_pacific_manta` | 135,876 | [ZooScan](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/) | ZooScan surface meso-plankton **and microplastics**, incl. the Great Pacific Garbage Patch — registry only | `cc-by-4.0` |
+
+The **Instrument** column links to that device's term in the BODC/SeaVoX **L22** device catalogue, which is the vocabulary the plankton-imaging community uses (Darwin Core has no instrument term). Three instruments have no L22 term and one source records no device at all; `global_uvp5` mixes two UVP5 versions with different imagers and nothing marks which imaged a given row. All four limits are recorded in [KI-33](planktonzilla/planktonzilla_dataset/utils/KNOWN_ISSUES.md).
+
 
 Note that the `dataset` column value does not always match the importer config stem (`whoi` vs
 `whoi-plankton.yaml`, `zooscan` vs `zooscannet.yaml`, and three more). The mapping is recorded in
@@ -608,7 +643,7 @@ points at EcoTaxa for the vignettes but names no project, and EcoTaxa's anonymou
 disclose project ids, so there is nothing an importer could walk. What it holds, how that was
 established, and the single identifier that would turn it into a KI-29-shaped EcoTaxa source are
 recorded in [`docs/PERIALPINE_ZOOSCAN_2024.md`](docs/PERIALPINE_ZOOSCAN_2024.md) and
-[KI-32](planktonzilla/planktonzilla_dataset/utils/KNOWN_ISSUES.md).
+[KI-33](planktonzilla/planktonzilla_dataset/utils/KNOWN_ISSUES.md).
 
 For training, `configs/dataset/` selects either the composite `planktonzilla` dataset or a single
 source; **CIFAR-10** is also configured there as a generic sanity-check/smoke-test target.
@@ -622,7 +657,7 @@ three layers: each image keeps its **source collection's** licence with no aggre
 planktonzilla contributions (harmonised taxonomy, derived metadata, splits, docs, scripts) are
 **CC BY 4.0**; and the compilation itself, including any sui generis database right, is **CC0 1.0**.
 
-`planktonzilla-17M` aggregates sources under **five different sets of terms**, so no single license
+`planktonzilla-17M` aggregates sources under **six different sets of terms**, so no single license
 can lawfully cover it — it holds both share-alike and non-commercial material, and those conditions
 are mutually incompatible. Every image therefore carries its source's terms in two columns —
 `license` (the slug, verbatim from that source's importer config) and `license_url` (where those
@@ -649,7 +684,11 @@ The practical consequence: **17.1% of the corpus may not be used commercially** 
 from datasets import load_dataset
 
 ds = load_dataset("project-oceania/planktonzilla-17M", split="train")
-commercial = ds.filter(lambda row: row["license"] in {"cc-by-4.0", "mit", "cc0-1.0"})  # 12,452,092 images
+
+# `mit` is deliberately NOT in this set. It is recorded from a CODE repository's licence and
+# covers 3,563,595 images — 20.5% of the corpus — whose terms have not been confirmed upstream
+# (KI-14). Add it only once you have checked the IFCB imagery terms at ifcb-data.whoi.edu.
+commercial = ds.filter(lambda row: row["license"] in {"cc-by-4.0", "cc0-1.0"})  # 8,888,497 images
 ```
 
 Two entries deserve a second look before you rely on them — `whoi` (`mit` is the license of a
@@ -706,7 +745,15 @@ uv run pytest --cov=planktonzilla
 uv run pytest tests/test_datasets.py
 ```
 
-All tests mock the network: no run reaches NCBI, Wikidata, WHOI, EcoTaxa or the Hugging Face Hub.
+Everything CI runs mocks the network: no run reaches NCBI, Wikidata, WHOI, EcoTaxa or the
+Hugging Face Hub. The two suites CI excludes are the exception — `tests/test_datasets.py` issues
+live requests to `huggingface.co` and `datasets-server.huggingface.co`, and both it and
+`tests/test_train.py` are excluded for being network-bound and slow (~7 min), not for being broken.
+
+That holds for the golden diff too, and it is the reason its reference is committed:
+`pz_golden_diff --refresh` is networked and run by hand, while `pz_golden_diff --report` reads
+only the committed reference and manifest. CI runs the report on every PR, and a test proves the
+report path imports nothing that speaks HTTP rather than merely asserting it.
 
 #### Code Quality
 

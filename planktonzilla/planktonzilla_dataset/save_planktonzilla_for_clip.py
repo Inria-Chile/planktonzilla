@@ -7,7 +7,11 @@ Loads the on-disk only-plankton ``DatasetDict`` (produced by
 ``gen_planktonzilla_only_plankton``) and writes WebDataset-style ``.tar`` shards,
 one folder per split. Each sample becomes a paired ``image_{i}.jpg`` (RGB JPEG)
 and ``image_{i}.txt`` (the taxonomy class string) so that WebDataset groups them
-into the same sample. Only the ``train`` and ``validation`` splits are exported.
+into the same sample, plus ``image_{i}.instrument.txt`` when the split carries the
+instrument column (same sample key, since WebDataset splits on the first dot).
+``i`` is the zero-padded index within the SPLIT, not within the
+shard, so every sample's WebDataset ``__key__`` is unique across the whole split. Only
+the ``train`` and ``validation`` splits are exported.
 
 Prerequisites:
   - An on-disk only-plankton ``DatasetDict`` at ``--input-dir`` with ``train`` and
@@ -50,7 +54,9 @@ def export_to_tar_shards(
 ) -> None:
     """Export a DatasetDict to .tar shards for CLIP/WebDataset-style training.
 
-    All images are re-encoded as RGB JPEG so JPEG-only consumers can read them.
+    All images are re-encoded as RGB JPEG so JPEG-only consumers can read them. Sample keys
+    (``image_000000000``…) are unique across the split, so shards can be combined without two
+    samples answering to one ``__key__``. An empty split is warned about, not silently skipped.
 
     Args:
         dataset_dict: Splits to export; one subdirectory of shards per split.
@@ -67,7 +73,19 @@ def export_to_tar_shards(
         total_samples = len(dataset)
         n_shards = (total_samples + shard_size - 1) // shard_size
 
+        # An empty split produces zero shards, writes nothing, and used to say nothing — the split
+        # folder is still created, so the run looks like it worked and the failure surfaces later
+        # as a training job with no data. It is a real outcome of an upstream filter matching
+        # nothing, not an impossible state, so it is reported rather than raised.
+        if total_samples == 0:
+            logger.warning("Split %r is empty: no shards written to %s.", split_name, split_dir)
+            continue
+
         taxo_classes = dataset.features["label"].names
+
+        # Carried only when the split actually has it, so this stays readable for a dataset
+        # built before the instrument columns existed.
+        instrument_column = "instrument" if "instrument" in dataset.column_names else None
 
         for shard_idx in range(n_shards):
             start = shard_idx * shard_size
@@ -80,7 +98,14 @@ def export_to_tar_shards(
                 # Loop over the absolute indices of the dataset
                 for i_abs in tqdm(shard_indices, desc=f"{split_name} shard {shard_idx}"):
                     example = dataset[i_abs]
-                    i = i_abs - start  # Relative index within the shard
+                    # The ABSOLUTE index, not the index within this shard. WebDataset takes the
+                    # basename as the sample's `__key__`, and a per-shard counter restarts it at 0
+                    # in every shard — so a split of 20 shards published twenty `image_0` samples
+                    # under one key. Pairing only needs the .jpg and .txt basenames to match, which
+                    # is why nothing failed; anything that keys BY the key — joining predictions
+                    # back to samples, deduplicating a resampled stream, caching by key — silently
+                    # collapsed N samples into one. Zero-padded so the keys sort in dataset order.
+                    i = f"{i_abs:09d}"
 
                     # --- 1. Image (key: image_{i}.jpg) ---
                     img = example["image"]
@@ -111,6 +136,22 @@ def export_to_tar_shards(
                     label_info = tarfile.TarInfo(name=f"image_{i}.txt")
                     label_info.size = len(label_bytes.getbuffer())
                     tar.addfile(label_info, label_bytes)
+
+                    # --- 3. Instrument provenance (key: image_{i}.instrument.txt) ---
+                    # WebDataset splits a member name on its FIRST dot to get the sample
+                    # `__key__`, so this lands in the SAME sample as the .jpg and .txt above
+                    # rather than creating a third one -- the extension is "instrument.txt".
+                    # Written as its own member instead of being folded into the caption
+                    # because the caption is what CLIP trains on: an instrument name in there
+                    # would teach the text tower to read gear, not taxa. Consumers that only
+                    # ask for ("jpg", "txt") are unaffected.
+                    if instrument_column is not None:
+                        instrument = example[instrument_column]
+                        if instrument:
+                            instrument_bytes = io.BytesIO(str(instrument).encode("utf-8"))
+                            instrument_info = tarfile.TarInfo(name=f"image_{i}.instrument.txt")
+                            instrument_info.size = len(instrument_bytes.getbuffer())
+                            tar.addfile(instrument_info, instrument_bytes)
 
 
 def main() -> None:

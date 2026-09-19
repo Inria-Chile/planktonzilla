@@ -1,0 +1,104 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+whoi	Akashiwo	pzt:001161	akashiwo	living	full_body	true	accepted							
+whoi	Amphidinium_sp	pzt:001065	amphidinium	living	full_body	true	accepted							
+whoi	Asterionellopsis	pzt:000944	asterionellopsis	living	full_body	true	accepted							
+whoi	Bacillaria	pzt:000886	bacillaria	living	full_body	true	accepted							
+whoi	Bidulphia	pzt:000899	biddulphia	living	full_body	true	accepted							
+whoi	Cerataulina	pzt:000958	cerataulina	living	full_body	true	accepted							
+whoi	Cerataulina_flagellate	pzt:000958	cerataulina	living	full_body	true	accepted							
+whoi	Ceratium	pzt:001092	ceratium	living	full_body	true	accepted							
+whoi	Chaetoceros	pzt:000908	chaetoceros	living	full_body	true	accepted							
+whoi	Chaetoceros_didymus	pzt:000914	chaetoceros didymus	living	full_body	true	accepted							
+whoi	Chaetoceros_didymus_flagellate	pzt:000914	chaetoceros didymus	living	full_body	true	accepted							
+whoi	Chaetoceros_flagellate	pzt:000908	chaetoceros	living	full_body	true	accepted							
+whoi	Chaetoceros_other	pzt:000908	chaetoceros	living	full_body	true	accepted							
+whoi	Chaetoceros_pennate	pzt:000908	chaetoceros	living	full_body	true	accepted							
+whoi	Chrysochromulina	pzt:000856	chrysochromulina	living	full_body	true	accepted							
+whoi	Ciliate_mix	pzt:000699	ciliophora	living	mix	true	accepted							
+whoi	Cochlodinium	pzt:001163	cochlodinium	living	full_body	true	accepted							
+whoi	Corethron	pzt:000927	corethron	living	full_body	true	accepted							
+whoi	Coscinodiscus	pzt:000930	coscinodiscus	living	full_body	true	accepted							
+whoi	Cylindrotheca	pzt:000887	cylindrotheca	living	full_body	true	accepted							
+whoi	DactFragCerataul	pzt:000958	cerataulina	living	full_body	true	accepted							
+whoi	Dactyliosolen	pzt:001010	dactyliosolen	living	full_body	true	accepted							
+whoi	Delphineis	pzt:001007	delphineis	living	full_body	true	accepted							
+whoi	Dictyocha	pzt:001243	dictyocha	living	full_body	true	accepted							
+whoi	Didinium_sp	pzt:000718	didinium	living	full_body	true	accepted							
+whoi	Dinobryon	pzt:001234	dinobryon	living	full_body	true	accepted							
+whoi	Dinophysis	pzt:001075	dinophysis	living	full_body	true	accepted							
+whoi	Ditylum	pzt:000976	ditylum	living	full_body	true	accepted							
+whoi	Ditylum_parasite	pzt:000976	ditylum	living	parasite	true	accepted							
+whoi	Emiliania_huxleyi	pzt:000849	gephyrocapsa huxleyi	living	full_body	true	accepted							
+whoi	Ephemera	pzt:000250	ephemera	living	full_body	true	accepted							
+whoi	Eucampia	pzt:000962	eucampia	living	full_body	true	accepted							
+whoi	Euglena	pzt:001347	euglena	living	full_body	true	accepted							
+whoi	Euplotes_sp	pzt:000811	euplotes	living	full_body	true	accepted							
+whoi	G_delicatula_detritus	pzt:001014	guinardia delicatula	detritus	unqualified	false	accepted							
+whoi	G_delicatula_external_parasite	pzt:001014	guinardia delicatula	living	parasite	true	accepted							
+whoi	G_delicatula_parasite	pzt:001014	guinardia delicatula	living	parasite	true	accepted							
+whoi	Gonyaulax	pzt:001140	gonyaulax	living	full_body	true	accepted							
+whoi	Guinardia_delicatula	pzt:001014	guinardia delicatula	living	full_body	true	accepted							
+whoi	Guinardia_flaccida	pzt:001015	guinardia flaccida	living	full_body	true	accepted							
+whoi	Guinardia_striata	pzt:001016	guinardia striata	living	full_body	true	accepted							
+whoi	Gyrodinium	pzt:001168	gyrodinium	living	full_body	true	accepted							
+whoi	Hemiaulus	pzt:000964	hemiaulus	living	full_body	true	accepted							
+whoi	Heterocapsa_triquetra	pzt:001205	kryptoperidinium triquetrum	living	full_body	true	accepted							
+whoi	Karenia	pzt:001170	karenia	living	full_body	true	accepted							
+whoi	Katodinium_or_Torodinium	pzt:001062	dinophyceae	living	full_body	true	accepted							
+whoi	Laboea_strobila	pzt:000799	laboea strobila	living	full_body	true	accepted							
+whoi	Lauderia	pzt:001036	lauderia	living	full_body	true	accepted							
+whoi	Leegaardiella_ovalis	pzt:000761	leegaardiella ovalis	living	full_body	true	accepted							
+whoi	Leptocylindrus	pzt:000967	leptocylindrus	living	full_body	true	accepted							
+whoi	Leptocylindrus_mediterraneus	pzt:000968	leptocylindrus mediterraneus	living	full_body	true	accepted							
+whoi	Licmophora	pzt:000973	licmophora	living	full_body	true	accepted							
+whoi	Mesodinium_sp	pzt:000714	mesodinium	living	full_body	true	accepted							
+whoi	Odontella	pzt:001054	odontella	living	full_body	true	accepted							
+whoi	Paralia	pzt:001003	paralia	living	full_body	true	accepted							
+whoi	Parvicorbicula_socialis	pzt:001342	parvicorbicula socialis	living	full_body	true	accepted							
+whoi	Phaeocystis	pzt:000852	phaeocystis	living	full_body	true	accepted							
+whoi	Pleuronema_sp	pzt:000735	pleuronema	living	full_body	true	accepted							
+whoi	Pleurosigma	pzt:001000	pleurosigma	living	full_body	true	accepted							
+whoi	Prorocentrum	pzt:001216	prorocentrum	living	full_body	true	accepted							
+whoi	Proterythropsis_sp	pzt:001178	proterythropsis	living	full_body	true	accepted							
+whoi	Protoperidinium	pzt:001211	protoperidinium	living	full_body	true	accepted							
+whoi	Pseudochattonella_farcimen	pzt:001250	pseudochattonella farcimen	living	full_body	true	accepted							
+whoi	Pseudonitzschia	pzt:000892	pseudo-nitzschia	living	full_body	true	accepted							
+whoi	Pyramimonas_longicauda	pzt:001312	pyramimonas longicauda	living	full_body	true	accepted							
+whoi	Rhizosolenia	pzt:001021	rhizosolenia	living	full_body	true	accepted							
+whoi	Skeletonema	pzt:001039	skeletonema	living	full_body	true	accepted							
+whoi	Stephanopyxis	pzt:000992	stephanopyxis	living	full_body	true	accepted							
+whoi	Strobilidium_morphotype1	pzt:000771	strobilidium	living	full_body	true	accepted							
+whoi	Strombidium_capitatum	pzt:000792	strombidium capitatum	living	full_body	true	accepted							
+whoi	Strombidium_conicum	pzt:000793	strombidium conicum	living	full_body	true	accepted							
+whoi	Strombidium_inclinatum	pzt:000794	strombidium inclinatum	living	full_body	true	accepted							
+whoi	Strombidium_morphotype1	pzt:000791	strombidium	living	full_body	true	accepted							
+whoi	Strombidium_morphotype2	pzt:000791	strombidium	living	full_body	true	accepted							
+whoi	Strombidium_oculatum	pzt:000795	strombidium oculatum	living	full_body	true	accepted							
+whoi	Strombidium_wulffi	pzt:000796	strombidium wulffi	living	full_body	true	accepted							
+whoi	Thalassionema	pzt:001033	thalassionema	living	full_body	true	accepted							
+whoi	Thalassiosira	pzt:001048	thalassiosira	living	full_body	true	accepted							
+whoi	Thalassiosira_dirty	pzt:001048	thalassiosira	living	full_body	true	accepted							
+whoi	Tiarina_fusus	pzt:000807	tiarina fusus	living	full_body	true	accepted							
+whoi	Tintinnid	pzt:000813	tintinnida	living	full_body	true	accepted							
+whoi	Tontonia_appendiculariformis	pzt:000801	tontonia appendiculariformis	living	full_body	true	accepted							
+whoi	Tontonia_gracillima	pzt:000802	tontonia gracillima	living	full_body	true	accepted							
+whoi	amoeba	pzt:001336	amoeba	living	full_body	true	accepted							
+whoi	bad	pzt:000024	other	artefact	unqualified	false	accepted							
+whoi	bead	pzt:000004	bead	inert	unqualified	false	accepted							
+whoi	bubble	pzt:000005	bubble	artefact	unqualified	false	accepted							
+whoi	clusterflagellate	pzt:001338	choanoflagellatea	living	full_body	true	accepted							
+whoi	detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+whoi	diatom_flagellate	pzt:000879	bacillariophyceae	living	full_body	true	accepted							
+whoi	dino30	pzt:001062	dinophyceae	living	full_body	true	accepted							
+whoi	dino_large1	pzt:001062	dinophyceae	living	full_body	true	accepted							
+whoi	flagellate_sp3	pzt:001338	choanoflagellatea	living	full_body	true	accepted							
+whoi	kiteflagellates	pzt:001352	bodonida	living	full_body	true	accepted							
+whoi	mix	pzt:000021	mix	detritus	unqualified	false	accepted							
+whoi	mix_elongated	pzt:000021	mix	detritus	unqualified	false	accepted							
+whoi	other_interaction	pzt:000024	other	detritus	unqualified	false	accepted							
+whoi	pennate	pzt:001004	pennales	living	full_body	true	accepted							
+whoi	pennate_morphotype1	pzt:001004	pennales	living	full_body	true	accepted							
+whoi	pennates_on_diatoms	pzt:001004	pennales	living	full_body	true	accepted							
+whoi	pollen	pzt:000034	pollen	living	full_body	false	accepted							
+whoi	spore	pzt:000040	spore	living	full_body	true	accepted							
+whoi	zooplankton	pzt:000043	zooplankton	living	full_body	true	accepted							

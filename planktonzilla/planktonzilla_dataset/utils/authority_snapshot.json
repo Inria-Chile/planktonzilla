@@ -37780,9 +37780,11 @@
  },
  "provenance": {
   "generated_utc": "2026-08-29T01:03:53+00:00",
+  "id_set_sha256": "e72f7504000c1c5a98f3fcf70d14e1d3cbee74254fd87ed06a49f3d4501c0d25",
   "sources": {
    "ncbi": {
     "endpoint": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi",
+    "fetched": 0,
     "requested": 666,
     "resolved": 665,
     "unresolved": [
@@ -37791,20 +37793,20 @@
    },
    "wikidata": {
     "endpoint": "https://www.wikidata.org/w/api.php",
+    "fetched": 0,
     "requested": 721,
     "resolved": 721,
     "unresolved": []
    },
    "worms": {
     "endpoint": "https://www.marinespecies.org/rest/AphiaRecordByAphiaID + AphiaClassificationByAphiaID",
+    "fetched": 0,
     "requested": 746,
     "resolved": 746,
     "unresolved": []
    }
   },
   "taxonomy_csv": "planktonzilla_taxonomy.csv",
-  "taxonomy_csv_rows": 2358,
-  "taxonomy_csv_sha256": "95de6c499744b2a1dea390f911c754a2d4ca1e6c920084eb4d361a5160629ee4",
   "tool": "planktonzilla.planktonzilla_dataset.utils.verify_taxonomy_ids"
  },
  "wikidata": {

@@ -340,3 +340,114 @@ def test_the_shipped_departures_are_exactly_what_was_reviewed():
     assert sorted(class_dir for class_dir in departures if class_dir in builder.HOMONYM_NOTES) == sorted(builder.HOMONYM_NOTES)
     assert len([class_dir for class_dir in departures if class_dir not in builder.HOMONYM_NOTES]) == 16
     assert len(builder.RANK_DEPARTURES) == 7
+
+
+# --- Donor ambiguity (review finding 1.6) ----------------------------------------------
+
+# Measured, not asserted from theory: eight class dirs are carried by two or more pre-existing
+# rows that describe DIFFERENT taxa, so the `verbatim` donor was picked by file position. The
+# two the review named are the first entries; the other six the instrumentation found.
+AMBIGUOUS_DONORS = {
+    "Acantharia": "planktoscope",
+    "Annelida": "global_uvp5",
+    "Creseidae": "zooscan",
+    "Dinophyceae": "global_uvp5",
+    "Foraminifera": "flowcamnet",
+    "Harpacticoida": "zooscan",
+    "Neoceratium": "flowcamnet",
+    "Ornithocercus": "planktoscope",
+}
+
+
+@pytest.fixture(scope="module")
+def decisions():
+    _, decided = builder.build_rows(builder.read_class_map(), builder.read_taxa(), builder.read_master_csv())
+    return decided
+
+
+def test_the_builder_names_every_class_dir_whose_donors_disagreed(decisions):
+    """The silent choice made visible.
+
+    ``_existing_indexes`` picks the donor with ``setdefault`` — the FIRST pre-existing row in
+    file order, with no check that the rows it beat describe the same taxon. For 1,300-odd class
+    dirs there is only one candidate and nothing to choose. For these eight there are several and
+    they disagree, so the taxonomy of a published row rests on the order two CSV blocks happen to
+    sit in. This pins the set: a ninth appearing, or one of these quietly resolving, is a change
+    in what the table asserts about a taxon and must be looked at, not absorbed.
+    """
+    flagged = {decision["class_dir"]: decision for decision in decisions if decision["donor_disagreement"]}
+    assert {name: decision["donor"] for name, decision in flagged.items()} == AMBIGUOUS_DONORS
+
+
+def test_the_two_cases_the_review_named_are_reported_with_their_losing_candidates(decisions):
+    """`Harpacticoida` and `Creseidae` — finding 1.6's worked examples.
+
+    Both go to `zooscan` on position alone, and the report must say who else was in the running
+    and what they disagreed about, or the entry is not adjudicable.
+    """
+    flagged = {decision["class_dir"]: decision for decision in decisions if decision["donor_disagreement"]}
+
+    harpacticoida = flagged["Harpacticoida"]
+    assert harpacticoida["donor"] == "zooscan"
+    assert harpacticoida["donor_candidates"].split(";") == [
+        "global_uvp5",
+        "isiisnet",
+        "planktoscope",
+        "sykezooscan2024",
+        "zoocamnet",
+        "zooscan",
+    ]
+    assert "Genus" in harpacticoida["donor_disagreement"].split(";")
+
+    creseidae = flagged["Creseidae"]
+    assert creseidae["donor"] == "zooscan"
+    assert creseidae["donor_candidates"].split(";") == ["global_uvp5", "zooscan"]
+    assert "Species" in creseidae["donor_disagreement"].split(";")
+
+
+def test_only_the_watched_columns_count_as_a_disagreement():
+    """`Dataset` and `Raw_Labels` differ by construction; a disagreement is about the taxon.
+
+    Two rows for one class dir ALWAYS differ on `Dataset` — that is what makes them two rows.
+    Flagging on that would flag every duplicated label and the section would be noise.
+    """
+    base = {rank: "a" for rank in RANKS} | {column: "1.0" for column in builder.ID_COLUMNS}
+    same_taxon = [
+        {"Dataset": "one", "Raw_Labels": "x", "proposed_label": "acantharia", **base},
+        {"Dataset": "two", "Raw_Labels": "x", "proposed_label": "acantharia", **base},
+    ]
+    assert builder._donor_disagreement(same_taxon) == []
+
+    differing = [dict(row) for row in same_taxon]
+    differing[1]["Genus"] = "b"
+    differing[1]["aphia_ID"] = "2.0"
+    assert builder._donor_disagreement(differing) == ["Genus", "aphia_ID"]
+
+
+def test_the_ambiguity_is_recorded_but_changes_no_published_row(decisions, tara_rows):
+    """Recording the choice must not re-make it.
+
+    Correcting one of these donors would move a published lineage, which is gated on the golden
+    diff against the Hub artifact. So the eight rows the section names must still be byte-exactly
+    what is committed — the section is a checkpoint, not an edit.
+    """
+    # Keyed by (Dataset, Raw_Labels): one class dir reaches the table once per Tara Pacific
+    # dataset that carries it, and those rows differ in `Dataset` by construction.
+    committed = {(row["Dataset"], row["Raw_Labels"]): row for row in tara_rows}
+    rows, _ = builder.build_rows(builder.read_class_map(), builder.read_taxa(), builder.read_master_csv())
+    checked = 0
+    for row in rows:
+        if row["Raw_Labels"] not in AMBIGUOUS_DONORS:
+            continue
+        against = committed[(row["Dataset"], row["Raw_Labels"])]
+        assert row == {column: against[column] for column in builder.CSV_COLUMNS}
+        checked += 1
+    assert checked == 18
+
+
+def test_the_report_carries_the_donor_ambiguity_section():
+    """Committed and current: the table has one line per class dir and the header agrees."""
+    text = builder.DEFAULT_RECONCILIATION_MD.read_text(encoding="utf-8")
+    assert f"### B7. Class dirs whose candidate donors disagreed ({len(AMBIGUOUS_DONORS)})" in text
+    for class_dir, donor in AMBIGUOUS_DONORS.items():
+        assert re.search(rf"^\| `{class_dir}` \| {donor} \|", text, re.MULTILINE), class_dir
