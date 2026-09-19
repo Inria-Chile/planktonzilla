@@ -32,10 +32,10 @@ changed code path without that diff.
 >    So the claim this file has never been able to make, it can now make: **the CSV describes the
 >    rows actually published in `planktonzilla-17M`**, for the 62.8% of its rows the Hub carries.
 >    Every `→ HARDEN-01` below stops being an IOU and becomes ordinary work — **for those rows**.
->    What the gate cannot see is KI-33, and it is not small: 876 of the 2,358 rows, plus `living`,
+>    What the gate cannot see is KI-34, and it is not small: 876 of the 2,358 rows, plus `living`,
 >    which is synthesised from a column the gate DOES check and therefore cannot fail on its own.
 >    (The new `instrument` / `instrument_id` columns are outside the 19 entirely, so the gate is
->    silent about them too — see KI-33 gap 4. They are columns of the dataset, not of the CSV,
+>    silent about them too — see KI-34 gap 4. They are columns of the dataset, not of the CSV,
 >    which is the same distinction the second correction below is about.)
 >
 >    **"Building it is the prerequisite for closing any HIGH-risk item"** still holds and is now
@@ -120,10 +120,21 @@ Phase 4, so these failures are no longer silent — only their *handling* is unc
 
 Entries are numbered in the order they were found, not the order they are read: KI-1..7 and
 KI-16..25 are **code behavior**, KI-8..13 and KI-31 are **data** defects in the frozen taxonomy CSV,
-KI-32 is a **source-side** limit on what a new column can assert, KI-33 is a **coverage** limit on what the golden diff can check,
+KI-33 is a **source-side** limit on what a new column can assert, KI-34 is a **coverage** limit on what the golden diff can check,
 KI-14..15 are **source-license** questions, and KI-26 is a **data** defect in a source's own
-sidecar tables; KI-27 through KI-30 are decision logs like KI-24. Numbers are never reused or renumbered — commits,
-code comments and tests cite them.
+sidecar tables; KI-27 through KI-30 and KI-32 are decision logs like KI-24. Numbers are never reused or
+renumbered — commits, code comments and tests cite them.
+
+> **One renumber, 2026-09-19, and the only one this file has ever had.** Two branches minted
+> `KI-32` at the same time without seeing each other: the peri-alpine ZooScan deposit (issue #13,
+> merged to `main` in #38) and the instrument column (PR #37). The rule above cannot settle a tie
+> it was written to prevent, so the tie-break is *which number is already cited outside its own
+> entry*: #38's was merged and is referenced by a closed issue, #37's was not. The unmerged branch
+> yielded — **the instrument entry became KI-33 and the golden-diff coverage entry became KI-34**.
+>
+> Commit messages on PR #37 dated before this therefore cite `KI-32` for the instrument column and
+> `KI-33` for the golden diff. They are one off, and this note is how a reader of that history
+> finds the entry. Nothing on `main` moved.
 
 **This file lists only what is still open.** Nine resolved entries — KI-11, KI-17..KI-23 and
 KI-25 — were moved verbatim to [`RESOLVED_ISSUES.md`](RESOLVED_ISSUES.md) on 2026-08-04. A
@@ -160,8 +171,9 @@ code and the CSV on 2026-09-12; the corrections that pass found are noted inline
 | KI-29 | decision log | MEDIUM (rebuild) | the four Tara Pacific deposits joined (18th–21st, last); the first sources with **no archive** |
 | KI-30 | decision log | none (same rows) | `planktonset1.0` is fetched from a mirror we keep; NCEI's on-demand generator cannot resume or be size-checked |
 | KI-31 | open, wontfix | data-side | 20 source labels publish two different taxa across datasets |
-| KI-32 | open, source-side | none (additive) | the instrument column cannot say which UVP5 imaged a row, and names no device for `frepj` |
-| KI-33 | open, coverage | none (read-only) | the golden diff is green over 1,482 of 2,358 rows and 16 of 19 columns; what it cannot see |
+| KI-32 | decision log | none | the peri-alpine ZooScan 2024 deposit (issue #13) publishes a table, not images — assessed, not joined |
+| KI-33 | open, source-side | none (additive) | the instrument column cannot say which UVP5 imaged a row, and names no device for `frepj` |
+| KI-34 | open, coverage | none (read-only) | the golden diff is green over 1,482 of 2,358 rows and 16 of 19 columns; what it cannot see |
 
 Two obligations belong to archived entries but are **still open**, and are restated here so
 archiving cannot bury them:
@@ -169,7 +181,7 @@ archiving cannot bury them:
 | from | open obligation |
 | --- | --- |
 | KI-21 / KI-24 | `zoolake` and `jedioceans` are verified for reachability and archive shape only; **no full import has completed** |
-| KI-23 | deriving the two licence columns is safe; **re-pushing** the published artifact from that schema is still gated — but the gate now EXISTS (KI-33), so the obligation has a discharge path: green on the default branch, push to a `push_revision` branch, re-run `pz_golden_diff --refresh --revision <branch>`. Until 2026-09-18 that second refresh was not merely ungated but *impossible*: every read path ignored `revision=`, so nothing downstream could see the branch it had just written |
+| KI-23 | deriving the two licence columns is safe; **re-pushing** the published artifact from that schema is still gated — but the gate now EXISTS (KI-34), so the obligation has a discharge path: green on the default branch, push to a `push_revision` branch, re-run `pz_golden_diff --refresh --revision <branch>`. Until 2026-09-18 that second refresh was not merely ungated but *impossible*: every read path ignored `revision=`, so nothing downstream could see the branch it had just written |
 
 *KI-17's obligation is **discharged** (2026-08-28): MedPlanktonSet has now had a real run, and
 its imagefolder holds exactly **139** class directories, matching the 139 `medplanktonset` rows
@@ -188,7 +200,7 @@ are now ordinary work rather than IOUs.
 **For the 1,482 rows the gate can see.** For the other 876 they stay recorded-not-corrected, and
 nothing about a green run changes that — 873 of those rows belong to sources that have never been
 published, so no gate reachable from this repository can say anything about them until v1.2 does.
-**Built is not clean, and clean is not complete.** KI-33 carries the numbers so this distinction
+**Built is not clean, and clean is not complete.** KI-34 carries the numbers so this distinction
 has a citation rather than living in a reviewer's memory.
 
 ---
@@ -792,6 +804,52 @@ source's `license: other`.*
 
 ---
 
+## KI-33 — the peri-alpine ZooScan 2024 deposit (issue #13) publishes a table, not images
+
+**Where:** nowhere in the code — that is the entry. No config in `configs/dataset_import/`, no entry
+in `configs/generate_planktonzilla.yaml` `datasets`, no rows in `planktonzilla_taxonomy.csv`, no
+slug in `constants.DATASET_LICENSES`. The record is
+[`docs/PERIALPINE_ZOOSCAN_2024.md`](../../../docs/PERIALPINE_ZOOSCAN_2024.md), pinned by
+`tests/test_perialpine_zooscan_record.py`.
+
+**Decision (2026-09-18, answering issue #13).** The deposit
+([10.57745/9ZD7JW](https://doi.org/10.57745/9ZD7JW), Recherche Data Gouv, CARRTEL/OLA, V1 published
+2025-12-11) holds **one file**: a two-sheet workbook of 11,079 ZooScan objects from Lakes Annecy,
+Bourget and Geneva across four 2024 seasons — `object_id`, date, lake, EcoTaxa label and lineage,
+and ZooProcess morphometry at 10.6 µm/px — plus a three-row station table. It holds **no vignettes**,
+and unlike the four Tara Pacific deposits of KI-29 — which have no archive either, but *name* the
+public EcoTaxa projects their images live in — it names only the EcoTaxa service. So it is recorded
+and not joined: a registry source that cannot produce an imagefolder would fail every build that
+selected it.
+
+Five checks stand behind "no images", all run 2026-09-18 and all reproducible without an account:
+the deposit lists exactly one file; the `.xlsx` zip has no `xl/media/` member; the CARRTEL Dataverse
+holds no companion image deposit; DataCite records no related publication and Crossref no data
+paper; and EcoTaxa's anonymous `GET /api/projects/search` returns `instrument` alone — no project id
+— which is equally true of the seven Tara Pacific projects this repository already imports from.
+`POST /api/object_set/{project_id}/query` stays public once an id is known (re-verified against
+project 11292), so the gap is **one identifier**, not an access wall.
+
+**Exit condition.** Someone names the EcoTaxa project id(s) — the depositors, a data paper, or any
+account that can see the project. Then this is an ordinary KI-29-shaped source: walk the manifest
+with `ecotaxa_client`, restrict to these 11,079 objects by `obj.orig_id`, name class dirs from a
+committed taxon-id map rather than the live display name, and carry the table as a sidecar for the
+size measurements. Two things to settle first, both in §5 of the record: `etalab-2.0` would be the
+**sixth** set of terms in the licence mix (a new slug in `_LICENSE_DEEDS` and `DATASET_LICENSES`,
+and a `LICENSE.md` entry), and the taxonomy work is 19 lineages, not 20 labels — `nauplii_Copepoda`
+and `nauplii<Copepoda` are one taxon, and three species names differ from the GBIF backbone's.
+
+**Frozen-output risk: none.** Nothing is imported, nothing is published, no row changes. The cost of
+this entry is that a future reader does not re-run the five checks to learn the same thing.
+
+---
+
+*Recorded 2026-09-18 with the issue #13 assessment. Kept here rather than in the README's source
+table because the table lists sources that build; this one states, with its evidence, why a deposit
+does not.*
+
+---
+
 ## Data inconsistencies in `planktonzilla_taxonomy.csv` (KI-8 – KI-13, KI-31)
 
 KI-1..KI-7, KI-16 and KI-24 above concern **code behavior**. KI-8..KI-13 below concern **data**
@@ -1012,7 +1070,7 @@ suite red.
 
 ---
 
-## KI-32 — What the `instrument` column cannot say
+## KI-33 — What the `instrument` column cannot say
 
 **Where:** `constants.DATASET_INSTRUMENTS`, the `instrument:` / `instrument_id:` fields of
 `configs/dataset_import/*.yaml`, and the two columns they produce. Pinned by
@@ -1077,7 +1135,7 @@ configs name an instrument family and not a model.*
 
 ---
 
-## KI-33 — The golden diff is green over 1,482 of the 2,358 mapped rows
+## KI-34 — The golden diff is green over 1,482 of the 2,358 mapped rows
 
 **Where:** `planktonzilla/planktonzilla_dataset/utils/golden_diff.py`, its committed
 `golden_reference.csv` / `golden_reference.json`, and the CI step that runs `--report` on every
@@ -1136,7 +1194,7 @@ evidence that does not cover the rows being pushed.
    branch-derived reference carrying them would pass **without them having been compared**, and
    someone will read that as the new columns having been validated. They have not been. Checking
    them needs a schema-level assertion the CSV cannot express, because the CSV has no opinion
-   about a per-image column. See KI-32 for what those columns can and cannot say in the first
+   about a per-image column. See KI-33 for what those columns can and cannot say in the first
    place.
 
 **Frozen-output risk: none — the harness only reads.** `--refresh` reads 189 parquet footers and

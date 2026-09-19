@@ -860,7 +860,7 @@ def build_manifest(
     ``excluded_datasets`` and ``absent_pairs`` are kept apart deliberately. They are both "rows the
     reference does not cover" and they are not the same kind of gap: the first is a source that has
     not been published yet, the second is a row in a source that HAS been published for which no
-    image carries the label — a finding, adjudicated in KI-33, not an exemption. Merging them into
+    image carries the label — a finding, adjudicated in KI-34, not an exemption. Merging them into
     one number would let the second kind grow silently inside the first.
 
     ``taxonomy_csv_sha256`` records the table this reference was taken ALONGSIDE, not the table it
@@ -881,7 +881,7 @@ def build_manifest(
         logger.warning(
             "%d pair(s) are mapped by the taxonomy in a PUBLISHED source but carry no published "
             "image, and are being recorded in absent_pairs: %s. Each is a per-row finding to "
-            "adjudicate (KI-33), not an exemption — check this list in the manifest's diff.",
+            "adjudicate (KI-34), not an exemption — check this list in the manifest's diff.",
             len(absent),
             [f"{dataset}/{label}" for dataset, label in absent],
         )

@@ -373,7 +373,7 @@ null, so an unpinned run behaves exactly as it always has.
 on the default branch first — that is the evidence the CSV and the published rows agree, which is
 the precondition for judging a change rather than approval of one. After the push, re-run
 `pz_golden_diff --refresh --revision v1.1` against the branch. It covers 1,482 of the 2,358 rows
-and 16 of the 19 columns; `instrument`/`instrument_id` are NOT among them. See KI-33.
+and 16 of the 19 columns; `instrument`/`instrument_id` are NOT among them. See KI-34.
 
 `push_revision` targets a branch; `version` tags it. Tag the frozen state *first* so `v1.0`
 keeps pointing at the original bytes:
@@ -557,7 +557,7 @@ enters with the v1.2 release; until then published on its own as
 
 | Source | `dataset` value | Images | Instrument | Description | License |
 | --- | --- | ---: | --- | --- | --- |
-| **Global UVP5** | `global_uvp5` | 7,414,467 | UVP5 (SD or HD, KI-32) | Underwater Vision Profiler 5, global deployment (largest contributor) | `cc-by-4.0` |
+| **Global UVP5** | `global_uvp5` | 7,414,467 | UVP5 (SD or HD, KI-33) | Underwater Vision Profiler 5, global deployment (largest contributor) | `cc-by-4.0` |
 | **WHOI-Plankton** | `whoi` | 3,563,595 | [IFCB](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1588/) | Woods Hole Oceanographic Institution IFCB imagery | `mit` ⚠️ |
 | **JEDI-Oceans** | `jedioceans` | 1,915,882 | [CPICS](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1582/) | JEDI oceanic plankton (CPICS) | `cc-by-sa-4.0` |
 | **ZooScanNet** | `zooscan` | 1,451,745 | [ZooScan](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/) | ZooScan scanned-sample plankton | `cc-by-nc-4.0` |
@@ -572,14 +572,14 @@ enters with the v1.2 release; until then published on its own as
 | **SYKE ZooScan 2024** | `sykezooscan2024` | 22,753 | [ZooScan](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/) | Finnish Environment Institute, ZooScan | `cc-by-4.0` |
 | **ZooLake** | `zoolake` | 17,942 | Dual Scripps Plankton Camera (no L22 term) | Lake Greifensee (Switzerland) zooplankton | `cc0-1.0` |
 | **Lensless** | `lensless` | 6,400 | Lensless microscope (no L22 term) | Lensless plankton microscopy (lab culture) | `cc-by-4.0` |
-| **FREPJ-Z** (v1.2) | `frepj` | 88,686 | — (not recorded, KI-32) | Freshwater zooplankton of Japanese lakes and reservoirs, 40×/100× microscopy — registry only, not in the published 17M yet | `cc-by-4.0` |
+| **FREPJ-Z** (v1.2) | `frepj` | 88,686 | — (not recorded, KI-33) | Freshwater zooplankton of Japanese lakes and reservoirs, 40×/100× microscopy — registry only, not in the published 17M yet | `cc-by-4.0` |
 | **DAPlankton** | `daplankton` | 111,924 | IFCB / CytoSense / FlowCam (per image) | Multi-instrument benchmark: 15 cultured classes imaged by IFCB, CytoSense and FlowCam, plus 31 Baltic field classes by IFCB and CytoSense — registry only, not in the published 17M yet | `cc-by-4.0` |
 | **Tara Pacific Deck net** (v1.2) | `tara_pacific_decknet` | 1,581,623 | [FlowCam](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1583/) | FlowCam surface micro-plankton, Atlantic + Pacific, 2016–2018 — registry only | `cc-by-4.0` |
 | **Tara Pacific Bongo** (v1.2) | `tara_pacific_bongo` | 380,769 | [FlowCam](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1583/) | FlowCam surface micro-plankton, reefs and lagoons — registry only | `cc-by-4.0` |
 | **Tara Pacific HSN** (v1.2) | `tara_pacific_hsn` | 256,352 | [ZooScan](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/) | ZooScan surface meso-plankton, high-speed net — registry only | `cc-by-4.0` |
 | **Tara Pacific Manta** (v1.2) | `tara_pacific_manta` | 135,876 | [ZooScan](https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/) | ZooScan surface meso-plankton **and microplastics**, incl. the Great Pacific Garbage Patch — registry only | `cc-by-4.0` |
 
-The **Instrument** column links to that device's term in the BODC/SeaVoX **L22** device catalogue, which is the vocabulary the plankton-imaging community uses (Darwin Core has no instrument term). Three instruments have no L22 term and one source records no device at all; `global_uvp5` mixes two UVP5 versions with different imagers and nothing marks which imaged a given row. All four limits are recorded in [KI-32](planktonzilla/planktonzilla_dataset/utils/KNOWN_ISSUES.md).
+The **Instrument** column links to that device's term in the BODC/SeaVoX **L22** device catalogue, which is the vocabulary the plankton-imaging community uses (Darwin Core has no instrument term). Three instruments have no L22 term and one source records no device at all; `global_uvp5` mixes two UVP5 versions with different imagers and nothing marks which imaged a given row. All four limits are recorded in [KI-33](planktonzilla/planktonzilla_dataset/utils/KNOWN_ISSUES.md).
 
 
 Note that the `dataset` column value does not always match the importer config stem (`whoi` vs
@@ -631,6 +631,19 @@ One upstream defect worth recording: the DeckNet deposit's `100% > 501 pixels` a
 (`.../00915/102697/data/114288.zip`) downloads in full and is still unreadable — its central
 directory overshoots the file by exactly 4,000,000 bytes (checked 2026-08-26, two independent
 downloads). Nothing here reads it; the images come from EcoTaxa either way.
+
+#### Evaluated, not in the registry
+
+The table above lists sources that **build**. One assessed deposit deliberately does not appear in
+it: the peri-alpine ZooScan 2024 dataset of Lainé et al.
+([10.57745/9ZD7JW](https://doi.org/10.57745/9ZD7JW), [issue
+#13](https://github.com/Inria-Chile/planktonzilla/issues/13)), which publishes **11,079 annotated
+ZooScan objects from Lakes Annecy, Bourget and Geneva as a table — and no images**. Its abstract
+points at EcoTaxa for the vignettes but names no project, and EcoTaxa's anonymous API does not
+disclose project ids, so there is nothing an importer could walk. What it holds, how that was
+established, and the single identifier that would turn it into a KI-29-shaped EcoTaxa source are
+recorded in [`docs/PERIALPINE_ZOOSCAN_2024.md`](docs/PERIALPINE_ZOOSCAN_2024.md) and
+[KI-33](planktonzilla/planktonzilla_dataset/utils/KNOWN_ISSUES.md).
 
 For training, `configs/dataset/` selects either the composite `planktonzilla` dataset or a single
 source; **CIFAR-10** is also configured there as a generic sanity-check/smoke-test target.

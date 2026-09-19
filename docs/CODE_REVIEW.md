@@ -850,7 +850,7 @@ Two structural gaps deserve naming, because most of Tier 1 traces back to them:
   over-read. It covers **1,482 of the 2,358 mapped rows and 16 of the 19 columns** — 873 rows
   belong to sources that are not published yet, so nothing reachable from this repository can
   check them. And it certifies that the CSV and the Hub agree *today*; it is the precondition for
-  judging a proposed change to published data, not approval of one. See KI-33 for the numbers.
+  judging a proposed change to published data, not approval of one. See KI-34 for the numbers.
 
 A third gap is visible only in hindsight, from the defects listed under
 [What the review missed](#what-the-review-missed): **nothing in the project pins the contracts that span

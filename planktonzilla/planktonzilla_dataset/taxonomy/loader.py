@@ -289,7 +289,7 @@ def build_taxonomy_lookup(csv_path) -> dict:
 #      KNOWN_ISSUES.md and CI re-checks them offline on every PR.
 #
 #      This condition is therefore SATISFIED for the rows the Hub carries — and that is 1,482 of
-#      the 2,358, over 16 of the 19 columns. The rest is KI-33: 873 rows belong to six sources
+#      the 2,358, over 16 of the 19 columns. The rest is KI-34: 873 rows belong to six sources
 #      that have never been published, 3 more are mapped but carry no published image, and
 #      `living` is synthesised from a column the gate already checks, so it cannot fail on its
 #      own. Whether "clean for every row the Hub carries" is ENOUGH to retire the CSV is a

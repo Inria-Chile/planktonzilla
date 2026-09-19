@@ -308,7 +308,7 @@ _L22 = "https://vocab.nerc.ac.uk/collection/L22/current/{}/"
 #     says "high-resolution microscopic images" and the README "40x and 100x", which is a
 #     modality, not a device. L22 does offer generic microscope terms (TOOL1034 "Inverted
 #     Microscope (generic)", TOOL2302 "Unspecified polarised light microscope") and choosing one
-#     would publish a guess as a fact on 229 rows. See KI-32.
+#     would publish a guess as a fact on 229 rows. See KI-33.
 #   - `zoolake`, `lensless` and `planktonset1.0` have a NAME but a null id, because L22 has no
 #     term for their instrument: no Scripps plankton camera (its four "Scripps" entries are a
 #     Doppler sonar, a plankton net and two titrators), no lensless imager at all, and only the
@@ -319,7 +319,7 @@ _L22 = "https://vocab.nerc.ac.uk/collection/L22/current/{}/"
 #     "ACROSS imaging instruments ... the domain shift a classifier has to survive is the
 #     instrument rather than the label". Resolved per row by ``resolve_instrument``.
 #
-# One caveat that the table cannot express and KI-32 records: TOOL1583 is L22's only FlowCam
+# One caveat that the table cannot express and KI-33 records: TOOL1583 is L22's only FlowCam
 # term and names the "FlowCam VS [imaging only] (Benchtop) ... series" specifically, while the
 # four FlowCam sources here say only "FlowCam". The id is therefore slightly more specific than
 # the evidence; it is used because the alternative is no id at all for four sources.

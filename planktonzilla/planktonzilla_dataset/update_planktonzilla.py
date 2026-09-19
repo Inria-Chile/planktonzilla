@@ -235,7 +235,7 @@ def add_instrument_columns(ds: Dataset) -> Dataset:
     if unresolved:
         logger.warning(
             f"Source(s) {unresolved} publish a null instrument: the repo documents no imaging "
-            f"device for them. See KI-32 in utils/KNOWN_ISSUES.md."
+            f"device for them. See KI-33 in utils/KNOWN_ISSUES.md."
         )
     return ds
 

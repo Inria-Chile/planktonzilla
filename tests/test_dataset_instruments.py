@@ -262,7 +262,7 @@ def test_the_readme_table_agrees_with_the_instrument_table():
     reader of the repository actually sees, and it is exactly the kind of hand-maintained cell
     that drifts — the licence table's one recorded drift (`zoolake`) was caught by a human
     comparing prose, not by a test. Checked by NAME only: the cell also carries the L22 link
-    and the KI-32 qualifiers, which are presentation.
+    and the KI-33 qualifiers, which are presentation.
     """
     table = (Path(root) / "README.md").read_text(encoding="utf-8")
     rows = {
