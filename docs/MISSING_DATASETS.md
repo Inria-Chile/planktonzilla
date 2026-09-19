@@ -4,6 +4,10 @@ A systematic sweep for public plankton image datasets **absent from the 21-sourc
 
 This file is the index. The issues carry the detail; nothing here supersedes them.
 
+Related: [`PERIALPINE_ZOOSCAN_2024.md`](PERIALPINE_ZOOSCAN_2024.md) is the per-source
+assessment of one deposit that was proposed and then found to hold no images. The two files
+do the same job at different scales — this one surveys, that one adjudicates a single case.
+
 ## Method
 
 Sixteen independent discovery lenses swept the space: Hugging Face; Zenodo/figshare/Dryad/OSF;
@@ -137,6 +141,9 @@ Beyond those, 45 candidates were rejected outright by the verifiers. The recurri
 
 - **Metadata-only deposits.** A resolvable DOI and a real landing page, but zero files behind it —
   e.g. the ZooImage northern Baltic training set, whose Fairdata file listing returns `count: 0`.
+  This is the same failure mode [`PERIALPINE_ZOOSCAN_2024.md`](PERIALPINE_ZOOSCAN_2024.md) records
+  for issue #13's deposit, reached independently: one table, no images, and no EcoTaxa project to
+  walk them from.
 - **Dead or restricted data links.** DeepLOKI's only public share URL returns HTTP 404, and its own
   Data Availability Statement declares the data restricted. (LOKI imagery is still reachable
   through EcoTaxa — that is issue #43.)
@@ -165,7 +172,10 @@ later wants the cross-modal profiles or a finer `DAPlankton_CS` label mapping.
 
 - **The licence spread widens.** The registry today holds `cc-by-4.0`, `cc-by-nc-4.0`,
   `cc-by-sa-4.0`, `cc0-1.0`, `mit` and `other`. These 80 add `apache-2.0`, `etalab-2.0`,
-  `cc-by-nc-sa-4.0` and one `cc-by-nc-nd-4.0`. **ND is the one condition a derived-corpus
+  `cc-by-nc-sa-4.0` and one `cc-by-nc-nd-4.0`. `etalab-2.0` is worth handling first: it is absent
+  from `_LICENSE_DEEDS` in `constants.py`, and **three** separate deposits now carry it — #84
+  (Lille radiolarians), #87 (synthetic diatoms) and the peri-alpine ZooScan 2024 record already on
+  `main`. **ND is the one condition a derived-corpus
   redistribution cannot satisfy at all** — the build re-encodes source imagery, which is adapted
   material, and `README.md` licenses the composite per-image with no aggregate override. See #118.
 - **Undeclared licences are common on EcoTaxa.** Nine clusters are anonymously harvestable today
