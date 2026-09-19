@@ -39,8 +39,8 @@ Phase 4, so these failures are no longer silent — only their *handling* is unc
 Entries are numbered in the order they were found, not the order they are read: KI-1..7 and
 KI-16..25 are **code behavior**, KI-8..13 and KI-31 are **data** defects in the frozen taxonomy CSV,
 KI-14..15 are **source-license** questions, and KI-26 is a **data** defect in a source's own
-sidecar tables; KI-27 through KI-30 are decision logs like KI-24. Numbers are never reused or renumbered — commits,
-code comments and tests cite them.
+sidecar tables; KI-27 through KI-30 and KI-32 are decision logs like KI-24. Numbers are never reused or
+renumbered — commits, code comments and tests cite them.
 
 **This file lists only what is still open.** Nine resolved entries — KI-11, KI-17..KI-23 and
 KI-25 — were moved verbatim to [`RESOLVED_ISSUES.md`](RESOLVED_ISSUES.md) on 2026-08-04. A
@@ -70,6 +70,7 @@ number missing from the table below is *resolved*, not withdrawn; look for it th
 | KI-29 | decision log | MEDIUM (rebuild) | the four Tara Pacific deposits joined (18th–21st, last); the first sources with **no archive** |
 | KI-30 | decision log | none (same rows) | `planktonset1.0` is fetched from a mirror we keep; NCEI's on-demand generator cannot resume or be size-checked |
 | KI-31 | open, wontfix | data-side | 20 source labels publish two different taxa across datasets |
+| KI-32 | decision log | none | the peri-alpine ZooScan 2024 deposit (issue #13) publishes a table, not images — assessed, not joined |
 
 Two obligations belong to archived entries but are **still open**, and are restated here so
 archiving cannot bury them:
@@ -608,6 +609,52 @@ imagefolder holds 121 classes / 60,736 images / 108,723,866 bytes whose names ma
 `planktonset1.0` rows of the taxonomy CSV exactly, in both directions. Unrelated to
 [KI-15](#ki-15--planktonset10-is-recorded-as-other-which-states-nothing), which concerns this same
 source's `license: other`.*
+
+---
+
+## KI-32 — the peri-alpine ZooScan 2024 deposit (issue #13) publishes a table, not images
+
+**Where:** nowhere in the code — that is the entry. No config in `configs/dataset_import/`, no entry
+in `configs/generate_planktonzilla.yaml` `datasets`, no rows in `planktonzilla_taxonomy.csv`, no
+slug in `constants.DATASET_LICENSES`. The record is
+[`docs/PERIALPINE_ZOOSCAN_2024.md`](../../../docs/PERIALPINE_ZOOSCAN_2024.md), pinned by
+`tests/test_perialpine_zooscan_record.py`.
+
+**Decision (2026-09-18, answering issue #13).** The deposit
+([10.57745/9ZD7JW](https://doi.org/10.57745/9ZD7JW), Recherche Data Gouv, CARRTEL/OLA, V1 published
+2025-12-11) holds **one file**: a two-sheet workbook of 11,079 ZooScan objects from Lakes Annecy,
+Bourget and Geneva across four 2024 seasons — `object_id`, date, lake, EcoTaxa label and lineage,
+and ZooProcess morphometry at 10.6 µm/px — plus a three-row station table. It holds **no vignettes**,
+and unlike the four Tara Pacific deposits of KI-29 — which have no archive either, but *name* the
+public EcoTaxa projects their images live in — it names only the EcoTaxa service. So it is recorded
+and not joined: a registry source that cannot produce an imagefolder would fail every build that
+selected it.
+
+Five checks stand behind "no images", all run 2026-09-18 and all reproducible without an account:
+the deposit lists exactly one file; the `.xlsx` zip has no `xl/media/` member; the CARRTEL Dataverse
+holds no companion image deposit; DataCite records no related publication and Crossref no data
+paper; and EcoTaxa's anonymous `GET /api/projects/search` returns `instrument` alone — no project id
+— which is equally true of the seven Tara Pacific projects this repository already imports from.
+`POST /api/object_set/{project_id}/query` stays public once an id is known (re-verified against
+project 11292), so the gap is **one identifier**, not an access wall.
+
+**Exit condition.** Someone names the EcoTaxa project id(s) — the depositors, a data paper, or any
+account that can see the project. Then this is an ordinary KI-29-shaped source: walk the manifest
+with `ecotaxa_client`, restrict to these 11,079 objects by `obj.orig_id`, name class dirs from a
+committed taxon-id map rather than the live display name, and carry the table as a sidecar for the
+size measurements. Two things to settle first, both in §5 of the record: `etalab-2.0` would be the
+**sixth** set of terms in the licence mix (a new slug in `_LICENSE_DEEDS` and `DATASET_LICENSES`,
+and a `LICENSE.md` entry), and the taxonomy work is 19 lineages, not 20 labels — `nauplii_Copepoda`
+and `nauplii<Copepoda` are one taxon, and three species names differ from the GBIF backbone's.
+
+**Frozen-output risk: none.** Nothing is imported, nothing is published, no row changes. The cost of
+this entry is that a future reader does not re-run the five checks to learn the same thing.
+
+---
+
+*Recorded 2026-09-18 with the issue #13 assessment. Kept here rather than in the README's source
+table because the table lists sources that build; this one states, with its evidence, why a deposit
+does not.*
 
 ---
 
