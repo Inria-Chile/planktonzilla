@@ -597,6 +597,19 @@ One upstream defect worth recording: the DeckNet deposit's `100% > 501 pixels` a
 directory overshoots the file by exactly 4,000,000 bytes (checked 2026-08-26, two independent
 downloads). Nothing here reads it; the images come from EcoTaxa either way.
 
+#### Evaluated, not in the registry
+
+The table above lists sources that **build**. One assessed deposit deliberately does not appear in
+it: the peri-alpine ZooScan 2024 dataset of Lainé et al.
+([10.57745/9ZD7JW](https://doi.org/10.57745/9ZD7JW), [issue
+#13](https://github.com/Inria-Chile/planktonzilla/issues/13)), which publishes **11,079 annotated
+ZooScan objects from Lakes Annecy, Bourget and Geneva as a table — and no images**. Its abstract
+points at EcoTaxa for the vignettes but names no project, and EcoTaxa's anonymous API does not
+disclose project ids, so there is nothing an importer could walk. What it holds, how that was
+established, and the single identifier that would turn it into a KI-29-shaped EcoTaxa source are
+recorded in [`docs/PERIALPINE_ZOOSCAN_2024.md`](docs/PERIALPINE_ZOOSCAN_2024.md) and
+[KI-32](planktonzilla/planktonzilla_dataset/utils/KNOWN_ISSUES.md).
+
 For training, `configs/dataset/` selects either the composite `planktonzilla` dataset or a single
 source; **CIFAR-10** is also configured there as a generic sanity-check/smoke-test target.
 
