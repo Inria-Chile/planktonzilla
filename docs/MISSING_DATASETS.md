@@ -1,6 +1,6 @@
 # Missing datasets survey
 
-A systematic sweep for public plankton image datasets **absent from the 21-source build registry** in [`configs/generate_planktonzilla.yaml`](../configs/generate_planktonzilla.yaml), run 2026-09-18/19. It found **80 distinct datasets**, each filed as its own `dataset`-labelled issue (#39-#118).
+A systematic sweep for public plankton image datasets **absent from the 21-source build registry** in [`configs/generate_planktonzilla.yaml`](../configs/generate_planktonzilla.yaml), run 2026-09-18/19. It found **80 datasets**, each filed as its own `dataset`-labelled issue (#39-#118). A follow-up cross-check (below) measured the overlap between them and revised that to **77 distinct datasets** and **~17.26M net-new images**.
 
 This file is the index. The issues carry the detail; nothing here supersedes them.
 
@@ -168,6 +168,87 @@ intended for self-supervised pre-training. That makes it a re-label / extra-moda
 an existing source rather than a missing dataset — worth a note on the closed issue #17 if the team
 later wants the cross-modal profiles or a finer `DAPlankton_CS` label mapping.
 
+## Overlap cross-check (2026-09-20)
+
+The survey filed 80 issues but never checked them against **each other** — each verifier compared
+its candidate to the 21 registry sources and the open issues, not to the other 79 candidates. That
+gap is now closed. A deterministic pass scored all 3,160 possible pairs on instrument, region,
+publishing group and taxon; the 69 that scored above threshold were investigated, along with the
+12 issues that assert a registry overlap. Each of the 81 investigations was then attacked by a
+second agent whose job was to refute it.
+
+**65 disjoint, 16 real overlaps.** A further audit pass over the findings caught 17 defects in the
+write-up, two of them figures a refuter had already overturned; those are corrected here.
+
+### Corrected totals
+
+| | Images |
+| --- | ---: |
+| Filed gross (quantified rows; #100, #110, #111 carry no count) | 18,178,625 |
+| less intra-survey duplication | −108,306 |
+| less measured registry overlap | ~−806,000 |
+| **Net new** | **~17,264,000** |
+
+**Distinct datasets: 77, not 80.** Only **#77** contributes zero pixels — all 26,663 of its images
+are inside #61. Two more are near-total duplicates with small residues: **#85** (13,344 of 13,417
+ROIs inside #68, 73 net-new) and **#87** (≥5,085 of 9,772 diatoms pixel-proven inside #72, ceiling
+9,404, leaving ~368 diatoms plus 740 debris crops). **#76** survives the count only because no
+single other issue contains it: 3,240 of the 27,218 images it ships are net-new (it files 27,243,
+a 25-image slip against its own components).
+
+Treat the totals as an envelope, not a ledger. Only #44's 649,123 and #95's 4,086 are exact; #47
+is a lower bound (≥74,449), #62 an estimate (~55,029, floor 45,745, ceiling 62,480) and #79 a
+sampled figure (~23,440, 95% CI 22,824–24,057).
+
+### The overlap groups
+
+| Issues | Superset | Shared | Ingest first |
+| --- | --- | --- | --- |
+| #44 vs `global_uvp5` | registry | 649,123 (40.9% of #44) — exact, `object_id` join | already in build |
+| #58 #68 #70 #74 #76 #85 | none | 56,877 duplicates prevented; union 290,420 of a 347,297 naive sum | #68, then #70 |
+| #62 vs `whoi` | registry | ~55,029 (56.7% of #62); ~41,997 net-new | already in build |
+| #47 vs `uvp6net` | neither | ≥74,449 (6.6%) — no shared id; join on native features | either |
+| #61 #69 #77 | #61 | ~46,339 duplicates prevented | #61 |
+| #79 vs `zooscan` | registry | ~23,440 (91% of the only obtainable slice) | already in build |
+| #72 #87 | #72 | 5,085 pixel-proven (52% of #87), ceiling 9,404 | #72 |
+| #59 #95 | — | 4,090, of which only 4 are intra-survey | #59 |
+
+### Seven registry claims that were wrong
+
+Seven issues asserted an overlap with a registry source that does not exist. The dedup instruction
+on each has been retracted in a comment.
+
+**#45 is the one that mattered.** Its caveat read *"Materially overlaps registry ZooScanNet, so
+scope this to the post-ZooScanNet-cutoff extension."* Measured: **0 of 2,198 sampled validated
+objects** match a ZooScanNet feature vector, against a positive control recovering 97.5% of
+known-shared objects. Acting on that caveat would have discarded ~469,553 validated genuinely new
+images. The others — #39, #41, #59, #60, #82, #114 — were harmless but equally unfounded; #59 is
+instructive, sharing lab, station, instrument and annotators with `syke_ifcb_2022` and **zero
+images**.
+
+### Why the false flags happened
+
+Most bad pairs trace to a metadata defect in the issue itself, worth fixing so they do not recur:
+
+- **A lab address recorded as the sampling region.** #82 reads "Villefranche-sur-Mer / Sorbonne
+  Université"; the samples are Tara Oceans, global, 2009–2012. That one field generated three
+  false flags.
+- **An institution name harvested as geography.** "Florida Atlantic University" in #60's region put
+  a Puget Sound / East Sound deposit in the Atlantic.
+- **A wrong instrument tag.** #40 is tagged Pi-10 but is IFCB throughout — the single largest
+  generator of false pairs.
+- **Concept DOIs cited as version DOIs** (#76), and **person or instrument names used instead of
+  DOIs** in caveats (#70's "Hovenkamp" is ambiguous across #68, #76 and #85).
+
+### Method note
+
+Overlap was established on an evidence ladder, strongest first: same record or concept DOI → the
+authors' own statement of reuse → provenance identity (cruise, station, net, instrument serial) →
+filename and ID structure → byte identity via ZIP central directories and range requests → EcoTaxa
+object-set comparison. Hashing alone is unreliable here and was never used on its own: #77 crops a
+160-pixel scale bar and re-encodes, #72/#87 differ in colour space, and 8,928 of the #70/#76
+shared ROIs are contrast-corrected variants — all invisible to a hash-based dedup.
+
 ## Cross-cutting notes for whoever picks these up
 
 - **The licence spread widens.** The registry today holds `cc-by-4.0`, `cc-by-nc-4.0`,
@@ -182,11 +263,10 @@ later wants the cross-modal profiles or a finer `DAPlankton_CS` label mapping.
   but declare no licence anywhere (#43 LOKI, #48 DFO VPR, #67 NOC LISST-Holo, #96 MIO SEM,
   #66 ISIIS NCC, #78 NOAA CPICS, #51 CytoSense, #46 UCSC IFCB, #103 RCC). They are filed because
   the imagery is real and obtainable, but each needs its owner contacted before redistribution.
-- **Dedup is the main technical risk.** Several clusters overlap registry sources or each other:
-  #44 UVP5/MorphoCluster against `global_uvp5`, #47 glider UVP6 against `uvp6net`, #62 NES 2022
-  against `whoi`, #45 Point B against `zooscan`, #95 IFCB-PAD's healthy half against
-  `syke_ifcb_2022`, and four separate North Sea Pi-10 deposits (#58, #74, #70, #76) against one
-  another. Each issue names its own overlap risk.
+- **Dedup is the main technical risk**, and it has now been measured rather than guessed — see
+  the cross-check section above. Five registry overlaps are real and quantified (#44, #47, #62,
+  #79, #95); **seven asserted registry overlaps turned out not to exist** (#39, #41, #45, #59,
+  #60, #82, #114) and their dedup instructions have been retracted on the issues.
 - **EcoTaxa harvesting is already solved here.** Eleven clusters need the per-object API walk the
   four `tara_pacific_*` importers already implement — manifest first, then one vignette per object,
   resumable, with class folders keyed by taxon id rather than display name. That machinery is
