@@ -1,0 +1,45 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+daplankton	Aphanizomenon_flosaquae	pzt:000661	aphanizomenon	living	full_body	true	accepted							
+daplankton	Apocalathium_malmogiense	pzt:001223	apocalathium malmogiense	living	full_body	true	accepted							
+daplankton	Centrales_sp	pzt:000904	centrales	living	full_body	true	accepted							
+daplankton	Chaetoceros_sp	pzt:000908	chaetoceros	living	full_body	true	accepted							
+daplankton	Chaetoceros_sp_single	pzt:000908	chaetoceros	living	full_body	true	accepted							
+daplankton	Chlorococcales	pzt:001291	chlorococcales	living	full_body	true	accepted							
+daplankton	Chroococcales	pzt:000648	chroococcales	living	full_body	true	accepted							
+daplankton	Chrysotila_roscoffensis	pzt:000846	chrysotila roscoffensis	living	full_body	true	accepted							
+daplankton	Ciliata	pzt:000699	ciliophora	living	full_body	true	accepted							
+daplankton	Cryptomonadales	pzt:000816	cryptomonadales	living	full_body	true	accepted							
+daplankton	Cryptophyceae_Teleaulax	pzt:000819	teleaulax	living	full_body	true	accepted							
+daplankton	Cyclotella_choctawhatcheeana	pzt:001044	cyclotella choctawhatcheeana	living	full_body	true	accepted							
+daplankton	Diatoma_tenuis	pzt:000951	diatoma tenuis	living	full_body	true	accepted							
+daplankton	Dinophyceae	pzt:001062	dinophyceae	living	full_body	true	accepted							
+daplankton	Dinophysis_acuminata	pzt:001076	dinophysis acuminata	living	full_body	true	accepted							
+daplankton	Dolichospermum_Anabaenopsis	pzt:000664	anabaenopsis	living	full_body	true	accepted							
+daplankton	Dolichospermum_Anabaenopsis_coiled	pzt:000664	anabaenopsis	living	full_body	true	accepted							
+daplankton	Euglenophyceae	pzt:001344	euglenophyceae	living	full_body	true	accepted							
+daplankton	Eutreptiella_sp	pzt:001350	eutreptiella	living	full_body	true	accepted							
+daplankton	Gymnodiniales	pzt:001159	gymnodiniales	living	full_body	true	accepted							
+daplankton	Gymnodinium_corollarium	pzt:001165	gymnodinium corollarium	living	full_body	true	accepted							
+daplankton	Gymnodinium_like	pzt:001164	gymnodinium	living	like	true	accepted							
+daplankton	Heterocapsa_rotundata	pzt:001191	heterocapsa rotundata	living	full_body	true	accepted							
+daplankton	Heterocapsa_triquetra	pzt:001192	heterocapsa triquetra	living	full_body	true	accepted							
+daplankton	Heterocyte	pzt:000646	cyanobacteria	living	full_body	true	accepted							
+daplankton	Katablepharis_remigera	pzt:000830	katablepharis remigera	living	full_body	true	accepted							
+daplankton	Kryptoperidium_foliaceum	pzt:001204	kryptoperidinium foliaceum	living	full_body	true	accepted							
+daplankton	Levanderina_fissa	pzt:001062	dinophyceae	living	full_body	true	accepted							
+daplankton	Melosira_arctica	pzt:000990	melosira arctica	living	full_body	true	accepted							
+daplankton	Mesodinium_rubrum	pzt:000715	mesodinium rubrum	living	full_body	true	accepted							
+daplankton	Monoraphidium_contortum	pzt:001297	monoraphidium contortum	living	full_body	true	accepted							
+daplankton	Nephroselmis_pyriformis	pzt:001302	nephroselmis pyriformis	living	full_body	true	accepted							
+daplankton	Nitzschia_paleacea	pzt:000891	nitzschia paleacea	living	full_body	true	accepted							
+daplankton	Nodularia_spumigena	pzt:000666	nodularia spumigena	living	full_body	true	accepted							
+daplankton	Oocystis_sp	pzt:001316	oocystis	living	full_body	true	accepted							
+daplankton	Peridiniella_catenata	pzt:001136	peridiniella catenata	living	full_body	true	accepted							
+daplankton	Pseudopedinella_sp	pzt:001253	pseudopedinella	living	full_body	true	accepted							
+daplankton	Pyramimonas_sp	pzt:001311	pyramimonas	living	full_body	true	accepted							
+daplankton	Rhinomonas_nottbecki	pzt:000823	rhinomonas nottbeckii	living	full_body	true	accepted							
+daplankton	Rhodomonas_salina	pzt:000825	rhodomonas salina	living	full_body	true	accepted							
+daplankton	Skeletonema_marinoi	pzt:001040	skeletonema marinoi	living	full_body	true	accepted							
+daplankton	Snowella_Woronichinia	pzt:000674	woronichinia	living	full_body	true	accepted							
+daplankton	Teleaulax_acuta	pzt:000820	teleaulax acuta	living	full_body	true	accepted							
+daplankton	Tetraselmis_sp	pzt:001286	tetraselmis	living	full_body	true	accepted							

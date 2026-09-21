@@ -13,6 +13,15 @@ tags: ["dev"]
 
 # HuggingFace Hub repo id of the dataset to re-sync.
 repo_id: project-oceania/planktonzilla-17M
+
+# Revision to READ. null (the default) reads the repo's default branch, which is today's
+# behaviour. Symmetric with push_revision below, and needed because this script uses ONE repo_id
+# for both directions: it reads the dataset and then pushes it back, so a read-modify-write onto
+# a branch needs both set or the second run silently reverts the first.
+#   pz_update_planktonzilla read_revision=v1.1 push_to_hub=true push_revision=v1.1
+# Named read_revision rather than revision because push_revision sits three keys below, and an
+# unqualified `revision` beside it is ambiguous exactly where ambiguity costs a branch.
+read_revision: null
 data_dir: ${paths.data_dir}
 
 # Opt-in Hub push, performed after the unconditional save_to_disk. When push_to_hub

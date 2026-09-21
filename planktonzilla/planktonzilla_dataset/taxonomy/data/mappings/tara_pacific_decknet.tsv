@@ -1,0 +1,133 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+tara_pacific_decknet	Acantharia	pzt:001265	acantharia	living	full_body	true	accepted	verbatim	planktoscope			anchor:Acantharia		
+tara_pacific_decknet	Amphibelone	pzt:001268	amphibelone	living	full_body	true	accepted	verbatim	planktoscope			anchor:Amphibelone		
+tara_pacific_decknet	Amphisolenia	pzt:001072	amphisolenia	living	full_body	true	accepted	verbatim	planktoscope			anchor:Amphisolenia		
+tara_pacific_decknet	Amphorides	pzt:000774	amphorides	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Amphorides		
+tara_pacific_decknet	Amplectella	pzt:000781	amplectella	living	full_body	true	accepted	derived	Undellidae			anchor:Amplectella		
+tara_pacific_decknet	Appendicularia<Tunicata	pzt:000313	appendicularia	living	full_body	true	accepted	anchor	flowcamnet			anchor:Appendicularia		
+tara_pacific_decknet	Asterionellopsis	pzt:000944	asterionellopsis	living	full_body	true	accepted	verbatim	planktoscope			anchor:Asterionellopsis		
+tara_pacific_decknet	Asterolamprales	pzt:000880	asterolamprales	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Asterolamprales		
+tara_pacific_decknet	Bacillariaceae	pzt:000885	bacillariaceae	living	full_body	true	accepted	anchor	planktoscope			anchor:Bacillariaceae		
+tara_pacific_decknet	Bacillariophyceae	pzt:000879	bacillariophyceae	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Bacillariophyceae		
+tara_pacific_decknet	Bacteriastrum<Chaetocerotaceae	pzt:000907	bacteriastrum	living	full_body	true	accepted	anchor	flowcamnet			anchor:Bacteriastrum		
+tara_pacific_decknet	Ceratocorys	pzt:001129	ceratocorys	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Ceratocorys		
+tara_pacific_decknet	Chaetoceros peruvianus	pzt:000916	chaetoceros peruvianus	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Chaetoceros peruvianus		
+tara_pacific_decknet	Chaetoceros protuberans	pzt:000917	chaetoceros protuberans	living	full_body	true	accepted	derived	Chaetoceros			anchor:Chaetoceros protuberans		
+tara_pacific_decknet	Chaetoceros<Chaetocerotaceae	pzt:000908	chaetoceros	living	full_body	true	accepted	anchor	flowcamnet			anchor:Chaetoceros		
+tara_pacific_decknet	Ciliophora	pzt:000699	ciliophora	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Ciliophora		
+tara_pacific_decknet	Cladopyxis	pzt:001132	cladopyxis	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Cladopyxis		
+tara_pacific_decknet	Cladopyxis quadrispina	pzt:001134	cladopyxis quadrispina	living	full_body	true	accepted	derived	Cladopyxis			anchor:Cladopyxis quadrispina		
+tara_pacific_decknet	Climacodium	pzt:000960	climacodium	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Climacodium		
+tara_pacific_decknet	Climacodium inter. Crocosphaera	pzt:000961	climacodium crocosphaera	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Climacodium inter. Crocosphaera		
+tara_pacific_decknet	Codonaria	pzt:000741	codonaria	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Codonaria		
+tara_pacific_decknet	Codonellidae	pzt:000740	codonellidae	living	full_body	true	accepted	derived	Choreotrichida			anchor:Codonellidae		
+tara_pacific_decknet	Codonellopsis orthoceras	pzt:000749	codonellopsis orthoceras	living	full_body	true	accepted	verbatim	planktoscope			anchor:Codonellopsis orthoceras		
+tara_pacific_decknet	Codonellopsis<Tintinnidiidae	pzt:000748	codonellopsis morchella	living	full_body	true	accepted	anchor	flowcamnet			anchor:Codonellopsis		
+tara_pacific_decknet	Copepoda<Multicrustacea	pzt:000152	copepoda	living	full_body	true	accepted	anchor	global_uvp5			anchor:Copepoda		
+tara_pacific_decknet	Corethron	pzt:000927	corethron	living	full_body	true	accepted	verbatim	planktoscope			anchor:Corethron		
+tara_pacific_decknet	Coscinodiscids	pzt:000677	coscinodiscids	living	full_body	true	accepted	derived	Chromista			anchor:Coscinodiscids		
+tara_pacific_decknet	Cyanobacteria<Proteobacteria	pzt:000646	cyanobacteria	living	full_body	true	accepted	anchor	flowcamnet			anchor:Cyanobacteria		
+tara_pacific_decknet	Cyttarocylis	pzt:000751	cyttarocylis	living	full_body	true	accepted	verbatim	planktoscope			anchor:Cyttarocylis		
+tara_pacific_decknet	Dactyliosolen	pzt:001010	dactyliosolen	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Dactyliosolen		
+tara_pacific_decknet	Dadayiella	pzt:000775	dadayiella	living	full_body	true	accepted	verbatim	planktoscope			anchor:Dadayiella		
+tara_pacific_decknet	Dictyochophyceae<Ochrophyta	pzt:001240	dictyochophyceae	living	full_body	true	accepted	derived	Chromista			anchor:Dictyochophyceae		
+tara_pacific_decknet	Dictyocysta	pzt:000753	dictyocysta	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Dictyocysta		
+tara_pacific_decknet	Dinophyceae	pzt:001062	dinophyceae	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Dinophyceae		
+tara_pacific_decknet	Dinophysis	pzt:001075	dinophysis	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Dinophysis		
+tara_pacific_decknet	Ditylum	pzt:000976	ditylum	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Ditylum		
+tara_pacific_decknet	Epiplocylis	pzt:000756	epiplocylis	living	full_body	true	accepted	verbatim	planktoscope			anchor:Epiplocylis		
+tara_pacific_decknet	Eucampia	pzt:000962	eucampia	living	full_body	true	accepted	verbatim	planktoscope			anchor:Eucampia		
+tara_pacific_decknet	Eutintinnus	pzt:000758	eutintinnus	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Eutintinnus		
+tara_pacific_decknet	Foraminifera	pzt:000831	foraminifera	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Foraminifera		
+tara_pacific_decknet	Fragilariopsis	pzt:000889	fragilariopsis	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Fragilariopsis		
+tara_pacific_decknet	Gonyaulacales	pzt:001090	gonyaulacales	living	full_body	true	accepted	anchor	flowcamnet			anchor:Gonyaulacales		
+tara_pacific_decknet	Guinardia	pzt:001013	guinardia	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Guinardia		
+tara_pacific_decknet	Gymnodiniales	pzt:001159	gymnodiniales	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Gymnodiniales		
+tara_pacific_decknet	Helicotheca	pzt:000977	helicotheca	living	full_body	true	accepted	derived	Bacillariophyceae			anchor:Helicotheca		
+tara_pacific_decknet	Hemiaulus	pzt:000964	hemiaulus	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Hemiaulus		
+tara_pacific_decknet	Hemidiscus cuneiformis	pzt:000935	hemidiscus cuneiformis	living	full_body	true	accepted	derived	Hemidiscus			anchor:Hemidiscus cuneiformis		
+tara_pacific_decknet	Lacrymaria	pzt:000721	lacrymaria	living	full_body	true	accepted	derived	Ciliophora			anchor:Lacrymaria		
+tara_pacific_decknet	Metacylis	pzt:000764	metacylis	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Metacylis		
+tara_pacific_decknet	Nassellaria<Polycystina	pzt:001270	nassellaria	living	full_body	true	accepted	anchor	flowcamnet			anchor:Nassellaria		
+tara_pacific_decknet	Neoceratium	pzt:001094	neoceratium	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Neoceratium		
+tara_pacific_decknet	Neoceratium candelabrum	pzt:001101	tripos candelabrum	living	full_body	true	accepted	verbatim	planktoscope			anchor:Neoceratium candelabrum		
+tara_pacific_decknet	Neoceratium furca<Neoceratium	pzt:001107	tripos furca	living	full_body	true	accepted	anchor	flowcamnet			anchor:Neoceratium furca		
+tara_pacific_decknet	Neoceratium fusus<Neoceratium	pzt:001108	tripos fusus	living	full_body	true	accepted	anchor	flowcamnet			anchor:Neoceratium fusus		
+tara_pacific_decknet	Neoceratium geniculatum	pzt:001109	tripos geniculatus	living	full_body	true	accepted	verbatim	planktoscope			anchor:Neoceratium geniculatum		
+tara_pacific_decknet	Neoceratium pentagonum	pzt:001120	tripos pentagonus	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Neoceratium pentagonum		
+tara_pacific_decknet	Nitzschia	pzt:000890	nitzschia	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Nitzschia		
+tara_pacific_decknet	Ornithocercus	pzt:001081	ornithocercus	living	full_body	true	accepted	verbatim	planktoscope			anchor:Ornithocercus		
+tara_pacific_decknet	Ornithocercus heteroporus	pzt:001082	ornithocercus heteroporus	living	full_body	true	accepted	derived	Ornithocercus			anchor:Ornithocercus heteroporus		
+tara_pacific_decknet	Ornithocercus magnificus<Ornithocercus	pzt:001083	ornithocercus magnificus	living	full_body	true	accepted	anchor	flowcamnet			anchor:Ornithocercus magnificus		
+tara_pacific_decknet	Ornithocercus quadratus<Ornithocercus	pzt:001084	ornithocercus quadratus	living	full_body	true	accepted	anchor	planktoscope			anchor:Ornithocercus quadratus		
+tara_pacific_decknet	Ornithocercus steinii	pzt:001086	ornithocercus steinii	living	full_body	true	accepted	verbatim	planktoscope			anchor:Ornithocercus steinii		
+tara_pacific_decknet	Oxytoxum	pzt:001198	oxytoxum	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Oxytoxum		
+tara_pacific_decknet	Phalacroma	pzt:001088	phalacroma	living	full_body	true	accepted	verbatim	planktoscope			anchor:Phalacroma		
+tara_pacific_decknet	Planktoniella	pzt:001046	planktoniella	living	full_body	true	accepted	derived	Thalassiosirales			anchor:Planktoniella		
+tara_pacific_decknet	Planktoniella sol	pzt:001047	planktoniella sol	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Planktoniella sol		
+tara_pacific_decknet	Podolampas	pzt:001207	podolampas	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Podolampas		
+tara_pacific_decknet	Poroecus	pzt:000744	poroecus	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Poroecus		
+tara_pacific_decknet	Protoperidinium	pzt:001211	protoperidinium	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Protoperidinium		
+tara_pacific_decknet	Pseudo-Nitzschia chain	pzt:000892	pseudo-nitzschia	living	full_body	true	accepted	verbatim	planktoscope			anchor:Pseudo-nitzschia		
+tara_pacific_decknet	Pterosperma	pzt:001306	pterosperma	living	full_body	true	accepted	verbatim	planktoscope			anchor:Pterosperma		
+tara_pacific_decknet	Pyrocystaceae	pzt:001149	pyrocystaceae	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Pyrocystaceae		
+tara_pacific_decknet	Pyrophacus	pzt:001157	pyrophacus	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Pyrophacus		
+tara_pacific_decknet	Retaria	pzt:000675	chromista	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Retaria		
+tara_pacific_decknet	Rhabdonella	pzt:000768	rhabdonella	living	full_body	true	accepted	verbatim	planktoscope			anchor:Rhabdonella		
+tara_pacific_decknet	Rhabdonellopsis	pzt:000769	rhabdonellopsis	living	full_body	true	accepted	verbatim	planktoscope			anchor:Rhabdonellopsis		
+tara_pacific_decknet	Rhizaria	pzt:000675	chromista	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Rhizaria		
+tara_pacific_decknet	Rhizosolenia inter. Richelia	pzt:001021	rhizosolenia	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Rhizosolenia inter. Richelia		
+tara_pacific_decknet	Rhizosolenids	pzt:001021	rhizosolenia	living	full_body	true	accepted	verbatim	zoocamnet			anchor:Rhizosolenids		
+tara_pacific_decknet	Richelia	pzt:000668	richelia	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Richelia		
+tara_pacific_decknet	Rotifera	pzt:000486	rotifera	living	full_body	true	accepted	verbatim	planktoscope			anchor:Rotifera		
+tara_pacific_decknet	Salpingella<Tintinnidae	pzt:000776	salpingella	living	full_body	true	accepted	anchor	flowcamnet			anchor:Salpingella		
+tara_pacific_decknet	Spumellaria	pzt:001275	spumellaria	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Spumellaria		
+tara_pacific_decknet	Steenstrupiella	pzt:000777	steenstrupiella	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Steenstrupiella		
+tara_pacific_decknet	Thalassionematales	pzt:001029	thalassionematales	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Thalassionematales		
+tara_pacific_decknet	Tintinnina<Choreotrichida	pzt:000739	choreotrichida	living	full_body	true	accepted	anchor	flowcamnet			anchor:Tintinnina		
+tara_pacific_decknet	Tripos limulus<Tripos	pzt:001114	tripos limulus	living	full_body	true	accepted	anchor	planktoscope			anchor:Tripos limulus		
+tara_pacific_decknet	Tunicata	pzt:000312	chordata	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Tunicata		
+tara_pacific_decknet	UCYNA like	pzt:000647	cyanophyceae	living	like	true	accepted	verbatim	flowcamnet			anchor:UCYNA like		
+tara_pacific_decknet	Undellidae	pzt:000780	undellidae	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Undellidae		
+tara_pacific_decknet	Xystonellidae	pzt:000784	xystonellidae	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Xystonellidae		
+tara_pacific_decknet	Zoothamniidae	pzt:000737	zoothamniidae	living	full_body	true	accepted	verbatim	planktoscope			anchor:Zoothamniidae		
+tara_pacific_decknet	artefact	pzt:000002	artefact	artefact	unqualified	false	accepted	verbatim	flowcamnet					
+tara_pacific_decknet	attached	pzt:000645	bacteria	living	full_body	true	accepted	derived				anchor:Bacteria		morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_decknet	badfocus<artefact	pzt:000003	bad focus	artefact	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_decknet	bubble	pzt:000005	bubble	artefact	unqualified	false	accepted	verbatim	flowcamnet					
+tara_pacific_decknet	chainlarge	pzt:000950	diatoma	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Diatoma		
+tara_pacific_decknet	chainthin	pzt:000950	diatoma	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Diatoma		
+tara_pacific_decknet	crumple sphere	pzt:000039	shape	artefact	unqualified	false	accepted	verbatim	flowcamnet					
+tara_pacific_decknet	cyano a	pzt:000646	cyanobacteria	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Cyanobacteria		
+tara_pacific_decknet	cyano b	pzt:000646	cyanobacteria	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Cyanobacteria		
+tara_pacific_decknet	cyst<unicellular	pzt:000007	cyst	living	full_body	false	accepted	derived						morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_decknet	dark<detritus	pzt:000008	detritus	detritus	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_decknet	dark<sphere	pzt:000039	shape	artefact	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_decknet	darkrods<othertocheck	pzt:000039	shape	artefact	unqualified	false	accepted	anchor	flowcamnet					
+tara_pacific_decknet	detritus<not-living	pzt:000008	detritus	detritus	unqualified	false	accepted	anchor	flowcamnet					
+tara_pacific_decknet	duplicate	pzt:000012	error	artefact	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_decknet	egg sac<egg	pzt:000010	egg	living	egg	false	accepted	anchor	flowcamnet					
+tara_pacific_decknet	egg<other	pzt:000010	egg	living	egg	false	accepted	anchor	flowcamnet					
+tara_pacific_decknet	fiber<detritus	pzt:000014	fiber	detritus	unqualified	false	accepted	anchor	flowcamnet					
+tara_pacific_decknet	larvae<Annelida	pzt:000045	annelida	living	larvae	true	accepted	verbatim	global_uvp5			anchor:Annelida		
+tara_pacific_decknet	light<detritus	pzt:000008	detritus	detritus	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_decknet	light<sphere	pzt:000039	shape	artefact	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_decknet	lightrods<othertocheck	pzt:000039	shape	artefact	unqualified	false	accepted	anchor	flowcamnet					
+tara_pacific_decknet	multiple<Diatoma	pzt:000950	diatoma	living	mix	true	accepted	anchor	flowcamnet			anchor:Diatoma		
+tara_pacific_decknet	multiple<other	pzt:000024	other	artefact	unqualified	false	accepted	anchor	flowcamnet					
+tara_pacific_decknet	nauplii<Crustacea	pzt:000062	arthropoda	living	full_body	true	accepted	anchor	flowcamnet			anchor:Crustacea		
+tara_pacific_decknet	othersphere	pzt:000039	shape	artefact	unqualified	false	accepted	anchor	flowcamnet					morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_decknet	othertocheck	pzt:000024	other	artefact	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_decknet	part<Ciliophora	pzt:000699	ciliophora	detritus	part	false	accepted	anchor	flowcamnet			anchor:Ciliophora		
+tara_pacific_decknet	part<Crustacea	pzt:000062	arthropoda	detritus	part	false	accepted	verbatim	global_uvp5			anchor:Crustacea		
+tara_pacific_decknet	pennate<Bacillariophyta	pzt:000676	bacillariophyta	living	full_body	true	accepted	derived	Chromista			anchor:Bacillariophyta		
+tara_pacific_decknet	polar view	pzt:001062	dinophyceae	living	full_body	true	accepted	verbatim	planktoscope			anchor:Dinophyceae		
+tara_pacific_decknet	pollen	pzt:000034	pollen	living	full_body	false	accepted	verbatim	planktoscope					
+tara_pacific_decknet	spines<Acantharia	pzt:001265	acantharia	detritus	part	false	accepted	anchor	planktoscope			anchor:Acantharia		morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_decknet	t001	pzt:000042	unknown	artefact	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_decknet	t002	pzt:000042	unknown	artefact	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_decknet	t003	pzt:000042	unknown	artefact	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_decknet	t004	pzt:000042	unknown	artefact	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_decknet	tail<Appendicularia	pzt:000313	appendicularia	detritus	part_tail	false	accepted	verbatim	global_uvp5			anchor:Appendicularia		
+tara_pacific_decknet	trochozoa	pzt:000044	animalia	living	larvae	true	accepted	anchor	planktonset1.0			anchor:Animalia		morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_decknet	veliger<Mollusca	pzt:000438	mollusca	living	full_body	true	accepted	anchor	zoocamnet			anchor:Mollusca		

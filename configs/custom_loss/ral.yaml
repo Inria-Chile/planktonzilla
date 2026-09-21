@@ -5,6 +5,8 @@ custom_loss:
   _target_: planktonzilla.loss.RobustAsymmetricLoss
   gamma_pos: 0
   gamma_neg: 4
-  eps: 0.1
+  # Upstream Ralloss's log-clamp floor. Was 0.1, which also served as label-smoothing
+  # strength; RAL does not smooth (see the class docstring) and 0.1 is not a floor.
+  eps: 1e-8
   epsilon_pos_pow: -2.5
   reduction: mean

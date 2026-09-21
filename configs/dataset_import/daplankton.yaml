@@ -7,6 +7,13 @@ push_to_hub: true
 
 human_readable_name: "DAPlankton: Benchmark Dataset for Multi-instrument Plankton Recognition"
 license: "cc-by-4.0"
+# the ONLY source whose instrument varies per image, and it varies by design: the config calls it a
+# 'benchmark for fine-grained plankton recognition ACROSS imaging instruments ... IFCB, a CytoSense flow
+# cytometer (CS) and a FlowCam' where 'the domain shift a classifier has to survive is the instrument
+# rather than the label' (daplankton.yaml:8,11-13). Resolved per row from the merge prefix the importer
+# leaves in original_path
+instrument: "@per-row"
+instrument_id: null
 description: |
     DAPlankton is a benchmark for fine-grained plankton recognition ACROSS imaging instruments: the same taxa are
     imaged by an Imaging FlowCytobot (IFCB), a CytoSense flow cytometer (CS) and a FlowCam imaging microscope (FC),

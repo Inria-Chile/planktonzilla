@@ -74,6 +74,24 @@ The lineage agrees with EcoTaxa except at one rank, because the row takes the sp
 
 EcoTaxa carries diatoms under BOTH `Chromista>Bacillariophyta` and `Chromista>Heterokontophyta>Bacillariophytina>Bacillariophyceae`. Rows anchored on the first (`centric`, `pennate<Bacillariophyta`, `Coscinodiscids`, `Rhizosolenids`) therefore carry `Phylum=bacillariophyta`, while every diatom row with a genus carries the `heterokontophyta`/`bacillariophyceae` spelling the rest of the CSV uses. Both spellings are kept as upstream states them; no row was rewritten to hide the duality.
 
+### B7. Class dirs whose candidate donors disagreed (8)
+
+The donor is the first matching row in file order. Where more than one pre-existing row
+carries the same `Raw_Labels` and they describe different taxa, the choice below was made
+by position, not by evidence. Correcting one changes a published lineage, so these are
+recorded for adjudication rather than resolved here.
+
+| Raw_Labels | donor taken | other candidates | columns they disagree on |
+| --- | --- | --- | --- |
+| `Acantharia` | planktoscope | flowcamnet | Family, Genus, NCBI_ID, Order, aphia_ID, ecotaxa_ID, proposed_label, wikidata_ID |
+| `Annelida` | global_uvp5 | isiisnet, uvp6net, zoocamnet, zooscan | BOLD_ID, Class, Family, Genus, NCBI_ID, Order, aphia_ID, proposed_label, wikidata_ID |
+| `Creseidae` | zooscan | global_uvp5 | BOLD_ID, Family, Genus, NCBI_ID, Species, aphia_ID, ecotaxa_ID, proposed_label, wikidata_ID |
+| `Dinophyceae` | global_uvp5 | daplankton, flowcamnet, planktoscope, syke_ifcb_2022 | BOLD_ID, NCBI_ID, Order, aphia_ID, proposed_label, wikidata_ID |
+| `Foraminifera` | flowcamnet | global_uvp5, planktoscope, uvp6net, zooscan | BOLD_ID, Class, Family, NCBI_ID, Order, aphia_ID, ecotaxa_ID, proposed_label, wikidata_ID |
+| `Harpacticoida` | zooscan | global_uvp5, isiisnet, planktoscope, sykezooscan2024, zoocamnet | BOLD_ID, Family, Genus, NCBI_ID, aphia_ID, ecotaxa_ID, proposed_label, wikidata_ID |
+| `Neoceratium` | flowcamnet | planktoscope, zoocamnet, zooscan | BOLD_ID, Genus, NCBI_ID, aphia_ID, ecotaxa_ID, proposed_label, wikidata_ID |
+| `Ornithocercus` | planktoscope | flowcamnet | NCBI_ID, Species, aphia_ID, ecotaxa_ID, proposed_label, wikidata_ID |
+
 ## Section C — every derived row
 
 | dataset | Raw_Labels | anchor | proposed_label | root_class | qualifier | higher ranks from |

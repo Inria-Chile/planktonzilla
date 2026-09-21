@@ -7,6 +7,10 @@ push_to_hub: true
 
 human_readable_name: "SYKE-plankton_IFCB_2022"
 license: "cc-by-4.0"
+# config: 'collected with an Imaging FlowCytobot (IFCB, McLane Research Laboratories, Inc., U.S.)'
+# (syke_ifcb_2022.yaml:18) -- word for word the vendor and instrument TOOL1588 names
+instrument: "IFCB"
+instrument_id: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1588/"
 description: |
   The data set available here is published along with an article “Kraft et al. (2022). Towards operational 
   phytoplankton recognition with automated high-throughput imaging, near real-time data processing, and 

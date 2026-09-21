@@ -8,6 +8,9 @@ check_image_file_integrity: true
 
 human_readable_name: "Tara Pacific Manta net / ZooScan surface meso-plankton and microplastics"
 license: "cc-by-4.0"
+# config names ZooScan imaging; tara_pacific_layout.SOURCES records instrument='ZooScan'
+instrument: "ZooScan"
+instrument_id: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/"
 source_url: "https://doi.org/10.17882/102537"
 
 # EMPTY ON PURPOSE — this source has no archive to download; see tara_pacific_bongo.yaml

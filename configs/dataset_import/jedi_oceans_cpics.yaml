@@ -29,6 +29,10 @@ description: |
   biological images and measured environmental parameters were archived at JST NBDC
   (https://dbarchive.biosciencedbc.jp/en/jedisystem-oceansdb/desc.html).
 license: cc-by-sa-4.0
+# the config's prose does not name the instrument, but its own download URL does -- CPICS_Validated.zip
+# (jedi_oceans_cpics.yaml:16) -- and hf_dataset_name is jedi_system_oceans_cpics
+instrument: "CPICS"
+instrument_id: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1582/"
 download_uris: https://dbarchive.biosciencedbc.jp/data/jedisystem-oceansdb/LATEST/CPICS_Validated.zip
 source_url: https://dbarchive.biosciencedbc.jp/data/jedisystem-oceansdb/LATEST/README_e.html#Sec3
 citation_apa: |

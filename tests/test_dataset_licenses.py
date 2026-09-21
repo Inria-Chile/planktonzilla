@@ -50,6 +50,7 @@ from planktonzilla.planktonzilla_dataset.constants import (
     DATASET_IMPORT_CONFIGS,
     DATASET_LICENSES,
     LICENSE_COLS,
+    RECORDED_BUT_NOT_YET_PUBLISHED,
     license_fields,
     validate_license_coverage,
 )
@@ -75,24 +76,12 @@ _NON_DEED_URLS = {
     "planktonset1.0": "https://doi.org/10.7289/v5d21vjd",
 }
 
-# Sources whose terms are recorded ahead of their arrival in the PUBLISHED planktonzilla-17M:
-# in the taxonomy CSV, configs/dataset_import and the default registry, but absent from
-# samples.json — a scan of the frozen artifact — until the next push. Listed explicitly so
-# the samples.json test tolerates nothing else; once a pending source lands in the published
-# artifact and samples.json is regenerated, it comes back out of this set (and
-# `len(published)` below moves in the same commit).
-#   frepj           registry since 2026-08-25, published on its own as project-oceania/planktonzilla-frepj
-#   daplankton      registry since 2026-08-27
-#   tara_pacific_*  registry since 2026-08-26; taxonomy rows, importer configs and registry
-#                   entries are in the tree, the images are not in the frozen artifact yet
-_RECORDED_BUT_NOT_YET_PUBLISHED = {
-    "frepj",
-    "daplankton",
-    "tara_pacific_bongo",
-    "tara_pacific_decknet",
-    "tara_pacific_hsn",
-    "tara_pacific_manta",
-}
+# The six pending sources now live in constants.RECORDED_BUT_NOT_YET_PUBLISHED, imported above
+# rather than restated here: the golden-diff harness subtracts the same six from its coverage,
+# and two transcriptions of the list would let this test go green while the harness excused a
+# source that had in fact been published. Kept as a module-level alias so the assertions below,
+# and the KNOWN_ISSUES entries that name this symbol, read unchanged.
+_RECORDED_BUT_NOT_YET_PUBLISHED = set(RECORDED_BUT_NOT_YET_PUBLISHED)
 
 
 def _published_dataset_names():
@@ -253,3 +242,33 @@ def test_tara_pacific_license_agrees_with_its_layout_constants(dataset_name):
         "license": tara_pacific_layout.LICENSE,
         "license_url": tara_pacific_layout.LICENSE_URL,
     }
+
+
+def test_the_recorded_uncovered_datasets_match_the_pending_sources():
+    """(c) CROSS-PIN: the golden diff's excuse list and this file's pending list are one fact.
+
+    ``pz_golden_diff`` compares the published planktonzilla-17M against what this tree renders, and
+    the 873 taxonomy rows it cannot cover are the rows of exactly these six sources. It records them
+    in its manifest as ``excluded_datasets`` so that "subtract the rows the Hub does not have" stays
+    honest — an uncovered row named by neither that list nor ``absent_pairs`` is a coverage anomaly
+    and fails the gate rather than being quietly subtracted.
+
+    Two independently maintained restatements of "not published yet" are one restatement too many:
+    a source that lands in the artifact must leave BOTH lists in the same commit, and this is what
+    notices when it leaves only one. Same trick this file already plays with ``samples.json``.
+
+    Skips until the reference pair exists, because it is generated from a live Hub sweep and
+    committed separately from the harness itself.
+    """
+    manifest_path = root / "planktonzilla" / "planktonzilla_dataset" / "utils" / "golden_reference.json"
+    if not manifest_path.exists():
+        pytest.skip(
+            f"{manifest_path.relative_to(root)} does not exist yet — generate it with "
+            "`uv run pz_golden_diff --refresh --revision <sha>` and commit the reference pair."
+        )
+
+    recorded = set(json.loads(manifest_path.read_text(encoding="utf-8"))["excluded_datasets"])
+    assert recorded == _RECORDED_BUT_NOT_YET_PUBLISHED, (
+        f"golden_reference.json excuses source(s) this file does not: {sorted(recorded - _RECORDED_BUT_NOT_YET_PUBLISHED)}; "
+        f"pending source(s) the golden diff does not excuse: {sorted(_RECORDED_BUT_NOT_YET_PUBLISHED - recorded)}"
+    )

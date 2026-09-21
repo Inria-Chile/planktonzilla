@@ -8,6 +8,12 @@ check_image_file_integrity: true
 
 human_readable_name: "FREPJ-Z: Freshwater Plankton in Japanese Lakes and Reservoirs (I. Zooplankton)"
 license: "cc-by-4.0"
+# NOTHING in the repo names an instrument for this source: the config says only 'high-resolution
+# microscopic images' (frepj.yaml:14) and the README only '40x and 100x'. That is a modality, not a device.
+# L22 does offer generic microscope terms (TOOL1034, TOOL2302) but picking one would assert a device nobody
+# recorded, so both fields are null. See KNOWN_ISSUES
+instrument: null
+instrument_id: null
 source_url: "https://jstagedata.jst.go.jp/articles/dataset/26891563"
 download_uris: "https://ndownloader.figshare.com/files/48928918"
 description: |

@@ -1,0 +1,96 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+jedioceans	LClass_26.Chaetognatha	pzt:000304	chaetognatha	living	full_body	true	accepted							
+jedioceans	LClass_27.Hydrozoa	pzt:000352	hydrozoa	living	full_body	true	accepted							
+jedioceans	LClass_28.Larvacea	pzt:000313	appendicularia	living	full_body	true	accepted							
+jedioceans	LClass_29.Polychaeta	pzt:000046	polychaeta	living	full_body	true	accepted							
+jedioceans	LClass_30.Benthic_algae	pzt:000675	chromista	living	full_body	true	accepted							
+jedioceans	LClass_30.Bentic_algae	pzt:000675	chromista	living	full_body	true	accepted							
+jedioceans	LClass_31.Polyp	pzt:000346	cnidaria	living	full_body	true	accepted							
+jedioceans	LClass_32.1Adult_Fish	pzt:000312	chordata	living	full_body	false	accepted							
+jedioceans	LClass_33.Air_bubble	pzt:000005	bubble	artefact	unqualified	false	accepted							
+jedioceans	LClass_Ba.22.Cypris_larva	pzt:000300	thecostraca	living	larvae	true	accepted							
+jedioceans	LClass_Ba.Barnacle_nauplius	pzt:000300	thecostraca	living	full_body	true	accepted							
+jedioceans	LClass_Barnacle_exuviae	pzt:000300	thecostraca	living	full_body	true	accepted							
+jedioceans	LClass_Benthic_algae	pzt:000675	chromista	living	full_body	true	accepted							
+jedioceans	LClass_Bivalvia	pzt:000439	bivalvia	living	full_body	true	accepted							
+jedioceans	LClass_CC.Copepod	pzt:000152	copepoda	living	full_body	true	accepted							
+jedioceans	LClass_Chaetognatha	pzt:000304	chaetognatha	living	full_body	true	accepted							
+jedioceans	LClass_Cr.16.Decapoda	pzt:000273	decapoda	living	full_body	true	accepted							
+jedioceans	LClass_Cr.Crustacea	pzt:000062	arthropoda	living	full_body	true	accepted							
+jedioceans	LClass_Crinoidea	pzt:000432	crinoidea	living	full_body	true	accepted							
+jedioceans	LClass_Crust.+Decap	pzt:000062	arthropoda	living	full_body	true	accepted							
+jedioceans	LClass_Cy.1.Trichodesmium	pzt:000671	trichodesmium	living	full_body	true	accepted							
+jedioceans	LClass_Cy.1.Trichodesmium_spp	pzt:000671	trichodesmium	living	full_body	true	accepted							
+jedioceans	LClass_Cy.1.Trichodesmium_tuft	pzt:000671	trichodesmium	living	full_body	true	accepted							
+jedioceans	LClass_Cy.2.Trichodesmium	pzt:000671	trichodesmium	living	full_body	true	accepted							
+jedioceans	LClass_Cy.Trichodesmium_	pzt:000671	trichodesmium	living	full_body	true	accepted							
+jedioceans	LClass_Detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+jedioceans	LClass_Detritus_dot	pzt:000008	detritus	detritus	unqualified	false	accepted							
+jedioceans	LClass_Detritus_stickers	pzt:000008	detritus	detritus	unqualified	false	accepted							
+jedioceans	LClass_Df.02.Ceratium	pzt:001095	tripos	living	full_body	true	accepted							
+jedioceans	LClass_Df.03.Noctiluca_scintillans	pzt:001184	noctiluca scintillans	living	full_body	true	accepted							
+jedioceans	LClass_Di.Diatom	pzt:000879	bacillariophyceae	living	full_body	true	accepted							
+jedioceans	LClass_Dinoflagellate	pzt:001062	dinophyceae	living	full_body	true	accepted							
+jedioceans	LClass_Doubts	pzt:000042	unknown	artefact	unqualified	false	accepted							
+jedioceans	LClass_Doutbs	pzt:000042	unknown	artefact	unqualified	false	accepted							
+jedioceans	LClass_Fish_larvae	pzt:000312	chordata	living	larvae	false	accepted							
+jedioceans	LClass_Foraminiferida	pzt:000831	foraminifera	living	full_body	true	accepted							
+jedioceans	LClass_Halacaridae	pzt:000065	halacaridae	living	full_body	true	accepted							
+jedioceans	LClass_Larvacea	pzt:000313	appendicularia	living	full_body	true	accepted							
+jedioceans	LClass_Mollusca	pzt:000438	mollusca	living	full_body	true	accepted							
+jedioceans	LClass_Multiple_organisms	pzt:000021	mix	living	mix	false	accepted							
+jedioceans	LClass_Noctiluca_eggs	pzt:001183	noctiluca	living	egg	true	accepted							
+jedioceans	LClass_Organism_parts_general	pzt:000024	other	detritus	part	false	accepted							
+jedioceans	LClass_Pa.35.Marine_snow	pzt:000019	marine snow	detritus	unqualified	false	accepted							
+jedioceans	LClass_Pa.35.Marine_snow_aggregate_large	pzt:000019	marine snow	detritus	unqualified	false	accepted							
+jedioceans	LClass_Pa.35.Marine_snow_aggregate_medium	pzt:000019	marine snow	detritus	unqualified	false	accepted							
+jedioceans	LClass_Pa.35.Marine_snow_aggregate_small	pzt:000019	marine snow	detritus	unqualified	false	accepted							
+jedioceans	LClass_Pa.35.Marine_snow_com_large	pzt:000019	marine snow	detritus	unqualified	false	accepted							
+jedioceans	LClass_Pa.35.Marine_snow_com_medium	pzt:000019	marine snow	detritus	unqualified	false	accepted							
+jedioceans	LClass_Pa.35.Marine_snow_com_small	pzt:000019	marine snow	detritus	unqualified	false	accepted							
+jedioceans	LClass_Pa.35.Marine_snow_stick	pzt:000019	marine snow	detritus	unqualified	false	accepted							
+jedioceans	LClass_Pa.36.Fecal_pellets	pzt:000013	feces	detritus	unqualified	false	accepted							
+jedioceans	LClass_Pa.36.Fecal_pellets_New	pzt:000013	feces	detritus	unqualified	false	accepted							
+jedioceans	LClass_Pa.37.Barnacle_exuviae	pzt:000300	thecostraca	living	full_body	true	accepted							
+jedioceans	LClass_Pa.39.Mineral	pzt:000020	mineral	inert	unqualified	false	accepted							
+jedioceans	LClass_Pa.Mineral	pzt:000020	mineral	inert	unqualified	false	accepted							
+jedioceans	LClass_Pa.Other_exuviae	pzt:000024	other	detritus	unqualified	false	accepted							
+jedioceans	LClass_Pluteos	pzt:000428	echinodermata	living	full_body	true	accepted							
+jedioceans	LClass_Polyp	pzt:000346	cnidaria	living	full_body	true	accepted							
+jedioceans	LClass_Pteropod	pzt:000450	pteropoda	living	full_body	true	accepted							
+jedioceans	LClass_Ra.25.Radiolaria	pzt:001264	radiozoa	living	full_body	true	accepted							
+jedioceans	LClass_Ra.25.Radiolaria_2	pzt:001264	radiozoa	living	full_body	true	accepted							
+jedioceans	LClass_Ra.Radiolaria	pzt:001264	radiozoa	living	full_body	true	accepted							
+jedioceans	LClass_Rhizaria_others	pzt:000675	chromista	living	full_body	true	accepted							
+jedioceans	LClass_Tintinnida	pzt:000739	choreotrichida	living	full_body	true	accepted							
+jedioceans	LClass_Unfocussed	pzt:000003	bad focus	artefact	unqualified	false	accepted							
+jedioceans	LClass_Unkown	pzt:000042	unknown	artefact	unqualified	false	accepted							
+jedioceans	LClass_appendicularia	pzt:000313	appendicularia	living	full_body	true	accepted							
+jedioceans	LClass_barnacle	pzt:000300	thecostraca	living	full_body	true	accepted							
+jedioceans	LClass_bentic_algae	pzt:000675	chromista	living	full_body	true	accepted							
+jedioceans	LClass_carapace	pzt:000062	arthropoda	detritus	part_carapace	false	accepted							
+jedioceans	LClass_chaetognata	pzt:000304	chaetognatha	living	full_body	true	accepted							
+jedioceans	LClass_cilliate	pzt:000699	ciliophora	living	full_body	true	accepted							
+jedioceans	LClass_cnidaria	pzt:000346	cnidaria	living	full_body	true	accepted							
+jedioceans	LClass_crus_doubt	pzt:000062	arthropoda	living	like	true	accepted							
+jedioceans	LClass_dinoflagelate	pzt:001062	dinophyceae	living	full_body	true	accepted							
+jedioceans	LClass_doubt	pzt:000042	unknown	artefact	unqualified	false	accepted							
+jedioceans	LClass_egg	pzt:000010	egg	living	egg	false	accepted							
+jedioceans	LClass_eggs	pzt:000010	egg	living	egg	false	accepted							
+jedioceans	LClass_enteropneusta_larvae	pzt:000437	enteropneusta	living	larvae	true	accepted							
+jedioceans	LClass_fish_lavae	pzt:000312	chordata	living	full_body	false	accepted							
+jedioceans	LClass_foraminifera	pzt:000831	foraminifera	living	full_body	true	accepted							
+jedioceans	LClass_gastropoda	pzt:000444	gastropoda	living	full_body	true	accepted							
+jedioceans	LClass_hydracarina	pzt:000064	trombidiformes	living	full_body	true	accepted							
+jedioceans	LClass_hydracarina_	pzt:000064	trombidiformes	living	full_body	true	accepted							
+jedioceans	LClass_multiple	pzt:000021	mix	living	mix	false	accepted							
+jedioceans	LClass_organism_border	pzt:000024	other	detritus	part	false	accepted							
+jedioceans	LClass_partCrustaceo	pzt:000062	arthropoda	detritus	part	false	accepted							
+jedioceans	LClass_pluteus	pzt:000428	echinodermata	living	full_body	true	accepted							
+jedioceans	LClass_pluteus_larvae	pzt:000428	echinodermata	living	larvae	true	accepted							
+jedioceans	LClass_rhizaria_other	pzt:000675	chromista	living	full_body	true	accepted							
+jedioceans	LClass_salps	pzt:000344	salpida	living	full_body	true	accepted							
+jedioceans	LClass_shell	pzt:000243	shelleyomorpha	living	full_body	false	accepted							
+jedioceans	LClass_siphonophora	pzt:000246	siphonophora	living	full_body	true	accepted							
+jedioceans	LClass_unknown	pzt:000042	unknown	artefact	unqualified	false	accepted							
+jedioceans	LRaw	pzt:000024	other	artefact	unqualified	false	accepted							

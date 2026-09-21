@@ -10,6 +10,11 @@ human_readable_name: "ZooLake Plankton Dataset"
 # dataset's LICENSE.md. The earlier cc-by-4.0 value over-stated the restriction — CC0
 # requires no attribution at all.
 license: "cc0-1.0"
+# config: 'detected in Lake Greifensee (Switzerland) with the Dual Scripps Plankton Camera'
+# (zoolake.yaml:14). L22 has no Scripps plankton camera term -- its four 'Scripps' entries are a Doppler
+# sonar, a plankton net, an alkalinity titrator and an oxygen titrator (checked 2026-09-18)
+instrument: "Dual Scripps Plankton Camera"
+instrument_id: null
 source_url: "https://opendata.eawag.ch/dataset/52b6ba86-5ecb-448c-8c01-eec7cb209dc7/resource/1cc785fa-36c2-447d-bb11-92ce1d1f3f2d/download/data.zip"
 description: "Plankton images annotated into 35 classes over 17900 images of zooplankton and large phytoplankton colonies, detected in Lake Greifensee (Switzerland) with the Dual Scripps Plankton Camera."
 download_uris: "https://opendata.eawag.ch/dataset/52b6ba86-5ecb-448c-8c01-eec7cb209dc7/resource/1cc785fa-36c2-447d-bb11-92ce1d1f3f2d/download/data.zip"

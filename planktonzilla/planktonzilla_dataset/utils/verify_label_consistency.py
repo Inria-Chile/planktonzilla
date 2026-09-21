@@ -60,7 +60,6 @@ Usage:
 """
 
 import argparse
-import csv
 import hashlib
 import json
 import sys
@@ -69,6 +68,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from planktonzilla.planktonzilla_dataset.constants import DEFAULT_TAXONOMY_CSV_FILENAME, TAXONOMY_RANKS
+from planktonzilla.planktonzilla_dataset.taxonomy import load_taxonomy
 
 RANKS = TAXONOMY_RANKS
 SEVERITIES = ("ERROR", "WARN")
@@ -133,9 +133,11 @@ def norm(value: str | None) -> str:
 
 
 def read_rows(csv_path: Path = DEFAULT_TAXONOMY_CSV_FILENAME) -> list[dict]:
-    """Read the taxonomy CSV as a list of string-valued dicts."""
-    with Path(csv_path).open(newline="", encoding="utf-8") as handle:
-        return list(csv.DictReader(handle))
+    """Read the taxonomy as a list of string-valued dicts, through the one loader.
+
+    Accepts the normalised package directory as well as a wide CSV, because the loader does.
+    """
+    return load_taxonomy(csv_path).rows()
 
 
 def lineage(row: dict) -> tuple[str, ...]:

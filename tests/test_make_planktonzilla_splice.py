@@ -38,6 +38,7 @@ from PIL import Image as PILImage
 from planktonzilla.planktonzilla_dataset import constants
 from planktonzilla.planktonzilla_dataset import generate_planktonzilla as gp
 from planktonzilla.planktonzilla_dataset import make_planktonzilla as mk
+from planktonzilla.planktonzilla_dataset.taxonomy import loader as taxonomy_loader
 
 # (name, import_name, importer class name) for the two offline sources.
 LENSLESS = ("lensless", "lensless", "lenslessdatasetimporter_imagefolder")
@@ -210,7 +211,18 @@ def test_incremental_build_equals_full_build(offline, two_source_env, tmp_path):
 
 
 def test_refresh_replaces_exactly_its_own_rows(offline, two_source_env, tmp_path):
-    """Refreshing one source rewrites its rows, in place, and leaves the others untouched."""
+    """Refreshing one source rewrites its rows, in place, and leaves the others untouched.
+
+    Uses the default ``refresh=reuse``, which re-imports the selected source from the
+    imagefolder ON DISK — the mutation staged below. Every test in this file used to pass
+    ``refresh=rebuild`` and still see its staged imagefolder, which only worked because
+    rebuild was a no-op: the flag it sets was never reached (Tier 2 #25). Now that rebuild
+    genuinely rebuilds, it would re-extract lensless from its bundled zip and discard
+    everything ``two_source_env`` fabricated — so the mode that expresses what these tests
+    are about is the default one. That the flag now reaches its gate is pinned, in
+    milliseconds rather than minutes, by
+    ``test_gen_planktonzilla_hydra.test_refresh_rebuild_rebuilds_a_complete_imagefolder``.
+    """
     data_dir, csv_path = two_source_env
     common = [f"taxonomy_csv_path={csv_path}", f"data_dir={data_dir}", "num_proc=1"]
 
@@ -227,7 +239,7 @@ def test_refresh_replaces_exactly_its_own_rows(offline, two_source_env, tmp_path
     (lensless_dir / "diatom" / "img_1.png").unlink()
 
     cfg2 = _compose(
-        [*common, f"output_dir={tmp_path / 'after'}", "sources=[lensless]", f"base={tmp_path / 'base'}", "refresh=rebuild"],
+        [*common, f"output_dir={tmp_path / 'after'}", "sources=[lensless]", f"base={tmp_path / 'base'}"],
         "test_splice_refresh",
     )
     _restrict_registry(cfg2, ["isiisnet", "lensless"])
@@ -268,7 +280,7 @@ def test_taxonomy_only_run_preserves_rows_and_order(offline, two_source_env, tmp
             _csv_row("isiisnet", "appendicularia", proposed="Appendicularia", phylum="Chordata"),
         ],
     )
-    gp._build_taxonomy_lookup_cached.cache_clear()
+    taxonomy_loader.cache_clear()
 
     cfg2 = _compose(
         [*common, f"output_dir={tmp_path / 'after'}", "sources=[]", f"base={tmp_path / 'base'}"],
@@ -283,7 +295,7 @@ def test_taxonomy_only_run_preserves_rows_and_order(offline, two_source_env, tmp
     assert [r["original_path"] for r in after] == paths_before, "a taxonomy-only run must not reorder rows"
     assert {r["proposed_label"] for r in after if r["original_label"] == "copepoda"} == {"Calanoida"}
 
-    gp._build_taxonomy_lookup_cached.cache_clear()
+    taxonomy_loader.cache_clear()
 
 
 def test_sync_unmatched_keep_versus_clear(offline, two_source_env, tmp_path):
@@ -302,7 +314,7 @@ def test_sync_unmatched_keep_versus_clear(offline, two_source_env, tmp_path):
 
     # Drop lensless/copepoda from the CSV so those rows become unmatched.
     _write_csv(csv_path, [_csv_row("isiisnet", "appendicularia", proposed="Appendicularia", phylum="Chordata")])
-    gp._build_taxonomy_lookup_cached.cache_clear()
+    taxonomy_loader.cache_clear()
 
     results = {}
     for policy in ("keep", "clear"):
@@ -321,7 +333,7 @@ def test_sync_unmatched_keep_versus_clear(offline, two_source_env, tmp_path):
     assert all(r["proposed_label"] is None for r in results["clear"])
     assert all(r["Phylum"] is None for r in results["clear"])
 
-    gp._build_taxonomy_lookup_cached.cache_clear()
+    taxonomy_loader.cache_clear()
 
 
 def test_drop_removes_a_source(offline, two_source_env, tmp_path):
@@ -437,7 +449,7 @@ def test_in_place_update_survives_writing_over_its_own_source(offline, two_sourc
     before = _rows(_load(target), drop_image=False)
 
     cfg2 = _compose(
-        [*common, f"output_dir={target}", "sources=[lensless]", "base=local", "refresh=rebuild"],
+        [*common, f"output_dir={target}", "sources=[lensless]", "base=local"],
         "test_splice_inplace",
     )
     _restrict_registry(cfg2, ["isiisnet", "lensless"])
@@ -572,7 +584,7 @@ def test_spliced_rows_keep_the_licenses_of_the_base(offline, two_source_env, tmp
     _run(cfg)
 
     cfg2 = _compose(
-        [*common, f"output_dir={tmp_path / 'after'}", "sources=[lensless]", f"base={tmp_path / 'base'}", "refresh=rebuild"],
+        [*common, f"output_dir={tmp_path / 'after'}", "sources=[lensless]", f"base={tmp_path / 'base'}"],
         "test_splice_license_refresh",
     )
     _restrict_registry(cfg2, ["isiisnet", "lensless"])
@@ -662,7 +674,7 @@ def test_every_part_is_conformed_to_one_shared_reference(offline, two_source_env
 
     # isiisnet is registry index 0 — the ordering that used to pick the fresh part.
     cfg2 = _compose(
-        [*common, f"output_dir={tmp_path / 'after'}", "sources=[isiisnet]", f"base={tmp_path / 'base'}", "refresh=rebuild"],
+        [*common, f"output_dir={tmp_path / 'after'}", "sources=[isiisnet]", f"base={tmp_path / 'base'}"],
         "test_castref",
     )
     _restrict_registry(cfg2, ["isiisnet", "lensless"])
@@ -728,7 +740,7 @@ def test_migrating_a_licenseless_base_while_refreshing_a_source(offline, two_sou
     frozen.save_to_disk(str(tmp_path / "frozen"))
 
     cfg2 = _compose(
-        [*common, f"output_dir={tmp_path / 'out'}", "sources=[lensless]", f"base={tmp_path / 'frozen'}", "refresh=rebuild"],
+        [*common, f"output_dir={tmp_path / 'out'}", "sources=[lensless]", f"base={tmp_path / 'frozen'}"],
         "test_licmig2",
     )
     _restrict_registry(cfg2, ["isiisnet", "lensless"])
@@ -787,7 +799,7 @@ def test_filling_custom_metadata_on_a_base_while_refreshing_a_source(offline, tw
     frozen.save_to_disk(str(tmp_path / "frozen"))
 
     cfg2 = _compose(
-        [*common, f"output_dir={tmp_path / 'out'}", "sources=[lensless]", f"base={tmp_path / 'frozen'}", "refresh=rebuild"],
+        [*common, f"output_dir={tmp_path / 'out'}", "sources=[lensless]", f"base={tmp_path / 'frozen'}"],
         "test_cmmig2",
     )
     _restrict_registry(cfg2, ["isiisnet", "lensless"])

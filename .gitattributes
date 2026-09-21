@@ -1,0 +1,30 @@
+# Line endings and merge strategy for the normalised taxonomy package.
+#
+# Measured before this file existed: two branches each adding one source conflicted on
+# data/taxon.tsv, data/identifier.tsv and data/datapackage.json. Only the per-source mapping file
+# merged cleanly, which is exactly what the design panel reported for every candidate design.
+#
+# `merge=union` keeps the lines from BOTH sides of a conflicted region instead of stopping. That is
+# the right resolution for these three files and only these three: each is an append-only ledger of
+# independent rows, so "both" is always the answer a curator would have typed. It is the WRONG
+# strategy for a file where two edits can contradict each other, so nothing else gets it.
+#
+# Union merge is not free — it can leave the result unsorted, and it will happily keep two rows that
+# claim the same id. Both are caught rather than hoped away: the validator's primary_key and
+# unique_key rules fail on a duplicate id or a duplicate (name, rank, parent), and the canonical
+# sort is restored by `fmt` (step 6). Until `fmt` exists, an out-of-order ledger is cosmetic; a
+# duplicate id is a failing check.
+planktonzilla/planktonzilla_dataset/taxonomy/data/taxon.tsv        merge=union
+planktonzilla/planktonzilla_dataset/taxonomy/data/identifier.tsv   merge=union
+planktonzilla/planktonzilla_dataset/taxonomy/data/merged.tsv       merge=union
+
+# The package is canonical LF, no quoting, tab-separated. Declaring the files as text with `eol=lf`
+# stops a Windows checkout from rewriting them to CRLF, which would break every byte comparison the
+# golden gate makes — including the one against the published CSV.
+planktonzilla/planktonzilla_dataset/taxonomy/data/**/*.tsv  text eol=lf
+planktonzilla/planktonzilla_dataset/taxonomy/data/*.tsv     text eol=lf
+planktonzilla/planktonzilla_dataset/taxonomy/data/*.json    text eol=lf
+
+# The published wide CSV is byte-frozen: its first 1486 lines are pinned by a sha256 that a CRLF
+# rewrite would invalidate on checkout, before anyone edited anything.
+planktonzilla/planktonzilla_dataset/planktonzilla_taxonomy.csv  text eol=lf

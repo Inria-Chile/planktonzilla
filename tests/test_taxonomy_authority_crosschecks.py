@@ -33,7 +33,6 @@ root = pyrootutils.setup_root(
     dotenv=False,
 )
 
-import hashlib
 import json
 
 import pytest
@@ -243,19 +242,50 @@ def test_engine_normalizers():
 def test_snapshot_provenance_is_recorded(snapshot):
     """The snapshot must say what it was built from and when, or it cannot be audited."""
     provenance = snapshot["provenance"]
-    for key in ("generated_utc", "tool", "taxonomy_csv_sha256", "taxonomy_csv_rows", "sources"):
+    for key in ("generated_utc", "tool", "id_set_sha256", "sources"):
         assert provenance.get(key), f"provenance is missing {key}"
     assert set(provenance["sources"]) == {"worms", "ncbi", "wikidata"}
     for source in provenance["sources"].values():
         assert source["endpoint"] and source["requested"] >= 0
 
 
-def test_snapshot_matches_the_committed_csv(snapshot):
-    """A snapshot harvested against a different CSV revision would verify the wrong table."""
-    digest = hashlib.sha256(_CSV_PATH.read_bytes()).hexdigest()
-    assert snapshot["provenance"]["taxonomy_csv_sha256"] == digest, (
-        "authority_snapshot.json was harvested against a different planktonzilla_taxonomy.csv; re-run --refresh-snapshot"
+def test_snapshot_matches_the_committed_identifier_set(snapshot):
+    """A snapshot harvested against a different set of identifiers would verify the wrong table.
+
+    Keyed to the **id set** and not to the CSV's own sha since step 9 (§10.4, at its default). The
+    intent is unchanged; the false alarms are gone. Correcting a spelling, filling a `method`,
+    re-ordering a block — none of them touches an identifier, and all of them used to turn this red
+    and demand a network re-harvest of ~3,500 ids plus an 86,618-line JSON diff.
+    """
+    digest = vti.id_set_digest(vti.distinct_ids(vti.read_taxonomy(_CSV_PATH)))
+
+    assert snapshot["provenance"]["id_set_sha256"] == digest, (
+        "authority_snapshot.json was harvested against a different identifier set; re-run --refresh-snapshot"
     )
+
+
+def test_an_edit_that_touches_no_identifier_does_not_stale_the_snapshot():
+    """The property the re-key exists for, exercised rather than described.
+
+    A label edit changes the CSV's bytes and its sha. The id set — and therefore the snapshot's
+    key — is unmoved, so no harvest is owed.
+    """
+    rows = vti.read_taxonomy(_CSV_PATH)
+    before = vti.id_set_digest(vti.distinct_ids(rows))
+
+    relabelled = [{**row, "proposed_label": row["proposed_label"] + " (respelled)"} for row in rows]
+
+    assert vti.id_set_digest(vti.distinct_ids(relabelled)) == before
+
+
+def test_an_edit_that_adds_an_identifier_does_stale_the_snapshot():
+    """The other half. A key that never moves is not a key."""
+    rows = vti.read_taxonomy(_CSV_PATH)
+    before = vti.id_set_digest(vti.distinct_ids(rows))
+
+    grown = [*rows, {**rows[0], "Raw_Labels": "new", "aphia_ID": "999999"}]
+
+    assert vti.id_set_digest(vti.distinct_ids(grown)) != before
 
 
 def test_snapshot_covers_every_populated_identifier(rows, snapshot):
@@ -306,3 +336,64 @@ def test_no_unwaived_errors(findings, waivers):
     errors = [f for f in unwaived if f.severity == "ERROR"]
     rendered = [f"{f.finding_id} {f.check} {f.proposed_label} csv={f.csv_value} authority={f.authority_value}" for f in errors]
     assert not errors, "unwaived ERROR findings:\n  " + "\n  ".join(rendered)
+
+
+# An outage must not permanently remove ids from verification
+def test_a_service_outage_leaves_the_id_re_askable_rather_than_pinned(monkeypatch):
+    """The defect: a transient outage recorded ids as `unresolved`, and `_reuse` never re-asks those.
+
+    Every later incremental harvest carried the miss forward, so the crosschecks went on reporting
+    missing records for ids the authority holds perfectly well. Only `--full` recovered them, and
+    nothing told the operator that. The fetchers had the distinction all along —
+    `_get_with_retry` returns `None` for "every attempt failed" and a real response for "the
+    register answered" — and threw it away one line later.
+
+    Simulated at that seam: WoRMS never answers, so the id must come back UNDETERMINED, and must
+    NOT appear in the snapshot's `unresolved` list.
+    """
+    from planktonzilla.planktonzilla_dataset.utils import verify_taxonomy_ids as vti
+
+    monkeypatch.setattr(vti, "_get_with_retry", lambda *args, **kwargs: None)
+    monkeypatch.setattr(vti.time, "sleep", lambda _seconds: None)
+
+    records, not_found, undetermined = vti.fetch_worms(["1102"])
+
+    assert records == {}
+    assert not_found == [], "an outage is not evidence that WoRMS lacks the id"
+    assert undetermined == ["1102"]
+
+
+def test_a_register_that_answers_no_record_is_recorded_as_absent(monkeypatch):
+    """The control. Without it the fix could be "call everything undetermined", which would
+    re-ask genuinely absent ids on every harvest forever."""
+    from planktonzilla.planktonzilla_dataset.utils import verify_taxonomy_ids as vti
+
+    class _NoContent:
+        status_code = 204
+
+    monkeypatch.setattr(vti, "_get_with_retry", lambda *args, **kwargs: _NoContent())
+    monkeypatch.setattr(vti.time, "sleep", lambda _seconds: None)
+
+    records, not_found, undetermined = vti.fetch_worms(["999999999"])
+
+    assert records == {}
+    assert not_found == ["999999999"]
+    assert undetermined == []
+
+
+def test_an_undetermined_id_is_re_requested_by_the_next_incremental_run():
+    """`_reuse` is what makes the split matter: it skips `unresolved`, so keeping an undetermined
+    id out of that list is exactly what puts it back on the fetch queue."""
+    from planktonzilla.planktonzilla_dataset.utils import verify_taxonomy_ids as vti
+
+    previous = {
+        "worms": {"1102": {"aphia_id": "1102"}},
+        "provenance": {"sources": {"worms": {"unresolved": ["555"], "undetermined": ["777"]}}},
+    }
+
+    kept, to_fetch = vti._reuse(previous, "worms", ["1102", "555", "777", "888"])
+
+    assert set(kept) == {"1102"}, "an id already resolved is carried, not re-asked"
+    assert "555" not in to_fetch, "a genuine absence stays absent"
+    assert "777" in to_fetch, "an id the service never answered for must be re-asked"
+    assert "888" in to_fetch, "a brand-new id is fetched"

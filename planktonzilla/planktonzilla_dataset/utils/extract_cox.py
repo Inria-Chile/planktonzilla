@@ -24,16 +24,18 @@ Usage (a single species):
     python extract_cox.py --ncbi_id 124140
 
 Usage (batch from a CSV):
-    python extract_cox.py --csv data/taxonomy_wiki_and_ids.csv --nb_rows 10 --clean
+    python extract_cox.py --csv planktonzilla_taxonomy.csv --nb_rows 10 --clean
 
 Requirements:
     pip install biopython polars tqdm
 """
 
 import argparse
+import contextlib
 import logging
 import os
 import shutil
+import socket
 import time
 from pathlib import Path
 
@@ -72,6 +74,30 @@ COX_FILTER = " OR ".join(f'"{t}"[All Fields]' for t in COX_TERMS)
 MAX_SEQS_PER_SPECIES = 500  # Safety cap per species; raise it if needed.
 BATCH_SIZE = 50  # Records downloaded per Entrez request.
 SLEEP_BETWEEN_CALLS = 0.4  # seconds; respects the NCBI rate limit (~3/s without an API key).
+
+#: Socket timeout for Entrez calls, in seconds (KI-2). Biopython retries — `Bio.Entrez` ships
+#: `max_tries = 3` and `sleep_between_tries = 15`, and its `_open` retries URLError and 5xx/429 —
+#: but it calls `urlopen(request)` with NO timeout and exposes no per-call hook. A stalled NCBI
+#: socket therefore hangs the run forever rather than failing into the retry that exists. There is
+#: nothing to configure, so the timeout is imposed around the call.
+ENTREZ_TIMEOUT = 60
+
+
+@contextlib.contextmanager
+def _socket_timeout(seconds: float):
+    """Impose a default socket timeout for the duration of one Entrez call.
+
+    Process-global while it holds, which is why it is scoped this tightly and restores the
+    previous value in a `finally` rather than being set once at import: this module is imported by
+    tooling that makes its own connections, and a global timeout left behind would apply to those.
+    """
+    previous = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(seconds)
+    try:
+        yield
+    finally:
+        socket.setdefaulttimeout(previous)
+
 
 log = get_pylogger(__name__)
 
@@ -124,8 +150,9 @@ def search_nuccore(query: str, max_results: int = MAX_SEQS_PER_SPECIES) -> list[
     """Return the list of GenBank accession IDs that match the query.
 
     Issues an Entrez ``esearch`` against the ``nuccore`` database (network), after
-    sleeping ``SLEEP_BETWEEN_CALLS`` to respect the NCBI rate limit. Any failure is
-    logged and swallowed, returning an empty list.
+    sleeping ``SLEEP_BETWEEN_CALLS`` to respect the NCBI rate limit and under an
+    ``ENTREZ_TIMEOUT`` socket timeout. Any failure is logged and swallowed, returning an
+    empty list — including a timeout, which reaches the same handler rather than hanging.
 
     Args:
         query: Entrez query string (see ``build_query``).
@@ -136,14 +163,15 @@ def search_nuccore(query: str, max_results: int = MAX_SEQS_PER_SPECIES) -> list[
     """
     time.sleep(SLEEP_BETWEEN_CALLS)
     try:
-        handle = Entrez.esearch(
-            db="nuccore",
-            term=query,
-            retmax=max_results,
-            usehistory="y",
-        )
-        record = Entrez.read(handle)
-        handle.close()
+        with _socket_timeout(ENTREZ_TIMEOUT):
+            handle = Entrez.esearch(
+                db="nuccore",
+                term=query,
+                retmax=max_results,
+                usehistory="y",
+            )
+            record = Entrez.read(handle)
+            handle.close()
         ids = record.get("IdList", [])
         count = int(record.get("Count", 0))
         log.info(f"  Found {count} total matches, retrieving up to {max_results}.")
@@ -158,8 +186,9 @@ def fetch_sequences(id_list: list[str], label: str = "") -> list[SeqRecord]:
     """Download GenBank records in batches and return SeqRecord objects.
 
     Issues Entrez ``efetch`` requests of ``BATCH_SIZE`` IDs each (network), sleeping
-    ``SLEEP_BETWEEN_CALLS`` between batches. A failed batch is logged and skipped
-    rather than aborting the whole download.
+    ``SLEEP_BETWEEN_CALLS`` between batches and under an ``ENTREZ_TIMEOUT`` socket
+    timeout. A failed batch is logged and skipped rather than aborting the whole
+    download; a stalled one now becomes a failed one instead of stopping the run.
 
     Args:
         id_list: GenBank accession IDs to fetch.
@@ -176,14 +205,15 @@ def fetch_sequences(id_list: list[str], label: str = "") -> list[SeqRecord]:
         batch = id_list[start : start + BATCH_SIZE]
         time.sleep(SLEEP_BETWEEN_CALLS)
         try:
-            handle = Entrez.efetch(
-                db="nuccore",
-                id=",".join(batch),
-                rettype="fasta",
-                retmode="text",
-            )
-            batch_records = list(SeqIO.parse(handle, "fasta"))
-            handle.close()
+            with _socket_timeout(ENTREZ_TIMEOUT):
+                handle = Entrez.efetch(
+                    db="nuccore",
+                    id=",".join(batch),
+                    rettype="fasta",
+                    retmode="text",
+                )
+                batch_records = list(SeqIO.parse(handle, "fasta"))
+                handle.close()
             records.extend(batch_records)
             log.info(f"  [{label}] Fetched {len(records)}/{len(id_list)} sequences…")
         except Exception as e:
@@ -247,6 +277,7 @@ def process_csv(
     max_results: int = MAX_SEQS_PER_SPECIES,
     skip_empty: bool = True,
     nb_rows: int | None = None,
+    expand_to_children: bool = True,
 ):
     """Read the plankton CSV, download COX sequences per species, and write outputs.
 
@@ -310,7 +341,10 @@ def process_csv(
 
         records = get_cox_sequences(
             tax_id,
-            expand_to_children=True,
+            # Threaded from the caller (KI-4). This was hard-coded True while `main` computed
+            # `not args.noexp` for the single-taxon path only, so `--noexp` was silently ignored
+            # on every batch run — the flag was accepted, logged nowhere, and did nothing.
+            expand_to_children=expand_to_children,
             max_results=max_results,
         )
 
@@ -432,6 +466,7 @@ def main() -> None:
         process_csv(
             csv_path=args.csv,
             out_dir=args.out_dir_b,
+            expand_to_children=not args.noexp,
             ncbi_col=args.ncbi_col,
             label_col=args.label_col,
             max_results=args.max_seqs,

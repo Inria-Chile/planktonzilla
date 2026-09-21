@@ -24,11 +24,15 @@ root = pyrootutils.setup_root(
 
 
 import copy
-import csv
-import io
+import shutil
+from pathlib import Path
 
 import polars as pl
+import pytest
 
+from planktonzilla.planktonzilla_dataset import constants
+from planktonzilla.planktonzilla_dataset.taxonomy import PACKAGE_DIR, TaxonomyError, loader, write
+from planktonzilla.planktonzilla_dataset.taxonomy.model import read_tsv
 from planktonzilla.planktonzilla_dataset.utils import resolve_frepj_ids as rfi
 
 # ── helpers ───────────────────────────────────────────────────────────────────────
@@ -371,141 +375,73 @@ def test_format_numeric_id():
 
 # ── CSV backfill: frepj-rows-only, four-cells-only, idempotent ─────────────────────
 
+# ── Backfill: identifiers land on the concept, not on the row ───────────────────
 
-def _write_sample_csv(path):
-    """A tiny 19-column CSV: header + one non-frepj row + two frepj rows (blank IDs).
 
-    Rows are serialised with ``csv.writer`` (QUOTE_MINIMAL) exactly like the real
-    build, so the frepj rows' comma-bearing Raw_Labels get quoted. Returns the
-    non-frepj line as written, so the caller can assert it survives byte-verbatim.
+@pytest.fixture
+def package(tmp_path):
+    """A scratch copy of the shipped taxonomy package."""
+    work = tmp_path / "data"
+    shutil.copytree(PACKAGE_DIR, work)
+    loader.cache_clear()
+    yield work
+    loader.cache_clear()
+
+
+def test_backfill_restores_one_cleared_id_and_touches_nothing_else(package, tmp_path):
+    """The re-expression of the line rewriter this replaced, on the real package.
+
+    ``backfill_csv`` split every ``frepj,`` line on its last five commas and rebuilt four fields of
+    it. Ids are a property of the concept, not of the row that names it, so they now go on the
+    taxon — and the test says so the only way that means anything: clear one id, backfill, and see
+    that one identifier row come back with every other byte of the package where it was.
     """
-    header = [
-        "Dataset",
-        "Raw_Labels",
-        "Kingdom",
-        "Phylum",
-        "Class",
-        "Order",
-        "Family",
-        "Genus",
-        "Species",
-        "proposed_label",
-        "plankton",
-        "living",
-        "root_class",
-        "qualifier",
-        "wikidata_ID",
-        "aphia_ID",
-        "NCBI_ID",
-        "BOLD_ID",
-        "ecotaxa_ID",
+    csv_path = tmp_path / "planktonzilla_taxonomy.csv"
+    csv_path.write_bytes(Path(constants.DEFAULT_TAXONOMY_CSV_FILENAME).read_bytes())
+    committed = csv_path.read_bytes()
+
+    mapping = rfi.parse_summary()
+    raw_label, record = next((label, values) for label, values in mapping.items() if values.get("aphia_ID"))
+    taxon_id = next(
+        row["taxonID"] for row in read_tsv(package / "mappings" / "frepj.tsv") if row["verbatimIdentification"] == raw_label
+    )
+
+    cleared = write.clear_id(package, taxon_id, "aphia_ID", "test: pretend WoRMS withdrew it", apply=True)
+    assert len(cleared) == 1
+    fingerprint = {path: path.read_bytes() for path in sorted(package.rglob("*")) if path.is_file()}
+
+    changes = rfi.backfill_ids(mapping, package_dir=package, csv_path=csv_path, apply=True)
+
+    assert [(change.table, change.key) for change in changes.changes] == [
+        ("identifier", f"{taxon_id}|worms:{record['aphia_ID'].removesuffix('.0')}")
     ]
-    existing = [
-        "global_uvp5",
-        "Sarsia",
-        "animalia",
-        "cnidaria",
-        "hydrozoa",
-        "anthoathecata",
-        "corynidae",
-        "sarsia",
-        "",
-        "sarsia",
-        "True",
-        "True",
-        "living",
-        "full_body",
-        "Q4015103",
-        "117070.0",
-        "6078.0",
-        "159702.0",
-        "460",
-    ]
-    frepj1 = [
-        "frepj",
-        "Copepoda,Calanoida,Diaptomidae,Sinodiaptomus,Sinodiaptomus sarsi",
-        "animalia",
-        "arthropoda",
-        "copepoda",
-        "calanoida",
-        "diaptomidae",
-        "sinodiaptomus",
-        "sarsi",
-        "sinodiaptomus sarsi",
-        "True",
-        "True",
-        "living",
-        "full_body",
-        "",
-        "",
-        "",
-        "",
-        "",
-    ]
-    frepj2 = [
-        "frepj",
-        "Copepoda,Calanoida,Temoridae,Eurytemora,Eurytemora affinis",
-        "animalia",
-        "arthropoda",
-        "copepoda",
-        "calanoida",
-        "temoridae",
-        "eurytemora",
-        "affinis",
-        "eurytemora affinis",
-        "True",
-        "True",
-        "living",
-        "full_body",
-        "",
-        "",
-        "",
-        "",
-        "",
-    ]
-    buf = io.StringIO()
-    writer = csv.writer(buf, lineterminator="\n", quoting=csv.QUOTE_MINIMAL)
-    for row in (header, existing, frepj1, frepj2):
-        writer.writerow(row)
-    path.write_text(buf.getvalue())
-    return ",".join(existing)  # no field contains a comma -> matches the written line verbatim
+    moved = [path.name for path, blob in fingerprint.items() if path.read_bytes() != blob]
+    assert moved == ["identifier.tsv"], f"the backfill touched {moved}"
+    assert csv_path.read_bytes() == committed, "the rendered CSV is not back to the committed bytes"
 
 
-def test_backfill_only_touches_frepj_id_cells(tmp_path):
-    """Backfill fills ONLY the 4 frepj ID cells; every other byte is preserved; idempotent."""
-    csv_path = tmp_path / "tax.csv"
-    existing_line = _write_sample_csv(csv_path)
+def test_backfill_on_an_unchanged_package_is_a_no_op(package, tmp_path):
+    """Every id the summary carries is already on its concept, so a re-run writes nothing."""
+    csv_path = tmp_path / "planktonzilla_taxonomy.csv"
+    csv_path.write_bytes(Path(constants.DEFAULT_TAXONOMY_CSV_FILENAME).read_bytes())
 
-    mapping = {
-        "Copepoda,Calanoida,Diaptomidae,Sinodiaptomus,Sinodiaptomus sarsi": {
-            rfi.WIKIDATA_ID: "Q6551738",
-            "aphia_ID": "355669.0",
-            "NCBI_ID": "555048.0",
-            "BOLD_ID": "716607.0",
-        },
-        "Copepoda,Calanoida,Temoridae,Eurytemora,Eurytemora affinis": {
-            rfi.WIKIDATA_ID: "Q6554149",
-            "aphia_ID": "",
-            "NCBI_ID": "",
-            "BOLD_ID": "",
-        },
-    }
-    changed = rfi.backfill_csv(csv_path, mapping)
-    assert changed == 2
+    assert not rfi.backfill_ids(rfi.parse_summary(), package_dir=package, csv_path=csv_path)
 
-    rows = list(csv.DictReader(csv_path.open(newline="")))
-    by_ds = {(r["Dataset"], r["Genus"]): r for r in rows}
 
-    # The pre-existing non-frepj row is byte-identical (line survives verbatim).
-    assert existing_line in csv_path.read_text().splitlines()
+def test_backfill_never_clears_an_id_the_summary_leaves_blank(package):
+    """Blanking by omission is what produced the 13 legacy per-row overrides.
 
-    sarsi = by_ds[("frepj", "sinodiaptomus")]
-    assert sarsi["wikidata_ID"] == "Q6551738" and sarsi["NCBI_ID"] == "555048.0"
-    assert sarsi["ecotaxa_ID"] == ""  # ecotaxa untouched (stays blank for frepj)
-    # Non-ID cells unchanged.
-    assert sarsi["proposed_label"] == "sinodiaptomus sarsi" and sarsi["qualifier"] == "full_body"
+    The old rewriter wrote whatever the summary held into the cell, blank included. This one leaves
+    an authority the summary says nothing about exactly where it was; ``clear_id`` is the only way.
+    """
+    before = read_tsv(package / "identifier.tsv")
+    blanked = {label: dict.fromkeys(values, "") for label, values in rfi.parse_summary().items()}
 
-    # Idempotent: re-running with the same mapping leaves the file byte-identical.
-    before = csv_path.read_bytes()
-    rfi.backfill_csv(csv_path, mapping)
-    assert csv_path.read_bytes() == before
+    assert not rfi.backfill_ids(blanked, package_dir=package, apply=True)
+    assert read_tsv(package / "identifier.tsv") == before
+
+
+def test_backfill_refuses_a_class_directory_frepj_does_not_map(package):
+    """A key that names nothing is a summary that has drifted from the mappings, not a row to skip."""
+    with pytest.raises(TaxonomyError, match="does not map"):
+        rfi.backfill_ids({"not a frepj class dir": {"aphia_ID": "1"}}, package_dir=package)

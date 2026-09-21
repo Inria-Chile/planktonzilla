@@ -7,6 +7,12 @@ push_to_hub: true
 
 human_readable_name: A global consistent database of plankton and detritus from in situ imaging by the Underwater Vision Profiler 5
 license: cc-by-4.0
+# config: 'in situ imaging by the Underwater Vision Profiler 5' (global_uvp5net.yaml:8,15). TOOL2154 is the
+# UVP5 SERIES term -- deliberately not TOOL1577 (UVP5 DEEP). The config states the source mixes SD and HD,
+# which 'have different imagers' (global_uvp5net.yaml:23); L22 distinguishes those as TOOL2109 and
+# TOOL2110, but nothing in this repo marks which a given row is. See KNOWN_ISSUES
+instrument: "UVP5"
+instrument_id: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL2154/"
 description: |
   Plankton and detritus are essential components of the Earths oceans influencing biogeochemical 
   cycles and carbon sequestration. Climate change impacts their composition and marine ecosystems as 

@@ -1,0 +1,36 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+zoolake	aphanizomenon	pzt:000661	aphanizomenon	living	full_body	true	accepted							
+zoolake	asplanchna	pzt:000523	asplanchna	living	full_body	true	accepted							
+zoolake	asterionella	pzt:000942	asterionella	living	full_body	true	accepted							
+zoolake	bosmina	pzt:000070	bosmina	living	full_body	true	accepted							
+zoolake	brachionus	pzt:000530	brachionus	living	full_body	true	accepted							
+zoolake	ceratium	pzt:001092	ceratium	living	full_body	true	accepted							
+zoolake	chaoborus	pzt:000260	chaoborus	living	full_body	true	accepted							
+zoolake	conochilus	pzt:000501	conochilus	living	full_body	true	accepted							
+zoolake	copepod_skins	pzt:000152	copepoda	detritus	part_skin	false	accepted							
+zoolake	cyclops	pzt:000206	cyclops	living	full_body	true	accepted							
+zoolake	daphnia	pzt:000080	daphnia	living	full_body	true	accepted							
+zoolake	daphnia_skins	pzt:000080	daphnia	detritus	part_skin	false	accepted							
+zoolake	diaphanosoma	pzt:000091	diaphanosoma	living	full_body	true	accepted							
+zoolake	diatom_chain	pzt:000879	bacillariophyceae	living	full_body	true	accepted							
+zoolake	dinobryon	pzt:001234	dinobryon	living	full_body	true	accepted							
+zoolake	dirt	pzt:000009	dirt	inert	unqualified	false	accepted							
+zoolake	eudiaptomus	pzt:000172	eudiaptomus	living	full_body	true	accepted							
+zoolake	filament	pzt:000647	cyanophyceae	living	full_body	true	accepted							
+zoolake	fish	pzt:000312	chordata	living	full_body	false	accepted							
+zoolake	fragilaria	pzt:000952	fragilaria	living	full_body	true	accepted							
+zoolake	hydra	pzt:000358	hydra	living	full_body	true	accepted							
+zoolake	kellicottia	pzt:000543	kellicottia	living	full_body	true	accepted							
+zoolake	keratella_cochlearis	pzt:000547	keratella cochlearis	living	full_body	true	accepted							
+zoolake	keratella_quadrata	pzt:000548	keratella quadrata	living	full_body	true	accepted							
+zoolake	leptodora	pzt:000146	leptodora	living	full_body	true	accepted							
+zoolake	maybe_cyano	pzt:000647	cyanophyceae	living	like	true	accepted							
+zoolake	nauplius	pzt:000206	cyclops	living	full_body	true	accepted							
+zoolake	paradileptus	pzt:000724	paradileptus	living	full_body	true	accepted							
+zoolake	polyarthra	pzt:000618	polyarthra	living	full_body	true	accepted							
+zoolake	rotifers	pzt:000486	rotifera	living	full_body	true	accepted							
+zoolake	synchaeta	pzt:000622	synchaeta	living	full_body	true	accepted							
+zoolake	trichocerca	pzt:000632	trichocerca	living	full_body	true	accepted							
+zoolake	unknown	pzt:000042	unknown	artefact	unqualified	false	accepted							
+zoolake	unknown_plankton	pzt:000042	unknown	living	full_body	true	accepted							
+zoolake	uroglena	pzt:001238	uroglena	living	full_body	true	accepted							

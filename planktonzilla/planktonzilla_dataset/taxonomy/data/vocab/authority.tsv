@@ -1,0 +1,6 @@
+authority	legacy_column	prefix	scope	multi_valued
+wikidata	wikidata_ID	wikidata	all life, crowd-curated	false
+worms	aphia_ID	worms	marine taxa; blank for freshwater is expected	false
+ncbi	NCBI_ID	ncbi	sequenced taxa; no Chromista/Myzozoa	false
+bold	BOLD_ID	bold	barcoded taxa	false
+ecotaxa_legacy	ecotaxa_ID	ecotaxa_legacy	legacy id space, no longer resolvable; NEVER backfill	true

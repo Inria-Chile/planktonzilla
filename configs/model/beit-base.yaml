@@ -5,7 +5,9 @@ defaults:
 
 model:
   _args_:
-    - beit_base_patch16_384.in22k_ft_in22k_in1k
+    # `timm/` namespace, like every other timm entry here: a bare weight id is
+    # resolved as a Hub repo of that name, which does not exist.
+    - timm/beit_base_patch16_384.in22k_ft_in22k_in1k
 
 img_size: 384
 

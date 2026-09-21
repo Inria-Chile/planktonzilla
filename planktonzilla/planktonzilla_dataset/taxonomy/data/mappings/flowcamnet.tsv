@@ -1,0 +1,94 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+flowcamnet	Acantharia	pzt:001268	amphibelone	living	full_body	true	accepted							
+flowcamnet	Amphorides	pzt:000774	amphorides	living	full_body	true	accepted							
+flowcamnet	Appendicularia	pzt:000313	appendicularia	living	full_body	true	accepted							
+flowcamnet	Asterolamprales	pzt:000880	asterolamprales	living	full_body	true	accepted							
+flowcamnet	Bacillariophyceae	pzt:000879	bacillariophyceae	living	full_body	true	accepted							
+flowcamnet	Bacteriastrum	pzt:000907	bacteriastrum	living	full_body	true	accepted							
+flowcamnet	Calanoida	pzt:000153	calanoida	living	full_body	true	accepted							
+flowcamnet	Ceratocorys	pzt:001129	ceratocorys	living	full_body	true	accepted							
+flowcamnet	Chaetoceros	pzt:000908	chaetoceros	living	full_body	true	accepted							
+flowcamnet	Chaetoceros peruvianus	pzt:000916	chaetoceros peruvianus	living	full_body	true	accepted							
+flowcamnet	Ciliophora	pzt:000699	ciliophora	living	full_body	true	accepted							
+flowcamnet	Cladopyxis	pzt:001132	cladopyxis	living	full_body	true	accepted							
+flowcamnet	Climacodium	pzt:000960	climacodium	living	full_body	true	accepted							
+flowcamnet	Climacodium inter. Crocosphaera	pzt:000961	climacodium crocosphaera	living	full_body	true	accepted							
+flowcamnet	Codonaria	pzt:000741	codonaria	living	full_body	true	accepted							
+flowcamnet	Codonellopsis	pzt:000748	codonellopsis morchella	living	full_body	true	accepted							
+flowcamnet	Copepoda	pzt:000152	copepoda	living	full_body	true	accepted							
+flowcamnet	Coscinodiscaceae	pzt:000929	coscinodiscaceae	living	full_body	true	accepted							
+flowcamnet	Cyttarocylididae	pzt:000756	epiplocylis	living	full_body	true	accepted							
+flowcamnet	Dactyliosolen	pzt:001010	dactyliosolen	living	full_body	true	accepted							
+flowcamnet	Dictyocysta	pzt:000753	dictyocysta	living	full_body	true	accepted							
+flowcamnet	Dinophyceae	pzt:001090	gonyaulacales	living	full_body	true	accepted							
+flowcamnet	Dinophysis	pzt:001075	dinophysis	living	full_body	true	accepted							
+flowcamnet	Ditylum	pzt:000976	ditylum	living	full_body	true	accepted							
+flowcamnet	Eutintinnus	pzt:000758	eutintinnus	living	full_body	true	accepted							
+flowcamnet	Foraminifera	pzt:000831	foraminifera	living	full_body	true	accepted							
+flowcamnet	Fragilariopsis	pzt:000889	fragilariopsis	living	full_body	true	accepted							
+flowcamnet	Guinardia	pzt:001013	guinardia	living	full_body	true	accepted							
+flowcamnet	Gymnodiniales	pzt:001159	gymnodiniales	living	full_body	true	accepted							
+flowcamnet	Hemiaulus	pzt:000964	hemiaulus	living	full_body	true	accepted							
+flowcamnet	Katagnymene spiralis	pzt:000658	katagnymene spiralis	living	full_body	true	accepted							
+flowcamnet	Melosiraceae	pzt:000988	melosiraceae	living	full_body	true	accepted							
+flowcamnet	Metacylis	pzt:000764	metacylis	living	full_body	true	accepted							
+flowcamnet	Nassellaria	pzt:001270	nassellaria	living	full_body	true	accepted							
+flowcamnet	Neoceratium	pzt:001094	neoceratium	living	full_body	true	accepted							
+flowcamnet	Neoceratium furca	pzt:001107	tripos furca	living	full_body	true	accepted							
+flowcamnet	Neoceratium fusus	pzt:001108	tripos fusus	living	full_body	true	accepted							
+flowcamnet	Neoceratium pentagonum	pzt:001120	tripos pentagonus	living	full_body	true	accepted							
+flowcamnet	Nitzschia	pzt:000890	nitzschia	living	full_body	true	accepted							
+flowcamnet	Odontella	pzt:001054	odontella	living	full_body	true	accepted							
+flowcamnet	Oithonidae	pzt:000226	oithonidae	living	full_body	true	accepted							
+flowcamnet	Oncaeidae	pzt:000228	oncaeidae	living	full_body	true	accepted							
+flowcamnet	Ornithocercus	pzt:001083	ornithocercus magnificus	living	full_body	true	accepted							
+flowcamnet	Oxytoxum	pzt:001198	oxytoxum	living	full_body	true	accepted							
+flowcamnet	Planktoniella sol	pzt:001047	planktoniella sol	living	full_body	true	accepted							
+flowcamnet	Podolampas	pzt:001207	podolampas	living	full_body	true	accepted							
+flowcamnet	Poroecus	pzt:000744	poroecus	living	full_body	true	accepted							
+flowcamnet	Protoperidinium	pzt:001211	protoperidinium	living	full_body	true	accepted							
+flowcamnet	Pseudo-Nitzschia chain	pzt:000892	pseudo-nitzschia	living	full_body	true	accepted							
+flowcamnet	Pyrocystaceae	pzt:001149	pyrocystaceae	living	full_body	true	accepted							
+flowcamnet	Pyrophacus	pzt:001157	pyrophacus	living	full_body	true	accepted							
+flowcamnet	Retaria	pzt:000675	chromista	living	full_body	true	accepted							
+flowcamnet	Rhabdonellidae	pzt:000768	rhabdonella	living	full_body	true	accepted							
+flowcamnet	Rhizosolenia inter. Richelia	pzt:001021	rhizosolenia	living	full_body	true	accepted							
+flowcamnet	Rhizosoleniaceae	pzt:001009	rhizosoleniaceae	living	full_body	true	accepted							
+flowcamnet	Richelia	pzt:000668	richelia	living	full_body	true	accepted							
+flowcamnet	Salpingella	pzt:000776	salpingella	living	full_body	true	accepted							
+flowcamnet	Spumellaria	pzt:001275	spumellaria	living	full_body	true	accepted							
+flowcamnet	Steenstrupiella	pzt:000777	steenstrupiella	living	full_body	true	accepted							
+flowcamnet	Thalassionematales	pzt:001029	thalassionematales	living	full_body	true	accepted							
+flowcamnet	Tintinnina	pzt:000739	choreotrichida	living	full_body	true	accepted							
+flowcamnet	UCYNA like	pzt:000647	cyanophyceae	living	like	true	accepted							
+flowcamnet	Undellidae	pzt:000780	undellidae	living	full_body	true	accepted							
+flowcamnet	Xystonellidae	pzt:000784	xystonellidae	living	full_body	true	accepted							
+flowcamnet	artefact	pzt:000002	artefact	artefact	unqualified	false	accepted							
+flowcamnet	badfocus	pzt:000003	bad focus	artefact	unqualified	false	accepted							
+flowcamnet	ball_bearing_like	pzt:000039	shape	artefact	unqualified	false	accepted							
+flowcamnet	bubble	pzt:000005	bubble	artefact	unqualified	false	accepted							
+flowcamnet	chainlarge	pzt:000950	diatoma	living	full_body	true	accepted							
+flowcamnet	chainthin	pzt:000950	diatoma	living	full_body	true	accepted							
+flowcamnet	contrasted_blob	pzt:000039	shape	artefact	unqualified	false	accepted							
+flowcamnet	crumple sphere	pzt:000039	shape	artefact	unqualified	false	accepted							
+flowcamnet	cyano a	pzt:000646	cyanobacteria	living	full_body	true	accepted							
+flowcamnet	cyano b	pzt:000646	cyanobacteria	living	full_body	true	accepted							
+flowcamnet	dark	pzt:000024	other	artefact	unqualified	false	accepted							
+flowcamnet	darkrods	pzt:000039	shape	artefact	unqualified	false	accepted							
+flowcamnet	darksphere	pzt:000039	shape	artefact	unqualified	false	accepted							
+flowcamnet	detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+flowcamnet	dinophyceae_shape	pzt:000039	shape	artefact	unqualified	false	accepted							
+flowcamnet	fiber	pzt:000014	fiber	detritus	unqualified	false	accepted							
+flowcamnet	light	pzt:000024	other	artefact	unqualified	false	accepted							
+flowcamnet	lightrods	pzt:000039	shape	artefact	unqualified	false	accepted							
+flowcamnet	lightsphere	pzt:000039	shape	artefact	unqualified	false	accepted							
+flowcamnet	nauplii	pzt:000062	arthropoda	living	full_body	true	accepted							
+flowcamnet	other_egg	pzt:000010	egg	living	egg	false	accepted							
+flowcamnet	other_living	pzt:000024	other	living	full_body	false	accepted							
+flowcamnet	part_Ciliophora	pzt:000699	ciliophora	detritus	part	false	accepted							
+flowcamnet	part_Crustacea	pzt:000062	arthropoda	detritus	part	false	accepted							
+flowcamnet	part_Ditylum	pzt:000976	ditylum	detritus	part	false	accepted							
+flowcamnet	part_Odontella	pzt:001054	odontella	detritus	part	false	accepted							
+flowcamnet	pennate	pzt:001004	pennales	living	full_body	true	accepted							
+flowcamnet	polar_view	pzt:001062	dinophyceae	living	full_body	true	accepted							
+flowcamnet	transparent_u	pzt:000039	shape	artefact	unqualified	false	accepted							

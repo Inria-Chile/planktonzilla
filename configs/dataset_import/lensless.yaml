@@ -8,6 +8,11 @@ human_readable_name: Lensless Freshwater Plankton Dataset
 description: A mixture of ten freshwater plankton species imaged with a lensless microscope designed for in situ data collection.
 source_url: https://ibm.ent.box.com/v/PlanktonData
 license: cc-by-4.0
+# config: 'imaged with a lensless microscope designed for in situ data collection' (lensless.yaml:8). L22
+# has no lensless term at all (0 hits over all 2,430 terms, 2026-09-18); the holographic entries are
+# different technology
+instrument: "Lensless microscope"
+instrument_id: null
 citation_apa: |
   Pastore, V. P., Zimmerman, T. G., Biswas, S. K., & Bianco, S. (2020). Annotation-free learning of 
   plankton for classification and anomaly detection. Scientific Reports, 10(1), 12142. https://doi.org/10.1038/s41598-020-68662-3
