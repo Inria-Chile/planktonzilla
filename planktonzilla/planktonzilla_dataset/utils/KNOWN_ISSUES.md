@@ -804,7 +804,7 @@ source's `license: other`.*
 
 ---
 
-## KI-33 — the peri-alpine ZooScan 2024 deposit (issue #13) publishes a table, not images
+## KI-32 — the peri-alpine ZooScan 2024 deposit (issue #13) publishes a table, not images
 
 **Where:** nowhere in the code — that is the entry. No config in `configs/dataset_import/`, no entry
 in `configs/generate_planktonzilla.yaml` `datasets`, no rows in `planktonzilla_taxonomy.csv`, no
