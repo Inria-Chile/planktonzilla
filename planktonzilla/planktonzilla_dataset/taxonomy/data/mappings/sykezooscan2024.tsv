@@ -1,0 +1,21 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+sykezooscan2024	Bivalvia	pzt:000439	bivalvia	living	full_body	true	accepted							
+sykezooscan2024	Bivalvia_multiple	pzt:000439	bivalvia	living	mix	true	accepted							
+sykezooscan2024	Bosmina_sp	pzt:000070	bosmina	living	full_body	true	accepted							
+sykezooscan2024	Bubbles	pzt:000005	bubble	artefact	unqualified	false	accepted							
+sykezooscan2024	Ceriodaphnia_sp	pzt:000076	ceriodaphnia	living	full_body	true	accepted							
+sykezooscan2024	Copepoda_calanoida	pzt:000153	calanoida	living	full_body	true	accepted							
+sykezooscan2024	Copepoda_cyclopoida	pzt:000202	cyclopoida	living	full_body	true	accepted							
+sykezooscan2024	Copepoda_nauplius	pzt:000206	cyclops	living	full_body	true	accepted							
+sykezooscan2024	Daphnia_sp	pzt:000080	daphnia	living	full_body	true	accepted							
+sykezooscan2024	Eggs	pzt:000010	egg	living	egg	false	accepted							
+sykezooscan2024	Evadne_sp	pzt:000150	evadne	living	full_body	true	accepted							
+sykezooscan2024	Fibers_etc	pzt:000014	fiber	detritus	unqualified	false	accepted							
+sykezooscan2024	Fish_eggs	pzt:000016	fish egg	living	egg	false	accepted							
+sykezooscan2024	Gastropoda	pzt:000444	gastropoda	living	full_body	true	accepted							
+sykezooscan2024	Harpacticoida	pzt:000232	harpacticoida	living	full_body	true	accepted							
+sykezooscan2024	Mysis_sp	pzt:000292	mysis	living	full_body	true	accepted							
+sykezooscan2024	Podon_sp	pzt:000151	podon	living	full_body	true	accepted							
+sykezooscan2024	Polychaeta	pzt:000046	polychaeta	living	full_body	true	accepted							
+sykezooscan2024	Sessilia	pzt:000301	sessilia	living	full_body	true	accepted							
+sykezooscan2024	Synchaeta_sp	pzt:000622	synchaeta	living	full_body	true	accepted							

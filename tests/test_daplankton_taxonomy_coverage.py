@@ -13,9 +13,11 @@ non-blocking, so a source with 44 class dirs and 3 rows passes it; only
 path. One mistyped class name therefore costs a few thousand untaxonomised images with
 nothing red anywhere.
 
-So the Raw_Labels set is pinned byte-exactly against the class dirs recorded in
-``tests/fixtures/daplankton/daplankton_class_dirs.tsv``, which came from enumerating the
-real archive. Same guard, same shape, as ``test_frepj_taxonomy_coverage.py``.
+That guard — the Raw_Labels set pinned byte-exactly against the class dirs recorded in
+``tests/fixtures/daplankton/daplankton_class_dirs.tsv``, enumerated from the real archive
+— moved to ``tests/test_taxonomy_source_coverage.py`` in step 5.5a, where it runs over all
+six sources with independent evidence instead of this one and Tara Pacific's four getting
+none. What stays here is what is specific to DAPlankton: the reuse contract below.
 
 The reuse tests below pin the other half of the contract. DAPlankton_SEA follows the
 label scheme of SYKE-plankton_IFCB_2022 — its 31 classes are a strict subset of that
@@ -105,21 +107,21 @@ def _frozen_class_dirs():
     return [line.split("\t")[0] for line in CLASS_DIRS_TSV.read_text().splitlines()[1:]]
 
 
-def test_coverage_matches_the_frozen_class_dirs():
-    """The Raw_Labels set IS the class-dir set: byte-exact, 44, no duplicates.
+def test_the_join_keys_are_unique_and_the_layout_agrees_on_the_count():
+    """A duplicate ``Raw_Labels`` would silently over- or under-count examples.
 
-    This is the guard against the silent left join. Set equality in BOTH directions
-    matters — a missing label means untaxonomised images, an extra one means a row that
-    will never match anything and quietly rots.
+    Set equality against the frozen class-dir list moved to
+    ``tests/test_taxonomy_source_coverage.py``, which runs it over all six sources with
+    independent evidence. What is kept here is the part that ties this source's own layout
+    module to the same number: ``dl.N_CLASS_DIRS`` is what the importer walks, and it drifting
+    from the fixture is a different bug from the table drifting from either.
     """
-    class_dirs = _frozen_class_dirs()
-    assert len(class_dirs) == dl.N_CLASS_DIRS == 44
+    assert len(_frozen_class_dirs()) == dl.N_CLASS_DIRS == 44
 
     raw_labels = [row["Raw_Labels"] for row in _daplankton_rows()]
 
     assert len(raw_labels) == len(set(raw_labels)), "duplicate daplankton Raw_Labels"
     assert len(raw_labels) == 44
-    assert set(raw_labels) == set(class_dirs)
 
 
 def test_every_row_is_accounted_for_as_reused_or_resolved():

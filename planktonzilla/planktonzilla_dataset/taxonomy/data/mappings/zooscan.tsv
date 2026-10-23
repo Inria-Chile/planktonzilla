@@ -1,0 +1,121 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+zooscan	Acartiidae	pzt:000154	acartiidae	living	full_body	true	accepted							
+zooscan	Actiniaria	pzt:000349	actiniaria	living	full_body	true	accepted							
+zooscan	Actinopterygii	pzt:000312	chordata	living	full_body	true	accepted							
+zooscan	Aglaura	pzt:000407	aglaura hemistoma	living	full_body	true	accepted							
+zooscan	Amphipoda	pzt:000263	amphipoda	living	full_body	true	accepted							
+zooscan	Annelida	pzt:000045	annelida	living	full_body	true	accepted							
+zooscan	Atlanta	pzt:000446	atlantidae	living	full_body	true	accepted							
+zooscan	Bassia	pzt:000386	bassia bassensis	living	full_body	true	accepted							
+zooscan	Bivalvia	pzt:000439	bivalvia	living	full_body	true	accepted							
+zooscan	Calanidae	pzt:000157	calanidae	living	full_body	true	accepted							
+zooscan	Calanoida	pzt:000153	calanoida	living	full_body	true	accepted							
+zooscan	Calocalanus pavo	pzt:000193	calocalanus pavo	living	full_body	true	accepted							
+zooscan	Candaciidae	pzt:000158	candaciidae	living	full_body	true	accepted							
+zooscan	Cavolinia inflexa	pzt:000453	cavolinia inflexa	living	full_body	true	accepted							
+zooscan	Centropagidae	pzt:000159	centropagidae	living	full_body	true	accepted							
+zooscan	Chaetognatha	pzt:000304	chaetognatha	living	full_body	true	accepted							
+zooscan	Copilia	pzt:000231	copilia	living	full_body	true	accepted							
+zooscan	Corycaeidae	pzt:000203	corycaeidae	living	full_body	true	accepted							
+zooscan	Coscinodiscus	pzt:000930	coscinodiscus	living	full_body	true	accepted							
+zooscan	Creseidae	pzt:000459	clio pyramidata	living	full_body	true	accepted							
+zooscan	Creseidae acicula	pzt:000462	creseis acicula	living	full_body	true	accepted							
+zooscan	Ctenophora	pzt:000949	ctenophora	living	full_body	true	accepted							
+zooscan	Cumacea	pzt:000272	cumacea	living	full_body	true	accepted							
+zooscan	Cymbulia peroni	pzt:000466	cymbulia peronii	living	full_body	true	accepted							
+zooscan	Doliolida	pzt:000340	doliolida	living	full_body	true	accepted							
+zooscan	Eucalanidae	pzt:000183	eucalanidae	living	full_body	true	accepted							
+zooscan	Euchaetidae	pzt:000185	euchaetidae	living	full_body	true	accepted							
+zooscan	Eumalacostraca	pzt:000262	malacostraca	living	full_body	true	accepted							
+zooscan	Evadne	pzt:000150	evadne	living	full_body	true	accepted							
+zooscan	Foraminifera	pzt:000834	globigerinidae	living	full_body	true	accepted							
+zooscan	Fritillariidae	pzt:000315	fritillariidae	living	full_body	true	accepted							
+zooscan	Gymnosomata	pzt:000450	pteropoda	living	full_body	true	accepted							
+zooscan	Haloptilus	pzt:000156	haloptilus	living	full_body	true	accepted							
+zooscan	Harosa	pzt:000675	chromista	living	full_body	true	accepted							
+zooscan	Harpacticoida	pzt:000237	euterpina	living	full_body	true	accepted							
+zooscan	Heterorhabdidae	pzt:000187	heterorhabdidae	living	full_body	true	accepted							
+zooscan	Hydrozoa	pzt:000352	hydrozoa	living	full_body	true	accepted							
+zooscan	Hyperiidea	pzt:000263	amphipoda	living	full_body	true	accepted							
+zooscan	Insecta	pzt:000247	hexapoda	living	full_body	false	accepted							
+zooscan	Isopoda	pzt:000287	eurydice	living	full_body	true	accepted							
+zooscan	Limacinidae	pzt:000467	limacinidae	living	full_body	true	accepted							
+zooscan	Liriope	pzt:000370	liriope	living	full_body	true	accepted							
+zooscan	Metridinidae	pzt:000190	pleuromamma abdominalis	living	full_body	true	accepted							
+zooscan	Mysida	pzt:000290	mysida	living	full_body	true	accepted							
+zooscan	Neoceratium	pzt:001095	tripos	living	full_body	true	accepted							
+zooscan	Noctiluca	pzt:001183	noctiluca	living	full_body	true	accepted							
+zooscan	Obelia	pzt:000367	obelia	living	full_body	true	accepted							
+zooscan	Oikopleuridae	pzt:000317	oikopleuridae	living	full_body	true	accepted							
+zooscan	Oithonidae	pzt:000226	oithonidae	living	full_body	true	accepted							
+zooscan	Oncaeidae	pzt:000228	oncaeidae	living	full_body	true	accepted							
+zooscan	Ostracoda	pzt:000296	ostracoda	living	full_body	true	accepted							
+zooscan	Penilia	pzt:000098	penilia avirostris	living	full_body	true	accepted							
+zooscan	Phaeodaria	pzt:000679	thecofilosea	living	full_body	true	accepted							
+zooscan	Physonectae	pzt:000381	siphonophorae	living	full_body	true	accepted							
+zooscan	Podon	pzt:000151	podon	living	full_body	true	accepted							
+zooscan	Pontellidae	pzt:000194	pontellidae	living	full_body	true	accepted							
+zooscan	Pyrosomatida	pzt:000341	pyrosomatida	living	full_body	true	accepted							
+zooscan	Rhincalanidae	pzt:000197	rhincalanidae	living	full_body	true	accepted							
+zooscan	Rhopalonema velatum	pzt:000409	rhopalonema velatum	living	full_body	true	accepted							
+zooscan	Salpida	pzt:000344	salpida	living	full_body	true	accepted							
+zooscan	Sapphirinidae	pzt:000230	sapphirinidae	living	full_body	true	accepted							
+zooscan	Solmundella bitentaculata	pzt:000380	solmundella bitentaculata	living	full_body	true	accepted							
+zooscan	Temoridae	pzt:000198	temoridae	living	full_body	true	accepted							
+zooscan	Tomopteridae	pzt:000050	tomopteridae	living	full_body	true	accepted							
+zooscan	actinula	pzt:000380	solmundella bitentaculata	living	full_body	true	accepted							
+zooscan	artefact	pzt:000002	artefact	artefact	unqualified	false	accepted							
+zooscan	badfocus	pzt:000003	bad focus	artefact	unqualified	false	accepted							
+zooscan	bract_Abylopsis tetragona	pzt:000384	abylopsis tetragona	living	full_body	true	accepted							
+zooscan	bract_Diphyidae	pzt:000387	diphyidae	living	full_body	true	accepted							
+zooscan	bubble	pzt:000005	bubble	artefact	unqualified	false	accepted							
+zooscan	calyptopsis	pzt:000284	euphausiacea	living	full_body	true	accepted							
+zooscan	cirrus	pzt:000300	thecostraca	living	full_body	true	accepted							
+zooscan	cyphonaute	pzt:000303	bryozoa	living	full_body	true	accepted							
+zooscan	cypris	pzt:000300	thecostraca	living	full_body	true	accepted							
+zooscan	detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+zooscan	egg_Actinopterygii	pzt:000312	chordata	living	egg	true	accepted							
+zooscan	egg_Mollusca	pzt:000438	mollusca	living	egg	true	accepted							
+zooscan	endostyle	pzt:000345	salpidae	living	full_body	true	accepted							
+zooscan	ephyra	pzt:000411	scyphozoa	living	full_body	true	accepted							
+zooscan	eudoxie_Abylopsis tetragona	pzt:000384	abylopsis tetragona	living	full_body	true	accepted							
+zooscan	eudoxie_Diphyidae	pzt:000387	diphyidae	living	full_body	true	accepted							
+zooscan	fiber	pzt:000014	fiber	detritus	unqualified	false	accepted							
+zooscan	gonophore_Abylopsis tetragona	pzt:000384	abylopsis tetragona	living	full_body	true	accepted							
+zooscan	gonophore_Diphyidae	pzt:000387	diphyidae	living	full_body	true	accepted							
+zooscan	head_Chaetognatha	pzt:000304	chaetognatha	detritus	part_head	false	accepted							
+zooscan	juvenile_Salpida	pzt:000344	salpida	living	full_body	true	accepted							
+zooscan	larvae_Annelida	pzt:000045	annelida	living	larvae	true	accepted							
+zooscan	larvae_Echinodermata	pzt:000428	echinodermata	living	larvae	true	accepted							
+zooscan	larvae_Luciferidae	pzt:000276	luciferidae	living	larvae	true	accepted							
+zooscan	larvae_Mysida	pzt:000290	mysida	living	larvae	true	accepted							
+zooscan	larvae_Porcellanidae	pzt:000280	porcellanidae	living	larvae	true	accepted							
+zooscan	larvae_Stomatopoda	pzt:000293	stomatopoda	living	larvae	true	accepted							
+zooscan	megalopa	pzt:000273	decapoda	living	full_body	true	accepted							
+zooscan	metanauplii_Crustacea	pzt:000062	arthropoda	living	full_body	true	accepted							
+zooscan	nauplii_Cirripedia	pzt:000300	thecostraca	living	full_body	true	accepted							
+zooscan	nauplii_Crustacea	pzt:000062	arthropoda	living	full_body	true	accepted							
+zooscan	nectophore_Abylopsis tetragona	pzt:000384	abylopsis tetragona	living	full_body	true	accepted							
+zooscan	nectophore_Diphyidae	pzt:000387	diphyidae	living	full_body	true	accepted							
+zooscan	nectophore_Hippopodiidae	pzt:000391	hippopodiidae	living	full_body	true	accepted							
+zooscan	nectophore_Physonectae	pzt:000381	siphonophorae	living	full_body	true	accepted							
+zooscan	nucleus	pzt:000345	salpidae	living	full_body	true	accepted							
+zooscan	other_egg	pzt:000010	egg	living	egg	false	accepted							
+zooscan	other_living	pzt:000238	monstrilloida	living	full_body	true	accepted							
+zooscan	part_Annelida	pzt:000045	annelida	detritus	part	false	accepted							
+zooscan	part_Cnidaria	pzt:000346	cnidaria	detritus	part	false	accepted							
+zooscan	part_Crustacea	pzt:000062	arthropoda	detritus	part	false	accepted							
+zooscan	part_Mollusca	pzt:000438	mollusca	detritus	part	false	accepted							
+zooscan	part_Siphonophorae	pzt:000381	siphonophorae	detritus	part	false	accepted							
+zooscan	pluteus_Echinoidea	pzt:000433	echinoidea	living	full_body	true	accepted							
+zooscan	pluteus_Ophiuroidea	pzt:000435	ophiuroidea	living	full_body	true	accepted							
+zooscan	protozoea_Eumalacostraca	pzt:000290	mysida	living	full_body	true	accepted							
+zooscan	protozoea_Penaeidae	pzt:000279	penaeidae	living	full_body	true	accepted							
+zooscan	protozoea_Sergestidae	pzt:000281	sergestidae	living	full_body	true	accepted							
+zooscan	seaweed	pzt:000038	seaweed	living	full_body	false	accepted							
+zooscan	siphonula	pzt:000381	siphonophorae	living	full_body	true	accepted							
+zooscan	tail_Appendicularia	pzt:000313	appendicularia	detritus	part_tail	false	accepted							
+zooscan	tail_Chaetognatha	pzt:000304	chaetognatha	detritus	part_tail	false	accepted							
+zooscan	trunk_Appendicularia	pzt:000317	oikopleuridae	detritus	part_trunk	false	accepted							
+zooscan	zoea_Brachyura	pzt:000273	decapoda	living	full_body	true	accepted							
+zooscan	zoea_Galatheidae	pzt:000274	galatheidae	living	full_body	true	accepted							

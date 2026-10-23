@@ -83,6 +83,7 @@ from planktonzilla.planktonzilla_dataset.constants import (
     ID_STR_COLS,
     TAXONOMY_RANKS,
 )
+from planktonzilla.planktonzilla_dataset.taxonomy import load_taxonomy
 from planktonzilla.utils.logger import get_pylogger
 
 logger = get_pylogger(__name__)
@@ -299,7 +300,7 @@ def _get_with_retry(session: requests.Session, url: str, **kwargs) -> requests.R
     return None
 
 
-def fetch_worms(aphia_ids: list[str]) -> tuple[dict, list[str]]:
+def fetch_worms(aphia_ids: list[str]) -> tuple[dict, list[str], list[str]]:
     """Resolve AphiaIDs against WoRMS.
 
     Two calls per id: the record (name, rank, nomenclatural status, valid-name redirect) and
@@ -309,12 +310,16 @@ def fetch_worms(aphia_ids: list[str]) -> tuple[dict, list[str]]:
         aphia_ids: Distinct AphiaIDs as decimal-free strings.
 
     Returns:
-        ``(records, unresolved)`` where ``records`` maps AphiaID to the distilled record and
-        ``unresolved`` lists the ids the register returned no record for.
+        ``(records, not_found, undetermined)``. ``records`` maps AphiaID to the distilled record,
+        ``not_found`` lists the ids WoRMS answered for and does not hold, and ``undetermined``
+        lists the ids it never answered for — a transport failure or a server error, which is a
+        statement about the service rather than about the id. Only ``not_found`` is durable;
+        ``undetermined`` must be re-asked, which is what the split exists for.
     """
     session = _session()
     records: dict[str, dict] = {}
-    unresolved: list[str] = []
+    not_found: list[str] = []
+    undetermined: list[str] = []
 
     def flatten(node: dict | None) -> list[list[str]]:
         chain: list[list[str]] = []
@@ -323,16 +328,26 @@ def fetch_worms(aphia_ids: list[str]) -> tuple[dict, list[str]]:
             node = node.get("child")
         return chain
 
-    def one(aphia_id: str) -> tuple[str, dict | None]:
+    def one(aphia_id: str) -> tuple[str, dict | None, str]:
         record = _get_with_retry(session, f"{WORMS_REST}/AphiaRecordByAphiaID/{aphia_id}")
-        if record is None or record.status_code != 200:
-            return aphia_id, None
+        # `_get_with_retry` already computes the distinction and this function used to discard it:
+        # None means every attempt failed at the transport level or on a 5xx/429, while a real
+        # response carrying 204/404 is WoRMS saying it holds no such AphiaID. Anything else — a
+        # 200 with a body that will not parse, say — is the service misbehaving, so it is
+        # undetermined too. Erring toward undetermined only costs a request next run; erring the
+        # other way drops the id from verification until someone runs --full.
+        if record is None:
+            return aphia_id, None, "undetermined"
+        if record.status_code in (204, 404):
+            return aphia_id, None, "not_found"
+        if record.status_code != 200:
+            return aphia_id, None, "undetermined"
         try:
             payload = record.json()
         except ValueError:
-            return aphia_id, None
+            return aphia_id, None, "undetermined"
         if not isinstance(payload, dict):
-            return aphia_id, None
+            return aphia_id, None, "undetermined"
         classification = _get_with_retry(session, f"{WORMS_REST}/AphiaClassificationByAphiaID/{aphia_id}")
         chain: list[list[str]] = []
         if classification is not None and classification.status_code == 200:
@@ -340,26 +355,34 @@ def fetch_worms(aphia_ids: list[str]) -> tuple[dict, list[str]]:
                 chain = flatten(classification.json())
             except ValueError:
                 chain = []
-        return aphia_id, {
-            "aphia_id": str(payload.get("AphiaID", aphia_id)),
-            "scientific_name": payload.get("scientificname"),
-            "rank": payload.get("rank"),
-            "status": payload.get("status"),
-            "unacceptreason": payload.get("unacceptreason"),
-            "valid_aphia_id": None if payload.get("valid_AphiaID") is None else str(payload["valid_AphiaID"]),
-            "valid_name": payload.get("valid_name"),
-            "classification": chain,
-        }
+        return (
+            aphia_id,
+            {
+                "aphia_id": str(payload.get("AphiaID", aphia_id)),
+                "scientific_name": payload.get("scientificname"),
+                "rank": payload.get("rank"),
+                "status": payload.get("status"),
+                "unacceptreason": payload.get("unacceptreason"),
+                "valid_aphia_id": None if payload.get("valid_AphiaID") is None else str(payload["valid_AphiaID"]),
+                "valid_name": payload.get("valid_name"),
+                "classification": chain,
+            },
+            "found",
+        )
 
     with ThreadPoolExecutor(max_workers=WORMS_WORKERS) as pool:
-        for done, (aphia_id, distilled) in enumerate(pool.map(one, aphia_ids), start=1):
-            if distilled is None:
-                unresolved.append(aphia_id)
-            else:
+        for done, (aphia_id, distilled, verdict) in enumerate(pool.map(one, aphia_ids), start=1):
+            if verdict == "found":
                 records[aphia_id] = distilled
+            elif verdict == "not_found":
+                not_found.append(aphia_id)
+            else:
+                undetermined.append(aphia_id)
             if done % 100 == 0:
                 logger.info("WoRMS %d/%d resolved", done, len(aphia_ids))
-    return records, unresolved
+    if undetermined:
+        logger.warning("WoRMS did not answer for %d id(s); they will be re-asked, not recorded as absent", len(undetermined))
+    return records, not_found, undetermined
 
 
 # NCBI ``OtherNames`` child tags that carry a SCIENTIFIC alternative for the taxon. Vernacular
@@ -378,7 +401,7 @@ NCBI_SYNONYM_TAGS = (
 )
 
 
-def fetch_ncbi(tax_ids: list[str], email: str | None = None) -> tuple[dict, list[str]]:
+def fetch_ncbi(tax_ids: list[str], email: str | None = None) -> tuple[dict, list[str], list[str]]:
     """Resolve NCBI taxonomy ids via batched E-utilities ``efetch``.
 
     Talks to E-utilities over plain HTTP rather than through ``Bio.Entrez`` so the harvest does
@@ -391,8 +414,9 @@ def fetch_ncbi(tax_ids: list[str], email: str | None = None) -> tuple[dict, list
             entirely when neither is set.
 
     Returns:
-        ``(records, unresolved)`` mapping taxid to distilled record, plus the ids NCBI had no
-        taxon for.
+        ``(records, not_found, undetermined)``. A taxid is ``not_found`` only when NCBI answered
+        the batch it was in and did not return it; every id of a batch that failed or came back
+        unparseable is ``undetermined`` and will be re-asked.
     """
     import xml.etree.ElementTree as ET
 
@@ -405,16 +429,23 @@ def fetch_ncbi(tax_ids: list[str], email: str | None = None) -> tuple[dict, list
         base_params["api_key"] = os.environ["NCBI_API_KEY"]
 
     records: dict[str, dict] = {}
+    undetermined: list[str] = []
     for start in range(0, len(tax_ids), NCBI_BATCH):
         batch = tax_ids[start : start + NCBI_BATCH]
         response = _get_with_retry(session, NCBI_EFETCH, params={**base_params, "id": ",".join(batch)})
+        # A batch that never came back says nothing about the ids in it. This used to `continue`
+        # into a final `[t for t in tax_ids if t not in records]`, which made a whole failed batch
+        # indistinguishable from NCBI genuinely not holding those taxids — and the snapshot then
+        # pinned all of them as unresolved forever.
         if response is None or response.status_code != 200:
-            logger.warning("NCBI batch starting at %s failed", batch[0])
+            logger.warning("NCBI batch starting at %s failed; %d id(s) undetermined", batch[0], len(batch))
+            undetermined.extend(batch)
             continue
         try:
             tree = ET.fromstring(response.text)
         except ET.ParseError as exc:
             logger.warning("NCBI batch starting at %s returned unparseable XML: %s", batch[0], exc)
+            undetermined.extend(batch)
             continue
         for taxon in tree.findall("Taxon"):
             tax_id = (taxon.findtext("TaxId") or "").strip()
@@ -445,10 +476,15 @@ def fetch_ncbi(tax_ids: list[str], email: str | None = None) -> tuple[dict, list
             }
         logger.info("NCBI %d/%d resolved", min(start + NCBI_BATCH, len(tax_ids)), len(tax_ids))
         time.sleep(0.4)
-    return records, [t for t in tax_ids if t not in records]
+
+    pending = set(undetermined)
+    not_found = [t for t in tax_ids if t not in records and t not in pending]
+    if undetermined:
+        logger.warning("NCBI did not answer for %d id(s); they will be re-asked, not recorded as absent", len(undetermined))
+    return records, not_found, undetermined
 
 
-def fetch_wikidata(qids: list[str]) -> tuple[dict, list[str]]:
+def fetch_wikidata(qids: list[str]) -> tuple[dict, list[str], list[str]]:
     """Resolve Wikidata Qcodes via batched ``wbgetentities``.
 
     Captures the English label, the P225 taxon name, the P105 taxon rank and the three
@@ -459,10 +495,13 @@ def fetch_wikidata(qids: list[str]) -> tuple[dict, list[str]]:
         qids: Distinct Qcodes.
 
     Returns:
-        ``(records, unresolved)`` mapping Qcode to distilled record, plus missing Qcodes.
+        ``(records, not_found, undetermined)``. Wikidata marks an unknown Qcode ``missing`` in an
+        otherwise successful response, so ``not_found`` is a real answer; a batch that failed
+        leaves its ids ``undetermined``.
     """
     session = _session()
     records: dict[str, dict] = {}
+    undetermined: list[str] = []
 
     def claim_values(claims: dict, prop: str) -> list[str]:
         out = []
@@ -491,7 +530,8 @@ def fetch_wikidata(qids: list[str]) -> tuple[dict, list[str]]:
                 },
             )
             if response is None or response.status_code != 200:
-                logger.warning("Wikidata batch starting at %s failed", batch[0])
+                logger.warning("Wikidata batch starting at %s failed; %d id(s) undetermined", batch[0], len(batch))
+                undetermined.extend(batch)
                 continue
             for qid, entity in response.json().get("entities", {}).items():
                 if "missing" in entity:
@@ -510,13 +550,21 @@ def fetch_wikidata(qids: list[str]) -> tuple[dict, list[str]]:
         return out
 
     records = harvest(qids)
+    # Only the FIRST pass speaks about the requested Qcodes. The rank pass below asks about rank
+    # Qcodes, and a failure there must not mark a taxon id undetermined.
+    pending = set(undetermined)
+
     # Second pass: resolve the P105 rank Qcodes to English labels rather than hardcoding the
     # species/genus/family/... Qcode table, so a rank we have not seen before still reads.
     rank_qids = sorted({r["rank_qid"] for r in records.values() if r.get("rank_qid")})
     rank_labels = {qid: rec.get("label_en") for qid, rec in harvest(rank_qids).items()}
     for record in records.values():
         record["rank"] = rank_labels.get(record.get("rank_qid") or "")
-    return records, [q for q in qids if q not in records]
+
+    not_found = [q for q in qids if q not in records and q not in pending]
+    if pending:
+        logger.warning("Wikidata did not answer for %d id(s); they will be re-asked, not recorded as absent", len(pending))
+    return records, not_found, sorted(pending)
 
 
 def read_taxonomy(csv_path: Path) -> list[dict]:
@@ -531,8 +579,10 @@ def read_taxonomy(csv_path: Path) -> list[dict]:
     Returns:
         One dict per CSV row.
     """
-    frame = pl.read_csv(csv_path, infer_schema_length=0)
-    return [{k: ("" if v is None else str(v)) for k, v in row.items()} for row in frame.to_dicts()]
+    # Through the one loader. `rows()` is already all-string with blanks as "", which is exactly
+    # what the private `infer_schema_length=0` read produced -- asserted row-for-row by
+    # tests/test_taxonomy_reader_switch.py rather than assumed.
+    return load_taxonomy(csv_path).rows()
 
 
 def distinct_ids(rows: list[dict]) -> dict[str, list[str]]:
@@ -553,12 +603,52 @@ def distinct_ids(rows: list[dict]) -> dict[str, list[str]]:
     return {col: sorted(values, key=lambda v: (len(v), v)) for col, values in buckets.items()}
 
 
-def build_snapshot(csv_path: Path, email: str | None = None) -> dict:
+def id_set_digest(ids: dict) -> str:
+    """The sha256 of the sorted distinct id set — what the snapshot actually depends on.
+
+    Step 9 re-keys the snapshot to this instead of to the whole-CSV sha (open decision §10.4, at
+    its default). The two differ on exactly the edits that matter: correcting a spelling, adding a
+    ``method``, re-ordering a block — none of which changes a single identifier — used to change
+    the CSV's hash, turn the staleness check red, and demand a network re-harvest of ~3,500 ids
+    plus an 86,618-line JSON diff. The id set is unmoved by all of them and moves the moment an
+    identifier is added, changed or removed, which is the only time a harvest is owed.
+    """
+    payload = "\n".join(f"{column}\t{value}" for column in sorted(ids) for value in sorted(ids[column]))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _reuse(previous: dict, authority: str, wanted: list) -> tuple:
+    """``(kept, to_fetch)`` — what the previous harvest still covers, and what it does not.
+
+    Ids that have LEFT the table are dropped rather than carried: a snapshot that accumulates
+    records for identifiers nothing references stops being a statement about this table.
+    """
+    held = (previous or {}).get(authority, {})
+    unresolved = set((previous or {}).get("provenance", {}).get("sources", {}).get(authority, {}).get("unresolved", []))
+    kept = {identifier: held[identifier] for identifier in wanted if identifier in held}
+    return kept, [identifier for identifier in wanted if identifier not in held and identifier not in unresolved]
+
+
+def build_snapshot(csv_path: Path, email: str | None = None, previous: dict | None = None) -> dict:
     """Harvest all three authorities for the identifiers present in the CSV.
+
+    Incremental when ``previous`` is given: an id the previous snapshot already resolved is carried
+    over, an id it recorded as unresolvable is not re-requested, and an id that has left the table
+    is dropped. Only genuinely new identifiers hit the network. A full re-harvest is then something
+    a maintainer chooses (``--full``) rather than something a spelling fix imposes.
+
+    "Unresolvable" means the authority ANSWERED and does not hold the id. An id it never answered
+    for — a transport failure, a 5xx, an unparseable batch — is recorded separately as
+    ``undetermined`` and is re-asked on the next run. Before that split, one outage during a
+    ``--refresh-snapshot`` pinned those ids as unresolved for good: every later incremental run
+    carried the miss forward, the crosschecks went on reporting missing records, and only ``--full``
+    recovered them, which nothing said. Snapshots written before the split conflate the two in
+    their ``unresolved`` lists; one ``--full`` clears that.
 
     Args:
         csv_path: Path to the taxonomy CSV.
         email: Contact address for NCBI Entrez.
+        previous: A committed snapshot to harvest incrementally against; ``None`` fetches everything.
 
     Returns:
         The snapshot dict, ready for :func:`write_snapshot`.
@@ -567,35 +657,80 @@ def build_snapshot(csv_path: Path, email: str | None = None) -> dict:
     ids = distinct_ids(rows)
     logger.info("distinct ids to resolve: %s", {k: len(v) for k, v in ids.items()})
 
-    worms, worms_missing = fetch_worms(ids["aphia_ID"])
-    ncbi, ncbi_missing = fetch_ncbi(ids["NCBI_ID"], email=email)
-    wikidata, wikidata_missing = fetch_wikidata(ids["wikidata_ID"])
+    kept_worms, new_worms = _reuse(previous, "worms", ids["aphia_ID"])
+    kept_ncbi, new_ncbi = _reuse(previous, "ncbi", ids["NCBI_ID"])
+    kept_wikidata, new_wikidata = _reuse(previous, "wikidata", ids["wikidata_ID"])
+    if previous is not None:
+        logger.info(
+            "incremental harvest: %s new id(s) to fetch, %s carried over",
+            len(new_worms) + len(new_ncbi) + len(new_wikidata),
+            len(kept_worms) + len(kept_ncbi) + len(kept_wikidata),
+        )
+
+    fetched_worms, worms_missing, worms_undetermined = fetch_worms(new_worms)
+    fetched_ncbi, ncbi_missing, ncbi_undetermined = fetch_ncbi(new_ncbi, email=email)
+    fetched_wikidata, wikidata_missing, wikidata_undetermined = fetch_wikidata(new_wikidata)
+
+    # Only a genuine absence is durable. An id the authority never answered for is left OUT of
+    # `unresolved`, which is exactly what makes `_reuse` re-request it next run: the previous
+    # behaviour recorded both as unresolved, so one outage during a --refresh-snapshot removed
+    # those rows from external verification permanently, and only --full ever asked again.
+    undetermined = {"worms": worms_undetermined, "ncbi": ncbi_undetermined, "wikidata": wikidata_undetermined}
+    if any(undetermined.values()):
+        logger.warning(
+            "%d id(s) went undetermined this harvest (%s). They are NOT recorded as unresolved, so the "
+            "next incremental run re-asks them; the crosschecks are short by that many until it does.",
+            sum(len(v) for v in undetermined.values()),
+            ", ".join(f"{name}={len(ids)}" for name, ids in undetermined.items() if ids),
+        )
+
+    worms = {**kept_worms, **fetched_worms}
+    ncbi = {**kept_ncbi, **fetched_ncbi}
+    wikidata = {**kept_wikidata, **fetched_wikidata}
+
+    def carried(authority, wanted, resolved, missing):
+        """Unresolved ids: this run's genuine ABSENCES, plus the previous run's still in the table.
+
+        `missing` is now only what the authority answered about — an id it never answered for is
+        undetermined and deliberately absent from this list, so the next run asks again.
+        """
+        before = set((previous or {}).get("provenance", {}).get("sources", {}).get(authority, {}).get("unresolved", []))
+        return sorted((before | set(missing)) & set(wanted) - set(resolved))
 
     return {
         "provenance": {
             "generated_utc": datetime.now(UTC).isoformat(timespec="seconds"),
             "tool": "planktonzilla.planktonzilla_dataset.utils.verify_taxonomy_ids",
             "taxonomy_csv": csv_path.name,
-            "taxonomy_csv_sha256": hashlib.sha256(csv_path.read_bytes()).hexdigest(),
-            "taxonomy_csv_rows": len(rows),
+            # NOT the CSV's own sha: see id_set_digest. A label edit must not demand a re-harvest.
+            "id_set_sha256": id_set_digest(ids),
             "sources": {
                 "worms": {
                     "endpoint": f"{WORMS_REST}/AphiaRecordByAphiaID + AphiaClassificationByAphiaID",
                     "requested": len(ids["aphia_ID"]),
+                    "fetched": len(new_worms),
                     "resolved": len(worms),
-                    "unresolved": worms_missing,
+                    "unresolved": carried("worms", ids["aphia_ID"], worms, worms_missing),
+                    # Asked and not answered — a statement about the service, re-asked next run.
+                    "undetermined": sorted(worms_undetermined),
                 },
                 "ncbi": {
                     "endpoint": NCBI_EFETCH,
                     "requested": len(ids["NCBI_ID"]),
+                    "fetched": len(new_ncbi),
                     "resolved": len(ncbi),
-                    "unresolved": ncbi_missing,
+                    "unresolved": carried("ncbi", ids["NCBI_ID"], ncbi, ncbi_missing),
+                    # Asked and not answered — a statement about the service, re-asked next run.
+                    "undetermined": sorted(ncbi_undetermined),
                 },
                 "wikidata": {
                     "endpoint": WIKIDATA_API,
                     "requested": len(ids["wikidata_ID"]),
+                    "fetched": len(new_wikidata),
                     "resolved": len(wikidata),
-                    "unresolved": wikidata_missing,
+                    "unresolved": carried("wikidata", ids["wikidata_ID"], wikidata, wikidata_missing),
+                    # Asked and not answered — a statement about the service, re-asked next run.
+                    "undetermined": sorted(wikidata_undetermined),
                 },
             },
         },
@@ -1422,7 +1557,15 @@ def main(argv: list[str] | None = None) -> int:
         Process exit status — non-zero when unwaived findings at or above ``--fail-on`` exist.
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--refresh-snapshot", action="store_true", help="network stage: re-harvest all three authorities")
+    parser.add_argument(
+        "--refresh-snapshot", action="store_true", help="network stage: harvest the identifiers the snapshot does not cover"
+    )
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="With --refresh-snapshot, re-fetch every identifier instead of only the new ones. "
+        "Needed when an authority has restated records, not when the table has been edited.",
+    )
     parser.add_argument("--report", action="store_true", help="network-free stage: cross-check the CSV against the snapshot")
     parser.add_argument("--csv", type=Path, default=Path(DEFAULT_TAXONOMY_CSV_FILENAME), help="taxonomy CSV to verify")
     parser.add_argument("--snapshot", type=Path, default=DEFAULT_SNAPSHOT_PATH, help="authority snapshot JSON")
@@ -1441,7 +1584,10 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.WARNING if args.quiet else logging.INFO, format="%(levelname)s %(message)s")
 
     if args.refresh_snapshot:
-        write_snapshot(build_snapshot(args.csv, email=args.email), args.snapshot)
+        # Incremental by default: only identifiers the committed snapshot does not already cover
+        # reach the network. A full re-harvest is a maintainer's choice, not a spelling fix's.
+        previous = None if args.full else (load_snapshot(args.snapshot) if args.snapshot.exists() else None)
+        write_snapshot(build_snapshot(args.csv, email=args.email, previous=previous), args.snapshot)
 
     if not args.report:
         return 0

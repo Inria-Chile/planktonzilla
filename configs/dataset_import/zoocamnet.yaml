@@ -7,6 +7,10 @@ push_to_hub: true
 
 human_readable_name: "ZooCAMNet: plankton images captured with the ZooCAM"
 license: "cc-by-4.0"
+# config: 'captured with the ZooCAM', processed with 'the ZooCAM software' (zoocamnet.yaml:8,13-14);
+# TOOL1587 cites Colas et al. (2017), the same reference the config gives
+instrument: "ZooCAM"
+instrument_id: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1587/"
 description: |
   Plankton was sampled with a Continuous Underway Fish Egg Sampler (CUFES, 315µm mesh size) at 4 m below the
   surface, and a WP2 net (200µm mesh size) from 100m to the surface, or 5 m above the sea floor to the surface

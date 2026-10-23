@@ -1,0 +1,33 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+isiisnet	Acantharea	pzt:001265	acantharia	living	full_body	true	accepted							
+isiisnet	Actinopterygii	pzt:000312	chordata	living	full_body	true	accepted							
+isiisnet	Annelida	pzt:000045	annelida	living	full_body	true	accepted							
+isiisnet	Appendicularia	pzt:000313	appendicularia	living	full_body	true	accepted							
+isiisnet	Appendicularia_body	pzt:000313	appendicularia	living	full_body	true	accepted							
+isiisnet	Appendicularia_like_body	pzt:000313	appendicularia	living	like	true	accepted							
+isiisnet	Aulacanthidae	pzt:000685	aulacanthidae	living	full_body	true	accepted							
+isiisnet	Bacillariophyceae	pzt:000879	bacillariophyceae	living	full_body	true	accepted							
+isiisnet	Chaetognatha	pzt:000304	chaetognatha	living	full_body	true	accepted							
+isiisnet	Cnidaria	pzt:000346	cnidaria	living	full_body	true	accepted							
+isiisnet	Copepoda	pzt:000152	copepoda	living	full_body	true	accepted							
+isiisnet	Crustacea	pzt:000062	arthropoda	living	full_body	true	accepted							
+isiisnet	Ctenophora	pzt:000949	ctenophora	living	full_body	true	accepted							
+isiisnet	Doliolida	pzt:000340	doliolida	living	full_body	true	accepted							
+isiisnet	Eumalacostraca	pzt:000262	malacostraca	living	full_body	true	accepted							
+isiisnet	Harpacticoida	pzt:000232	harpacticoida	living	full_body	true	accepted							
+isiisnet	Mollusca	pzt:000438	mollusca	living	full_body	true	accepted							
+isiisnet	Pyrocystis	pzt:001151	pyrocystis	living	full_body	true	accepted							
+isiisnet	Rhizaria	pzt:000675	chromista	living	full_body	true	accepted							
+isiisnet	Rhopalonematidae	pzt:000403	rhopalonematidae	living	full_body	true	accepted							
+isiisnet	Siphonophorae	pzt:000381	siphonophorae	living	full_body	true	accepted							
+isiisnet	colonial_colodaria	pzt:001270	nassellaria	living	full_body	true	accepted							
+isiisnet	detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+isiisnet	ephyra	pzt:000411	scyphozoa	living	full_body	true	accepted							
+isiisnet	house	pzt:000313	appendicularia	living	full_body	true	accepted							
+isiisnet	like_Acantharea	pzt:001265	acantharia	living	like	true	accepted							
+isiisnet	like_Copepoda	pzt:000152	copepoda	living	like	true	accepted							
+isiisnet	other_living	pzt:000024	other	living	full_body	false	accepted							
+isiisnet	part_Cnidaria	pzt:000346	cnidaria	detritus	part	false	accepted							
+isiisnet	solitaryblack	pzt:001270	nassellaria	living	full_body	true	accepted							
+isiisnet	streak	pzt:000024	other	artefact	unqualified	false	accepted							
+isiisnet	vertical line	pzt:000039	shape	artefact	unqualified	false	accepted							

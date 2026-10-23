@@ -30,6 +30,7 @@ spelled ``pz_planktonzilla base=hub sources=[] sync_taxonomy=false`` there.
 from pathlib import Path
 
 import hydra
+import pyarrow as pa
 import pyrootutils
 from datasets import Dataset, Value, load_dataset
 from omegaconf import DictConfig
@@ -37,14 +38,20 @@ from omegaconf import DictConfig
 from planktonzilla.utils.logger import get_pylogger
 
 from .constants import (
+    DATASET_INSTRUMENTS,
     DATASET_LICENSES,
     DEFAULT_TAXONOMY_CSV_FILENAME,
     EXTRA_COLS,
     ID_NUM_COLS,
     ID_STR_COLS,
+    INSTRUMENT_COLS,
     LICENSE_COLS,
     TAXONOMY_RANKS,
     default_num_proc,
+    has_per_row_instrument,
+    resolve_instrument,
+    revision_kwargs,
+    validate_instrument_coverage,
     validate_license_coverage,
 )
 from .generate_planktonzilla import build_taxonomy_lookup
@@ -158,6 +165,81 @@ def sync_columns(ds: Dataset, sync_dict: dict, num_proc: int, *, unmatched: str 
     )
 
 
+def add_instrument_columns(ds: Dataset) -> Dataset:
+    """Add the per-image ``instrument`` / ``instrument_id`` columns.
+
+    The instrument analogue of :func:`add_license_columns`, with the same zero-copy
+    ``add_column`` mechanics and the same reason for them — a ``map`` would decode and rewrite
+    17M images to append two string columns.
+
+    Two differences from the licence pair, both consequences of the data rather than of taste:
+
+    * **It is not a pure function of ``dataset``.** DAPlankton's images come from three
+      instruments by design, so for that source the value is resolved per row from the merge
+      prefix the importer left in ``original_path``. That column is read only when such a
+      source is actually present, so the common case still touches one column.
+    * **The values can legitimately be null.** ``frepj`` has no documented instrument, and
+      three more sources have a name but no BODC term. An all-null Python list would make
+      Arrow infer a ``null``-typed column, which then fails to concatenate against a
+      ``string`` one built elsewhere — so the arrays are constructed with an explicit
+      ``pa.string()`` type instead of relying on inference.
+
+    Re-runnable: pre-existing instrument columns are dropped and rebuilt, never duplicated.
+
+    Args:
+        ds: Dataset exposing the ``dataset`` column, and ``original_path`` if a per-row
+            source is present.
+
+    Returns:
+        ``ds`` with ``instrument`` and ``instrument_id`` appended as ``string`` columns.
+
+    Raises:
+        KeyError: If the dataset contains a source with no recorded instrument.
+        ValueError: If a per-row source's ``original_path`` carries no recognised prefix, or
+            if the column it needs is absent.
+    """
+    source_names = ds["dataset"]
+    distinct_sources = set(source_names)
+    validate_instrument_coverage(distinct_sources)
+
+    per_row_sources = {name for name in distinct_sources if has_per_row_instrument(name)}
+    if per_row_sources and "original_path" not in ds.column_names:
+        raise ValueError(
+            f"Source(s) {sorted(per_row_sources)} resolve their instrument per image from "
+            f"`original_path`, which this dataset does not carry. Rebuild those sources rather "
+            f"than back-filling them."
+        )
+    paths = ds["original_path"] if per_row_sources else None
+
+    already_present = [col for col in INSTRUMENT_COLS if col in ds.column_names]
+    if already_present:
+        logger.info(f"Instrument column(s) {already_present} already present, rebuilding them.")
+        ds = ds.remove_columns(already_present)
+
+    logger.info(
+        f"Adding instrument columns {list(INSTRUMENT_COLS)} for {len(distinct_sources)} source "
+        f"dataset(s)" + (f", resolving {sorted(per_row_sources)} per image" if per_row_sources else "") + "..."
+    )
+    resolved = [
+        resolve_instrument(name, paths[index] if paths is not None else None)
+        if name in per_row_sources
+        else DATASET_INSTRUMENTS[name]
+        for index, name in enumerate(source_names)
+    ]
+    for col in INSTRUMENT_COLS:
+        # Explicit pa.string(): unlike the licence values these are nullable, so inference
+        # from an all-null list would give a `null` column that will not concatenate later.
+        ds = ds.add_column(col, pa.array([fields[col] for fields in resolved], type=pa.string()))
+
+    unresolved = sorted({name for name, fields in zip(source_names, resolved) if fields["instrument"] is None})
+    if unresolved:
+        logger.warning(
+            f"Source(s) {unresolved} publish a null instrument: the repo documents no imaging "
+            f"device for them. See KI-33 in utils/KNOWN_ISSUES.md."
+        )
+    return ds
+
+
 def add_license_columns(ds: Dataset) -> Dataset:
     """Add the per-image ``license`` / ``license_url`` columns from the ``dataset`` column.
 
@@ -191,6 +273,7 @@ def add_license_columns(ds: Dataset) -> Dataset:
     # Every distinct source must be accounted for before anything is written: an
     # unrecorded one must fail, not ship as a null license on published images.
     validate_license_coverage(distinct_sources)
+    validate_instrument_coverage(distinct_sources)
 
     already_present = [col for col in LICENSE_COLS if col in ds.column_names]
     if already_present:
@@ -232,11 +315,12 @@ def main(cfg: DictConfig) -> None:
     """
     logger.warning(
         "pz_update_planktonzilla is DEPRECATED and will be removed in the next minor "
-        "release. Use `pz_planktonzilla` instead — it creates or updates the dataset "
-        "with one command. The equivalent of this run is "
-        "`pz_planktonzilla base=hub sources=[] output_dir='${data_dir}'` (this script "
-        "saves to the bare data_dir; pz_planktonzilla defaults one level down, into "
-        "<data_dir>/planktonzilla-17M)."
+        "release. Use `pz_planktonzilla base=hub sources=[]` instead — it creates or "
+        "updates the dataset with one command, and saves one level down, into "
+        "<data_dir>/planktonzilla-17M. This script saves to the bare data_dir, and that "
+        "difference is deliberate: do NOT reproduce it with output_dir='${data_dir}', "
+        "because pz_planktonzilla REPLACES its output_dir, and data_dir also holds the "
+        "imagefolders and manual_downloads/. pz_planktonzilla refuses that target."
     )
 
     repo_id = cfg.repo_id
@@ -246,8 +330,13 @@ def main(cfg: DictConfig) -> None:
 
     sync_taxonomy = cfg.get("sync_taxonomy", True)
 
-    logger.info(f"Loading dataset {repo_id}.")
-    ds = load_dataset(repo_id, split="train")
+    # Read and write are the same repo_id here, so the two revisions must be set independently:
+    # push_revision alone is a read-modify-write across two different refs, which discards on the
+    # second run exactly what the first one published.
+    read_revision = cfg.get("read_revision", None)
+    source = f"{repo_id}@{read_revision}" if read_revision else str(repo_id)
+    logger.info(f"Loading dataset {source}.")
+    ds = load_dataset(repo_id, split="train", **revision_kwargs(read_revision))
 
     if sync_taxonomy:
         logger.info(f"Re-syncing taxonomy and external IDs on {repo_id} from taxonomy CSV {taxo_csv_path}.")
@@ -268,16 +357,18 @@ def main(cfg: DictConfig) -> None:
     dataset_final.save_to_disk(output_dir)
 
     if cfg.get("push_to_hub", False):
-        # revision is only forwarded when set, so the default call stays byte-identical.
+        # revision is only forwarded when set, so the default call stays byte-identical. Spelled
+        # `push_kwargs` rather than `revision_kwargs` because the read above now calls the helper
+        # of that name, and a local binding would shadow it for the whole function.
         push_revision = cfg.get("push_revision", None)
-        revision_kwargs = {"revision": push_revision} if push_revision else {}
+        push_kwargs = revision_kwargs(push_revision)
         target = f"{cfg.repo_id}@{push_revision}" if push_revision else str(cfg.repo_id)
         logger.info(f"Pushing updated Planktonzilla dataset to HuggingFace Hub as «{target}».")
         dataset_final.push_to_hub(
             cfg.repo_id,
             private=cfg.get("push_as_private", True),
             token=cfg.get("hf_token", None),
-            **revision_kwargs,
+            **push_kwargs,
         )
     else:
         logger.warning("Skipping pushing dataset to HuggingFace Hub, set push_to_hub=True to change this.")

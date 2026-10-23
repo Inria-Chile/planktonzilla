@@ -1,0 +1,173 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+tara_pacific_manta	Acartiidae	pzt:000154	acartiidae	living	full_body	true	accepted	verbatim	planktoscope			anchor:Acartiidae		
+tara_pacific_manta	Actinopterygii	pzt:000312	chordata	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Actinopterygii		
+tara_pacific_manta	Aglaura	pzt:000407	aglaura hemistoma	living	full_body	true	accepted	verbatim	zooscan			anchor:Aglaura		
+tara_pacific_manta	Alciopini	pzt:000049	alciopini	living	full_body	true	accepted	derived	Phyllodocidae			anchor:Alciopini		
+tara_pacific_manta	Amphipoda	pzt:000263	amphipoda	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Amphipoda		
+tara_pacific_manta	Annelida	pzt:000045	annelida	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Annelida		
+tara_pacific_manta	Atlanta	pzt:000446	atlantidae	living	full_body	true	accepted	verbatim	zooscan			anchor:Atlanta		
+tara_pacific_manta	Bivalvia<Mollusca	pzt:000439	bivalvia	living	full_body	true	accepted	anchor	jedioceans			anchor:Bivalvia		
+tara_pacific_manta	Brachyura	pzt:000283	brachyura	living	full_body	true	accepted	derived	Decapoda			anchor:Brachyura		
+tara_pacific_manta	Branchiostoma lanceolatum	pzt:000326	branchiostoma lanceolatum	living	full_body	true	accepted	derived	Chordata			anchor:Branchiostoma lanceolatum		
+tara_pacific_manta	Bryozoa	pzt:000303	bryozoa	living	full_body	true	accepted	anchor	zoocamnet			anchor:Bryozoa		
+tara_pacific_manta	Calanidae	pzt:000157	calanidae	living	full_body	true	accepted	verbatim	uvp6net			anchor:Calanidae		
+tara_pacific_manta	Calanoida	pzt:000153	calanoida	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Calanoida		
+tara_pacific_manta	Calocalanus pavo	pzt:000193	calocalanus pavo	living	full_body	true	accepted	verbatim	zooscan			anchor:Calocalanus pavo		
+tara_pacific_manta	Candaciidae	pzt:000158	candaciidae	living	full_body	true	accepted	verbatim	zoocamnet			anchor:Candaciidae		
+tara_pacific_manta	Cavoliniidae	pzt:000451	cavoliniidae	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Cavoliniidae		
+tara_pacific_manta	Centropagidae	pzt:000159	centropagidae	living	full_body	true	accepted	verbatim	planktoscope			anchor:Centropagidae		
+tara_pacific_manta	Cephalopoda	pzt:000443	cephalopoda	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Cephalopoda		
+tara_pacific_manta	Chaetognatha<Animalia	pzt:000304	chaetognatha	living	full_body	true	accepted	anchor	global_uvp5			anchor:Chaetognatha		
+tara_pacific_manta	Chelophyes	pzt:000388	chelophyes	living	full_body	true	accepted	derived	Diphyidae			anchor:Chelophyes		
+tara_pacific_manta	Cnidaria<Animalia	pzt:000346	cnidaria	living	full_body	true	accepted	anchor	global_uvp5			anchor:Cnidaria		
+tara_pacific_manta	Copepoda<Multicrustacea	pzt:000152	copepoda	living	full_body	true	accepted	anchor	global_uvp5			anchor:Copepoda		
+tara_pacific_manta	Copilia	pzt:000231	copilia	living	full_body	true	accepted	verbatim	zooscan			anchor:Copilia		
+tara_pacific_manta	Corycaeidae	pzt:000203	corycaeidae	living	full_body	true	accepted	verbatim	planktoscope			anchor:Corycaeidae		
+tara_pacific_manta	Creseidae	pzt:000459	clio pyramidata	living	full_body	true	accepted	verbatim	zooscan			anchor:Creseidae		
+tara_pacific_manta	Creseis acicula	pzt:000462	creseis acicula	living	full_body	true	accepted	verbatim	uvp6net			anchor:Creseis acicula		
+tara_pacific_manta	Creseis virgula	pzt:000463	creseis virgula	living	full_body	true	accepted	derived	Creseidae			anchor:Creseis virgula		
+tara_pacific_manta	Ctenophora<Animalia	pzt:000949	ctenophora	living	full_body	true	accepted	anchor	global_uvp5			anchor:Ctenophora		
+tara_pacific_manta	Diacavolinia	pzt:000454	diacavolinia	living	full_body	true	accepted	derived	Cavoliniidae			anchor:Diacavolinia		
+tara_pacific_manta	Diacria trispinosa	pzt:000456	diacria trispinosa	living	full_body	true	accepted	derived	Cavoliniidae			anchor:Diacria trispinosa		
+tara_pacific_manta	Diatoma	pzt:000950	diatoma	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Diatoma		
+tara_pacific_manta	Doliolida	pzt:000340	doliolida	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Doliolida		
+tara_pacific_manta	Eucalanidae	pzt:000183	eucalanidae	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Eucalanidae		
+tara_pacific_manta	Euchaetidae	pzt:000185	euchaetidae	living	full_body	true	accepted	verbatim	zooscan			anchor:Euchaetidae		
+tara_pacific_manta	Eumalacostraca	pzt:000262	malacostraca	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Eumalacostraca		
+tara_pacific_manta	Evadne	pzt:000150	evadne	living	full_body	true	accepted	verbatim	planktoscope			anchor:Evadne		
+tara_pacific_manta	Foraminifera	pzt:000831	foraminifera	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Foraminifera		
+tara_pacific_manta	Fritillariidae	pzt:000315	fritillariidae	living	full_body	true	accepted	verbatim	planktoscope			anchor:Fritillariidae		
+tara_pacific_manta	Gammaridea	pzt:000271	gammaridea	living	full_body	true	accepted	derived	Amphipoda			anchor:Gammaridea		
+tara_pacific_manta	Gerridae	pzt:000252	gerridae	living	full_body	true	accepted	derived	Hexapoda			anchor:Gerridae		
+tara_pacific_manta	Gymnosomata	pzt:000450	pteropoda	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Gymnosomata		
+tara_pacific_manta	Haloptilus	pzt:000156	haloptilus	living	full_body	true	accepted	verbatim	zooscan			anchor:Haloptilus		
+tara_pacific_manta	Harosa	pzt:000675	chromista	living	full_body	true	accepted	verbatim	zooscan			anchor:Harosa		
+tara_pacific_manta	Harpacticoida	pzt:000237	euterpina	living	full_body	true	accepted	verbatim	zooscan			anchor:Harpacticoida		
+tara_pacific_manta	Hydrozoa	pzt:000352	hydrozoa	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Hydrozoa		
+tara_pacific_manta	Hyperiidea	pzt:000263	amphipoda	living	full_body	true	accepted	verbatim	uvp6net			anchor:Hyperiidea		
+tara_pacific_manta	Insecta	pzt:000247	hexapoda	living	full_body	false	accepted	verbatim	zooscan			anchor:Insecta		
+tara_pacific_manta	Limacinidae	pzt:000467	limacinidae	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Limacinidae		
+tara_pacific_manta	Lubbockia	pzt:000225	lubbockia	living	full_body	true	accepted	derived	Cyclopoida			anchor:Lubbockia		
+tara_pacific_manta	Metridinidae	pzt:000190	pleuromamma abdominalis	living	full_body	true	accepted	verbatim	zooscan			anchor:Metridinidae		
+tara_pacific_manta	Miraciidae	pzt:000235	miraciidae	living	full_body	true	accepted	derived	Harpacticoida			anchor:Miraciidae		
+tara_pacific_manta	Mollusca	pzt:000438	mollusca	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Mollusca		
+tara_pacific_manta	Neoceratium	pzt:001094	neoceratium	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Neoceratium		
+tara_pacific_manta	Nudibranchia	pzt:000449	nudibranchia	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Nudibranchia		
+tara_pacific_manta	Oikopleuridae	pzt:000317	oikopleuridae	living	full_body	true	accepted	verbatim	planktoscope			anchor:Oikopleuridae		
+tara_pacific_manta	Oithonidae	pzt:000226	oithonidae	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Oithonidae		
+tara_pacific_manta	Oncaeidae	pzt:000228	oncaeidae	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Oncaeidae		
+tara_pacific_manta	Orbulina	pzt:000835	orbulina	living	full_body	true	accepted	derived	Globigerinidae			anchor:Orbulina		
+tara_pacific_manta	Ostracoda	pzt:000296	ostracoda	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Ostracoda		
+tara_pacific_manta	Oxycephalidae	pzt:000265	oxycephalidae	living	full_body	true	accepted	derived	Amphipoda			anchor:Oxycephalidae		
+tara_pacific_manta	Phronima	pzt:000267	phronima	living	full_body	true	accepted	derived	Amphipoda			anchor:Phronima		
+tara_pacific_manta	Physalia	pzt:000393	physalia	living	full_body	true	accepted	derived	Siphonophorae			anchor:Physalia		
+tara_pacific_manta	Pontellidae	pzt:000194	pontellidae	living	full_body	true	accepted	verbatim	zoocamnet			anchor:Pontellidae		
+tara_pacific_manta	Pontellina plumata	pzt:000196	pontellina plumata	living	full_body	true	accepted	derived	Pontellidae			anchor:Pontellina plumata		
+tara_pacific_manta	Porpita porpita	pzt:000361	porpita porpita	living	full_body	true	accepted	derived	Anthoathecata			anchor:Porpita porpita		
+tara_pacific_manta	Pterotrachea	pzt:000448	pterotrachea	living	full_body	true	accepted	derived	Littorinimorpha			anchor:Pterotrachea		
+tara_pacific_manta	Pyrocystaceae	pzt:001149	pyrocystaceae	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Pyrocystaceae		
+tara_pacific_manta	Pyrosomatida	pzt:000341	pyrosomatida	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Pyrosomatida		
+tara_pacific_manta	Rhopalonema velatum	pzt:000409	rhopalonema velatum	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Rhopalonema velatum		
+tara_pacific_manta	Salpida	pzt:000344	salpida	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Salpida		
+tara_pacific_manta	Sapphirinidae	pzt:000230	sapphirinidae	living	full_body	true	accepted	verbatim	zooscan			anchor:Sapphirinidae		
+tara_pacific_manta	Spirorbis	pzt:000054	spirorbis	living	full_body	true	accepted	derived	Polychaeta			anchor:Spirorbis		
+tara_pacific_manta	Spumellaria	pzt:001275	spumellaria	living	full_body	true	accepted	verbatim	flowcamnet			anchor:Spumellaria		
+tara_pacific_manta	Temoridae	pzt:000198	temoridae	living	full_body	true	accepted	verbatim	zoocamnet			anchor:Temoridae		
+tara_pacific_manta	Terebellidae	pzt:000061	terebellidae	living	full_body	true	accepted	derived	Polychaeta			anchor:Terebellidae		
+tara_pacific_manta	Tomopteridae	pzt:000050	tomopteridae	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Tomopteridae		
+tara_pacific_manta	Velella	pzt:000362	velella	living	full_body	true	accepted	derived	Anthoathecata			anchor:Velella		
+tara_pacific_manta	artefact	pzt:000002	artefact	artefact	unqualified	false	accepted	verbatim	flowcamnet					
+tara_pacific_manta	badfocus<Copepoda	pzt:000152	copepoda	living	full_body	true	accepted	verbatim	global_uvp5			anchor:Copepoda		
+tara_pacific_manta	badfocus<artefact	pzt:000003	bad focus	artefact	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_manta	bract<Abylopsis tetragona	pzt:000384	abylopsis tetragona	living	full_body	true	accepted	anchor	zooscan			anchor:Abylopsis tetragona		
+tara_pacific_manta	bract<Bassia bassensis	pzt:000386	bassia bassensis	living	full_body	true	accepted	anchor	global_uvp5			anchor:Bassia bassensis		
+tara_pacific_manta	bract<Diphyidae	pzt:000387	diphyidae	living	full_body	true	accepted	anchor	zoocamnet			anchor:Diphyidae		
+tara_pacific_manta	bubble	pzt:000005	bubble	artefact	unqualified	false	accepted	verbatim	flowcamnet					
+tara_pacific_manta	calyptopsis	pzt:000284	euphausiacea	living	full_body	true	accepted	verbatim	zooscan			anchor:Euphausiacea		
+tara_pacific_manta	chain<Salpida	pzt:000344	salpida	living	full_body	true	accepted	verbatim	uvp6net			anchor:Salpida		
+tara_pacific_manta	cirrus	pzt:000300	thecostraca	living	full_body	true	accepted	verbatim	zooscan			anchor:Cirripedia		
+tara_pacific_manta	cyphonautes	pzt:000303	bryozoa	living	full_body	true	accepted	anchor	zoocamnet			anchor:Bryozoa		morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_manta	cypris<Cirripedia	pzt:000302	cirripedia	living	full_body	true	accepted	derived	Thecostraca			anchor:Cirripedia		
+tara_pacific_manta	damaged<Copepoda	pzt:000152	copepoda	living	full_body	true	accepted	anchor	global_uvp5			anchor:Copepoda		morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_manta	dark<detritus	pzt:000008	detritus	detritus	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_manta	detritus<not-living	pzt:000008	detritus	detritus	unqualified	false	accepted	anchor	flowcamnet					
+tara_pacific_manta	egg<Actinopterygii	pzt:000312	chordata	living	egg	true	accepted	anchor	zoocamnet			anchor:Actinopterygii		
+tara_pacific_manta	egg<Mollusca	pzt:000438	mollusca	living	egg	true	accepted	anchor	zoocamnet			anchor:Mollusca		
+tara_pacific_manta	egg<other	pzt:000010	egg	living	egg	false	accepted	anchor	flowcamnet					
+tara_pacific_manta	ephyra<Scyphozoa	pzt:000411	scyphozoa	living	full_body	true	accepted	anchor	global_uvp5			anchor:Scyphozoa		
+tara_pacific_manta	eudoxid<Abylopsis tetragona	pzt:000384	abylopsis tetragona	living	full_body	true	accepted	anchor	zooscan			anchor:Abylopsis tetragona		morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_manta	eudoxid<Diphyidae	pzt:000387	diphyidae	living	full_body	true	accepted	anchor	zoocamnet			anchor:Diphyidae		morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_manta	eudoxid<Eudoxoides spiralis	pzt:000390	eudoxoides spiralis	living	full_body	true	accepted	derived	Diphyidae			anchor:Eudoxoides spiralis		morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_manta	fiber<detritus	pzt:000014	fiber	detritus	unqualified	false	accepted	anchor	flowcamnet					
+tara_pacific_manta	fiber<plastic	pzt:000028	plastic fiber	inert	unqualified	false	accepted	anchor	planktoscope					
+tara_pacific_manta	filament<plastic	pzt:000029	plastic filament	inert	unqualified	false	accepted	derived						
+tara_pacific_manta	film	pzt:000030	plastic film	inert	unqualified	false	accepted	derived						morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_manta	fragment	pzt:000031	plastic fragment	inert	unqualified	false	accepted	derived						morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_manta	gonophore<Abylopsis tetragona	pzt:000384	abylopsis tetragona	living	full_body	true	accepted	anchor	zooscan			anchor:Abylopsis tetragona		
+tara_pacific_manta	gonophore<Bassia bassensis	pzt:000386	bassia bassensis	living	full_body	true	accepted	anchor	global_uvp5			anchor:Bassia bassensis		
+tara_pacific_manta	gonophore<Diphyidae	pzt:000387	diphyidae	living	full_body	true	accepted	anchor	zoocamnet			anchor:Diphyidae		
+tara_pacific_manta	gonophore<Eudoxoides spiralis	pzt:000390	eudoxoides spiralis	living	full_body	true	accepted	derived	Diphyidae			anchor:Eudoxoides spiralis		
+tara_pacific_manta	head<Chaetognatha	pzt:000304	chaetognatha	detritus	part_head	false	accepted	verbatim	global_uvp5			anchor:Chaetognatha		
+tara_pacific_manta	juvenile<Salpida	pzt:000344	salpida	living	full_body	true	accepted	anchor	global_uvp5			anchor:Salpida		
+tara_pacific_manta	larvae<Annelida	pzt:000045	annelida	living	larvae	true	accepted	verbatim	global_uvp5			anchor:Annelida		
+tara_pacific_manta	larvae<Crustacea	pzt:000062	arthropoda	living	larvae	true	accepted	verbatim	global_uvp5			anchor:Crustacea		
+tara_pacific_manta	larvae<Porcellanidae	pzt:000280	porcellanidae	living	larvae	true	accepted	anchor	zoocamnet			anchor:Porcellanidae		
+tara_pacific_manta	larvae<Porpitidae	pzt:000359	porpitidae	living	larvae	true	accepted	derived	Anthoathecata			anchor:Porpitidae		
+tara_pacific_manta	larvae<Squillidae	pzt:000295	squillidae	living	larvae	true	accepted	derived	Stomatopoda			anchor:Squillidae		
+tara_pacific_manta	like<Laomediidae	pzt:000275	laomediidae	living	like	true	accepted	derived	Decapoda			anchor:Laomediidae		
+tara_pacific_manta	megalopa<Brachyura	pzt:000283	brachyura	living	full_body	true	accepted	derived	Decapoda			anchor:Brachyura		
+tara_pacific_manta	metanauplii<Crustacea	pzt:000062	arthropoda	living	full_body	true	accepted	anchor	flowcamnet			anchor:Crustacea		
+tara_pacific_manta	multiple<Copepoda	pzt:000152	copepoda	living	mix	true	accepted	anchor	global_uvp5			anchor:Copepoda		
+tara_pacific_manta	multiple<other	pzt:000024	other	artefact	unqualified	false	accepted	anchor	flowcamnet					
+tara_pacific_manta	multiple<plastic	pzt:000027	plastic	inert	unqualified	false	accepted	anchor	global_uvp5					
+tara_pacific_manta	nauplii<Cirripedia	pzt:000302	cirripedia	living	full_body	true	accepted	derived	Thecostraca			anchor:Cirripedia		
+tara_pacific_manta	nauplii<Crustacea	pzt:000062	arthropoda	living	full_body	true	accepted	anchor	flowcamnet			anchor:Crustacea		
+tara_pacific_manta	nectophore<Abylopsis tetragona	pzt:000384	abylopsis tetragona	living	full_body	true	accepted	anchor	zooscan			anchor:Abylopsis tetragona		
+tara_pacific_manta	nectophore<Bassia bassensis	pzt:000386	bassia bassensis	living	full_body	true	accepted	anchor	global_uvp5			anchor:Bassia bassensis		
+tara_pacific_manta	nectophore<Diphyidae	pzt:000387	diphyidae	living	full_body	true	accepted	anchor	zoocamnet			anchor:Diphyidae		
+tara_pacific_manta	nectophore<Eudoxoides spiralis	pzt:000390	eudoxoides spiralis	living	full_body	true	accepted	derived	Diphyidae			anchor:Eudoxoides spiralis		
+tara_pacific_manta	nectophore<Hippopodiidae	pzt:000391	hippopodiidae	living	full_body	true	accepted	anchor	zooscan			anchor:Hippopodiidae		
+tara_pacific_manta	nectophore<Physonectae	pzt:000381	siphonophorae	living	full_body	true	accepted	anchor	global_uvp5			anchor:Physonectae		
+tara_pacific_manta	nucleus<Salpidae	pzt:000345	salpidae	living	full_body	true	accepted	anchor	global_uvp5			anchor:Salpidae		
+tara_pacific_manta	other<Biota	pzt:000024	other	living	full_body	false	accepted	anchor	flowcamnet					
+tara_pacific_manta	other<plastic	pzt:000027	plastic	inert	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_manta	othertocheck	pzt:000024	other	artefact	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_manta	part<Annelida	pzt:000045	annelida	detritus	part	false	accepted	anchor	global_uvp5			anchor:Annelida		
+tara_pacific_manta	part<Cnidaria	pzt:000346	cnidaria	detritus	part	false	accepted	verbatim	global_uvp5			anchor:Cnidaria		
+tara_pacific_manta	part<Copepoda	pzt:000152	copepoda	detritus	part	false	accepted	anchor	global_uvp5			anchor:Copepoda		
+tara_pacific_manta	part<Crustacea	pzt:000062	arthropoda	detritus	part	false	accepted	verbatim	global_uvp5			anchor:Crustacea		
+tara_pacific_manta	part<Ctenophora	pzt:000949	ctenophora	detritus	part	false	accepted	anchor	global_uvp5			anchor:Ctenophora		
+tara_pacific_manta	part<Mollusca	pzt:000438	mollusca	detritus	part	false	accepted	anchor	zoocamnet			anchor:Mollusca		
+tara_pacific_manta	part<Siphonophorae	pzt:000381	siphonophorae	detritus	part	false	accepted	verbatim	global_uvp5			anchor:Siphonophorae		
+tara_pacific_manta	part<Thaliacea	pzt:000339	thaliacea	detritus	part	false	accepted	anchor	global_uvp5			anchor:Thaliacea		
+tara_pacific_manta	part<other	pzt:000024	other	detritus	part	false	accepted	verbatim	global_uvp5					
+tara_pacific_manta	pellet	pzt:000032	plastic pellet	inert	unqualified	false	accepted	derived						morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_manta	pluteus<Echinoidea	pzt:000433	echinoidea	living	full_body	true	accepted	anchor	planktonset1.0			anchor:Echinoidea		
+tara_pacific_manta	pluteus<Ophiuroidea	pzt:000435	ophiuroidea	living	full_body	true	accepted	anchor	planktoscope			anchor:Ophiuroidea		
+tara_pacific_manta	polype<Anthozoa	pzt:000417	anthozoa	living	full_body	true	accepted	derived	Cnidaria			anchor:Anthozoa		morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_manta	polype<Leptothecata	pzt:000363	leptothecata	living	full_body	true	accepted	anchor	global_uvp5			anchor:Leptothecata		morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_manta	polystyrene	pzt:000035	polystyrene	inert	unqualified	false	accepted	derived						morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_manta	protozoea<Mysida	pzt:000290	mysida	living	full_body	true	accepted	anchor	zooscan			anchor:Mysida		
+tara_pacific_manta	protozoea<Penaeidae	pzt:000279	penaeidae	living	full_body	true	accepted	anchor	zooscan			anchor:Penaeidae		
+tara_pacific_manta	protozoea<Sergestidae	pzt:000281	sergestidae	living	full_body	true	accepted	anchor	planktonset1.0			anchor:Sergestidae		
+tara_pacific_manta	scale	pzt:000312	chordata	detritus	part_skin	false	accepted	anchor	zoocamnet			anchor:Actinopterygii		morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_manta	seaweed	pzt:000038	seaweed	living	full_body	false	accepted	verbatim	planktoscope					
+tara_pacific_manta	t002	pzt:000042	unknown	artefact	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_manta	t003	pzt:000042	unknown	artefact	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_manta	t004	pzt:000042	unknown	artefact	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_manta	t005	pzt:000042	unknown	artefact	unqualified	false	accepted	anchor	zoolake					
+tara_pacific_manta	t007	pzt:000042	unknown	artefact	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_manta	t008	pzt:000042	unknown	artefact	unqualified	false	accepted	anchor	zoolake					
+tara_pacific_manta	t010	pzt:000042	unknown	artefact	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_manta	t012	pzt:000042	unknown	artefact	unqualified	false	accepted	anchor	zoolake					
+tara_pacific_manta	t013	pzt:000042	unknown	artefact	unqualified	false	accepted	verbatim	global_uvp5					
+tara_pacific_manta	t014	pzt:000042	unknown	artefact	unqualified	false	accepted	anchor	zoolake					
+tara_pacific_manta	t015	pzt:000042	unknown	artefact	unqualified	false	accepted	anchor	zoolake					
+tara_pacific_manta	t016	pzt:000042	unknown	artefact	unqualified	false	accepted	anchor	zoolake					
+tara_pacific_manta	t017	pzt:000042	unknown	artefact	unqualified	false	accepted	anchor	zoolake					
+tara_pacific_manta	tail<Appendicularia	pzt:000313	appendicularia	detritus	part_tail	false	accepted	verbatim	global_uvp5			anchor:Appendicularia		
+tara_pacific_manta	tail<Chaetognatha	pzt:000304	chaetognatha	detritus	part_tail	false	accepted	verbatim	global_uvp5			anchor:Chaetognatha		
+tara_pacific_manta	trunk<Appendicularia	pzt:000313	appendicularia	detritus	part_trunk	false	accepted	anchor	flowcamnet			anchor:Appendicularia		
+tara_pacific_manta	wing	pzt:000247	hexapoda	detritus	part	false	accepted	anchor	global_uvp5			anchor:Insecta		morphology token with no precedent in the table; root_class and qualifier reasoned by analogy
+tara_pacific_manta	zoea<Brachyura<Pleocyemata<Decapoda	pzt:000283	brachyura	living	full_body	true	accepted	derived	Decapoda			anchor:Brachyura		
+tara_pacific_manta	zoea<Galatheidae	pzt:000274	galatheidae	living	full_body	true	accepted	anchor	global_uvp5			anchor:Galatheidae		

@@ -25,6 +25,7 @@ from planktonzilla.open_clip_ext.factory import (
     load_checkpoint,
 )
 from planktonzilla.open_clip_ext.transform import (
+    AugmentationCfg,
     image_transform,
     image_transform_v2,
 )
@@ -34,6 +35,10 @@ from planktonzilla.open_clip_ext.visual import (
 )
 
 __all__ = [
+    # AugmentationCfg: transform.py's own docstring lists it among what this package re-exports,
+    # and it is the type image_transform_v2 takes, so importing the function without it left
+    # callers reaching into the submodule for its argument.
+    "AugmentationCfg",
     "TimmModel",
     "VisionTransformer",
     "create_model",

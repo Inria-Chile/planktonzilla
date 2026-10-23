@@ -80,6 +80,12 @@ def test_sparse_null_taxonomy_map_does_not_crash_under_multiprocessing(monkeypat
     src_license = {"license": "cc0-1.0", "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"}
     monkeypatch.setitem(constants.DATASET_LICENSES, "src", src_license)
 
+    # Same for the instrument pair, which rides in the same map and refuses an unrecorded
+    # source for the same reason: a null instrument must mean "none documented", never
+    # "nobody registered this source".
+    src_instrument = {"instrument": "ZooScan", "instrument_id": "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/"}
+    monkeypatch.setitem(constants.DATASET_INSTRUMENTS, "src", src_instrument)
+
     # One tiny valid PNG referenced by every row keeps the fixture cheap while still giving
     # _taxonomy_row a real example["image"]["path"] to read.
     png = tmp_path / "one.png"
@@ -111,11 +117,15 @@ def test_sparse_null_taxonomy_map_does_not_crash_under_multiprocessing(monkeypat
     # The license pair rides along in the same map, so it must be in the pinned schema too.
     assert ds.features["license"] == Value("string")
     assert ds.features["license_url"] == Value("string")
+    assert ds.features["instrument"] == Value("string")
+    assert ds.features["instrument_id"] == Value("string")
     # The generic custom_metadata column is typed string and never null (v1.2).
     assert ds.features[constants.CUSTOM_METADATA_COL] == Value("string")
     assert None not in ds[constants.CUSTOM_METADATA_COL]
     assert set(ds["license"]) == {src_license["license"]}
     assert set(ds["license_url"]) == {src_license["license_url"]}
+    assert set(ds["instrument"]) == {src_instrument["instrument"]}
+    assert set(ds["instrument_id"]) == {src_instrument["instrument_id"]}
 
     # Column access avoids decoding the image column.
     original_label = ds["original_label"]

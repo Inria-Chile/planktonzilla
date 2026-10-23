@@ -8,6 +8,10 @@ check_image_file_integrity: true
 
 human_readable_name: "Tara Pacific Bongo net / FlowCam surface micro-plankton"
 license: "cc-by-4.0"
+# config: 'FlowCam-imaged micro-plankton (> 20 um) ... individually imaged and measured with the FlowCam'
+# (tara_pacific_bongo.yaml:41,47-48). Same TOOL1583 caveat as flowcamnet
+instrument: "FlowCam"
+instrument_id: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1583/"
 source_url: "https://doi.org/10.17882/102694"
 
 # EMPTY ON PURPOSE — this source has no archive to download.

@@ -47,7 +47,6 @@ Prerequisites:
 """
 
 import concurrent.futures
-import csv
 import json
 import os
 import shutil
@@ -77,7 +76,9 @@ from planktonzilla.planktonzilla_dataset.generate_planktonzilla import (
     clean_corrupt_examples_optimized,
     import_and_redefine_source,
 )
+from planktonzilla.planktonzilla_dataset.taxonomy import load_taxonomy
 from planktonzilla.planktonzilla_dataset.update_planktonzilla import (
+    add_instrument_columns,
     add_license_columns,
     build_sync_dict,
     sync_columns,
@@ -147,15 +148,42 @@ def select_sources(cfg) -> list:
     return [entry for entry in registry if entry["name"] in wanted]
 
 
-def resolve_base_location(cfg, output_dir: Path):
-    """Resolve ``cfg.base`` to ``("hub", repo_id)`` / ``("disk", path)`` / ``None``."""
+@dataclass(frozen=True)
+class BaseLocation:
+    """Where a run splices from, and — for the Hub — at which revision.
+
+    A 2-tuple carried the first two fields. The third does not belong beside them positionally,
+    because it is meaningful for exactly one value of ``kind``: a revision on a disk base is not a
+    narrower read, it is a user who believes they pinned something. That is refused in
+    :func:`resolve_base_location` rather than ignored.
+    """
+
+    kind: str  # "hub" | "disk"
+    target: object  # repo id (hub) or Path (disk)
+    revision: str | None = None
+
+
+def resolve_base_location(cfg, output_dir: Path) -> "BaseLocation | None":
+    """Resolve ``cfg.base`` to a :class:`BaseLocation`, or ``None`` for "splice into nothing"."""
     base = cfg.get("base")
+    base_revision = cfg.get("base_revision", None)
     if base is None:
+        if base_revision:
+            raise ValueError(
+                f"base_revision={base_revision!r} is set, but base is null, so this run reads no "
+                f"base at all and the revision pins nothing. Pass base=hub, or drop base_revision."
+            )
         return None
 
     base = str(base)
     if base == "hub":
-        return ("hub", cfg.base_repo_id)
+        return BaseLocation("hub", cfg.base_repo_id, base_revision)
+
+    if base_revision:
+        raise ValueError(
+            f"base_revision={base_revision!r} is set, but base={base!r} reads from disk, where a "
+            f"Hub revision means nothing. Pass base=hub, or drop base_revision."
+        )
     if base == "local":
         if not output_dir.exists():
             # A FIRST build on this machine: `local` means "what is already there", and
@@ -173,17 +201,24 @@ def resolve_base_location(cfg, output_dir: Path):
                 "(and base_repo_id= when it should differ from repo_id)."
             )
             return None
-        return ("disk", output_dir)
-    return ("disk", Path(base))
+        return BaseLocation("disk", output_dir)
+    return BaseLocation("disk", Path(base))
 
 
-def load_base(location) -> Dataset:
-    """Load the base dataset from the Hub or from disk, unwrapping a single-split dict."""
-    kind, target = location
+def load_base(location: BaseLocation) -> Dataset:
+    """Load the base dataset from the Hub or from disk, unwrapping a single-split dict.
+
+    The Hub read is pinnable. Without that pin the second run of an additive re-push re-reads the
+    repo default branch and silently discards the columns the first run published to
+    ``push_revision`` — the splice would find no such column on the base and concatenate a
+    null-filled one over it.
+    """
+    kind, target = location.kind, location.target
 
     if kind == "hub":
-        logger.info(f"Loading base dataset from the HuggingFace Hub: {target}.")
-        return load_dataset(target, split="train")
+        source = f"{target}@{location.revision}" if location.revision else str(target)
+        logger.info(f"Loading base dataset from the HuggingFace Hub: {source}.")
+        return load_dataset(target, split="train", **constants.revision_kwargs(location.revision))
 
     logger.info(f"Loading base dataset from disk: {target}.")
     ds = load_from_disk(str(target))
@@ -245,6 +280,30 @@ def ensure_license_columns(ds: Dataset, *, where: str) -> Dataset:
         f"the revision the paper and released models are pinned to."
     )
     return add_license_columns(ds)
+
+
+def ensure_instrument_columns(ds: Dataset, *, where: str) -> Dataset:
+    """Derive the ``instrument`` / ``instrument_id`` columns when a base predates them.
+
+    Same mechanics and caveats as :func:`ensure_license_columns`, and the same necessity:
+    without it, :func:`assert_consolidated_schema` turns every ``base=hub`` run into a
+    ValueError the moment these columns join ``CONSOLIDATED_COLUMNS``, which would make the
+    migration that adds them impossible to express with this command.
+
+    Unlike the licence pair this is derivation for 20 of the 21 sources and per-row lookup for
+    the twenty-first; see :func:`update_planktonzilla.add_instrument_columns`.
+    """
+    missing = [col for col in constants.INSTRUMENT_COLS if col not in ds.column_names]
+    if not missing:
+        return ds
+
+    logger.warning(
+        f"{where} predates the instrument columns {missing}; deriving them from the `dataset` "
+        f"column (and, for per-image sources, from `original_path`). This CHANGES the published "
+        f"schema — publish it with push_revision=<branch> rather than over the revision the paper "
+        f"and released models are pinned to."
+    )
+    return add_instrument_columns(ds)
 
 
 def ensure_custom_metadata(ds: Dataset, *, where: str) -> Dataset:
@@ -382,7 +441,12 @@ def apply_version(ds: Dataset, version: str, embeddable: bool) -> Dataset:
     if version is None or not embeddable:
         return ds
 
-    ds.info.version = version
+    # Version(...), not the bare string: `DatasetInfo` only coerces in `__post_init__`,
+    # so a post-hoc assignment reaches `save_to_disk` as a str and serialises as one.
+    # `check_base_on_disk` — the unconditional pre-build guard — then reads `.version`
+    # as a mapping, and every incremental run against the released artifact dies on
+    # `AttributeError: 'str' object has no attribute 'get'` before building anything.
+    ds.info.version = Version(version)
     logger.info(f"Embedded version {str(ds.info.version)!r} in the dataset info.")
     return ds
 
@@ -422,6 +486,19 @@ def tag_hub_release(repo_id: str, version: str, *, token, message=None, overwrit
     logger.info(f"Tagged «{repo_id}» as «{version}» on the HuggingFace Hub.")
 
 
+def is_saved_dataset(path: Path) -> bool:
+    """Whether ``path`` is a directory ``datasets.load_from_disk`` would accept.
+
+    The same dispatcher :func:`check_base_on_disk` mirrors, reduced to its yes/no: a
+    ``Dataset`` carries ``dataset_info.json`` AND ``state.json``, a ``DatasetDict``
+    carries ``dataset_dict.json``, and anything else is not a saved dataset.
+    """
+    dataset = (path / datasets_config.DATASET_INFO_FILENAME).is_file() and (
+        path / datasets_config.DATASET_STATE_JSON_FILENAME
+    ).is_file()
+    return dataset or (path / datasets_config.DATASETDICT_JSON_FILENAME).is_file()
+
+
 def atomic_replace(final: Dataset, output_dir: Path) -> None:
     """Save to ``output_dir``, tolerating that it may be the dataset's own source.
 
@@ -429,10 +506,25 @@ def atomic_replace(final: Dataset, output_dir: Path) -> None:
     dataset is memory-mapped from, which is exactly the ``base=local`` case. Writing
     beside it and swapping also means there is no window where neither a complete old
     nor a complete new copy exists.
+
+    The swap ends in ``rmtree``, so an existing target is required to BE a saved dataset
+    first. Nothing else about the call says so: point this at a directory holding the
+    imagefolders and ``manual_downloads/`` and the rename-then-delete removes all of it
+    and logs success. Refusing is the whole safety property — the caller can always pass
+    a path one level down.
     """
     if not output_dir.exists():
         final.save_to_disk(str(output_dir))
         return
+
+    if not is_saved_dataset(output_dir):
+        raise ValueError(
+            f"refusing to replace {output_dir}: it exists but is not a saved dataset "
+            f"(no {datasets_config.DATASET_INFO_FILENAME}/{datasets_config.DATASET_STATE_JSON_FILENAME}, "
+            f"no {datasets_config.DATASETDICT_JSON_FILENAME}). Replacing it means deleting it, and "
+            f"whatever it holds — an imagefolder tree, manual_downloads/ — is not this build's to delete. "
+            f"Pass an output_dir that is either empty or an existing saved dataset."
+        )
 
     staged = output_dir.with_name(f"{output_dir.name}.new-{os.getpid()}")
     previous = output_dir.with_name(f"{output_dir.name}.old-{os.getpid()}")
@@ -460,10 +552,11 @@ def log_plan(*, selected, registry, base_location, output_dir, cfg, dropped) -> 
 
     if base_location is None:
         base_desc = "nothing (building only what `sources` rebuilds)"
-    elif base_location[0] == "hub":
-        base_desc = f"HuggingFace Hub «{base_location[1]}»"
+    elif base_location.kind == "hub":
+        ref = f"@{base_location.revision}" if base_location.revision else ""
+        base_desc = f"HuggingFace Hub «{base_location.target}{ref}»"
     else:
-        base_desc = f"disk «{base_location[1]}»"
+        base_desc = f"disk «{base_location.target}»"
 
     logger.info("=" * 78)
     logger.info(f"Base          : {base_desc}")
@@ -517,41 +610,39 @@ class Check:
 
 
 def check_taxonomy_csv(csv_path, selected) -> list:
-    """Check the taxonomy CSV exists, parses, has every column, and covers each source.
+    """Check the taxonomy exists, parses, has every column, and covers each selected source.
 
-    The column check is not decoration: ``build_taxonomy_lookup`` resolves an absent
-    column to ``None`` for every row instead of raising, so a CSV that lost a rank
-    builds the whole dataset with that rank blank and reports success.
+    The column check is not decoration: the lookup resolves an absent column to ``None`` for every
+    row instead of raising, so a table that lost a rank builds the whole dataset with that rank
+    blank and reports success. It used to be done by peeking the header with a bare ``csv.reader``
+    before handing the file to the reader of record — two parses of the same file, and a check that
+    could only ever work on a CSV. It now asks the loaded store what columns it has, which is the
+    same question answered once and answered for the normalised package too.
 
-    A selected source with NO row at all in the CSV is reported as a warning rather than
-    a failure — it is what adding a source before curating its labels looks like — but
-    it is worth saying up front, because the alternative is discovering afterwards that
-    a few hundred thousand images have null taxonomy and null IDs.
+    A selected source with NO row at all is reported as a warning rather than a failure — it is
+    what adding a source before curating its labels looks like — but it is worth saying up front,
+    because the alternative is discovering afterwards that a few hundred thousand images have null
+    taxonomy and null IDs.
     """
     path = Path(csv_path)
     if not path.exists():
         return [Check("taxonomy-csv", False, f"missing: {path}")]
 
     try:
-        with path.open(newline="", encoding="utf-8") as handle:
-            header = next(csv.reader(handle), [])
+        store = load_taxonomy(path)
     except OSError as e:
         return [Check("taxonomy-csv", False, f"unreadable: {path} ({e})")]
-
-    required = ("Dataset", "Raw_Labels", *LOOKUP_COLS)
-    absent = [column for column in required if column not in header]
-    if absent:
-        return [Check("taxonomy-csv", False, f"{path} is missing the column(s) {absent}")]
-
-    try:
-        lookup = build_taxonomy_lookup(str(path))
     except Exception as e:
         return [Check("taxonomy-csv", False, f"{path} could not be parsed: {type(e).__name__}: {e}")]
 
-    checks = [Check("taxonomy-csv", True, f"{len(lookup)} (dataset, label) rows, all {len(required)} columns present")]
+    required = ("Dataset", "Raw_Labels", *LOOKUP_COLS)
+    absent = [column for column in required if column not in store.legacy_header()]
+    if absent:
+        return [Check("taxonomy-csv", False, f"{path} is missing the column(s) {absent}")]
 
-    covered = {dataset for dataset, _ in lookup}
-    uncovered = [entry["name"] for entry in selected if entry["name"] not in covered]
+    checks = [Check("taxonomy-csv", True, f"{len(store.lookup())} (dataset, label) rows, all {len(required)} columns present")]
+
+    uncovered = [entry["name"] for entry in selected if not store.labels_for(entry["name"])]
     if uncovered:
         checks.append(
             Check(
@@ -565,6 +656,22 @@ def check_taxonomy_csv(csv_path, selected) -> list:
         checks.append(Check("taxonomy-coverage", True, f"all {len(selected)} rebuilt source(s) appear in the CSV"))
 
     return checks
+
+
+def embedded_version_str(version) -> str | None:
+    """Read the embedded version out of either shape ``dataset_info.json`` can hold.
+
+    ``DatasetInfo`` serialises a ``Version`` as ``{"version_str": ...}``. A bare string
+    reaches the file whenever something assigned one post-hoc, bypassing the
+    ``__post_init__`` coercion — which :func:`apply_version` did until it was fixed to
+    pass ``Version``. Artifacts released in that window are on disk already, so both
+    shapes are read rather than one of them crashing the pre-build guard.
+    """
+    if isinstance(version, str):
+        return version
+    if isinstance(version, dict):
+        return version.get("version_str")
+    return None
 
 
 def check_base_on_disk(location) -> list:
@@ -601,7 +708,7 @@ def check_base_on_disk(location) -> list:
     # "empty" — reporting 0 rows for a full dataset would be worse than saying nothing.
     splits = info.get("splits") or {}
     rows = sum(split.get("num_examples") or 0 for split in splits.values()) if splits else None
-    version = (info.get("version") or {}).get("version_str")
+    version = embedded_version_str(info.get("version"))
     shards = [entry.get("filename") for entry in state.get("_data_files") or []]
     missing_shards = [name for name in shards if name and not (path / name).is_file()]
 
@@ -617,21 +724,36 @@ def check_base_on_disk(location) -> list:
     return checks
 
 
-def check_base_on_hub(repo_id, *, token, timeout, api=None) -> list:
+def check_base_on_hub(repo_id, *, token, timeout, api=None, revision=None) -> list:
     """Check the Hub dataset a ``base=hub`` run would read is there and readable.
 
     A private or unauthorised repo answers 404, so ``RepositoryNotFoundError`` means
     "missing OR invisible to this token" and is worded that way. ``GatedRepoError`` —
     which SUBCLASSES it in huggingface_hub 1.x, hence the order of the handlers — is the
     one case where the repo is known to exist and only access is missing.
+
+    ``revision`` is the same pin :func:`load_base` will use, and passing it here is the point of
+    the parameter rather than a nicety: unpinned, this reports the DEFAULT branch's sha for a run
+    that is about to read a branch, which is worse than reporting nothing at all.
     """
     api = api or HfApi(token=token)
 
     try:
-        info = api.dataset_info(repo_id, timeout=timeout)
+        info = api.dataset_info(repo_id, timeout=timeout, **constants.revision_kwargs(revision))
     except GatedRepoError:
         return [Check("base-hub", False, f"«{repo_id}» is gated; request access on the Hub before a base=hub run")]
     except RepositoryNotFoundError:
+        # A 404 on a PINNED read is far more often a branch that does not exist than a repo that
+        # does not, so the pinned wording names that first.
+        if revision:
+            return [
+                Check(
+                    "base-hub",
+                    False,
+                    f"«{repo_id}@{revision}» not found: either the repo is invisible to this token "
+                    f"(a private repo needs HF_TOKEN), or revision «{revision}» does not exist on it",
+                )
+            ]
         return [Check("base-hub", False, f"«{repo_id}» not found, or invisible to this token (a private repo needs HF_TOKEN)")]
     except Exception as e:
         # Broad on purpose: huggingface_hub 1.x speaks httpx, whose transport errors are
@@ -639,7 +761,7 @@ def check_base_on_hub(repo_id, *, token, timeout, api=None) -> list:
         # network is down". A pre-flight has to report that, not crash on it.
         return [Check("base-hub", False, f"«{repo_id}» could not be read: {type(e).__name__}: {e}")]
 
-    detail = f"«{repo_id}» readable"
+    detail = f"«{repo_id}@{revision}» readable" if revision else f"«{repo_id}» readable"
     if info.sha:
         detail += f", revision {info.sha[:7]}"
     if info.last_modified:
@@ -808,16 +930,27 @@ def report_source_state(importers, cfg) -> tuple:
 
     Returns ``(checks, fetch_names)`` — the second being the sources a real run would
     actually download, decided exactly as ``import_and_redefine_source`` decides it: a
-    non-empty imagefolder short-circuits the import unless ``refresh=redownload``
-    removes it first — or a sidecar input it lacks makes it fetch regardless.
+    COMPLETE imagefolder short-circuits the import unless ``refresh`` rebuilds or removes
+    it first — or a sidecar input it lacks makes it fetch regardless.
+
+    "Complete", not "non-empty": this asked ``os.listdir`` while the run asks
+    ``imagefolder_is_complete()``, so a source the run would re-import — a half-built
+    imagefolder, a hollow tree of empty class dirs — was reported as already built and
+    skipped by ``check_downloads=needed``, which is the scope a real build uses.
     """
     checks, fetch_names = [], []
 
     for entry, importer in importers:
         name = entry["name"]
         imagefolder = Path(importer.imagefolder_dir)
-        exists = imagefolder.exists() and bool(os.listdir(imagefolder))
-        state = f"{len(os.listdir(imagefolder))} categories" if exists else "absent/empty -> would be imported"
+        complete = importer.imagefolder_is_complete()
+        categories = len(os.listdir(imagefolder)) if imagefolder.exists() else 0
+        if complete:
+            state = f"{categories} categories"
+        elif categories:
+            state = f"{categories} categories, INCOMPLETE -> would be imported"
+        else:
+            state = "absent/empty -> would be imported"
         removal = " (would be REMOVED first)" if cfg.refresh == "redownload" and imagefolder.exists() else ""
 
         logger.info(f"╰─ {name:16s} {imagefolder} [{state}]{removal}")
@@ -825,7 +958,9 @@ def report_source_state(importers, cfg) -> tuple:
         # A source that needs a hand-downloaded archive only fails once the run reaches
         # it, which on a full build can be hours in. Report it now, while the whole plan
         # is on screen and nothing has been downloaded yet.
-        if not exists or cfg.refresh == "redownload":
+        # rebuild too, now that it reaches its gate: it re-runs preparation, which goes
+        # back through _download_and_extract (a cache hit when the archive is still there).
+        if not complete or cfg.refresh in ("redownload", "rebuild"):
             fetch_names.append(name)
             missing = importer.missing_manual_downloads()
             if missing:
@@ -1003,11 +1138,16 @@ def run_preflight(*, selected, cfg, base_location, output_dir, taxo_csv_path, ve
         checks += download_checks
 
     if base_location is not None:
-        kind, target = base_location
+        kind, target = base_location.kind, base_location.target
         if kind == "disk":
             checks += check_base_on_disk(target)
         elif remote:
-            checks += check_base_on_hub(target, token=cfg.get("hf_token", None), timeout=cfg.check_timeout)
+            checks += check_base_on_hub(
+                target,
+                token=cfg.get("hf_token", None),
+                timeout=cfg.check_timeout,
+                revision=base_location.revision,
+            )
 
     checks += check_writable_dir("output-dir", output_dir)
     checks += check_writable_dir("data-dir", cfg.data_dir, needed_bytes=estimated_bytes)
@@ -1200,6 +1340,19 @@ def main(cfg: DictConfig) -> None:
         else Path(cfg.data_dir) / constants.DEFAULT_PLANKTONZILLA_DATASET_NAME
     )
 
+    # data_dir holds the imagefolders and manual_downloads/ — the hand-fetched archives
+    # that by definition cannot be re-downloaded. The run ends in `atomic_replace`, which
+    # replaces its target, so pointing output_dir at data_dir deletes the build's own
+    # inputs. Refused here rather than at the end: the answer does not change after
+    # several hours of importing, and by then the tree is already gone.
+    data_dir = cfg.get("data_dir")
+    if data_dir is not None and output_dir.resolve() == Path(data_dir).resolve():
+        raise ValueError(
+            f"output_dir resolves to data_dir ({output_dir}), which holds the imagefolders and "
+            f"manual_downloads/ this build reads from. Saving over it deletes them. Use the default "
+            f"output_dir ({Path(data_dir) / constants.DEFAULT_PLANKTONZILLA_DATASET_NAME}) or another path."
+        )
+
     if cfg.refresh not in REFRESH_MODES:
         raise ValueError(f"refresh must be one of {REFRESH_MODES}, got {cfg.refresh!r}")
     if cfg.clean not in CLEAN_SCOPES:
@@ -1226,6 +1379,7 @@ def main(cfg: DictConfig) -> None:
     # whose redistribution terms we cannot state. Only the sources this run rebuilds are
     # checked — rows carried over from the base already carry their own license columns.
     constants.validate_license_coverage(entry["name"] for entry in selected)
+    constants.validate_instrument_coverage(entry["name"] for entry in selected)
 
     if not selected and base_location is None and not dropped:
         raise ValueError("Nothing to do: `sources` selects no source and `base` is null.")
@@ -1259,8 +1413,8 @@ def main(cfg: DictConfig) -> None:
     # pointing at a directory that does not exist bought a full multi-hour build and then
     # raised FileNotFoundError from load_from_disk with everything discarded. Skipped only
     # when the pre-flight below is going to make the same check, so it is reported once.
-    if base_location is not None and base_location[0] == "disk" and not preflight_will_run:
-        broken = [check for check in check_base_on_disk(base_location[1]) if not check.ok and check.blocking]
+    if base_location is not None and base_location.kind == "disk" and not preflight_will_run:
+        broken = [check for check in check_base_on_disk(base_location.target) if not check.ok and check.blocking]
         if broken:
             raise RuntimeError(
                 "Nothing was built: the `base` this run would splice into is not usable, and it is only read at the "
@@ -1355,6 +1509,7 @@ def main(cfg: DictConfig) -> None:
         # Before the schema check, so a base that predates per-image licensing can still
         # be brought up to date rather than rejected for lacking the columns.
         base = ensure_license_columns(base, where="the base dataset")
+        base = ensure_instrument_columns(base, where="the base dataset")
         base = ensure_custom_metadata(base, where="the base dataset")
         assert_consolidated_schema(base, where="the base dataset")
 
@@ -1383,6 +1538,19 @@ def main(cfg: DictConfig) -> None:
         push_revision = cfg.get("push_revision", None)
         revision_kwargs = {"revision": push_revision} if push_revision else {}
         target = f"{cfg.repo_id}@{push_revision}" if push_revision else str(cfg.repo_id)
+
+        # Reading one ref and writing another is legitimate exactly once — the run that CREATES the
+        # branch. Every run after that has to be told, because the failure is silent: the second
+        # run reads the default branch, finds no new column on it, and concatenates a null-filled
+        # one over what the first run published.
+        if push_revision and base_location is not None and base_location.kind == "hub" and not base_location.revision:
+            logger.warning(
+                f"push_revision={push_revision} with base_revision=null: this run READ the repo "
+                f"default branch and is WRITING «{push_revision}». That is right for the run that "
+                f"creates the branch and wrong for every run after it — a second run would re-read "
+                f"the default branch and discard what this one publishes. Pass "
+                f"base_revision={push_revision} next time."
+            )
 
         logger.info(f"Pushing consolidated Planktonzilla dataset to HuggingFace Hub as «{target}».")
         ds.push_to_hub(

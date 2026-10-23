@@ -7,6 +7,9 @@ push_to_hub: true
 
 human_readable_name: "SYKE-plankton_ZooScan_2024 "
 license: "cc-by-4.0"
+# config: 'acquired using the ZooScan instrument' (sykezooscan2024.yaml:12)
+instrument: "ZooScan"
+instrument_id: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1581/"
 description: |
     The SYKE-plankton_ZooScan_2024 dataset consists of over 24k expert-labeled single-specimen zooplankton images. The dataset was 
     acquired using the ZooScan instrument applied to water samples collected from the Baltic Sea. The data is divided into 20 classes 

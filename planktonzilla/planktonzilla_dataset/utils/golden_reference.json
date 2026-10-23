@@ -1,0 +1,64 @@
+{
+  "repo_id": "project-oceania/planktonzilla-17M",
+  "revision": "7fd542ef9fc99e6e850bed06bbd8884f43192347",
+  "revision_requested": null,
+  "hub_last_modified": "2026-08-01T12:40:21+00:00",
+  "refreshed_at": "2026-09-18T21:47:51+00:00",
+  "complete": true,
+  "shards": {
+    "expected": 189,
+    "read": 189,
+    "failed": []
+  },
+  "schema_fingerprint": "08f457afc4756240314e816fde531606c61b53a100c8885bf25275425d979be7",
+  "rows_scanned": 17404047,
+  "pairs": 1482,
+  "csv_sha256": "070b985d3043a54e34b01ae7587b8409b3e720a4173bbbb933f93e6f43d98287",
+  "taxonomy_csv_sha256": "95de6c499744b2a1dea390f911c754a2d4ca1e6c920084eb4d361a5160629ee4",
+  "covered_columns": [
+    "dataset",
+    "original_label",
+    "Kingdom",
+    "Phylum",
+    "Class",
+    "Order",
+    "Family",
+    "Genus",
+    "Species",
+    "proposed_label",
+    "plankton",
+    "root_class",
+    "qualifier",
+    "wikidata_ID",
+    "ecotaxa_ID",
+    "aphia_ID",
+    "NCBI_ID",
+    "BOLD_ID"
+  ],
+  "synthesised_columns": [
+    "living"
+  ],
+  "excluded_datasets": [
+    "daplankton",
+    "frepj",
+    "tara_pacific_bongo",
+    "tara_pacific_decknet",
+    "tara_pacific_hsn",
+    "tara_pacific_manta"
+  ],
+  "absent_pairs": [
+    [
+      "planktoscope",
+      "Dinobryon"
+    ],
+    [
+      "planktoscope",
+      "Podon"
+    ],
+    [
+      "planktoscope",
+      "Ptychocylis"
+    ]
+  ],
+  "disagreements": []
+}

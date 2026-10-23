@@ -100,6 +100,16 @@ base: null
 # dataset and stage the result elsewhere instead of read-modify-writing production.
 base_repo_id: ${repo_id}
 
+# Hub READ revision, the other half of that split. null (the default) reads whatever the repo's
+# default branch is, which is today's behaviour byte for byte. A SECOND run onto the same
+# push_revision must set this, or it re-reads the default branch and silently discards what the
+# first run published:
+#   pz_planktonzilla base=hub base_revision=v1.1 sources=[] \
+#     sync_taxonomy=false push_to_hub=true push_revision=v1.1
+# Deliberately NOT defaulted to ${push_revision}: that would change what the command documented in
+# README.md already does, and the run would start reading a branch nobody asked it to read.
+base_revision: null
+
 # HOW DEEP A REBUILD GOES, for the sources selected by `sources`.
 #   reuse      -> reuse the imagefolder on disk when non-empty (legacy behavior)
 #   rebuild    -> force dataset_import.force_imagefolder_preparation=True

@@ -36,9 +36,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import datasets
-import polars as pl
 
 from planktonzilla.planktonzilla_dataset import constants
+from planktonzilla.planktonzilla_dataset.taxonomy import load_taxonomy
 
 # The lookup columns pulled from the taxonomy CSV, ordered exactly as
 # ``RedefineDataset._build_lookup`` builds them so external-ID comparison is
@@ -47,7 +47,6 @@ _TAXONOMY_COLS = constants.TAXONOMY_RANKS
 _EXTRA_COLS = constants.EXTRA_COLS
 _ID_STR_COLS = constants.ID_STR_COLS  # already text in the CSV
 _ID_NUM_COLS = constants.ID_NUM_COLS  # numeric in the CSV -> text without decimals
-_LOOKUP_COLS = (*_TAXONOMY_COLS, *_EXTRA_COLS, *_ID_STR_COLS, *_ID_NUM_COLS)
 
 # ``timestamp`` values must be ISO dates: the build normalizes the hand-typed upstream
 # "Sampling date" (KI-26) and never lets a raw value through.
@@ -110,26 +109,10 @@ def _cmp_norm(value):
     return str(value).strip()
 
 
-def _build_taxonomy_lookup(csv_path) -> dict:
-    """Build the ``(Dataset, Raw_Labels) -> {column: value}`` lookup from the CSV.
-
-    Mirrors ``RedefineDataset._build_lookup``: numeric ID columns are normalised to
-    decimal-free strings and blank values to ``None``.
-    """
-    df = pl.read_csv(csv_path)
-
-    for col in _ID_NUM_COLS:
-        if col in df.columns:
-            df = df.with_columns(pl.col(col).cast(pl.Int64, strict=False).cast(pl.Utf8).alias(col))
-
-    present = [col for col in _LOOKUP_COLS if col in df.columns]
-    keys = zip(df["Dataset"].to_list(), df["Raw_Labels"].to_list())
-    rows = df.select(present).to_dicts()
-
-    lookup = {}
-    for key, row in zip(keys, rows):
-        lookup[key] = {col: _norm(row.get(col)) for col in _LOOKUP_COLS}
-    return lookup
+# The near-verbatim copy of the reader that lived here is deleted. It mirrored
+# `RedefineDataset._build_lookup` by hand, which is exactly how two readers drift: this module
+# existed to VALIDATE that the published FREPJ rows match the taxonomy, using a second
+# implementation of the thing it was checking against. It now reads through the one loader.
 
 
 def _as_dataset(dataset_or_path) -> datasets.Dataset:
@@ -332,12 +315,20 @@ def _check_overlap(report, labels, id_data, taxonomy_lookup):
             rep[label] = {col: id_data[col][i] for col in compare_cols if col in id_data}
 
     mismatches = set()
+    unjoined = set()
 
     # Part A — fidelity of the (frepj, Raw_Labels) join.
     for label, values in rep.items():
         expected = taxonomy_lookup.get(("frepj", label))
         if expected is None:
-            continue  # a missing join is surfaced by the non-null-taxonomy check.
+            # NOT `continue`. This check's contract is that every built row matches the
+            # CSV for its (frepj, Raw_Labels) key, and a key that is not in the CSV cannot
+            # match — so skipping it silently made the check report "N/N consistent" over
+            # classes it had not checked at all. The non-null-taxonomy check covers only
+            # the case where the miss also emptied the built row's proposed_label; a built
+            # row carrying a label the CSV no longer keys passes that one and this one.
+            unjoined.add(label)
+            continue
         for col in compare_cols:
             if _cmp_norm(values.get(col)) != _cmp_norm(expected.get(col)):
                 mismatches.add(label)
@@ -368,11 +359,15 @@ def _check_overlap(report, labels, id_data, taxonomy_lookup):
                 mismatches.add(label)
                 break
 
-    ok = len(mismatches) == 0
+    ok = not mismatches and not unjoined
+    detail = f"{len(rep) - len(mismatches) - len(unjoined)}/{len(rep)} classes consistent"
+    if unjoined:
+        named = ", ".join(sorted(unjoined)[:5])
+        detail += f"; {len(unjoined)} not in the taxonomy CSV under ('frepj', label): {named}"
     report.add(
         "Overlap & Fidelity",
         ok,
-        f"{len(rep) - len(mismatches)}/{len(rep)} classes consistent",
+        detail,
         f"{len(rep)}/{len(rep)} classes consistent",
     )
 
@@ -411,7 +406,7 @@ def validate_frepj_dataset(
     latitude = _col(ds, "Latitude", n)
     longitude = _col(ds, "Longitude", n)
 
-    taxonomy_lookup = _build_taxonomy_lookup(taxonomy_csv)
+    taxonomy_lookup = load_taxonomy(taxonomy_csv).lookup()
     class_dirs = _load_class_dirs(class_dirs_tsv)
     imagefolder_counts = _count_imagefolder(imagefolder_dir)
 

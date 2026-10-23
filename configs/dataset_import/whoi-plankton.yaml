@@ -7,6 +7,11 @@ push_to_hub: true
 
 human_readable_name: "WHOI-Plankton - A Large Scale Fine Grained Visual Recognition Benchmark Dataset for Plankton Classification"
 license: "mit"
+# the config does NOT name the instrument; IFCB comes from README.md's source table and from
+# timestamps.py:131-137, whose `ifcb-day-of-year` pattern was verified on a real WHOI filename
+# (IFCB1_2008_073_152345)
+instrument: "IFCB"
+instrument_id: "https://vocab.nerc.ac.uk/collection/L22/current/TOOL1588/"
 description: |
   The data set available here comprises > 3.5 million images of microscopic marine plankton, organized
   according to category labels provided by researchers at the Woods Hole Oceanographic Institution (WHOI). The images

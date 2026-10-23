@@ -1,0 +1,51 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+syke_ifcb_2022	Amylax_triacantha	pzt:001139	amylax triacantha	living	full_body	true	accepted							
+syke_ifcb_2022	Aphanizomenon_flosaquae	pzt:000661	aphanizomenon	living	full_body	true	accepted							
+syke_ifcb_2022	Aphanothece_paralleliformis	pzt:000653	aphanothece parallelliformis	living	full_body	true	accepted							
+syke_ifcb_2022	Beads	pzt:000004	bead	inert	unqualified	false	accepted							
+syke_ifcb_2022	Centrales_sp	pzt:000904	centrales	living	full_body	true	accepted							
+syke_ifcb_2022	Ceratoneis_closterium	pzt:000948	ceratoneis closterium	living	full_body	true	accepted							
+syke_ifcb_2022	Chaetoceros_sp	pzt:000908	chaetoceros	living	full_body	true	accepted							
+syke_ifcb_2022	Chaetoceros_sp_single	pzt:000908	chaetoceros	living	full_body	true	accepted							
+syke_ifcb_2022	Chlorococcales	pzt:001291	chlorococcales	living	full_body	true	accepted							
+syke_ifcb_2022	Chroococcales	pzt:000648	chroococcales	living	full_body	true	accepted							
+syke_ifcb_2022	Chroococcus_small	pzt:000650	chroococcus	living	full_body	true	accepted							
+syke_ifcb_2022	Ciliata	pzt:000699	ciliophora	living	full_body	true	accepted							
+syke_ifcb_2022	Cryptomonadales	pzt:000816	cryptomonadales	living	full_body	true	accepted							
+syke_ifcb_2022	Cryptophyceae-Teleaulax	pzt:000819	teleaulax	living	full_body	true	accepted							
+syke_ifcb_2022	Cyclotella_choctawhatcheeana	pzt:001044	cyclotella choctawhatcheeana	living	full_body	true	accepted							
+syke_ifcb_2022	Cymbomonas_tetramitiformis	pzt:001309	cymbomonas tetramitiformis	living	full_body	true	accepted							
+syke_ifcb_2022	Dinophyceae	pzt:001062	dinophyceae	living	full_body	true	accepted							
+syke_ifcb_2022	Dinophysis_acuminata	pzt:001076	dinophysis acuminata	living	full_body	true	accepted							
+syke_ifcb_2022	Dolichospermum-Anabaenopsis	pzt:000664	anabaenopsis	living	full_body	true	accepted							
+syke_ifcb_2022	Dolichospermum-Anabaenopsis-coiled	pzt:000664	anabaenopsis	living	full_body	true	accepted							
+syke_ifcb_2022	Euglenophyceae	pzt:001344	euglenophyceae	living	full_body	true	accepted							
+syke_ifcb_2022	Eutreptiella_sp	pzt:001350	eutreptiella	living	full_body	true	accepted							
+syke_ifcb_2022	Gonyaulax_verior	pzt:001142	gonyaulax verior	living	full_body	true	accepted							
+syke_ifcb_2022	Gymnodiniales	pzt:001159	gymnodiniales	living	full_body	true	accepted							
+syke_ifcb_2022	Gymnodinium_like	pzt:001164	gymnodinium	living	like	true	accepted							
+syke_ifcb_2022	Heterocapsa_rotundata	pzt:001191	heterocapsa rotundata	living	full_body	true	accepted							
+syke_ifcb_2022	Heterocapsa_triquetra	pzt:001192	heterocapsa triquetra	living	full_body	true	accepted							
+syke_ifcb_2022	Heterocyte	pzt:000646	cyanobacteria	living	full_body	true	accepted							
+syke_ifcb_2022	Katablepharis_remigera	pzt:000830	katablepharis remigera	living	full_body	true	accepted							
+syke_ifcb_2022	Licmophora_sp	pzt:000973	licmophora	living	full_body	true	accepted							
+syke_ifcb_2022	Melosira_arctica	pzt:000990	melosira arctica	living	full_body	true	accepted							
+syke_ifcb_2022	Merismopedia_sp	pzt:000654	merismopedia	living	full_body	true	accepted							
+syke_ifcb_2022	Mesodinium_rubrum	pzt:000715	mesodinium rubrum	living	full_body	true	accepted							
+syke_ifcb_2022	Monoraphidium_contortum	pzt:001297	monoraphidium contortum	living	full_body	true	accepted							
+syke_ifcb_2022	Nitzschia_paleacea	pzt:000891	nitzschia paleacea	living	full_body	true	accepted							
+syke_ifcb_2022	Nodularia_spumigena	pzt:000666	nodularia spumigena	living	full_body	true	accepted							
+syke_ifcb_2022	Oocystis_sp	pzt:001316	oocystis	living	full_body	true	accepted							
+syke_ifcb_2022	Oscillatoriales	pzt:000669	oscillatoriales	living	full_body	true	accepted							
+syke_ifcb_2022	Pauliella_taeniata	pzt:000983	pauliella taeniata	living	full_body	true	accepted							
+syke_ifcb_2022	Pennales_sp_thick	pzt:001004	pennales	living	full_body	true	accepted							
+syke_ifcb_2022	Pennales_sp_thin	pzt:001004	pennales	living	full_body	true	accepted							
+syke_ifcb_2022	Peridiniella_catenata_chain	pzt:001136	peridiniella catenata	living	full_body	true	accepted							
+syke_ifcb_2022	Peridiniella_catenata_single	pzt:001136	peridiniella catenata	living	full_body	true	accepted							
+syke_ifcb_2022	Prorocentrum_cordatum	pzt:001217	prorocentrum cordatum	living	full_body	true	accepted							
+syke_ifcb_2022	Pseudopedinella_sp	pzt:001253	pseudopedinella	living	full_body	true	accepted							
+syke_ifcb_2022	Pyramimonas_sp	pzt:001311	pyramimonas	living	full_body	true	accepted							
+syke_ifcb_2022	Skeletonema_marinoi	pzt:001040	skeletonema marinoi	living	full_body	true	accepted							
+syke_ifcb_2022	Snowella-Woronichinia	pzt:000674	woronichinia	living	full_body	true	accepted							
+syke_ifcb_2022	Thalassiosira_levanderi	pzt:001050	thalassiosira levanderi	living	full_body	true	accepted							
+syke_ifcb_2022	Uroglenopsis_sp	pzt:001239	uroglenopsis	living	full_body	true	accepted							

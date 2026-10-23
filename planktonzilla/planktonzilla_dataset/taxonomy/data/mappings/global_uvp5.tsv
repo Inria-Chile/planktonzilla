@@ -1,0 +1,255 @@
+datasetID	verbatimIdentification	taxonID	concept	root_class	qualifier	plankton	status	method	donor	identifiedBy	dateIdentified	identificationReferences	confidence	remarks
+global_uvp5	Acantharea	pzt:001265	acantharia	living	full_body	true	accepted							
+global_uvp5	Acrocirridae	pzt:000056	acrocirridae	living	full_body	true	accepted							
+global_uvp5	Actinopterygii	pzt:000312	chordata	living	full_body	true	accepted							
+global_uvp5	Aegina	pzt:000374	aegina	living	full_body	true	accepted							
+global_uvp5	Aegina citrea	pzt:000375	aegina citrea	living	full_body	true	accepted							
+global_uvp5	Aequorea	pzt:000365	aequorea	living	full_body	true	accepted							
+global_uvp5	Aequoreidae	pzt:000364	aequoreidae	living	full_body	true	accepted							
+global_uvp5	Aglantha	pzt:000404	aglantha	living	full_body	true	accepted							
+global_uvp5	Aglantha digitale	pzt:000405	aglantha digitale	living	full_body	true	accepted							
+global_uvp5	Alciopidae	pzt:000048	phyllodocidae	living	full_body	true	accepted							
+global_uvp5	Amphipoda	pzt:000263	amphipoda	living	full_body	true	accepted							
+global_uvp5	Annelida	pzt:000045	annelida	living	full_body	true	accepted							
+global_uvp5	Anthoathecata	pzt:000353	anthoathecata	living	full_body	true	accepted							
+global_uvp5	Aphanizomenon	pzt:000661	aphanizomenon	living	full_body	true	accepted							
+global_uvp5	Appendicularia	pzt:000313	appendicularia	living	full_body	true	accepted							
+global_uvp5	Atolla	pzt:000414	atolla	living	full_body	true	accepted							
+global_uvp5	Aulacantha	pzt:000686	aulacantha	living	full_body	true	accepted							
+global_uvp5	Aulacanthidae	pzt:000685	aulacanthidae	living	full_body	true	accepted							
+global_uvp5	Aulatractus	pzt:000697	aulosphaeridae	living	full_body	true	accepted							
+global_uvp5	Aulographis	pzt:000687	aulographis	living	full_body	true	accepted							
+global_uvp5	Aulosphaeridae	pzt:000697	aulosphaeridae	living	full_body	true	accepted							
+global_uvp5	Bassia bassensis	pzt:000386	bassia bassensis	living	full_body	true	accepted							
+global_uvp5	Beroe	pzt:000422	beroe	living	full_body	true	accepted							
+global_uvp5	Beroida	pzt:000420	beroida	living	full_body	true	accepted							
+global_uvp5	Botrynema brucei	pzt:000399	botrynema brucei	living	full_body	true	accepted							
+global_uvp5	Bythotiaridae	pzt:000354	bythotiaridae	living	full_body	true	accepted							
+global_uvp5	Cannosphaeridae	pzt:000698	cannosphaeridae	living	full_body	true	accepted							
+global_uvp5	Castanellidae	pzt:000681	castanellidae	living	full_body	true	accepted							
+global_uvp5	Cavoliniidae	pzt:000451	cavoliniidae	living	full_body	true	accepted							
+global_uvp5	Cephalopoda	pzt:000443	cephalopoda	living	full_body	true	accepted							
+global_uvp5	Ceriantharia	pzt:000350	ceriantharia	living	full_body	true	accepted							
+global_uvp5	Cestidae	pzt:000425	cestidae	living	full_body	true	accepted							
+global_uvp5	Chaeteessa	pzt:000247	hexapoda	living	full_body	true	accepted							
+global_uvp5	Chaetognatha	pzt:000304	chaetognatha	living	full_body	true	accepted							
+global_uvp5	Circoporidae	pzt:000682	circoporidae	living	full_body	true	accepted							
+global_uvp5	Cladocera	pzt:000067	branchiopoda	living	full_body	true	accepted							
+global_uvp5	Cnidaria<Hydrozoa	pzt:000346	cnidaria	living	full_body	true	accepted							
+global_uvp5	Cnidaria<Metazoa	pzt:000346	cnidaria	living	full_body	true	accepted							
+global_uvp5	Coelodendridae	pzt:000689	coelodendridae	living	full_body	true	accepted							
+global_uvp5	Coelodendrum	pzt:000690	coelodendrum	living	full_body	true	accepted							
+global_uvp5	Coelographis	pzt:000689	coelodendridae	living	full_body	true	accepted							
+global_uvp5	Collodaria	pzt:001270	nassellaria	living	full_body	true	accepted							
+global_uvp5	Copepoda	pzt:000152	copepoda	living	full_body	true	accepted							
+global_uvp5	Copepoda X	pzt:000152	copepoda	living	full_body	true	accepted							
+global_uvp5	Coronatae	pzt:000412	coronatae	living	full_body	true	accepted							
+global_uvp5	Coscinodiscus	pzt:000930	coscinodiscus	living	full_body	true	accepted							
+global_uvp5	Creseidae	pzt:000460	creseidae	living	full_body	true	accepted							
+global_uvp5	Crustacea	pzt:000062	arthropoda	living	full_body	true	accepted							
+global_uvp5	Ctenocalanus	pzt:000165	ctenocalanus	living	full_body	true	accepted							
+global_uvp5	Ctenophora	pzt:000949	ctenophora	living	full_body	true	accepted							
+global_uvp5	Ctenophora XX	pzt:000949	ctenophora	living	full_body	true	accepted							
+global_uvp5	Cubozoa	pzt:000347	cubozoa	living	full_body	true	accepted							
+global_uvp5	Cytocladus	pzt:001269	polycystina	living	full_body	true	accepted							
+global_uvp5	Decapoda	pzt:000273	decapoda	living	full_body	true	accepted							
+global_uvp5	Diatoma	pzt:000950	diatoma	living	full_body	true	accepted							
+global_uvp5	Dinophyceae	pzt:001062	dinophyceae	living	full_body	true	accepted							
+global_uvp5	Dolichospermum	pzt:000662	dolichospermum	living	full_body	true	accepted							
+global_uvp5	Doliolida	pzt:000340	doliolida	living	full_body	true	accepted							
+global_uvp5	Echidnophaga	pzt:000256	echidnophaga	living	full_body	true	accepted							
+global_uvp5	Echinodermata	pzt:000428	echinodermata	living	full_body	true	accepted							
+global_uvp5	Enteropneusta	pzt:000437	enteropneusta	living	full_body	true	accepted							
+global_uvp5	Eucalanidae	pzt:000183	eucalanidae	living	full_body	true	accepted							
+global_uvp5	Eukaryota	pzt:000001	Eukaryota	living	full_body	true	accepted							
+global_uvp5	Eukrohnia	pzt:000311	eukrohnia	living	full_body	true	accepted							
+global_uvp5	Eumalacostraca	pzt:000262	malacostraca	living	full_body	true	accepted							
+global_uvp5	Euphausiacea	pzt:000284	euphausiacea	living	full_body	true	accepted							
+global_uvp5	Eurypharynx pelecanoides	pzt:000331	eurypharynx pelecanoides	living	full_body	true	accepted							
+global_uvp5	Flota	pzt:000059	flota	living	full_body	true	accepted							
+global_uvp5	Flota sp.	pzt:000059	flota	living	full_body	true	accepted							
+global_uvp5	Foraminifera	pzt:000831	foraminifera	living	full_body	true	accepted							
+global_uvp5	Fritillaria	pzt:000316	fritillaria	living	full_body	true	accepted							
+global_uvp5	Galatheidae	pzt:000274	galatheidae	living	full_body	true	accepted							
+global_uvp5	Gnathostomata	pzt:000312	chordata	living	full_body	true	accepted							
+global_uvp5	Gymnosomata	pzt:000450	pteropoda	living	full_body	true	accepted							
+global_uvp5	Halicreas	pzt:000400	halicreas	living	full_body	true	accepted							
+global_uvp5	Halicreas minimum	pzt:000401	halicreas minimum	living	full_body	true	accepted							
+global_uvp5	Halicreatidae	pzt:000397	halicreatidae	living	full_body	true	accepted							
+global_uvp5	Harpacticoida	pzt:000232	harpacticoida	living	full_body	true	accepted							
+global_uvp5	Helix aspersa	pzt:000476	helix aspersa	living	full_body	true	accepted							
+global_uvp5	Hydrozoa	pzt:000352	hydrozoa	living	full_body	true	accepted							
+global_uvp5	Leptothecata	pzt:000363	leptothecata	living	full_body	true	accepted							
+global_uvp5	Limacina	pzt:000468	limacina	living	full_body	true	accepted							
+global_uvp5	Limacina helicina	pzt:000469	limacina helicina	living	full_body	true	accepted							
+global_uvp5	Limacinidae	pzt:000467	limacinidae	living	full_body	true	accepted							
+global_uvp5	Lobata	pzt:000427	lobata	living	full_body	true	accepted							
+global_uvp5	Luciferidae	pzt:000276	luciferidae	living	full_body	true	accepted							
+global_uvp5	Medusettidae	pzt:000694	medusettidae	living	full_body	true	accepted							
+global_uvp5	Melosira	pzt:000989	melosira	living	full_body	true	accepted							
+global_uvp5	Metazoa	pzt:000321	distaplia	living	full_body	true	accepted							
+global_uvp5	Mollusca	pzt:000438	mollusca	living	full_body	true	accepted							
+global_uvp5	Munnopsinae	pzt:000288	munnopsidae	living	full_body	true	accepted							
+global_uvp5	Munnopsis	pzt:000289	munnopsis	living	full_body	true	accepted							
+global_uvp5	Narcomedusae	pzt:000372	narcomedusae	living	full_body	true	accepted							
+global_uvp5	Noctiluca sp.	pzt:001183	noctiluca	living	full_body	true	accepted							
+global_uvp5	Nodularia	pzt:000665	nodularia	living	full_body	true	accepted							
+global_uvp5	Nudibranchia	pzt:000449	nudibranchia	living	full_body	true	accepted							
+global_uvp5	Oithona	pzt:000227	oithona	living	full_body	true	accepted							
+global_uvp5	Olindiidae	pzt:000371	olindiidae	living	full_body	true	accepted							
+global_uvp5	Orodaria	pzt:001269	polycystina	living	full_body	true	accepted							
+global_uvp5	Ostracoda	pzt:000296	ostracoda	living	full_body	true	accepted							
+global_uvp5	Phaeodaria	pzt:000679	thecofilosea	living	full_body	true	accepted							
+global_uvp5	Phyllodocida	pzt:000047	phyllodocida	living	full_body	true	accepted							
+global_uvp5	Phyllodocidae	pzt:000048	phyllodocidae	living	full_body	true	accepted							
+global_uvp5	Platyhelminthes	pzt:000480	platyhelminthes	living	full_body	true	accepted							
+global_uvp5	Pleuroncodes	pzt:000278	grimothea	living	full_body	true	accepted							
+global_uvp5	Poeobius	pzt:000060	poeobius	living	full_body	true	accepted							
+global_uvp5	Pseudocalanus	pzt:000166	pseudocalanus	living	full_body	true	accepted							
+global_uvp5	Pterotracheoidea	pzt:000445	littorinimorpha	living	full_body	true	accepted							
+global_uvp5	Pyrosoma	pzt:000343	pyrosoma	living	full_body	true	accepted							
+global_uvp5	Pyrosomatida	pzt:000341	pyrosomatida	living	full_body	true	accepted							
+global_uvp5	Rhizaria	pzt:000675	chromista	living	full_body	true	accepted							
+global_uvp5	Rhizostomeae	pzt:000415	rhizostomeae	living	full_body	true	accepted							
+global_uvp5	Rhopalonema	pzt:000408	rhopalonema	living	full_body	true	accepted							
+global_uvp5	Rhopalonema velatum	pzt:000409	rhopalonema velatum	living	full_body	true	accepted							
+global_uvp5	Rhopalonematidae	pzt:000403	rhopalonematidae	living	full_body	true	accepted							
+global_uvp5	Salpida	pzt:000344	salpida	living	full_body	true	accepted							
+global_uvp5	Salpidae	pzt:000345	salpidae	living	full_body	true	accepted							
+global_uvp5	Sarsia	pzt:000356	sarsia	living	full_body	true	accepted							
+global_uvp5	Scyphozoa	pzt:000411	scyphozoa	living	full_body	true	accepted							
+global_uvp5	Semaeostomeae	pzt:000416	semaeostomeae	living	full_body	true	accepted							
+global_uvp5	Siphodera	pzt:000484	siphodera	living	full_body	true	accepted							
+global_uvp5	Siphonophorae	pzt:000381	siphonophorae	living	full_body	true	accepted							
+global_uvp5	Sminthea	pzt:000410	sminthea	living	full_body	true	accepted							
+global_uvp5	Solmaris	pzt:000377	solmaris	living	full_body	true	accepted							
+global_uvp5	Solmarisidae	pzt:000376	solmarisidae	living	full_body	true	accepted							
+global_uvp5	Solmundella bitentaculata	pzt:000380	solmundella bitentaculata	living	full_body	true	accepted							
+global_uvp5	Stegocephalus inflatus	pzt:000270	stegocephalus inflatus	living	full_body	true	accepted							
+global_uvp5	Swima	pzt:000057	swima	living	full_body	true	accepted							
+global_uvp5	Teleostei	pzt:000327	teleostei	living	full_body	true	accepted							
+global_uvp5	Thaliacea	pzt:000339	thaliacea	living	full_body	true	accepted							
+global_uvp5	Thecosomata	pzt:000477	thecosomata	living	full_body	true	accepted							
+global_uvp5	Tomopteridae	pzt:000050	tomopteridae	living	full_body	true	accepted							
+global_uvp5	Tomopteris	pzt:000051	tomopteris	living	full_body	true	accepted							
+global_uvp5	Trachymedusae	pzt:000396	trachymedusae	living	full_body	true	accepted							
+global_uvp5	Trichodesmium	pzt:000671	trichodesmium	living	full_body	true	accepted							
+global_uvp5	Trochophora	pzt:000321	distaplia	living	full_body	true	accepted							
+global_uvp5	Tunicata	pzt:000312	chordata	living	full_body	true	accepted							
+global_uvp5	Tuscaroridae	pzt:000683	tuscaroridae	living	full_body	true	accepted							
+global_uvp5	Zoantharia	pzt:000351	zoantharia	living	full_body	true	accepted							
+global_uvp5	actinula	pzt:000352	hydrozoa	living	full_body	true	accepted							
+global_uvp5	artefact	pzt:000002	artefact	artefact	unqualified	false	accepted							
+global_uvp5	badfocus<Copepoda	pzt:000152	copepoda	living	full_body	true	accepted							
+global_uvp5	badfocus<artefact	pzt:000003	bad focus	artefact	unqualified	false	accepted							
+global_uvp5	ball with spines	pzt:000675	chromista	living	full_body	true	accepted							
+global_uvp5	beanlike	pzt:000039	shape	artefact	unqualified	false	accepted							
+global_uvp5	body	pzt:000313	appendicularia	living	full_body	true	accepted							
+global_uvp5	bubble	pzt:000005	bubble	artefact	unqualified	false	accepted							
+global_uvp5	caps with filament	pzt:000024	other	artefact	unqualified	false	accepted							
+global_uvp5	chain	pzt:000344	salpida	living	full_body	true	accepted							
+global_uvp5	colonial<Aulosphaeridae	pzt:000697	aulosphaeridae	living	full_body	true	accepted							
+global_uvp5	colonial<Cannosphaeridae	pzt:000698	cannosphaeridae	living	full_body	true	accepted							
+global_uvp5	colonial<Collodaria	pzt:001270	nassellaria	living	full_body	true	accepted							
+global_uvp5	compact	pzt:000024	other	artefact	unqualified	false	accepted							
+global_uvp5	copepoda eggs	pzt:000152	copepoda	living	egg	true	accepted							
+global_uvp5	dark<detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+global_uvp5	dark<fluffy	pzt:000024	other	artefact	unqualified	false	accepted							
+global_uvp5	dark<sphere	pzt:000039	shape	artefact	unqualified	false	accepted							
+global_uvp5	darkrods	pzt:000024	other	artefact	unqualified	false	accepted							
+global_uvp5	detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+global_uvp5	double	pzt:000012	error	artefact	unqualified	false	accepted							
+global_uvp5	double sphere	pzt:000675	chromista	detritus	part	false	accepted							
+global_uvp5	double spike	pzt:000675	chromista	detritus	part	false	accepted							
+global_uvp5	duplicate	pzt:000012	error	artefact	unqualified	false	accepted							
+global_uvp5	egg	pzt:000010	egg	living	egg	false	accepted							
+global_uvp5	egg 1 temp	pzt:000336	engraulidae	living	egg	false	accepted							
+global_uvp5	egg unkn temp<Engraulidae temp	pzt:000336	engraulidae	living	egg	true	accepted							
+global_uvp5	egg unkn temp<Sardina temp	pzt:000335	clupeidae	living	egg	true	accepted							
+global_uvp5	elongated star with ball	pzt:000675	chromista	living	full_body	true	accepted							
+global_uvp5	elongated stick	pzt:000011	elongated stick	detritus	unqualified	false	accepted							
+global_uvp5	fecal pellets	pzt:000013	feces	detritus	unqualified	false	accepted							
+global_uvp5	feces	pzt:000013	feces	detritus	unqualified	false	accepted							
+global_uvp5	fiber	pzt:000014	fiber	detritus	unqualified	false	accepted							
+global_uvp5	filament	pzt:000015	filament	detritus	unqualified	false	accepted							
+global_uvp5	fluffy<detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+global_uvp5	fluffy<fiber	pzt:000014	fiber	detritus	unqualified	false	accepted							
+global_uvp5	gelatinous	pzt:000024	other	artefact	unqualified	false	accepted							
+global_uvp5	hairy capsule	pzt:000675	chromista	detritus	part	false	accepted							
+global_uvp5	head<Chaetognatha	pzt:000304	chaetognatha	detritus	part_head	false	accepted							
+global_uvp5	head<Crustacea	pzt:000062	arthropoda	detritus	part_head	false	accepted							
+global_uvp5	helix	pzt:000475	helix	living	full_body	true	accepted							
+global_uvp5	house	pzt:000313	appendicularia	living	full_body	true	accepted							
+global_uvp5	juvenile	pzt:000344	salpida	living	full_body	true	accepted							
+global_uvp5	larvae<Annelida	pzt:000045	annelida	living	larvae	true	accepted							
+global_uvp5	larvae<Crustacea	pzt:000062	arthropoda	living	larvae	true	accepted							
+global_uvp5	leg<Coelodendridae	pzt:000689	coelodendridae	detritus	part_leg	false	accepted							
+global_uvp5	leg<Crustacea	pzt:000062	arthropoda	detritus	part_leg	false	accepted							
+global_uvp5	light aggregates	pzt:000021	mix	artefact	unqualified	false	accepted							
+global_uvp5	light<detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+global_uvp5	light<fluffy	pzt:000024	other	artefact	unqualified	false	accepted							
+global_uvp5	light<sphere	pzt:000039	shape	artefact	unqualified	false	accepted							
+global_uvp5	like<Acantharea	pzt:001265	acantharia	living	like	true	accepted							
+global_uvp5	like<Copepoda	pzt:000152	copepoda	living	like	true	accepted							
+global_uvp5	like<Limacinidae	pzt:000467	limacinidae	living	like	true	accepted							
+global_uvp5	like<Ostracoda	pzt:000296	ostracoda	living	like	true	accepted							
+global_uvp5	like<Phaeodaria	pzt:000679	thecofilosea	living	like	true	accepted							
+global_uvp5	like<Salpida	pzt:000344	salpida	living	like	true	accepted							
+global_uvp5	like<Temoridae	pzt:000198	temoridae	living	like	true	accepted							
+global_uvp5	like<Trichodesmium	pzt:000671	trichodesmium	living	like	true	accepted							
+global_uvp5	like<colonial	pzt:000697	aulosphaeridae	living	like	true	accepted							
+global_uvp5	like<egg	pzt:000010	egg	living	egg	false	accepted							
+global_uvp5	living	pzt:000024	other	living	full_body	false	accepted							
+global_uvp5	megalopa	pzt:000273	decapoda	living	full_body	true	accepted							
+global_uvp5	molt	pzt:000022	molt	detritus	unqualified	false	accepted							
+global_uvp5	multiple organisms	pzt:000021	mix	living	mix	false	accepted							
+global_uvp5	nauplii	pzt:000152	copepoda	living	full_body	true	accepted							
+global_uvp5	nucleus with four arms	pzt:000675	chromista	living	full_body	true	accepted							
+global_uvp5	other<living	pzt:000024	other	living	full_body	false	accepted							
+global_uvp5	other<plastic	pzt:000027	plastic	inert	unqualified	false	accepted							
+global_uvp5	othertocheck	pzt:000024	other	artefact	unqualified	false	accepted							
+global_uvp5	ovigerous	pzt:000152	copepoda	living	full_body	true	accepted							
+global_uvp5	ovoid	pzt:000039	shape	artefact	unqualified	false	accepted							
+global_uvp5	part<Cnidaria	pzt:000346	cnidaria	detritus	part	false	accepted							
+global_uvp5	part<Crustacea	pzt:000062	arthropoda	detritus	part	false	accepted							
+global_uvp5	part<Siphonophorae	pzt:000381	siphonophorae	detritus	part	false	accepted							
+global_uvp5	part<other	pzt:000024	other	detritus	part	false	accepted							
+global_uvp5	pluteus	pzt:000428	echinodermata	living	full_body	true	accepted							
+global_uvp5	protist with spike	pzt:000675	chromista	living	full_body	true	accepted							
+global_uvp5	puff	pzt:000671	trichodesmium	living	full_body	true	accepted							
+global_uvp5	rhizaria like	pzt:000675	chromista	living	like	true	accepted							
+global_uvp5	rhizaria temporary	pzt:000675	chromista	living	full_body	true	accepted							
+global_uvp5	side	pzt:000152	copepoda	living	full_body	true	accepted							
+global_uvp5	solitaryblack	pzt:001270	nassellaria	living	full_body	true	accepted							
+global_uvp5	solitaryglobule	pzt:001270	nassellaria	living	full_body	true	accepted							
+global_uvp5	sphere<detritus	pzt:000008	detritus	detritus	unqualified	false	accepted							
+global_uvp5	sphere<othertocheck	pzt:000039	shape	artefact	unqualified	false	accepted							
+global_uvp5	spiky caps	pzt:000675	chromista	detritus	part	false	accepted							
+global_uvp5	star with ball	pzt:000675	chromista	living	full_body	true	accepted							
+global_uvp5	t001	pzt:000042	unknown	artefact	unqualified	false	accepted							
+global_uvp5	t002	pzt:000042	unknown	artefact	unqualified	false	accepted							
+global_uvp5	t003	pzt:000042	unknown	artefact	unqualified	false	accepted							
+global_uvp5	t004	pzt:000042	unknown	artefact	unqualified	false	accepted							
+global_uvp5	t006	pzt:000042	unknown	artefact	unqualified	false	accepted							
+global_uvp5	t007	pzt:000042	unknown	artefact	unqualified	false	accepted							
+global_uvp5	t010	pzt:000042	unknown	artefact	unqualified	false	accepted							
+global_uvp5	t011	pzt:000042	unknown	artefact	unqualified	false	accepted							
+global_uvp5	t013	pzt:000042	unknown	artefact	unqualified	false	accepted							
+global_uvp5	t018	pzt:000042	unknown	artefact	unqualified	false	accepted							
+global_uvp5	t019	pzt:000042	unknown	artefact	unqualified	false	accepted							
+global_uvp5	tail<Appendicularia	pzt:000313	appendicularia	detritus	part_tail	false	accepted							
+global_uvp5	tail<Chaetognatha	pzt:000304	chaetognatha	detritus	part_tail	false	accepted							
+global_uvp5	tail<Crustacea	pzt:000062	arthropoda	detritus	part_tail	false	accepted							
+global_uvp5	temp cross	pzt:000024	other	artefact	unqualified	false	accepted							
+global_uvp5	tentacle<Cnidaria	pzt:000346	cnidaria	detritus	part_tentacle	false	accepted							
+global_uvp5	tentacle<Ctenophora	pzt:000949	ctenophora	detritus	part_tentacle	false	accepted							
+global_uvp5	tentacle<Siphonophorae	pzt:000381	siphonophorae	detritus	part_tentacle	false	accepted							
+global_uvp5	tentacle<gelatinous	pzt:000024	other	detritus	part_tentacle	false	accepted							
+global_uvp5	top-bottom	pzt:000152	copepoda	living	full_body	true	accepted							
+global_uvp5	tornaria larvae	pzt:000437	enteropneusta	living	larvae	true	accepted							
+global_uvp5	trocophora	pzt:000046	polychaeta	living	full_body	true	accepted							
+global_uvp5	tuff	pzt:000671	trichodesmium	living	full_body	true	accepted							
+global_uvp5	turbid	pzt:000024	other	artefact	unqualified	false	accepted							
+global_uvp5	unknown	pzt:000679	thecofilosea	living	full_body	true	accepted							
+global_uvp5	veliger	pzt:000438	mollusca	living	full_body	true	accepted							
+global_uvp5	with-eggs	pzt:000153	calanoida	living	egg	true	accepted							

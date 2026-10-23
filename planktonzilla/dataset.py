@@ -10,7 +10,7 @@ attaches per-batch augmentation/transform pipelines used by the HF `Trainer`.
 
 from dataclasses import dataclass
 from functools import partial
-from typing import Callable
+from typing import Callable, Final
 
 import numpy as np
 import torch
@@ -72,6 +72,12 @@ def augment_and_transform_batch(examples, transform, augmentation, input_column_
     return results
 
 
+#: PIL modes that carry ONE luminance channel (``LA`` adds only alpha). A dataset made
+#: entirely of these publishes a one-element Normalize constant; anything else — RGB, but
+#: also RGBA, P, CMYK, YCbCr — is colour and publishes three.
+MONOCHROME_IMAGE_MODES: Final = frozenset({"1", "L", "LA", "I", "I;16", "F"})
+
+
 def compute_mean_and_std_dev(huggingface_dataset: Dataset, input_column_name: str = "image"):
     """Compute per-channel mean and standard deviation for a dataset.
 
@@ -90,23 +96,36 @@ def compute_mean_and_std_dev(huggingface_dataset: Dataset, input_column_name: st
     sum_pixels = np.zeros(3)  # For R, G, B channels
     sum_squared_pixels = np.zeros(3)
     num_pixels = 0
+    every_image_was_monochrome = True
 
     for item in huggingface_dataset:
         # Access the image (assuming it's a PIL Image object)
         image = item[input_column_name]
 
+        # Converted, not assumed. A single-channel image reshaped to (-1, 1) has a
+        # one-element per-channel sum, which numpy BROADCASTS onto the three-element
+        # accumulator — so one grayscale image among RGB ones added its value to R, G and
+        # B alike while counting its pixels once. Converting first makes every row of
+        # every image a real (r, g, b), and for a monochrome image that is (v, v, v), so
+        # the answer for an all-grayscale dataset is unchanged.
+        #
+        # "monochrome" is decided from the SOURCE mode, not from "needed converting":
+        # RGBA, P and CMYK all need converting and none of them is grayscale, so keying
+        # off `mode != "RGB"` collapsed a colour dataset to a one-element constant that
+        # held only its red channel.
+        if image.mode not in MONOCHROME_IMAGE_MODES:
+            every_image_was_monochrome = False
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+
         # Convert image to NumPy array and normalize to [0, 1] if needed
         image_array = np.array(image).astype(np.float32) / 255.0
 
+        if image_array.ndim != 3 or image_array.shape[-1] != 3:
+            raise ValueError(f"Unsupported image_array shape after RGB conversion: {image_array.shape}")
+
         # Reshape the image to (height * width, channels) to easily work with pixels
-        if len(image_array.shape) == 3:
-            # it is a color image with three channels
-            reshaped_image = image_array.reshape(-1, 3)
-        elif len(image_array.shape) == 2:
-            # monochrome image with one channel
-            reshaped_image = image_array.reshape(-1, 1)
-        else:
-            raise ValueError(f"Unsupported image_array shape: {image_array.shape}")
+        reshaped_image = image_array.reshape(-1, 3)
 
         # Accumulate sums
         sum_pixels += np.sum(reshaped_image, axis=0)
@@ -115,15 +134,29 @@ def compute_mean_and_std_dev(huggingface_dataset: Dataset, input_column_name: st
         # Update total number of pixels
         num_pixels += reshaped_image.shape[0]
 
-    mean = sum_pixels / num_pixels
-    std_dev = np.sqrt((sum_squared_pixels / num_pixels) - (mean**2))
+    # Empty input used to reach the division below with `image_array` unbound, and report
+    # itself as `NameError: name 'image_array' is not defined` — which says nothing about
+    # the dataset being empty.
+    if num_pixels == 0:
+        raise ValueError(f"{input_column_name!r} yielded no pixels: the dataset is empty, or none of its rows carry an image.")
 
-    if len(image_array.shape) == 3:
-        # it is a color image with three channels
-        return mean, std_dev
-    elif len(image_array.shape) == 2:
+    mean = sum_pixels / num_pixels
+    # Clamped at zero before the root: E[x²] - E[x]² is catastrophic cancellation, and on a
+    # channel of constant value it lands a few ulp BELOW zero — so a class of flat images
+    # (a solid-background vignette set is not exotic) published `nan` as its Normalize
+    # standard deviation. The clamp only ever engages on that float error; a real variance
+    # is positive and passes through untouched.
+    variance = np.maximum((sum_squared_pixels / num_pixels) - (mean**2), 0.0)
+    std_dev = np.sqrt(variance)
+
+    # Decided from the WHOLE dataset, not from `image_array` — which, after the loop,
+    # holds whatever the last row happened to be. A mixed RGB/L imagefolder therefore
+    # published a one-element Normalize constant to its dataset card whenever its last
+    # image was grayscale, and a three-element one otherwise.
+    if every_image_was_monochrome:
         # monochrome image with one channel
         return [mean[0]], [std_dev[0]]
+    return mean, std_dev
 
 
 @dataclass
